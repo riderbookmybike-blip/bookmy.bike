@@ -21,19 +21,46 @@ export function useSystemBrandsLogic() {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
+        let cancelled = false;
+
+        const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+        const isTransientFetchIssue = (input: unknown) => {
+            const msg = String((input as { name?: string; message?: string })?.message || input || '')
+                .toLowerCase()
+                .trim();
+            return (
+                msg.includes('fetch failed') ||
+                msg.includes('failed to fetch') ||
+                msg.includes('signal is aborted') ||
+                msg.includes('aborterror')
+            );
+        };
+
         async function fetchBrands() {
             try {
                 const supabase = createClient();
-                const { data, error } = await supabase
-                    .from('cat_brands')
-                    .select('id, name, slug, logo_svg, brand_logos')
-                    .eq('is_active', true)
-                    .eq('brand_category', 'VEHICLE')
-                    .order('name');
+                let data: any[] | null = null;
+                let fetchError: unknown = null;
 
-                if (error) throw error;
+                for (let attempt = 1; attempt <= 2; attempt += 1) {
+                    const { data: rows, error } = await supabase
+                        .from('cat_brands')
+                        .select('id, name, slug, logo_svg, brand_logos')
+                        .eq('is_active', true)
+                        .eq('brand_category', 'VEHICLE')
+                        .order('name');
+                    if (!error) {
+                        data = rows || [];
+                        fetchError = null;
+                        break;
+                    }
+                    fetchError = error;
+                    if (attempt < 2) await sleep(200);
+                }
 
-                if (data) {
+                if (fetchError) throw fetchError;
+
+                if (!cancelled && data) {
                     setBrands(
                         data.map(b => ({
                             ...b,
@@ -48,18 +75,34 @@ export function useSystemBrandsLogic() {
                 if (errObj?.name === 'AbortError' || errObj?.message?.includes('AbortError')) {
                     return;
                 }
+                if (isTransientFetchIssue(err)) {
+                    if (!cancelled) {
+                        setBrands([]);
+                        setError(null);
+                    }
+                    console.warn('Brand fetch transiently unavailable. Using empty list for now.');
+                    return;
+                }
                 const errorMessage =
                     err instanceof Error
                         ? getErrorMessage(err)
                         : ((err as { message?: string })?.message ?? JSON.stringify(err));
                 console.error('Error fetching brands:', errorMessage);
-                setError(errorMessage);
+                if (!cancelled) {
+                    setError(errorMessage);
+                }
             } finally {
-                setIsLoading(false);
+                if (!cancelled) {
+                    setIsLoading(false);
+                }
             }
         }
 
         fetchBrands();
+
+        return () => {
+            cancelled = true;
+        };
     }, []);
 
     return { brands, isLoading, error };

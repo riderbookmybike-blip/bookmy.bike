@@ -14,6 +14,8 @@ import {
     MapPin,
     ArrowRight,
     SlidersHorizontal,
+    LayoutGrid,
+    List,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { checkServiceability } from '@/actions/serviceArea';
@@ -125,6 +127,7 @@ export const MobileCatalog = ({
     const [compareItems, setCompareItems] = useState<CompareItem[]>([]);
     const [explodedVariant, setExplodedVariant] = useState<string | null>(null);
     const normalize = (s: string) => s.toLowerCase().trim();
+    const [mobileViewMode, setMobileViewMode] = useState<'grid' | 'list'>('grid');
 
     const toggleCompare = (item: CompareItem) => {
         setCompareItems(prev => {
@@ -305,23 +308,31 @@ export const MobileCatalog = ({
         <div className="min-h-screen bg-slate-50 text-slate-900 pb-32">
             {/* 1. Search Bar (Sticky) */}
             <div className="sticky top-0 z-40 bg-white/95 backdrop-blur-xl border-b border-slate-200 pt-3 pb-3 px-5">
-                <div className="relative">
-                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input
-                        type="text"
-                        value={searchQuery}
-                        onChange={e => setSearchQuery(e.target.value)}
-                        placeholder="Search bikes, scooters, brands..."
-                        className="w-full pl-9 pr-9 py-2.5 rounded-xl bg-white border border-slate-200 text-sm text-slate-900 placeholder:text-slate-400 font-medium focus:outline-none focus:border-[#F4B000]/40 focus:bg-white transition-all"
-                    />
-                    {searchQuery && (
-                        <button
-                            onClick={() => setSearchQuery('')}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors"
-                        >
-                            <X size={14} />
-                        </button>
-                    )}
+                <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input
+                            type="text"
+                            value={searchQuery}
+                            onChange={e => setSearchQuery(e.target.value)}
+                            placeholder="Search bikes, scooters, brands..."
+                            className="w-full pl-9 pr-9 py-2.5 rounded-xl bg-white border border-slate-200 text-sm text-slate-900 placeholder:text-slate-400 font-medium focus:outline-none focus:border-[#F4B000]/40 focus:bg-white transition-all"
+                        />
+                        {searchQuery && (
+                            <button
+                                onClick={() => setSearchQuery('')}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors"
+                            >
+                                <X size={14} />
+                            </button>
+                        )}
+                    </div>
+                    <button
+                        onClick={() => setMobileViewMode(m => (m === 'grid' ? 'list' : 'grid'))}
+                        className="w-10 h-10 shrink-0 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-500 active:bg-slate-100 transition-colors"
+                    >
+                        {mobileViewMode === 'grid' ? <List size={18} /> : <LayoutGrid size={18} />}
+                    </button>
                 </div>
             </div>
             {/* 2. Main Content Area */}
@@ -340,120 +351,141 @@ export const MobileCatalog = ({
                         ))}
                     </div>
                 ) : results.length > 0 ? (
-                    <div className="flex flex-col gap-8">
-                        {explodedVariant
-                            ? /* Exploded view: show each colour as its own card in a grid */
-                              (() => {
-                                  const [eMake, eModel, eVariant] = explodedVariant.split('::');
-                                  const sourceVariant = finalResults.find(
-                                      v =>
-                                          normalize(v.make) === normalize(eMake) &&
-                                          normalize(v.model) === normalize(eModel) &&
-                                          normalize(v.variant) === normalize(eVariant)
-                                  );
-                                  if (!sourceVariant) return null;
-                                  const colors = sourceVariant.availableColors || [];
-                                  const colourCards = colors.map(color => ({
-                                      ...sourceVariant,
-                                      id: color.id || sourceVariant.id,
-                                      color: color.name,
-                                      imageUrl: color.imageUrl || sourceVariant.imageUrl,
-                                      availableColors: [color, ...colors.filter(c => c.id !== color.id)],
-                                  }));
-                                  return (
-                                      <div>
-                                          <div className="flex items-center justify-between mb-4 px-1">
-                                              <div>
-                                                  <div className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">
-                                                      {sourceVariant.make}
+                    mobileViewMode === 'list' ? (
+                        /* ── LIST MODE: flat vertical list, one card per row ── */
+                        <div className="flex flex-col gap-4">
+                            {finalResults.map(v => (
+                                <CompactProductCard
+                                    key={v.id}
+                                    v={v}
+                                    downpayment={downpayment}
+                                    tenure={tenure}
+                                    walletCoins={isLoggedIn ? availableCoins : null}
+                                    showOClubPrompt={!isLoggedIn}
+                                    basePath={basePath}
+                                    leadId={leadId}
+                                    fallbackDealerId={resolvedDealerId}
+                                    onEditDownpayment={() => setIsMobileFilterOpen(true)}
+                                    bestOffer={winnersMap[v.id] as any}
+                                />
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="flex flex-col gap-8">
+                            {explodedVariant
+                                ? /* Exploded view: show each colour as its own card in a grid */
+                                  (() => {
+                                      const [eMake, eModel, eVariant] = explodedVariant.split('::');
+                                      const sourceVariant = finalResults.find(
+                                          v =>
+                                              normalize(v.make) === normalize(eMake) &&
+                                              normalize(v.model) === normalize(eModel) &&
+                                              normalize(v.variant) === normalize(eVariant)
+                                      );
+                                      if (!sourceVariant) return null;
+                                      const colors = sourceVariant.availableColors || [];
+                                      const colourCards = colors.map(color => ({
+                                          ...sourceVariant,
+                                          id: color.id || sourceVariant.id,
+                                          color: color.name,
+                                          imageUrl: color.imageUrl || sourceVariant.imageUrl,
+                                          availableColors: [color, ...colors.filter(c => c.id !== color.id)],
+                                      }));
+                                      return (
+                                          <div>
+                                              <div className="flex items-center justify-between mb-4 px-1">
+                                                  <div>
+                                                      <div className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">
+                                                          {sourceVariant.make}
+                                                      </div>
+                                                      <h3 className="text-lg font-black italic uppercase text-slate-900">
+                                                          {sourceVariant.model}
+                                                      </h3>
+                                                      <p className="text-[10px] text-slate-500 font-semibold">
+                                                          {sourceVariant.variant} — All Colours
+                                                      </p>
                                                   </div>
-                                                  <h3 className="text-lg font-black italic uppercase text-slate-900">
-                                                      {sourceVariant.model}
-                                                  </h3>
-                                                  <p className="text-[10px] text-slate-500 font-semibold">
-                                                      {sourceVariant.variant} — All Colours
-                                                  </p>
+                                                  <button
+                                                      onClick={() => setExplodedVariant(null)}
+                                                      className="text-[9px] font-black uppercase tracking-wider text-[#F4B000] bg-[#F4B000]/10 px-3 py-1.5 rounded-full border border-[#F4B000]/20"
+                                                  >
+                                                      Collapse
+                                                  </button>
                                               </div>
-                                              <button
-                                                  onClick={() => setExplodedVariant(null)}
-                                                  className="text-[9px] font-black uppercase tracking-wider text-[#F4B000] bg-[#F4B000]/10 px-3 py-1.5 rounded-full border border-[#F4B000]/20"
-                                              >
-                                                  Collapse
-                                              </button>
+                                              <div className="grid grid-cols-2 gap-3">
+                                                  {colourCards.map((v, idx) => (
+                                                      <CompactProductCard
+                                                          key={`${v.id}-${v.color || idx}`}
+                                                          v={v}
+                                                          downpayment={downpayment}
+                                                          tenure={tenure}
+                                                          walletCoins={isLoggedIn ? availableCoins : null}
+                                                          showOClubPrompt={!isLoggedIn}
+                                                          basePath={basePath}
+                                                          leadId={leadId}
+                                                          fallbackDealerId={resolvedDealerId}
+                                                          onEditDownpayment={() => setIsMobileFilterOpen(true)}
+                                                          bestOffer={winnersMap[v.id] as any}
+                                                      />
+                                                  ))}
+                                              </div>
                                           </div>
-                                          <div className="grid grid-cols-2 gap-3">
-                                              {colourCards.map((v, idx) => (
-                                                  <CompactProductCard
-                                                      key={`${v.id}-${v.color || idx}`}
-                                                      v={v}
-                                                      downpayment={downpayment}
-                                                      tenure={tenure}
-                                                      walletCoins={isLoggedIn ? availableCoins : null}
-                                                      showOClubPrompt={!isLoggedIn}
-                                                      basePath={basePath}
-                                                      leadId={leadId}
-                                                      fallbackDealerId={resolvedDealerId}
-                                                      onEditDownpayment={() => setIsMobileFilterOpen(true)}
-                                                      bestOffer={winnersMap[v.id] as any}
-                                                  />
+                                      );
+                                  })()
+                                : /* Normal grouped view */
+                                  groupProductsByModel(finalResults).map(group => (
+                                      <div
+                                          key={group.modelSlug}
+                                          className="flex flex-col border-b border-slate-200 pb-8 last:border-0 last:pb-0"
+                                      >
+                                          {/* Model Header block */}
+                                          <div className="flex items-end justify-between mb-3 px-1">
+                                              <div>
+                                                  <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-0.5">
+                                                      {group.make}
+                                                  </div>
+                                                  <h3 className="text-xl font-black italic uppercase tracking-wider text-slate-900 leading-none">
+                                                      {group.model}
+                                                  </h3>
+                                              </div>
+                                              <div className="text-[9px] font-bold text-[#F4B000] bg-[#F4B000]/10 px-2 py-1 rounded-full uppercase tracking-wider">
+                                                  {group.variants.length} Variant{group.variants.length > 1 ? 's' : ''}
+                                              </div>
+                                          </div>
+
+                                          {/* Variants Swipe Container */}
+                                          <div className="flex overflow-x-auto snap-x snap-mandatory gap-3 hide-scrollbar pb-2 items-stretch">
+                                              {group.variants.map((v, idx) => (
+                                                  <div
+                                                      key={v.id}
+                                                      className="w-[85%] max-w-[320px] shrink-0 snap-center first:pl-1 last:pr-1"
+                                                  >
+                                                      <CompactProductCard
+                                                          v={v}
+                                                          downpayment={downpayment}
+                                                          tenure={tenure}
+                                                          walletCoins={isLoggedIn ? availableCoins : null}
+                                                          showOClubPrompt={!isLoggedIn}
+                                                          basePath={basePath}
+                                                          leadId={leadId}
+                                                          fallbackDealerId={resolvedDealerId}
+                                                          onEditDownpayment={() => setIsMobileFilterOpen(true)}
+                                                          bestOffer={winnersMap[v.id] as any}
+                                                          onExplodeColors={() => {
+                                                              const key = `${v.make}::${v.model}::${v.variant}`;
+                                                              setExplodedVariant(prev => (prev === key ? null : key));
+                                                          }}
+                                                          isExploded={
+                                                              explodedVariant === `${v.make}::${v.model}::${v.variant}`
+                                                          }
+                                                      />
+                                                  </div>
                                               ))}
                                           </div>
                                       </div>
-                                  );
-                              })()
-                            : /* Normal grouped view */
-                              groupProductsByModel(finalResults).map(group => (
-                                  <div
-                                      key={group.modelSlug}
-                                      className="flex flex-col border-b border-slate-200 pb-8 last:border-0 last:pb-0"
-                                  >
-                                      {/* Model Header block */}
-                                      <div className="flex items-end justify-between mb-3 px-1">
-                                          <div>
-                                              <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-0.5">
-                                                  {group.make}
-                                              </div>
-                                              <h3 className="text-xl font-black italic uppercase tracking-wider text-slate-900 leading-none">
-                                                  {group.model}
-                                              </h3>
-                                          </div>
-                                          <div className="text-[9px] font-bold text-[#F4B000] bg-[#F4B000]/10 px-2 py-1 rounded-full uppercase tracking-wider">
-                                              {group.variants.length} Variant{group.variants.length > 1 ? 's' : ''}
-                                          </div>
-                                      </div>
-
-                                      {/* Variants Swipe Container */}
-                                      <div className="flex overflow-x-auto snap-x snap-mandatory gap-3 hide-scrollbar pb-2 items-stretch">
-                                          {group.variants.map((v, idx) => (
-                                              <div
-                                                  key={v.id}
-                                                  className="w-[85%] max-w-[320px] shrink-0 snap-center first:pl-1 last:pr-1"
-                                              >
-                                                  <CompactProductCard
-                                                      v={v}
-                                                      downpayment={downpayment}
-                                                      tenure={tenure}
-                                                      walletCoins={isLoggedIn ? availableCoins : null}
-                                                      showOClubPrompt={!isLoggedIn}
-                                                      basePath={basePath}
-                                                      leadId={leadId}
-                                                      fallbackDealerId={resolvedDealerId}
-                                                      onEditDownpayment={() => setIsMobileFilterOpen(true)}
-                                                      bestOffer={winnersMap[v.id] as any}
-                                                      onExplodeColors={() => {
-                                                          const key = `${v.make}::${v.model}::${v.variant}`;
-                                                          setExplodedVariant(prev => (prev === key ? null : key));
-                                                      }}
-                                                      isExploded={
-                                                          explodedVariant === `${v.make}::${v.model}::${v.variant}`
-                                                      }
-                                                  />
-                                              </div>
-                                          ))}
-                                      </div>
-                                  </div>
-                              ))}
-                    </div>
+                                  ))}
+                        </div>
+                    )
                 ) : (
                     <div className="py-20 flex flex-col items-center justify-center text-center">
                         <div className="w-16 h-16 rounded-full bg-white border border-slate-200 flex items-center justify-center mb-4">

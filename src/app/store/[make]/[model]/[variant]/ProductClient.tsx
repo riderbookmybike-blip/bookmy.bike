@@ -467,10 +467,10 @@ export default function ProductClient({
         if (dealerAccessories && dealerAccessories.length > 0) {
             setClientAccessories(dealerAccessories);
 
-            // Only auto-select mandatory/bundled if user hasn't touched yet
+            // Only auto-select inclusive (zero-price) items if user hasn't touched yet
             if (!hasTouchedAccessories) {
                 const defaults = dealerAccessories
-                    .filter((a: any) => a.isMandatory || a.inclusionType === 'BUNDLE')
+                    .filter((a: any) => a.isMandatory || Number(a.discountPrice ?? a.price ?? 0) === 0)
                     .map((a: any) => a.id);
                 setSelectedAccessories(defaults);
             }

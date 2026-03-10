@@ -4,7 +4,19 @@ import React, { useState, useMemo, useEffect, useTransition } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Heart, ArrowRight, Plus, Search, X, ChevronDown, ChevronRight, Menu, Pencil } from 'lucide-react';
+import {
+    Heart,
+    ArrowRight,
+    Plus,
+    Search,
+    X,
+    ChevronDown,
+    ChevronRight,
+    Menu,
+    Pencil,
+    LayoutGrid,
+    List,
+} from 'lucide-react';
 import { useFavorites } from '@/lib/favorites/favoritesContext';
 import { useSystemCatalogLogic } from '@/hooks/SystemCatalogLogic';
 import { FavoritesCardAdapter } from '@/components/store/cards/VehicleCardAdapters';
@@ -368,6 +380,12 @@ export const WishlistClient = () => {
                             className="border-0 bg-white"
                         />
                     </div>
+                    <button
+                        onClick={() => setViewMode(m => (m === 'grid' ? 'list' : 'grid'))}
+                        className="w-10 h-10 shrink-0 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-500 active:bg-slate-100 transition-colors"
+                    >
+                        {viewMode === 'grid' ? <List size={18} /> : <LayoutGrid size={18} />}
+                    </button>
                 </div>
             </div>
 
@@ -404,10 +422,49 @@ export const WishlistClient = () => {
                 </div>
             )}
 
-            {/* Grid Section - Using filteredItems */}
+            {/* Mobile list mode: vertical stack */}
+            {viewMode === 'list' && (
+                <div className="md:hidden flex flex-col gap-4 px-5 min-h-[200px]">
+                    {filteredItems.length > 0 ? (
+                        filteredItems.map(v => (
+                            <FavoritesCardAdapter
+                                key={v.id}
+                                variant={v}
+                                viewMode="list"
+                                downpayment={downpayment}
+                                tenure={tenure}
+                                walletCoins={isLoggedIn ? availableCoins : null}
+                                showOClubPrompt={!isLoggedIn}
+                                pricingMode={pricingMode}
+                                onTogglePricingMode={() =>
+                                    setPricingMode(prev => {
+                                        const next = prev === 'cash' ? 'finance' : 'cash';
+                                        if (next === 'finance') setIsDpEditOpen(true);
+                                        return next;
+                                    })
+                                }
+                                onEditDownpayment={() => setIsDpEditOpen(true)}
+                                variantCount={2}
+                                onExplore={() => {
+                                    const url = buildVariantExplorerUrl(v.make || '', v.model || '');
+                                    startTransition(() => {
+                                        router.push(url);
+                                    });
+                                }}
+                            />
+                        ))
+                    ) : (
+                        <div className="flex-1 flex items-center justify-center py-20 text-center">
+                            <p className="text-sm font-black text-slate-400 uppercase tracking-widest">
+                                No items found
+                            </p>
+                        </div>
+                    )}
+                </div>
+            )}
             <div
                 className={`grid gap-6 min-h-[50vh] ${
-                    viewMode === 'list' ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
+                    viewMode === 'list' ? 'hidden md:grid grid-cols-1' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
                 }`}
             >
                 <AnimatePresence mode={lightMotion ? 'wait' : 'popLayout'}>

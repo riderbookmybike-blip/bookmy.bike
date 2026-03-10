@@ -258,12 +258,12 @@ export default function AmortizationPanel({
                 <table className="w-full text-[10px] cursor-default">
                     <thead className="sticky top-0 bg-slate-50 border-b border-slate-200">
                         <tr className="uppercase tracking-wider text-slate-500">
-                            <th className="px-2 py-2 text-left">M</th>
-                            <th className="px-2 py-2 text-left">Date</th>
-                            <th className="px-2 py-2 text-right">EMI</th>
-                            <th className="px-2 py-2 text-right">Principal</th>
-                            <th className="px-2 py-2 text-right">Interest</th>
-                            <th className="px-2 py-2 text-right">Balance</th>
+                            <th className="w-[8%] md:w-auto px-2 py-2 text-left">M</th>
+                            <th className="px-2 py-2 text-left hidden md:table-cell">Date</th>
+                            <th className="w-[23%] md:w-auto px-2 py-2 text-right">EMI</th>
+                            <th className="w-[23%] md:w-auto px-2 py-2 text-right">Principal</th>
+                            <th className="w-[23%] md:w-auto px-2 py-2 text-right">Interest</th>
+                            <th className="w-[23%] md:w-auto px-2 py-2 text-right">Balance</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -273,18 +273,24 @@ export default function AmortizationPanel({
                                 className={`border-t border-slate-100 ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}
                             >
                                 <td className="px-2 py-1.5 font-semibold text-slate-600">{r.month}</td>
-                                <td className="px-2 py-1.5 text-slate-600">{formatDate(r.dueDate)}</td>
+                                <td className="px-2 py-1.5 text-slate-600 hidden md:table-cell">
+                                    {formatDate(r.dueDate)}
+                                </td>
                                 <td className="px-2 py-1.5 text-right tabular-nums">
-                                    ₹{r.emi.toLocaleString('en-IN')}
+                                    <span className="hidden md:inline">₹</span>
+                                    {r.emi.toLocaleString('en-IN')}
                                 </td>
                                 <td className="px-2 py-1.5 text-right tabular-nums text-emerald-600">
-                                    ₹{r.principal.toLocaleString('en-IN')}
+                                    <span className="hidden md:inline">₹</span>
+                                    {r.principal.toLocaleString('en-IN')}
                                 </td>
                                 <td className="px-2 py-1.5 text-right tabular-nums text-rose-500">
-                                    ₹{r.interest.toLocaleString('en-IN')}
+                                    <span className="hidden md:inline">₹</span>
+                                    {r.interest.toLocaleString('en-IN')}
                                 </td>
                                 <td className="px-2 py-1.5 text-right tabular-nums font-semibold">
-                                    ₹{r.balance.toLocaleString('en-IN')}
+                                    <span className="hidden md:inline">₹</span>
+                                    {r.balance.toLocaleString('en-IN')}
                                 </td>
                             </tr>
                         ))}

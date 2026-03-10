@@ -421,7 +421,7 @@ export function useSystemDealerContext({
                     if (skuIds.length > 0) {
                         const { data: dealerRules } = await supabase
                             .from('cat_price_dealer')
-                            .select('vehicle_color_id, offer_amount, inclusion_type')
+                            .select('vehicle_color_id, offer_amount')
                             .in('vehicle_color_id', skuIds)
                             .eq('tenant_id', overrideDealerId)
                             .eq('state_code', stateCode || 'MH')
@@ -515,6 +515,32 @@ export function useSystemDealerContext({
                                         delivery_charge: getDeliveryChargeByDistance(distanceKm),
                                     };
                                 });
+
+                            // Phase 6D: async shadow log — fire-and-forget
+                            // Logs the legacy winner for the active SKU to shadow_compare_log.
+                            if (activeSku) {
+                                const legacyWinner = relevantOffers.find((o: any) => o.vehicle_color_id === activeSku);
+                                if (legacyWinner) {
+                                    void (async () => {
+                                        try {
+                                            // @ts-ignore — log_winner_read not yet in generated types (Phase 6D M22)
+                                            await supabase.rpc('log_winner_read', {
+                                                p_sku_id: activeSku,
+                                                p_state_code: normalizeClientStateCode(stateCode),
+                                                p_district: district || 'ALL',
+                                                p_legacy_dealer_id:
+                                                    legacyWinner.dealer_id ?? legacyWinner.vehicle_color_id,
+                                                p_legacy_offer: Number(
+                                                    legacyWinner.best_offer ?? legacyWinner.offer_amount ?? 0
+                                                ),
+                                                p_legacy_tat: Number(legacyWinner.delivery_tat_days ?? 0) * 24,
+                                            });
+                                        } catch {
+                                            // Shadow logging is non-blocking — errors silently discarded
+                                        }
+                                    })();
+                                }
+                            }
                         }
                     }
                 }
@@ -543,7 +569,6 @@ export function useSystemDealerContext({
                 }
                 const winningOffer = rankedOffers[0];
                 const winningDealerId = winningOffer.dealer_id;
-                const bundleIds = new Set(winningOffer.bundle_ids || []);
                 const winningDealerName = winningOffer.dealer_name;
                 const winningOfferAmount = useCandidateRpc
                     ? Number((winningOffer as any).offer_amount || 0)
@@ -609,7 +634,7 @@ export function useSystemDealerContext({
                     const accessoryIds = initialAccessories.map((a: any) => a.id);
                     const { data: rules } = await supabase
                         .from('cat_price_dealer')
-                        .select('vehicle_color_id, offer_amount, inclusion_type, is_active')
+                        .select('vehicle_color_id, offer_amount, is_active')
                         .in('vehicle_color_id', accessoryIds)
                         .eq('tenant_id', winningDealerId)
                         .eq('state_code', stateCode || 'MH');
@@ -626,14 +651,13 @@ export function useSystemDealerContext({
                         }
 
                         const offer = rule ? Number(rule.offer_amount) : 0;
-                        const inclusionType =
-                            rule?.inclusion_type || (bundleIds.has(a.id) ? 'BUNDLE' : a.inclusionType || 'OPTIONAL');
                         const discountPrice = Math.max(0, Number(a.price) + offer);
+                        const isInclusive = discountPrice === 0;
 
                         return {
                             ...a,
-                            inclusionType,
-                            isMandatory: inclusionType === 'MANDATORY',
+                            inclusionType: isInclusive ? 'INCLUSIVE' : 'EXCLUSIVE',
+                            isMandatory: isInclusive,
                             discountPrice,
                         };
                     });

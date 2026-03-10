@@ -847,6 +847,17 @@ export async function getDealerDelta({
 export async function getCatalogSnapshot(stateCode: string = 'MH'): Promise<CatalogSnapshotRow[]> {
     const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
     const maxAttempts = 3;
+    const isTransientFetchIssue = (input: unknown) => {
+        const msg = String((input as any)?.message || input || '')
+            .toLowerCase()
+            .trim();
+        return (
+            msg.includes('fetch failed') ||
+            msg.includes('failed to fetch') ||
+            msg.includes('signal is aborted') ||
+            msg.includes('aborterror')
+        );
+    };
     const fetchActiveCatalogSkus = async (client: any) => {
         return client.from('cat_skus').select(CATALOG_SKU_SELECT).eq('status', 'ACTIVE').order('position');
     };
@@ -900,8 +911,11 @@ export async function getCatalogSnapshot(stateCode: string = 'MH'): Promise<Cata
                 const safeMessage = isHtmlResponse
                     ? 'Upstream service returned HTML error page (likely 5xx).'
                     : compactMessage.slice(0, 300);
-
-                console.error('[StoreSot:getCatalogSnapshot] Error:', safeMessage);
+                if (isTransientFetchIssue(lastError)) {
+                    console.warn('[StoreSot:getCatalogSnapshot] Transient fetch issue, trying fallback client.');
+                } else {
+                    console.error('[StoreSot:getCatalogSnapshot] Error:', safeMessage);
+                }
             }
 
             // Fallback path for transient admin-client fetch failures in dev/proxy environments.

@@ -100,7 +100,7 @@ export function useSystemPDPLogic({
     const activeServices = initialServices.length > 0 ? initialServices : [];
 
     const defaultSelectedAccessoryIds = activeAccessories
-        .filter(a => a.isMandatory || a.inclusionType === 'BUNDLE')
+        .filter(a => a.isMandatory || Number(a.discountPrice ?? a.price ?? 0) === 0)
         .map(a => a.id);
     const [selectedAccessories, setSelectedAccessories] = useState<string[]>(defaultSelectedAccessoryIds);
     const normalizeInsuranceAddonId = (value: any) => {
@@ -146,7 +146,7 @@ export function useSystemPDPLogic({
     const [userDownPayment, setUserDownPayment] = useState<number | null>(null);
 
     // SSPP v1.8: Re-sync selectedAccessories when accessories are hydrated from dealer
-    // This ensures mandatory/bundled items are correctly selected when IDs change from catalog to dealer
+    // This ensures mandatory/zero-price inclusive items are correctly selected when IDs change from catalog to dealer
     useEffect(() => {
         if (initialAccessories.length > 0) {
             const currentValidIds = selectedAccessories.filter(id => initialAccessories.some(a => a.id === id));
@@ -154,7 +154,7 @@ export function useSystemPDPLogic({
             // If we have no valid IDs or all current IDs are from a previous set, reset to mandatory defaults
             if (currentValidIds.length === 0) {
                 const defaults = initialAccessories
-                    .filter(a => a.isMandatory || a.inclusionType === 'BUNDLE')
+                    .filter(a => a.isMandatory || Number(a.discountPrice ?? a.price ?? 0) === 0)
                     .map(a => a.id);
                 if (defaults.length > 0) {
                     setSelectedAccessories(defaults);
@@ -447,12 +447,6 @@ export function useSystemPDPLogic({
         .filter(acc => selectedAccessories.includes(acc.id))
         .reduce((sum, acc) => {
             const qty = Number(quantities[acc.id] || 1);
-
-            // BUNDLE Logic: If bundled, it is free (0 price)
-            if (acc.inclusionType === 'BUNDLE') {
-                return sum;
-            }
-
             const { effective } = resolveAccessoryPricing(acc);
             return sum + effective * qty;
         }, 0);
@@ -461,12 +455,6 @@ export function useSystemPDPLogic({
         .filter(acc => selectedAccessories.includes(acc.id))
         .reduce((sum, acc) => {
             const qty = quantities[acc.id] || 1;
-
-            // BUNDLE Logic: If bundled, discount is 100% of price
-            if (acc.inclusionType === 'BUNDLE') {
-                return sum + (acc.price || 0) * qty;
-            }
-
             const { base, effective } = resolveAccessoryPricing(acc);
             const discount = Math.max(0, base - effective);
             return sum + discount * qty;
@@ -476,11 +464,6 @@ export function useSystemPDPLogic({
         .filter(acc => selectedAccessories.includes(acc.id))
         .reduce((sum, acc) => {
             const qty = quantities[acc.id] || 1;
-
-            if (acc.inclusionType === 'BUNDLE') {
-                return sum;
-            }
-
             const { base, effective } = resolveAccessoryPricing(acc);
             const surge = Math.max(0, effective - base);
             return sum + surge * qty;

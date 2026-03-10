@@ -31,9 +31,15 @@ import {
     MapPin,
     X,
     MessageSquare,
+    Send,
+    Copy,
+    Share2,
+    Download,
     Facebook,
     Twitter,
     Instagram,
+    Eye,
+    ExternalLink,
 } from 'lucide-react';
 import { useFavorites } from '@/lib/favorites/favoritesContext';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
@@ -91,6 +97,7 @@ export function ProfileDropdown({
     const [bCoins, setBCoins] = useState<number | null>(null);
     const [memberCode, setMemberCode] = useState<string>('');
     const [walletData, setWalletData] = useState<WalletData | null>(null);
+    const [referralCopied, setReferralCopied] = useState(false);
 
     const isOpen = externalOpen !== undefined ? externalOpen : internalOpen;
     const setIsOpen = (open: boolean) => {
@@ -136,6 +143,428 @@ export function ProfileDropdown({
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const dropdownRef = useRef<HTMLButtonElement>(null); // Fixed: Ref is attached to a button
+
+    const referralCode = useMemo(() => {
+        if (memberCode) return memberCode;
+        if (user?.id) return user.id.slice(0, 8).toUpperCase();
+        return '';
+    }, [memberCode, user?.id]);
+
+    const referralUrl = useMemo(() => {
+        if (!referralCode) return '';
+        const baseUrl = 'https://www.bookmy.bike';
+        return `${baseUrl}/store?ref=${encodeURIComponent(referralCode)}`;
+    }, [referralCode]);
+
+    const referralText = useMemo(() => {
+        if (!referralUrl) return '';
+        const cp = (...codes: number[]) => String.fromCodePoint(...codes);
+        const e = {
+            rocket: cp(0x1f680),
+            bike: cp(0x1f3cd, 0xfe0f),
+            sparkles: cp(0x2728),
+            gift: cp(0x1f381),
+            moneyBag: cp(0x1f4b0),
+            handshake: cp(0x1f91d),
+            party: cp(0x1f389),
+            wings: cp(0x1f4b8),
+            check: cp(0x2705),
+            inr: cp(0x20b9),
+        };
+        return `${e.rocket} I just booked my bike on BookMyBike! ${e.bike}${e.sparkles}
+
+Mujhe mile additional 13 B-Coins ${e.gift}
+(approx. ${e.inr}1000 value ${e.moneyBag})
+
+Aap bhi signup karo, apna referral link pao, aur sharing se earn karo! ${e.handshake}${e.party}
+
+Meri link se abhi join karo aur apni earning start karo! ${e.wings}
+
+${e.check} Best deal guaranteed
+${e.check} Easy signup
+${e.check} Share & earn rewards
+
+Sign up now:
+${referralUrl}`;
+    }, [referralCode, referralUrl]);
+
+    const encodedReferralText = useMemo(() => encodeURIComponent(referralText), [referralText]);
+    const encodedReferralUrl = useMemo(() => encodeURIComponent(referralUrl), [referralUrl]);
+
+    const socialShareLinks = useMemo(
+        () => [
+            {
+                key: 'whatsapp',
+                label: 'WhatsApp',
+                href: `https://api.whatsapp.com/send?text=${encodedReferralText}`,
+                icon: MessageSquare,
+            },
+            {
+                key: 'facebook',
+                label: 'Facebook',
+                href: `https://www.facebook.com/sharer/sharer.php?u=${encodedReferralUrl}`,
+                icon: Facebook,
+            },
+            {
+                key: 'twitter',
+                label: 'X',
+                href: `https://twitter.com/intent/tweet?text=${encodedReferralText}`,
+                icon: Twitter,
+            },
+            {
+                key: 'telegram',
+                label: 'Telegram',
+                href: `https://t.me/share/url?url=${encodedReferralUrl}&text=${encodedReferralText}`,
+                icon: Send,
+            },
+        ],
+        [encodedReferralText, encodedReferralUrl]
+    );
+
+    const handleCopyReferralUrl = async () => {
+        if (!referralUrl) return;
+        try {
+            await navigator.clipboard.writeText(referralUrl);
+            setReferralCopied(true);
+            setTimeout(() => setReferralCopied(false), 1600);
+        } catch (error) {
+            console.error('Failed to copy referral URL:', error);
+        }
+    };
+
+    const buildReferralPosterBlob = async (): Promise<Blob | null> => {
+        if (typeof window === 'undefined' || !referralUrl) return null;
+
+        const W = 1080;
+        const H = 1350;
+        const canvas = document.createElement('canvas');
+        canvas.width = W;
+        canvas.height = H;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return null;
+
+        const PAD = 72;
+        const FONT_SANS = 'system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+        const FONT_MONO = 'ui-monospace, SFMono-Regular, Menlo, monospace';
+        const GOLD = '#f4b000';
+        const WHITE = '#ffffff';
+        const SLATE = '#94a3b8';
+        const LIGHT_SLATE = '#cbd5e1';
+
+        // User Data
+        const userName = (user?.user_metadata?.full_name || 'BOOKMY.BIKE MEMBER').toUpperCase();
+        const formattedID = formatMembershipCardCode(referralCode);
+
+        const roundRect = (x: number, y: number, w: number, h: number, r: number) => {
+            const radius = Math.min(r, w / 2, h / 2);
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.arcTo(x + w, y, x + w, y + h, radius);
+            ctx.arcTo(x + w, y + h, x, y + h, radius);
+            ctx.arcTo(x, y + h, x, y, radius);
+            ctx.arcTo(x, y, x + w, y, radius);
+            ctx.closePath();
+        };
+
+        const svgToImage = (svgMarkup: string): Promise<HTMLImageElement | null> => {
+            return new Promise(resolve => {
+                const blob = new Blob([svgMarkup], { type: 'image/svg+xml;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const img = new Image();
+                img.onload = () => {
+                    URL.revokeObjectURL(url);
+                    resolve(img);
+                };
+                img.onerror = () => {
+                    URL.revokeObjectURL(url);
+                    resolve(null);
+                };
+                img.src = url;
+            });
+        };
+
+        const loadImageViaFetch = async (src: string): Promise<HTMLImageElement | null> => {
+            try {
+                const res = await fetch(src);
+                if (!res.ok) return null;
+                const blob = await res.blob();
+                const objectUrl = URL.createObjectURL(blob);
+                const img = await new Promise<HTMLImageElement>(resolve => {
+                    const i = new Image();
+                    i.onload = () => resolve(i);
+                    i.src = objectUrl;
+                });
+                URL.revokeObjectURL(objectUrl);
+                return img;
+            } catch {
+                return null;
+            }
+        };
+
+        /* ── Background ─────────────────────────────────── */
+        ctx.fillStyle = '#050505';
+        ctx.fillRect(0, 0, W, H);
+
+        // Diamond Lattice Texture
+        ctx.strokeStyle = 'rgba(255,255,255,0.035)';
+        ctx.lineWidth = 1;
+        const diaSize = 85;
+        for (let x = -W; x <= W * 2; x += diaSize) {
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x + H, H);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x - H, H);
+            ctx.stroke();
+        }
+
+        // Atmospheric Glow
+        const glow = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, 800);
+        glow.addColorStop(0, 'rgba(244,176,0,0.1)');
+        glow.addColorStop(1, 'transparent');
+        ctx.fillStyle = glow;
+        ctx.fillRect(0, 0, W, H);
+
+        /* ── VIP Gold Frame ────────────────────────────── */
+        ctx.strokeStyle = GOLD;
+        ctx.lineWidth = 3;
+        ctx.strokeRect(40, 40, W - 80, H - 80);
+        ctx.strokeStyle = 'rgba(244,176,0,0.3)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(52, 52, W - 104, H - 104);
+
+        /* ── Top Branding ─────────────────────────────── */
+        // Exact BMB Icon
+        const bmbIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 109" fill="none" width="80" height="109">
+            <path d="M19.8104 12.3688C19.8104 12.3688 27.5471 10.8887 25.5022 16.0936C24.8351 17.7928 4.76066 76.5214 2.72546 83.1042C0.690261 89.6869 -0.122845 92.3016 6.01197 92.3016C7.67226 92.3016 10.394 90.9869 11.7037 87.9195C13.1157 84.6282 31.6857 37.2002 37.762 16.3078C40.8538 5.67898 33.1999 5.58648 28.1265 6.67225C22.0014 7.98685 19.8104 12.3688 19.8104 12.3688Z" fill="${GOLD}"/>
+            <path d="M62.6811 60.0012C57.8365 52.9023 51.2002 53.4379 47.9721 52.9023C58.7324 47.6147 80.0095 33.0956 79.0016 17.2961C79.0065 -1.52709 63.8155 -0.217357 60.826 0.181892C51.8916 1.37964 40.3669 7.71409 40.6152 12.3639C40.8343 16.5268 48.498 16.3077 48.498 16.3077C51.3463 11.4875 56.1568 8.89236 59.0099 9.30134C61.2642 9.62269 62.4522 11.2002 62.6811 11.5751C67.8811 20.159 56.4245 36.7181 47.9721 43.6319C37.4894 53.2918 26.9239 59.8454 26.9872 60.0012C34.6995 56.9873 50.1729 54.4847 50.3628 68.5899C50.6013 86.2202 24.5333 93.6599 17.6584 95.0913C10.7835 96.5228 -0.51721 101.445 0.0183686 105.223C0.553947 109.002 12.4535 109.289 17.6584 108.427C22.8584 107.57 43.4879 97.6085 53.3523 90.2809C61.2448 84.4187 73.4608 71.6573 77.7454 66.9832C74.6975 68.8723 68.2608 72.6506 66.9219 72.6506C65.2519 72.6506 66.8537 66.1165 62.6811 60.0012Z" fill="${GOLD}"/>
+        </svg>`;
+        const bmbIcon = await svgToImage(bmbIconSVG);
+        if (bmbIcon) ctx.drawImage(bmbIcon, PAD + 28, 85, 48, 65);
+
+        // Exact BMB Wordmark
+        const wordmarkSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 42" width="480" height="84" style="overflow:visible">
+            <text x="0" y="32" font-family="${FONT_SANS}" font-weight="900" font-size="38" letter-spacing="-0.03em">
+                <tspan fill="#FFFFFF">bookmy</tspan><tspan fill="${GOLD}">.bike</tspan>
+            </text>
+        </svg>`;
+        const wordmark = await svgToImage(wordmarkSVG);
+        if (wordmark) ctx.drawImage(wordmark, PAD + 90, 85, 410, 72);
+
+        // Exact O'Circle Logo (Footer Style)
+        const BLUE_CIRCLE = '#7EB4E2';
+        const oCircleSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 52" width="320" height="104">
+            <svg x="0" y="10" width="32" height="32" viewBox="0 0 100 100" fill="none">
+                <path d="M84.4 34 A 38 38 0 1 0 84.4 66" stroke="${BLUE_CIRCLE}" stroke-width="16" stroke-linecap="butt" fill="none"/>
+                <path d="M89.4 43.1 A 38 38 0 0 1 89.4 56.9" stroke="${BLUE_CIRCLE}" stroke-width="16" stroke-linecap="butt" fill="none"/>
+            </svg>
+            <text x="42" y="36" font-family="${FONT_SANS}" font-weight="800" font-size="28" letter-spacing="-0.03em">
+                <tspan fill="${BLUE_CIRCLE}">O&apos;</tspan><tspan fill="#FFFFFF">Circle</tspan>
+            </text>
+        </svg>`;
+        const oCircle = await svgToImage(oCircleSVG);
+        if (oCircle) ctx.drawImage(oCircle, 760, 85, 210, 68);
+
+        /* ── Hero Content ───────────────────────────── */
+        ctx.textAlign = 'center';
+        ctx.fillStyle = GOLD;
+        ctx.font = `700 28px ${FONT_SANS}`;
+        ctx.fillText('EXCLUSIVE MEMBERSHIP INVITATION', W / 2, 240);
+
+        ctx.fillStyle = WHITE;
+        ctx.font = `900 110px ${FONT_SANS}`;
+        ctx.fillText('V I P', W / 2, 360);
+        ctx.font = `700 42px ${FONT_SANS}`;
+        ctx.fillText('PARTNER', W / 2, 420);
+
+        /* ── Red Ribbon with O'Circle Logo ──────────── */
+        const ribbonY = 510;
+        const ribbonW = 540;
+        const ribbonH = 110;
+        const rX = (W - ribbonW) / 2;
+
+        ctx.fillStyle = '#b91c1c'; // Crimson
+        ctx.beginPath();
+        ctx.moveTo(rX, ribbonY);
+        ctx.lineTo(rX + ribbonW, ribbonY);
+        ctx.lineTo(rX + ribbonW + 50, ribbonY + ribbonH / 2);
+        ctx.lineTo(rX + ribbonW, ribbonY + ribbonH);
+        ctx.lineTo(rX, ribbonY + ribbonH);
+        ctx.lineTo(rX - 50, ribbonY + ribbonH / 2);
+        ctx.closePath();
+        ctx.fill();
+
+        // Draw O'Circle Logo inside ribbon instead of text
+        const ribbonLogoSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 60" width="400" height="120">
+            <svg x="10" y="10" width="40" height="40" viewBox="0 0 100 100" fill="none">
+                <path d="M84.4 34 A 38 38 0 1 0 84.4 66" stroke="#ffffff" stroke-width="20" stroke-linecap="butt" fill="none"/>
+                <path d="M89.4 43.1 A 38 38 0 0 1 89.4 56.9" stroke="#ffffff" stroke-width="20" stroke-linecap="butt" fill="none"/>
+            </svg>
+            <text x="60" y="42" font-family="${FONT_SANS}" font-weight="900" font-size="34" letter-spacing="0.05em" fill="#ffffff">O&apos;CIRCLE</text>
+        </svg>`;
+        const ribbonLogo = await svgToImage(ribbonLogoSVG);
+        if (ribbonLogo) ctx.drawImage(ribbonLogo, W / 2 - 130, ribbonY + 20, 260, 78);
+
+        /* ── Real User Membership Card (Drawn) ───────── */
+        const cardW = 680;
+        const cardH = 430;
+        const cardX = (W - cardW) / 2;
+        const cardY = 680;
+
+        // Shadow
+        ctx.shadowColor = 'rgba(0,0,0,0.6)';
+        ctx.shadowBlur = 40;
+        roundRect(cardX, cardY, cardW, cardH, 28);
+        ctx.fillStyle = '#0a0a0a';
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        // Black metal gradient
+        const cardBg = ctx.createLinearGradient(cardX, cardY, cardX + cardW, cardY + cardH);
+        cardBg.addColorStop(0, '#151515');
+        cardBg.addColorStop(1, '#080808');
+        ctx.fillStyle = cardBg;
+        ctx.fill();
+
+        // Subtle carbon fiber pattern overlay (mocked via lines)
+        ctx.strokeStyle = 'rgba(255,255,255,0.02)';
+        ctx.lineWidth = 1;
+        for (let i = 0; i < cardW + cardH; i += 4) {
+            ctx.beginPath();
+            ctx.moveTo(cardX + i, cardY);
+            ctx.lineTo(cardX, cardY + i);
+            ctx.stroke();
+        }
+
+        // Gold edge lighting
+        ctx.strokeStyle = 'rgba(244,176,0,0.15)';
+        ctx.lineWidth = 2;
+        roundRect(cardX + 2, cardY + 2, cardW - 4, cardH - 4, 26);
+        ctx.stroke();
+
+        // Card Content: The O' Circle logo & BMB Logo
+        ctx.textAlign = 'left';
+        ctx.fillStyle = GOLD;
+        ctx.font = `900 14px ${FONT_SANS}`;
+        ctx.fillText("THE O' CIRCLE", cardX + 50, cardY + 60);
+        ctx.fillRect(cardX + 50, cardY + 70, 30, 2);
+
+        if (bmbIcon) ctx.drawImage(bmbIcon, cardX + cardW - 80, cardY + 30, 50, 68);
+
+        // Chip placeholder
+        const chipX = cardX + 50;
+        const chipY = cardY + 140;
+        roundRect(chipX, chipY, 80, 60, 8);
+        const chipBg = ctx.createLinearGradient(chipX, chipY, chipX + 80, chipY + 60);
+        chipBg.addColorStop(0, '#fcd34d');
+        chipBg.addColorStop(1, '#b45309');
+        ctx.fillStyle = chipBg;
+        ctx.fill();
+
+        // Member ID & Name
+        ctx.fillStyle = WHITE;
+        ctx.font = `500 36px ${FONT_MONO}`;
+        ctx.fillText(formattedID, cardX + 50, cardY + 280);
+
+        ctx.fillStyle = 'rgba(255,255,255,0.85)';
+        ctx.font = `700 28px ${FONT_SANS}`;
+        ctx.fillText(userName, cardX + 50, cardY + 360);
+
+        const expY = cardY + 280;
+        ctx.textAlign = 'right';
+        ctx.fillStyle = 'rgba(255,255,255,0.4)';
+        ctx.font = `900 14px ${FONT_SANS}`;
+        ctx.fillText('EXP', cardX + cardW - 130, expY - 10);
+        ctx.fillStyle = GOLD;
+        ctx.font = `500 22px ${FONT_MONO}`;
+        ctx.fillText('∞', cardX + cardW - 60, expY - 5);
+        ctx.textAlign = 'center';
+
+        /* ── QR Code ────────────────────────────────── */
+        const qrSize = 190;
+        const qrX = W - PAD - qrSize - 40;
+        const qrY = H - PAD - qrSize - 40;
+        roundRect(qrX - 20, qrY - 20, qrSize + 40, qrSize + 40, 20);
+        ctx.fillStyle = WHITE;
+        ctx.fill();
+
+        const qrImage = await loadImageViaFetch(
+            `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(referralUrl)}`
+        );
+        if (qrImage) ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
+
+        /* ── Invite Info ────────────────────────────── */
+        ctx.textAlign = 'left';
+        ctx.fillStyle = WHITE;
+        ctx.font = `800 36px ${FONT_SANS}`;
+        ctx.fillText('YOUR REWARD AWAITS', PAD + 40, H - 280);
+        ctx.fillStyle = GOLD;
+        ctx.font = `700 28px ${FONT_SANS}`;
+        ctx.fillText('13 B-COINS (~₹1,000) CREDITED JIT', PAD + 40, H - 235);
+        ctx.fillStyle = LIGHT_SLATE;
+        ctx.font = `500 22px ${FONT_SANS}`;
+        ctx.fillText('Join the movement. Secure the best motorcycle deal.', PAD + 40, H - 195);
+        ctx.fillStyle = GOLD;
+        ctx.font = `700 22px ${FONT_MONO}`;
+        ctx.fillText(referralUrl, PAD + 40, H - 150);
+
+        /* ── Footer ──────────────────────────────────── */
+        ctx.textAlign = 'center';
+        ctx.fillStyle = 'rgba(255,255,255,0.45)';
+        ctx.font = `700 22px ${FONT_SANS}`;
+        ctx.fillText("THE O'CIRCLE CREW", W / 2, H - 75);
+
+        return new Promise(resolve => {
+            canvas.toBlob(b => resolve(b), 'image/png', 1.0);
+        });
+    };
+
+    const triggerPosterDownload = (blob: Blob) => {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `bookmybike-referral-${referralCode || 'invite'}.png`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+    };
+
+    const handleShareReferralImage = async () => {
+        try {
+            const posterBlob = await buildReferralPosterBlob();
+            if (!posterBlob) return;
+
+            const file = new File([posterBlob], `bookmybike-referral-${referralCode || 'invite'}.png`, {
+                type: 'image/png',
+            });
+
+            if (navigator.share && navigator.canShare?.({ files: [file] })) {
+                await navigator.share({
+                    files: [file],
+                    title: 'BookMyBike Referral',
+                    text: referralText,
+                });
+                return;
+            }
+
+            triggerPosterDownload(posterBlob);
+        } catch (error) {
+            console.error('Referral image share failed:', error);
+        }
+    };
+
+    const handleDownloadReferralImage = async () => {
+        try {
+            const posterBlob = await buildReferralPosterBlob();
+            if (!posterBlob) return;
+            triggerPosterDownload(posterBlob);
+        } catch (error) {
+            console.error('Referral image download failed:', error);
+        }
+    };
 
     // Close on click outside is now handled by the Backdrop overlay in the logic below
 
@@ -980,6 +1409,89 @@ export function ProfileDropdown({
                                                         wallet={walletData}
                                                         sizePreset="sidebar"
                                                     />
+                                                </motion.div>
+                                            )}
+
+                                            {/* Earn Now - Referral share */}
+                                            {user && referralCode && (
+                                                <motion.div
+                                                    variants={itemVariants}
+                                                    className="rounded-3xl border border-amber-200/80 dark:border-amber-500/30 bg-gradient-to-br from-amber-50 to-white dark:from-amber-500/10 dark:to-white/[0.02] p-3.5 space-y-3"
+                                                >
+                                                    <div className="flex items-center justify-between">
+                                                        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-amber-700 dark:text-amber-300">
+                                                            Earn Now
+                                                        </p>
+                                                        <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                                                            Code: {referralCode}
+                                                        </span>
+                                                    </div>
+
+                                                    <div className="rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#0B1224] px-3 py-2.5">
+                                                        <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                                                            Referral URL
+                                                        </p>
+                                                        <p className="mt-1 text-[11px] font-semibold text-slate-700 dark:text-slate-200 break-all">
+                                                            {referralUrl}
+                                                        </p>
+                                                    </div>
+
+                                                    <div className="grid grid-cols-5 gap-2">
+                                                        {socialShareLinks.map(item => (
+                                                            <a
+                                                                key={item.key}
+                                                                href={item.href}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="h-10 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.02] text-slate-600 dark:text-slate-300 hover:text-brand-primary hover:border-brand-primary/40 transition-all flex items-center justify-center"
+                                                                title={`Share on ${item.label}`}
+                                                                aria-label={`Share on ${item.label}`}
+                                                            >
+                                                                <item.icon size={15} />
+                                                            </a>
+                                                        ))}
+                                                        <button
+                                                            type="button"
+                                                            onClick={handleCopyReferralUrl}
+                                                            className={`h-10 rounded-xl border transition-all flex items-center justify-center ${
+                                                                referralCopied
+                                                                    ? 'border-emerald-300 bg-emerald-50 text-emerald-600 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-300'
+                                                                    : 'border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.02] text-slate-600 dark:text-slate-300 hover:text-brand-primary hover:border-brand-primary/40'
+                                                            }`}
+                                                            title="Copy referral URL"
+                                                            aria-label="Copy referral URL"
+                                                        >
+                                                            <Copy size={15} />
+                                                        </button>
+                                                    </div>
+
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        <a
+                                                            href={`/referral-invite/${referralCode}`}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="h-10 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.02] text-slate-700 dark:text-slate-200 hover:text-brand-primary hover:border-brand-primary/40 transition-all flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-[0.08em]"
+                                                        >
+                                                            <ExternalLink size={14} />
+                                                            View Live
+                                                        </a>
+                                                        <button
+                                                            type="button"
+                                                            onClick={handleShareReferralImage}
+                                                            className="h-10 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.02] text-slate-700 dark:text-slate-200 hover:text-brand-primary hover:border-brand-primary/40 transition-all flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-[0.08em]"
+                                                        >
+                                                            <Share2 size={14} />
+                                                            Share Card
+                                                        </button>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleDownloadReferralImage}
+                                                        className="w-full h-11 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-black font-black text-[10px] uppercase tracking-[0.16em] hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-lg"
+                                                    >
+                                                        <Download size={15} />
+                                                        Download Premium Invite
+                                                    </button>
                                                 </motion.div>
                                             )}
 

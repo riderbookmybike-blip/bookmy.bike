@@ -1144,12 +1144,12 @@ export default async function Page({ params, searchParams }: Props) {
             if (mrp === 0) mrp = sellPrice;
             // price = MRP (for strikethrough display), discountPrice = actual selling price
 
-            const inclusionType =
-                rule?.inclusion ||
-                (bundleIdsForDealer.has(a.id) ? 'BUNDLE' : undefined) ||
-                a.inclusion_type ||
-                'OPTIONAL';
-            const isMandatory = inclusionType === 'MANDATORY';
+            // Simplified inclusion rule:
+            // - Final sell price == 0 => inclusive
+            // - Final sell price  > 0 => exclusive
+            const isInclusive = sellPrice === 0;
+            const inclusionType = isInclusive ? 'INCLUSIVE' : 'EXCLUSIVE';
+            const isMandatory = isInclusive;
 
             let colorLabel = a.specs?.color || a.specs?.colour || a.specs?.finish || a.specs?.shade || '';
             let nameBase = a.name;

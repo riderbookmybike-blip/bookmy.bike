@@ -51,6 +51,43 @@ export function useCatalogMarketplace(
                 if (data) {
                     candidatesCache.current[cacheKey] = data;
                     processCandidates(data);
+
+                    // Phase 6D: async shadow logging — fire-and-forget, never blocks UI
+                    // Logs top winner per SKU to shadow_compare_log for 48h production gate.
+                    // Only runs when legacy RPC path is active (NEXT_PUBLIC_USE_CANDIDATE_RPC=false).
+                    if (process.env.NEXT_PUBLIC_USE_CANDIDATE_RPC !== 'true') {
+                        const logShadow = async () => {
+                            try {
+                                // Group by SKU and find legacy winner (offer_amount ASC)
+                                const bySkuId: Record<string, (typeof data)[0]> = {};
+                                data.forEach((row: any) => {
+                                    if (!row.vehicle_color_id) return;
+                                    const cur = bySkuId[row.vehicle_color_id];
+                                    if (!cur || Number(row.offer_amount) < Number(cur.offer_amount)) {
+                                        bySkuId[row.vehicle_color_id] = row;
+                                    }
+                                });
+                                // Log top 5 SKUs to avoid thundering herd
+                                const sample = Object.values(bySkuId).slice(0, 5);
+                                await Promise.allSettled(
+                                    sample.map((winner: any) =>
+                                        // @ts-ignore — log_winner_read not yet in generated types (Phase 6D M22)
+                                        supabase.rpc('log_winner_read', {
+                                            p_sku_id: winner.vehicle_color_id,
+                                            p_state_code: stateCode as string,
+                                            p_district: district as string,
+                                            p_legacy_dealer_id: winner.dealer_id,
+                                            p_legacy_offer: Number(winner.offer_amount),
+                                            p_legacy_tat: Number(winner.tat_effective_hours ?? 0),
+                                        })
+                                    )
+                                );
+                            } catch {
+                                // Shadow logging is non-blocking — errors silently discarded
+                            }
+                        };
+                        void logShadow();
+                    }
                 }
             } catch (err) {
                 console.error('[useCatalogMarketplace] Fetch failed:', err);

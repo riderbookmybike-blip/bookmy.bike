@@ -11,6 +11,7 @@ export const CACHE_TAGS = {
     rules: 'rules',
     offers: 'offers',
     catalog: 'catalog',
+    referral_hot_picks: 'catalog:referral-hot-picks',
 };
 
 /**

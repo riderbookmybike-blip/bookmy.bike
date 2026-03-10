@@ -5,12 +5,13 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
-import { ChevronLeft, Share2, Heart, MapPin } from 'lucide-react';
+import { ChevronLeft, Share2, Heart, MapPin, Calendar, ChevronDown } from 'lucide-react';
 import { useI18n } from '@/components/providers/I18nProvider';
 import { toDevanagariScript } from '@/lib/i18n/transliterate';
 import { computeOClubPricing } from '@/lib/oclub/coin';
 import { Logo } from '@/components/brand/Logo';
 import { computeFinanceMetrics } from '../Personalize/pdpComputations';
+import AmortizationPanel from '../Personalize/AmortizationPanel';
 
 // Shared responsive section components
 import {
@@ -363,6 +364,43 @@ export const MobilePDP = ({
                     isOpen={openContentCard === 'finance-summary'}
                     onToggle={() => toggleCard('finance-summary')}
                 />
+
+                {/* 7b. Amortization Chart */}
+                <div className="glass-panel bg-white/90 rounded-3xl border border-slate-200 shadow-xl overflow-hidden">
+                    <button
+                        onClick={() => toggleCard('amortization')}
+                        className="w-full flex items-center justify-between px-5 py-4 text-left"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-2xl bg-brand-primary/10 text-brand-primary flex items-center justify-center">
+                                <Calendar size={18} />
+                            </div>
+                            <div>
+                                <p className="text-sm font-black tracking-[0.05em] text-brand-primary">Amortization</p>
+                                <p className="text-[11px] text-slate-500">EMI Calendar</p>
+                            </div>
+                        </div>
+                        <ChevronDown
+                            size={18}
+                            className={`text-slate-400 transition-transform ${openContentCard === 'amortization' ? 'rotate-180' : ''}`}
+                        />
+                    </button>
+                    {openContentCard === 'amortization' && (
+                        <div className="px-5 pb-5">
+                            <div className="border-t border-slate-200/60 pt-4">
+                                <AmortizationPanel
+                                    initialFinance={data.initialFinance}
+                                    displayOnRoad={displayOnRoad}
+                                    userDownPayment={data.userDownPayment || 0}
+                                    loanAmount={data.loanAmount}
+                                    totalOnRoad={totalOnRoad}
+                                    emiTenure={emiTenure}
+                                    disbursementDate={new Date()}
+                                />
+                            </div>
+                        </div>
+                    )}
+                </div>
 
                 {/* 8. Config Cards — all 5 categories as independent cards */}
                 <PdpConfigSection

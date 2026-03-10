@@ -188,8 +188,8 @@ export function PdpCommandBar({
     return (
         <div
             data-parity-section="command-bar"
-            className="fixed inset-x-0 bottom-0 z-[95]"
-            style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+            className={`fixed inset-x-0 z-[95] ${isDesktop ? 'bottom-0' : 'bottom-[60px]'}`}
+            style={{ paddingBottom: isDesktop ? 'env(safe-area-inset-bottom, 0px)' : undefined }}
         >
             <div className={`${isDesktop ? 'page-container mb-2 md:mb-4' : 'px-4 mb-3'}`}>
                 <div
@@ -286,6 +286,16 @@ export function PdpCommandBar({
                                 </div>
                             )}
 
+                            {/* Save Quote icon — Mobile only */}
+                            {!isDesktop && (
+                                <button
+                                    onClick={handleSaveQuote}
+                                    className="w-9 h-9 rounded-full flex items-center justify-center bg-white/10 border border-white/10 text-white/60 active:text-rose-400 transition-colors"
+                                >
+                                    <Heart size={16} />
+                                </button>
+                            )}
+
                             {/* CTA Button — both layouts */}
                             <button
                                 onClick={primaryAction}
@@ -305,6 +315,21 @@ export function PdpCommandBar({
                         </div>
                     </div>
                 </div>
+
+                {/* Share pill — Mobile only, below the bar */}
+                {!isDesktop && (
+                    <div className="flex justify-center mt-1.5">
+                        <button
+                            onClick={handleShareQuote}
+                            className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-white/80 backdrop-blur-md border border-slate-200/60 shadow-sm active:scale-95 transition-all"
+                        >
+                            <Share2 size={12} className="text-slate-500" />
+                            <span className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-600">
+                                Share
+                            </span>
+                        </button>
+                    </div>
+                )}
             </div>
         </div>
     );
