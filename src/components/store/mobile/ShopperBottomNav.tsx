@@ -12,15 +12,15 @@ import {
     X,
     Pencil,
     Bike,
-    SlidersHorizontal,
     Sparkles,
     Zap as ZapIcon,
-    GitCompareArrows,
+    Search,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MotorcycleIcon } from '@/components/icons/MotorcycleIcon';
 import { useFavorites } from '@/lib/favorites/favoritesContext';
 import { useDiscovery } from '@/contexts/DiscoveryContext';
+import { VehicleSearchOverlay } from '@/components/store/mobile/VehicleSearchOverlay';
 
 // ─── Pricing constants ────────────────────────────────────────────────────────
 const DP_MIN = 5000;
@@ -31,10 +31,18 @@ const TENURE_OPTIONS = [12, 18, 24, 36, 48, 60];
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
 const STATIC_TABS = [
     { key: 'home', label: 'Home', icon: Home, href: '/' },
-    { key: 'ride', label: 'Ride', icon: MotorcycleIcon, href: null },
+    { key: 'ride', label: 'Ride', icon: MotorcycleIcon, href: '/store/catalog' },
+    { key: 'search', label: 'Search', icon: Search, href: null },
     { key: 'pricing', label: 'EMI', icon: CreditCard, href: null },
     { key: 'wishlist', label: 'Favorites', icon: Heart, href: '/store/compare/favorites' },
     { key: 'ocircle', label: "O' Circle", icon: Globe, href: '/store/ocircle' },
+] as const;
+
+const BODY_TYPE_OPTIONS = [
+    { key: 'ALL', label: 'All', svg: null, flip: false },
+    { key: 'MOTORCYCLE', label: 'Motorcycle', svg: '/media/motorcycle.svg', flip: true },
+    { key: 'SCOOTER', label: 'Scooter', svg: '/media/scooter.svg', flip: true },
+    { key: 'MOPED', label: 'Moped', svg: '/media/moped.svg', flip: false },
 ] as const;
 
 // ─── LocalStorage helpers ─────────────────────────────────────────────────────
@@ -55,45 +63,12 @@ function writePricing(payload: unknown) {
     }
 }
 
-const BODY_TYPE_OPTIONS = [
-    { key: 'ALL', label: 'All', svg: null, flip: false },
-    { key: 'MOTORCYCLE', label: 'Motorcycle', svg: '/media/motorcycle.svg', flip: true },
-    { key: 'SCOOTER', label: 'Scooter', svg: '/media/scooter.svg', flip: true },
-    { key: 'MOPED', label: 'Moped', svg: '/media/moped.svg', flip: false },
-] as const;
-
 export function ShopperBottomNav() {
     const pathname = usePathname();
     const router = useRouter();
     const { favorites } = useFavorites();
 
-    // Pages where the last tab should show "Filter" instead of Lead/O'Circle
-    const isFilterPage = Boolean(
-        pathname?.startsWith('/store/catalog') ||
-        pathname?.startsWith('/store/compare') ||
-        pathname?.startsWith('/store/favorites')
-    );
-
-    const tabs = useMemo(
-        () =>
-            STATIC_TABS.map(tab => {
-                if (tab.key !== 'ocircle') return tab;
-                // Filter-relevant pages → show Filter tab
-                if (isFilterPage) {
-                    const hasCompare = favorites.length > 0;
-                    return {
-                        ...tab,
-                        key: hasCompare ? 'compare' : ('filter' as const),
-                        label: hasCompare ? `Compare (${favorites.length})` : 'Filter',
-                        icon: hasCompare ? GitCompareArrows : SlidersHorizontal,
-                        href: hasCompare ? '/store/compare/favorites' : null,
-                    };
-                }
-                // Other pages → keep O' Circle
-                return tab;
-            }),
-        [isFilterPage]
-    );
+    const tabs = useMemo(() => STATIC_TABS.map(tab => tab), []);
 
     // ── Pricing state ─────────────────────────────────────────────────────────
     const [downpayment, setDownpayment] = useState(10000);
@@ -102,6 +77,7 @@ export function ShopperBottomNav() {
     const [rideSheetOpen, setRideSheetOpen] = useState(false);
     const sheetRef = useRef<HTMLDivElement>(null);
     const rideSheetRef = useRef<HTMLDivElement>(null);
+    const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [editingDp, setEditingDp] = useState(false);
     const [dpRaw, setDpRaw] = useState('');
     const dpInputRef = useRef<HTMLInputElement>(null);
@@ -130,17 +106,18 @@ export function ShopperBottomNav() {
     };
 
     const handlePricingTabClick = () => {
-        if (pricingMode === 'cash') {
-            // Switch to finance mode
-            setPricingMode('finance');
-            dispatchPricing('finance', downpayment, tenure);
-        } else if (sheetOpen) {
-            // Already finance + sheet open → close sheet
+        if (sheetOpen) {
+            // Sheet is open → close it
             setSheetOpen(false);
         } else {
-            // Finance mode, sheet closed → toggle to cash
-            setPricingMode('cash');
-            dispatchPricing('cash', downpayment, tenure);
+            // Sheet is closed → switch to finance if needed and open sheet
+            if (pricingMode === 'cash') {
+                setPricingMode('finance');
+                dispatchPricing('finance', downpayment, tenure);
+            }
+            setIsSearchOpen(false);
+            setRideSheetOpen(false);
+            setSheetOpen(true);
         }
     };
 
@@ -185,6 +162,9 @@ export function ShopperBottomNav() {
 
     return (
         <>
+            {/* ── Search Overlay ── */}
+            <VehicleSearchOverlay open={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+
             {/* ── Ride Body Type Sheet ── */}
             {rideSheetOpen && (
                 <div
@@ -214,28 +194,26 @@ export function ShopperBottomNav() {
                                 </button>
                             </div>
                             <div className="grid grid-cols-4 gap-2">
-                                {BODY_TYPE_OPTIONS.map(opt => {
-                                    return (
-                                        <button
-                                            key={opt.key}
-                                            onClick={() => handleBodyTypeSelect(opt.key)}
-                                            className="flex flex-col items-center gap-2 py-3 px-2 rounded-2xl bg-slate-50 border border-slate-100 hover:border-slate-300 active:bg-slate-100 transition-all"
-                                        >
-                                            {opt.svg ? (
-                                                <img
-                                                    src={opt.svg}
-                                                    alt={opt.label}
-                                                    className={`w-7 h-7 object-contain ${opt.flip ? 'scale-x-[-1]' : ''}`}
-                                                />
-                                            ) : (
-                                                <MotorcycleIcon size={22} className="text-slate-600" />
-                                            )}
-                                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-700">
-                                                {opt.label}
-                                            </span>
-                                        </button>
-                                    );
-                                })}
+                                {BODY_TYPE_OPTIONS.map(opt => (
+                                    <button
+                                        key={opt.key}
+                                        onClick={() => handleBodyTypeSelect(opt.key)}
+                                        className="flex flex-col items-center gap-2 py-3 px-2 rounded-2xl bg-slate-50 border border-slate-100 hover:border-slate-300 active:bg-slate-100 transition-all"
+                                    >
+                                        {opt.svg ? (
+                                            <img
+                                                src={opt.svg}
+                                                alt={opt.label}
+                                                className={`w-7 h-7 object-contain ${opt.flip ? 'scale-x-[-1]' : ''}`}
+                                            />
+                                        ) : (
+                                            <MotorcycleIcon size={22} className="text-slate-600" />
+                                        )}
+                                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-700">
+                                            {opt.label}
+                                        </span>
+                                    </button>
+                                ))}
                             </div>
                         </div>
                     </div>
@@ -420,11 +398,11 @@ export function ShopperBottomNav() {
                     {tabs.map(tab => {
                         const isPricing = tab.key === 'pricing';
                         const isWishlist = tab.key === 'wishlist';
-                        const isRide = tab.key === 'ride';
+                        const isSearch = tab.key === 'search';
                         const active = isPricing
                             ? sheetOpen
-                            : isRide
-                              ? rideSheetOpen
+                            : isSearch
+                              ? isSearchOpen
                               : tab.href
                                 ? isTabActive(tab.href)
                                 : false;
@@ -434,25 +412,26 @@ export function ShopperBottomNav() {
                             active ? 'text-[#D6A900]' : 'text-slate-500 active:text-slate-700'
                         }`;
 
-                        if (isRide) {
+                        if (isSearch) {
                             return (
                                 <button
                                     key={tab.key}
                                     onClick={() => {
                                         setSheetOpen(false);
-                                        setRideSheetOpen(prev => !prev);
+                                        setRideSheetOpen(false);
+                                        setIsSearchOpen(true);
                                     }}
                                     className={cls}
                                 >
                                     <div className="relative">
-                                        <Icon size={20} strokeWidth={rideSheetOpen ? 2.5 : 1.5} />
+                                        <Icon size={20} strokeWidth={isSearchOpen ? 2.5 : 1.5} />
                                     </div>
                                     <span
-                                        className={`text-[9px] tracking-[0.15em] uppercase ${rideSheetOpen ? 'font-black' : 'font-semibold'}`}
+                                        className={`text-[9px] tracking-[0.15em] uppercase ${isSearchOpen ? 'font-black' : 'font-semibold'}`}
                                     >
                                         {tab.label}
                                     </span>
-                                    {rideSheetOpen && (
+                                    {isSearchOpen && (
                                         <div className="absolute top-1 w-1 h-1 rounded-full bg-[#FFD700] shadow-[0_0_6px_#FFD700]" />
                                     )}
                                 </button>
@@ -502,31 +481,8 @@ export function ShopperBottomNav() {
                                 </button>
                             );
                         }
-
-                        if (tab.key === 'filter') {
-                            return (
-                                <button
-                                    key={tab.key}
-                                    type="button"
-                                    onClick={() => {
-                                        setSheetOpen(false);
-                                        setRideSheetOpen(false);
-                                        window.dispatchEvent(new CustomEvent('openMobileFilter'));
-                                    }}
-                                    className={cls}
-                                >
-                                    <div className="relative">
-                                        <Icon size={20} strokeWidth={1.5} />
-                                    </div>
-                                    <span className="text-[9px] font-semibold uppercase tracking-[0.15em]">
-                                        {tab.label}
-                                    </span>
-                                </button>
-                            );
-                        }
-
-                        return (
-                            <Link key={tab.key} href={tab.href!} className={cls}>
+                        const content = (
+                            <>
                                 <div className="relative">
                                     <Icon size={20} strokeWidth={active ? 2.5 : 1.5} />
                                     {isWishlist && favorites.length > 0 && (
@@ -543,8 +499,18 @@ export function ShopperBottomNav() {
                                 {active && (
                                     <div className="absolute top-1 w-1 h-1 rounded-full bg-[#FFD700] shadow-[0_0_6px_#FFD700]" />
                                 )}
-                            </Link>
+                            </>
                         );
+
+                        if (tab.href) {
+                            return (
+                                <Link key={tab.key} href={tab.href} className={cls}>
+                                    {content}
+                                </Link>
+                            );
+                        }
+
+                        return null;
                     })}
                 </div>
             </nav>

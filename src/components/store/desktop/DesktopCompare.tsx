@@ -555,11 +555,14 @@ export default function DesktopCompare({ isWishlist = false }: { isWishlist?: bo
 
     return (
         <>
-            <div className="min-h-screen bg-white transition-colors duration-500">
+            <div className="min-h-screen bg-slate-50 transition-colors duration-500">
                 {/* Main content with header + cards — same structure as Catalog */}
                 <div className="flex-1 store-page-shell pt-0 md:pt-0">
-                    {/* ────── 3D Flip Sticky Header ────── */}
-                    <div className="sticky z-[90] w-full transition-all duration-500 ease-in-out" style={{ top: 0 }}>
+                    {/* ────── 3D Flip Sticky Header (desktop only) ────── */}
+                    <div
+                        className="hidden md:block sticky z-[90] w-full transition-all duration-500 ease-in-out"
+                        style={{ top: 'var(--header-h)' }}
+                    >
                         <div style={{ perspective: '1200px' }}>
                             <motion.div
                                 initial={false}
@@ -578,7 +581,6 @@ export default function DesktopCompare({ isWishlist = false }: { isWishlist?: bo
                                 >
                                     <DiscoveryBar
                                         disableSticky={true}
-                                        onFilterClick={() => router.push('/store/catalog')}
                                         searchQuery={searchQuery}
                                         onSearchChange={setSearchQuery}
                                         onShareClick={handleShare}
@@ -777,32 +779,14 @@ export default function DesktopCompare({ isWishlist = false }: { isWishlist?: bo
                         </div>
                     </div>
 
-                    {/* ── Mobile Search Bar (matches catalog pattern) ── */}
-                    <div
-                        className="md:hidden sticky z-[90] pb-2 pt-2 bg-slate-50 border-b border-slate-200/60"
-                        style={{ top: 'var(--header-h)' }}
-                    >
-                        <div className="flex items-center gap-2 px-3">
-                            <div className="flex-1 rounded-full border border-black/10 overflow-hidden">
-                                <StoreSearchBar
-                                    value={searchQuery}
-                                    placeholder="Search brand, product, variant"
-                                    onChange={setSearchQuery}
-                                    onClear={() => setSearchQuery('')}
-                                    className="border-0 bg-white"
-                                />
-                            </div>
-                        </div>
-                    </div>
-
                     {/* ────── View-Specific Content Containers ────── */}
-                    <div className="pt-4 px-5 md:px-0">
+                    <div className="pt-4">
                         {/* ────── Full Cards (grid mode only) ────── */}
                         {viewMode === 'grid' && (
                             <div ref={fullCardsRef}>
                                 <div
                                     ref={scrollAnchorRef}
-                                    className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full pb-4"
+                                    className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 w-full pb-4"
                                 >
                                     {gridVariants.map(v => {
                                         const CardAdapter = isWishlist ? CompareCardAdapter : VariantCompareCardAdapter;
@@ -851,7 +835,10 @@ export default function DesktopCompare({ isWishlist = false }: { isWishlist?: bo
                             >
                                 <div className="w-full pb-4">
                                     {/* ── Sticky List Header: Preview, Model, Variant, Colours, Offer ── */}
-                                    <div className="sticky z-[80] bg-white/95 backdrop-blur-md" style={{ top: '56px' }}>
+                                    <div
+                                        className="sticky z-[80] bg-white/95 backdrop-blur-md"
+                                        style={{ top: 'calc(var(--header-h) + 56px)' }}
+                                    >
                                         <div className="px-2 py-1 space-y-2">
                                             {/* Row 1: Preview */}
                                             <div

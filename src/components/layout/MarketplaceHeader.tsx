@@ -16,6 +16,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
     const [scrolled, setScrolled] = useState(false);
     const [isVisible, setIsVisible] = useState(true);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
@@ -84,13 +85,15 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                         </div>
 
                         {/* ── Mobile: hamburger button ── */}
-                        <button
-                            className="lg:hidden w-10 h-10 rounded-full flex items-center justify-center text-white/90 hover:text-white border border-white/25 hover:border-white/50 transition-all"
-                            onClick={() => setIsSidebarOpen(prev => !prev)}
-                            aria-label="Open menu"
-                        >
-                            <Menu size={20} />
-                        </button>
+                        <div className="lg:hidden flex items-center gap-2">
+                            <button
+                                className="w-10 h-10 rounded-full flex items-center justify-center text-white/90 hover:text-white border border-white/25 hover:border-white/50 transition-all"
+                                onClick={() => setIsSidebarOpen(prev => !prev)}
+                                aria-label="Open menu"
+                            >
+                                <Menu size={20} />
+                            </button>
+                        </div>
 
                         {/* Mobile sidebar — trigger hidden, controlled by hamburger above */}
                         <div className="lg:hidden">

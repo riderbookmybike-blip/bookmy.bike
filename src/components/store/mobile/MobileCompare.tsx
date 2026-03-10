@@ -36,8 +36,6 @@ import {
     Flame,
     Gauge,
     type LucideIcon,
-    ChevronLeft,
-    Search,
     LayoutGrid,
     List,
 } from 'lucide-react';
@@ -149,22 +147,14 @@ export function MobileCompare() {
 
     return (
         <div className="bg-slate-50 text-slate-900 min-h-screen pb-20 font-sans selection:bg-[#F4B000]/30">
-            {/* ── Sticky Search Bar (same as Catalog) ── */}
-            <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-xl border-b border-slate-200 pt-3 pb-3 px-5">
-                <div className="flex items-center gap-2">
-                    <div className="relative flex-1 cursor-pointer" onClick={() => router.push('/store/catalog')}>
-                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                        <div className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-white border border-slate-200 text-sm text-slate-400 font-medium">
-                            Search bikes, scooters, brands...
-                        </div>
-                    </div>
-                    <button
-                        onClick={() => setMobileViewMode(m => (m === 'grid' ? 'list' : 'grid'))}
-                        className="w-10 h-10 shrink-0 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-500 active:bg-slate-100 transition-colors"
-                    >
-                        {mobileViewMode === 'grid' ? <List size={18} /> : <LayoutGrid size={18} />}
-                    </button>
-                </div>
+            {/* ── View mode toggle ── */}
+            <div className="flex justify-end px-4 pt-3">
+                <button
+                    onClick={() => setMobileViewMode(m => (m === 'grid' ? 'list' : 'grid'))}
+                    className="w-10 h-10 shrink-0 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-500 active:bg-slate-100 transition-colors shadow-sm"
+                >
+                    {mobileViewMode === 'grid' ? <List size={18} /> : <LayoutGrid size={18} />}
+                </button>
             </div>
 
             {/* ── GRID MODE: Full ProductCards (like desktop grid) ── */}
