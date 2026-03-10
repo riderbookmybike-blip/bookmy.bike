@@ -30,7 +30,7 @@ const SchemeEditor = dynamic(() => import('../SchemeEditor'), {
         </div>
     ),
 });
-import { updateBankSchemes } from '../actions';
+import { updateBankSchemes, toggleSchemeMarketplaceStatus } from '../actions';
 import { formatDisplayIdForUI } from '@/lib/displayId';
 
 export default function SchemesTab({
@@ -48,6 +48,7 @@ export default function SchemesTab({
     const [isEditorOpen, setIsEditorOpen] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [editingScheme, setEditingScheme] = useState<BankScheme | null>(null);
+    const [togglingId, setTogglingId] = useState<string | null>(null);
 
     // Simulator State
     const [simVehicleCost, setSimVehicleCost] = useState(100000);
@@ -312,19 +313,26 @@ export default function SchemesTab({
                                 <div
                                     key={scheme.id}
                                     className={`bg-white dark:bg-slate-900 border rounded-[32px] p-8 flex items-center justify-between group transition-all relative overflow-hidden ${
-                                        scheme.isCheapest
-                                            ? 'border-emerald-500/50 shadow-xl shadow-emerald-500/5'
-                                            : scheme.isBestPayout
-                                              ? 'border-amber-500/50 shadow-xl shadow-amber-500/5'
-                                              : 'border-slate-200 dark:border-white/5 shadow-sm'
+                                        !scheme.isActive
+                                            ? 'border-red-300/50 dark:border-red-500/20 opacity-60'
+                                            : scheme.isCheapest
+                                              ? 'border-emerald-500/50 shadow-xl shadow-emerald-500/5'
+                                              : scheme.isBestPayout
+                                                ? 'border-amber-500/50 shadow-xl shadow-amber-500/5'
+                                                : 'border-slate-200 dark:border-white/5 shadow-sm'
                                     }`}
                                 >
-                                    {scheme.isCheapest && (
+                                    {!scheme.isActive && (
+                                        <div className="absolute top-0 right-0 py-1.5 px-6 bg-red-500 text-white text-[9px] font-black uppercase tracking-widest rounded-bl-2xl flex items-center gap-2 shadow-lg shadow-red-500/20 z-10">
+                                            Marketplace Inactive
+                                        </div>
+                                    )}
+                                    {scheme.isActive && scheme.isCheapest && (
                                         <div className="absolute top-0 right-0 py-1.5 px-6 bg-emerald-500 text-white text-[9px] font-black uppercase tracking-widest rounded-bl-2xl flex items-center gap-2 shadow-lg shadow-emerald-500/20 z-10">
                                             <TrendingDown size={12} /> Most Affordable
                                         </div>
                                     )}
-                                    {scheme.isBestPayout && !scheme.isCheapest && (
+                                    {scheme.isActive && scheme.isBestPayout && !scheme.isCheapest && (
                                         <div className="absolute top-0 right-0 py-1.5 px-6 bg-amber-500 text-white text-[9px] font-black uppercase tracking-widest rounded-bl-2xl flex items-center gap-2 shadow-lg shadow-amber-500/20 z-10">
                                             <TrendingUp size={12} /> Best Payout
                                         </div>
@@ -395,6 +403,46 @@ export default function SchemesTab({
                                     </div>
 
                                     <div className="flex items-center gap-3 ml-8">
+                                        {/* Marketplace Active/Deactive Toggle */}
+                                        <button
+                                            onClick={async () => {
+                                                setTogglingId(scheme.id);
+                                                const newStatus = !scheme.isActive;
+                                                const res = await toggleSchemeMarketplaceStatus(
+                                                    bankId,
+                                                    scheme.id,
+                                                    newStatus
+                                                );
+                                                if (res.success) {
+                                                    const nextSchemes = schemes.map(s =>
+                                                        s.id === scheme.id ? { ...s, isActive: newStatus } : s
+                                                    );
+                                                    setSchemes(nextSchemes);
+                                                    onSchemesUpdated?.(nextSchemes);
+                                                }
+                                                setTogglingId(null);
+                                            }}
+                                            disabled={togglingId === scheme.id}
+                                            className={`px-4 py-2.5 rounded-2xl text-[9px] font-black uppercase tracking-widest border transition-all flex items-center gap-2 ${
+                                                scheme.isActive
+                                                    ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20 hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400 hover:border-red-200 dark:hover:border-red-500/20'
+                                                    : 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 border-red-200 dark:border-red-500/20 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-400 hover:border-emerald-200 dark:hover:border-emerald-500/20'
+                                            }`}
+                                            title={
+                                                scheme.isActive
+                                                    ? 'Deactivate from Marketplace'
+                                                    : 'Activate on Marketplace'
+                                            }
+                                        >
+                                            {togglingId === scheme.id ? (
+                                                <Loader2 size={12} className="animate-spin" />
+                                            ) : (
+                                                <div
+                                                    className={`w-2 h-2 rounded-full ${scheme.isActive ? 'bg-emerald-500' : 'bg-red-500'}`}
+                                                />
+                                            )}
+                                            {scheme.isActive ? 'Live' : 'Off'}
+                                        </button>
                                         <button
                                             onClick={() => {
                                                 const cloned = {

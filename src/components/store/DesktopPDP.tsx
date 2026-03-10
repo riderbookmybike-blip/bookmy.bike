@@ -514,8 +514,8 @@ export function DesktopPDP({
 
     // Video Modal State
     const [isVideoOpen, setIsVideoOpen] = useState(false);
-    const [mobileConfigOpen, setMobileConfigOpen] = useState<string | null>('ACCESSORIES');
-    const [activeConfigTab, setActiveConfigTab] = useState<string | null>('ACCESSORIES');
+    const [mobileConfigOpen, setMobileConfigOpen] = useState<string | null>(null);
+    const [activeConfigTab, setActiveConfigTab] = useState<string | null>('INSURANCE');
     const [heroActiveTab, setHeroActiveTab] = useState<string>('GALLERY');
 
     const configCards = [
@@ -1012,6 +1012,49 @@ export function DesktopPDP({
                         isVideoOpen={isVideoOpen}
                         onCloseVideo={() => setIsVideoOpen(false)}
                     />
+                </div>
+
+                {/* Mobile: Amortization Chart (collapsible) */}
+                <div className={`${forceMobileLayout ? '' : 'md:hidden'}`}>
+                    <div className="glass-panel bg-white/90 rounded-3xl border border-slate-200 shadow-xl overflow-hidden">
+                        <button
+                            onClick={() =>
+                                setMobileConfigOpen(mobileConfigOpen === 'AMORTIZATION' ? null : 'AMORTIZATION')
+                            }
+                            className="w-full flex items-center justify-between px-5 py-4 text-left"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-2xl bg-brand-primary/10 text-brand-primary flex items-center justify-center">
+                                    <Calendar size={18} />
+                                </div>
+                                <div>
+                                    <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-brand-primary">
+                                        Amortization
+                                    </p>
+                                    <p className="text-[11px] font-medium text-slate-500">EMI Calendar</p>
+                                </div>
+                            </div>
+                            <ChevronRight
+                                size={18}
+                                className={`text-slate-400 transition-transform ${mobileConfigOpen === 'AMORTIZATION' ? 'rotate-90' : ''}`}
+                            />
+                        </button>
+                        {mobileConfigOpen === 'AMORTIZATION' && (
+                            <div className="px-5 pb-5">
+                                <div className="border-t border-slate-200/60 pt-4">
+                                    <AmortizationPanel
+                                        initialFinance={initialFinance}
+                                        displayOnRoad={displayOnRoad}
+                                        userDownPayment={userDownPayment || 0}
+                                        loanAmount={loanAmount}
+                                        totalOnRoad={totalOnRoad}
+                                        emiTenure={emiTenure}
+                                        disbursementDate={new Date()}
+                                    />
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* 3. Mobile Configuration Accordions */}

@@ -178,6 +178,22 @@ export async function updateBankSchemes(bankId: string, schemes: any[]) {
     }
 }
 
+export async function toggleSchemeMarketplaceStatus(bankId: string, schemeCode: string, isActive: boolean) {
+    try {
+        const { error } = await adminClient
+            .from('fin_marketplace_schemes')
+            .update({ is_marketplace_active: isActive })
+            .eq('lender_tenant_id', bankId)
+            .eq('scheme_code', schemeCode);
+
+        if (error) throw error;
+        return { success: true };
+    } catch (error: unknown) {
+        console.error('[ToggleSchemeStatus] Error:', error);
+        return { success: false, error: getErrorMessage(error) || 'Check server logs' };
+    }
+}
+
 export async function updateBankIdentity(
     bankId: string,
     updates: {

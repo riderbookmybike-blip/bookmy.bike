@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Gauge,
@@ -492,7 +492,14 @@ function splitModeWiseMetric(value: string, baseKey: 'max_power' | 'max_torque')
 }
 
 export default function TechSpecsSection({ specs, modelName, variantName }: TechSpecsSectionProps) {
-    const [activeCategory, setActiveCategory] = useState<string | null>('engine');
+    const [activeCategory, setActiveCategory] = useState<string | null>(null);
+
+    // Desktop: open 'Brakes & Safety' by default; Mobile: all collapsed
+    useEffect(() => {
+        if (typeof window !== 'undefined' && window.innerWidth >= 768) {
+            setActiveCategory('brakes');
+        }
+    }, []);
 
     if (!specs || Object.keys(specs).length === 0) return null;
 

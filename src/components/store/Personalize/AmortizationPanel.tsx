@@ -123,6 +123,47 @@ const monthShiftDate = (baseDate: Date, addMonths: number, targetDay: number) =>
 const formatDate = (date: Date) =>
     date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 
+const solveReducingMonthlyRate = (principal: number, tenureMonths: number, emi: number): number => {
+    if (principal <= 0 || tenureMonths <= 0 || emi <= 0) return 0;
+    const minEmi = principal / tenureMonths;
+    if (emi <= minEmi) return 0;
+
+    const emiAt = (r: number) => {
+        if (r <= 0) return principal / tenureMonths;
+        const growth = Math.pow(1 + r, tenureMonths);
+        return (principal * r * growth) / (growth - 1);
+    };
+
+    const derivativeAt = (r: number) => {
+        const eps = 1e-7;
+        return (emiAt(r + eps) - emiAt(r - eps)) / (2 * eps);
+    };
+
+    let rate = 0.01;
+    for (let i = 0; i < 40; i += 1) {
+        const f = emiAt(rate) - emi;
+        if (Math.abs(f) < 1e-8) break;
+        const d = derivativeAt(rate);
+        if (!Number.isFinite(d) || Math.abs(d) < 1e-10) break;
+        const next = rate - f / d;
+        if (!Number.isFinite(next) || next <= 0) break;
+        rate = next;
+    }
+
+    if (!Number.isFinite(rate) || rate <= 0) {
+        let lo = 0;
+        let hi = 1;
+        for (let i = 0; i < 80; i += 1) {
+            const mid = (lo + hi) / 2;
+            const emiMid = emiAt(mid);
+            if (emiMid > emi) hi = mid;
+            else lo = mid;
+        }
+        rate = (lo + hi) / 2;
+    }
+    return Math.max(0, rate);
+};
+
 export default function AmortizationPanel({
     initialFinance,
     displayOnRoad,
@@ -165,18 +206,28 @@ export default function AmortizationPanel({
             lockIn: boolean;
         }> = [];
 
-        let balance = Math.max(0, Number(metrics.grossLoan) || 0);
-        const monthlyRate = (Number(metrics.annualInterest) || 0) / 12;
+        const principal = Math.max(0, Number(metrics.grossLoan) || 0);
+        const annualRate = Math.max(0, Number(metrics.annualInterest) || 0);
+        const isFlat = String(metrics.interestType || '').toUpperCase() === 'FLAT';
+        const monthlyRateInput = annualRate / 12;
+        const emiExact = isFlat
+            ? (principal + principal * annualRate * (tenure / 12)) / tenure
+            : monthlyRateInput > 0
+              ? (principal * monthlyRateInput * Math.pow(1 + monthlyRateInput, tenure)) /
+                (Math.pow(1 + monthlyRateInput, tenure) - 1)
+              : principal / tenure;
+        const monthlyRate = isFlat ? solveReducingMonthlyRate(principal, tenure, emiExact) : monthlyRateInput;
+
+        let balance = principal;
 
         for (let month = 1; month <= tenure; month += 1) {
             const dueDate = monthShiftDate(firstEmiDate, month - 1, policy.emiDay);
-            // Display schedule is amortized/reducing-style:
-            // interest declines with outstanding balance, principal grows over time.
-            const interestRaw = balance * monthlyRate;
-            const principalRaw = Math.max(0, Number(metrics.monthlyEmi) - interestRaw);
-            const principal = month === tenure ? balance : Math.min(balance, principalRaw);
-            const interest = Math.max(0, interestRaw);
-            balance = Math.max(0, balance - principal);
+            const interestRaw = Math.max(0, balance * monthlyRate);
+            const emiForRow = month === tenure ? balance + interestRaw : emiExact;
+            const principalRaw = Math.max(0, emiForRow - interestRaw);
+            const principalComponent = month === tenure ? balance : Math.min(balance, principalRaw);
+            const interestComponent = Math.max(0, interestRaw);
+            balance = Math.max(0, balance - principalComponent);
 
             const slab =
                 policy.foreclosureSlabs.find(s => month > s.fromMonth && month <= s.toMonth) ||
@@ -189,9 +240,9 @@ export default function AmortizationPanel({
             rows.push({
                 month,
                 dueDate,
-                emi: Math.round(metrics.monthlyEmi),
-                principal: Math.round(principal),
-                interest: Math.round(interest),
+                emi: Math.round(emiForRow),
+                principal: Math.round(principalComponent),
+                interest: Math.round(interestComponent),
                 balance: Math.round(balance),
                 foreclosureCharge,
                 foreclosureAmount,
