@@ -14,6 +14,7 @@ import {
     GripVertical,
     ToggleLeft,
     ToggleRight,
+    Package,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
@@ -33,6 +34,7 @@ interface ServiceRow {
     duration_months: number | null;
     status: 'ACTIVE' | 'DRAFT';
     is_mandatory: boolean;
+    is_bundle: boolean;
     service_category: ServiceCategory;
     display_tab: DisplayTab;
     parent_id: string | null;
@@ -128,6 +130,7 @@ export default function ServiceStepV2({ modelId, brandName }: ServiceStepV2Props
             duration_months: service.duration_months,
             status: service.status,
             is_mandatory: service.is_mandatory,
+            is_bundle: service.is_bundle,
             service_category: service.service_category,
             display_tab: service.display_tab,
             parent_id: service.parent_id,
@@ -184,6 +187,7 @@ export default function ServiceStepV2({ modelId, brandName }: ServiceStepV2Props
             duration_months: null,
             status: 'DRAFT',
             is_mandatory: false,
+            is_bundle: false,
             service_category: category,
             display_tab: category === 'MAINTENANCE' ? 'WARRANTY' : 'SERVICE',
             parent_id: null,
@@ -211,6 +215,7 @@ export default function ServiceStepV2({ modelId, brandName }: ServiceStepV2Props
             duration_months: null,
             status: 'DRAFT',
             is_mandatory: parent?.is_mandatory || false,
+            is_bundle: parent?.is_bundle || false,
             service_category: category,
             display_tab: parent?.display_tab || 'SERVICE',
             parent_id: parentId,
@@ -234,6 +239,20 @@ export default function ServiceStepV2({ modelId, brandName }: ServiceStepV2Props
     };
     const updateConfig = (id: string, key: string, value: any) => {
         setServices(prev => prev.map(s => (s.id === id ? { ...s, config: { ...s.config, [key]: value } } : s)));
+    };
+
+    // ── Cycle: Optional → Required → Bundle → Optional ──
+    const cycleMode = (id: string, is_mandatory: boolean, is_bundle: boolean) => {
+        if (!is_mandatory && !is_bundle) {
+            // Optional → Required
+            setServices(prev => prev.map(s => (s.id === id ? { ...s, is_mandatory: true, is_bundle: false } : s)));
+        } else if (is_mandatory && !is_bundle) {
+            // Required → Bundle
+            setServices(prev => prev.map(s => (s.id === id ? { ...s, is_mandatory: false, is_bundle: true } : s)));
+        } else {
+            // Bundle → Optional
+            setServices(prev => prev.map(s => (s.id === id ? { ...s, is_mandatory: false, is_bundle: false } : s)));
+        }
     };
 
     // ── Grouping ──
@@ -415,17 +434,36 @@ export default function ServiceStepV2({ modelId, brandName }: ServiceStepV2Props
                                             <option value="WARRANTY">Warranty</option>
                                         </select>
 
-                                        {/* Mandatory */}
+                                        {/* Mode: Optional / Required / Bundle */}
                                         <button
-                                            onClick={() => updateField(parent.id, 'is_mandatory', !parent.is_mandatory)}
-                                            className={`flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest px-2 py-1.5 rounded-lg transition-colors ${
+                                            onClick={() => cycleMode(parent.id, parent.is_mandatory, parent.is_bundle)}
+                                            title={
+                                                parent.is_mandatory
+                                                    ? 'Required — click to set Bundle'
+                                                    : parent.is_bundle
+                                                      ? 'Bundle (auto-selected on PDP) — click to set Optional'
+                                                      : 'Optional — click to set Required'
+                                            }
+                                            className={`flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest px-2 py-1.5 rounded-lg transition-all ${
                                                 parent.is_mandatory
                                                     ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400'
-                                                    : 'bg-slate-50 text-slate-400 dark:bg-white/5'
+                                                    : parent.is_bundle
+                                                      ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400'
+                                                      : 'bg-slate-50 text-slate-400 dark:bg-white/5'
                                             }`}
                                         >
-                                            {parent.is_mandatory ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}
-                                            {parent.is_mandatory ? 'Required' : 'Optional'}
+                                            {parent.is_mandatory ? (
+                                                <ToggleRight size={14} />
+                                            ) : parent.is_bundle ? (
+                                                <Package size={14} />
+                                            ) : (
+                                                <ToggleLeft size={14} />
+                                            )}
+                                            {parent.is_mandatory
+                                                ? 'Required'
+                                                : parent.is_bundle
+                                                  ? 'Bundle'
+                                                  : 'Optional'}
                                         </button>
                                     </div>
 
