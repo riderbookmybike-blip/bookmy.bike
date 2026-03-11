@@ -1688,24 +1688,6 @@ export const DesktopCatalog = ({
                                     />
                                 );
 
-                                // Wrap first-row ambient cards in staggered slide-up animation
-                                if (isAmbientCard && tvRotationTick > 0) {
-                                    return (
-                                        <motion.div
-                                            key={key}
-                                            initial={{ opacity: 0, y: 28, scale: 0.95 }}
-                                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                                            transition={{
-                                                duration: 0.55,
-                                                ease: [0.22, 1, 0.36, 1],
-                                                delay: (idx % 3) * 0.12, // 0s, 0.12s, 0.24s stagger
-                                            }}
-                                        >
-                                            {card}
-                                        </motion.div>
-                                    );
-                                }
-
                                 return card;
                             })}
                         </motion.div>
