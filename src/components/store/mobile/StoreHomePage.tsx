@@ -161,7 +161,7 @@ export function StoreHomePage({
     // EMI Calculator state
     const basePrice = 120000;
     const { availableCoins, isLoggedIn } = useOClubWallet();
-    const [downpayment, setDownpayment] = useState(25000);
+    const [downpayment, setDownpayment] = useState(999);
 
     const [scrolled, setScrolled] = useState(false);
     const tenure = 36;

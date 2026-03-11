@@ -185,7 +185,7 @@ export const DesktopCatalog = ({
             if (tvRotateIntervalRef.current) clearInterval(tvRotateIntervalRef.current);
             return;
         }
-        tvRotateIntervalRef.current = setInterval(() => setTvRotationTick(t => t + 1), 10000);
+        tvRotateIntervalRef.current = setInterval(() => setTvRotationTick(t => t + 1), 8000); // 8s per card
         return () => {
             if (tvRotateIntervalRef.current) clearInterval(tvRotateIntervalRef.current);
         };
@@ -1566,17 +1566,19 @@ export const DesktopCatalog = ({
                         >
                             {visibleGroups.map((group, idx) => {
                                 const v = group.representative;
-                                // First 3 cards rotate when idle — key changes on tick → CSS flip triggers
-                                const isAmbient = tvIdleMode && idx < 3;
-                                const key = isAmbient
-                                    ? `ambient-${tvRotationTick}-${idx}`
-                                    : `stable-${v.id}-${(v as any).color || ''}`;
-                                // Rotate which 3 cards to show in first row
+                                // Sequential flip: slot s flips at ticks s, s+3, s+6...
+                                // version = how many times this slot has flipped
+                                const tick = tvRotationTick;
                                 const totalGroups = visibleGroups.length;
-                                const offset = totalGroups > 3 ? (tvRotationTick * 3) % totalGroups : 0;
+                                const isAmbient = tvIdleMode && idx < 3;
+                                const slotVersion = isAmbient ? Math.floor((tick + 2 - idx) / 3) : 0;
+                                const key = isAmbient
+                                    ? `ambient-${idx}-${slotVersion}`
+                                    : `stable-${v.id}-${(v as any).color || ''}`;
+                                // Each slot independently shows a different catalog card
                                 const displayGroup =
-                                    tvIdleMode && idx < 3 && totalGroups > 3
-                                        ? visibleGroups[(offset + idx) % totalGroups]
+                                    isAmbient && totalGroups > 3
+                                        ? visibleGroups[(idx + slotVersion * 3) % totalGroups]
                                         : group;
                                 const dv = displayGroup.representative;
                                 return (

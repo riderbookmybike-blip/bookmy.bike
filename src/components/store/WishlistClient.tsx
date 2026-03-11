@@ -131,10 +131,10 @@ export const WishlistClient = () => {
     const router = useRouter();
 
     // UI Local State for Cards
-    const [downpayment, setDownpayment] = useState(5000);
+    const [downpayment, setDownpayment] = useState(999);
     const [tenure, setTenure] = useState(36);
     const [isDpEditOpen, setIsDpEditOpen] = useState(false);
-    const [dpDraft, setDpDraft] = useState(5000);
+    const [dpDraft, setDpDraft] = useState(999);
     const [explodedVariant, setExplodedVariant] = useState<string | null>(null);
 
     // Local State for Filters

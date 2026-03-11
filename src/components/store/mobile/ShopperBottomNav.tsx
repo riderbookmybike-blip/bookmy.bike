@@ -53,7 +53,7 @@ function readPricing() {
     } catch {
         /* ignore */
     }
-    return { mode: 'finance', downpayment: 10000, tenure: 36 };
+    return { mode: 'finance', downpayment: 999, tenure: 36 };
 }
 function writePricing(payload: unknown) {
     try {
@@ -71,7 +71,7 @@ export function ShopperBottomNav() {
     const tabs = useMemo(() => STATIC_TABS.map(tab => tab), []);
 
     // ── Pricing state ─────────────────────────────────────────────────────────
-    const [downpayment, setDownpayment] = useState(10000);
+    const [downpayment, setDownpayment] = useState(999);
     const [tenure, setTenure] = useState(36);
     const [sheetOpen, setSheetOpen] = useState(false);
     const [rideSheetOpen, setRideSheetOpen] = useState(false);

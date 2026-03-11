@@ -524,24 +524,22 @@ input[type='number'] {
     will-change: transform;
 }
 
-/* ── Ambient card flip-in (idle mode rotation) ─────────────────────────────── */
+/* ── Ambient card transition (idle mode — slow graceful reveal) ─────────────── */
 @keyframes ambient-flip-in {
     0% {
         opacity: 0;
-        transform: rotateY(-80deg) scale(0.95);
+        transform: translateY(14px) scale(0.97);
     }
-    60% {
-        opacity: 1;
+    40% {
+        opacity: 0.6;
     }
     100% {
         opacity: 1;
-        transform: rotateY(0deg) scale(1);
+        transform: translateY(0px) scale(1);
     }
 }
 .ambient-card-enter {
-    animation: ambient-flip-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
-    transform-origin: center;
-    perspective: 800px;
+    animation: ambient-flip-in 1.2s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 .ambient-card-enter:nth-child(1) {
     animation-delay: 0s;

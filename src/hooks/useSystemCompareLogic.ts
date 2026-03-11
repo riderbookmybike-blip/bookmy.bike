@@ -131,7 +131,7 @@ export function useSystemCompareLogic(isWishlist = false) {
             const stored = localStorage.getItem('bkmb_downpayment');
             if (stored) return parseInt(stored);
         }
-        return 15000;
+        return 999;
     });
 
     const setDownpayment = useCallback((val: number) => {
