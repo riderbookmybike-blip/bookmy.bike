@@ -1983,30 +1983,6 @@ export const DesktopCatalog = ({
                     </motion.div>
                 )}
             </AnimatePresence>
-
-            {/* TV/Desktop Debug Footer Badge */}
-            <div className="fixed bottom-2 right-2 z-[250] pointer-events-none">
-                <div className="rounded-lg border border-slate-200 bg-white/95 px-2.5 py-1.5 text-[10px] font-bold text-slate-700 shadow-lg backdrop-blur-sm">
-                    <div className="leading-tight">
-                        <span className={isTv ? 'text-emerald-600' : 'text-blue-600'}>
-                            {isTv ? 'TV_MODE' : 'DESKTOP_MODE'}
-                        </span>
-                        <span className="text-slate-400"> | </span>
-                        <span>
-                            {viewportDebug.width}x{viewportDebug.height}
-                        </span>
-                    </div>
-                    <div className="leading-tight text-slate-500">
-                        <span>dpr:{viewportDebug.dpr.toFixed(2)}</span>
-                        <span className="text-slate-400"> | </span>
-                        <span>tv-like:{viewportDebug.tvLike ? 'Y' : 'N'}</span>
-                        <span className="text-slate-400"> | </span>
-                        <span>zoom~{Math.round((1 / viewportDebug.dpr) * 100)}%</span>
-                        <span className="text-slate-400"> | </span>
-                        <span>forced:{viewportDebug.forced}</span>
-                    </div>
-                </div>
-            </div>
         </div>
     );
 };
