@@ -52,9 +52,6 @@ interface MobileCatalogProps {
     basePath?: string;
     mode?: 'default' | 'smart';
     needsLocation?: boolean;
-    resolvedDealerId?: string | null;
-    resolvedStudioId?: string | null;
-    resolvedDealerName?: string | null;
 }
 
 export const MobileCatalog = ({
@@ -64,7 +61,6 @@ export const MobileCatalog = ({
     leadId,
     basePath = '/store',
     mode = 'default',
-    resolvedDealerId = null,
 }: MobileCatalogProps) => {
     const isLoading = externalLoading;
     const router = useRouter();
@@ -364,7 +360,6 @@ export const MobileCatalog = ({
                                     showOClubPrompt={!isLoggedIn}
                                     basePath={basePath}
                                     leadId={leadId}
-                                    fallbackDealerId={resolvedDealerId}
                                     onEditDownpayment={() => setIsMobileFilterOpen(true)}
                                     bestOffer={winnersMap[v.id] as any}
                                 />
@@ -423,7 +418,6 @@ export const MobileCatalog = ({
                                                           showOClubPrompt={!isLoggedIn}
                                                           basePath={basePath}
                                                           leadId={leadId}
-                                                          fallbackDealerId={resolvedDealerId}
                                                           onEditDownpayment={() => setIsMobileFilterOpen(true)}
                                                           bestOffer={winnersMap[v.id] as any}
                                                       />
@@ -468,7 +462,6 @@ export const MobileCatalog = ({
                                                           showOClubPrompt={!isLoggedIn}
                                                           basePath={basePath}
                                                           leadId={leadId}
-                                                          fallbackDealerId={resolvedDealerId}
                                                           onEditDownpayment={() => setIsMobileFilterOpen(true)}
                                                           bestOffer={winnersMap[v.id] as any}
                                                           onExplodeColors={() => {

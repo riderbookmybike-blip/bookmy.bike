@@ -3,9 +3,9 @@ import { fetchCatalogV2 } from '@/lib/server/catalogFetcherV2';
 import SystemCatalogRouter from './SystemCatalogRouter';
 import { Metadata } from 'next';
 import { getInitialDeviceType } from '@/lib/utils/device';
-import { resolvePricingContext } from '@/lib/server/pricingContext';
 
 export const revalidate = 300;
+const DEFAULT_CATALOG_STATE = 'MH';
 
 export const metadata: Metadata = {
     title: 'Catalog | BookMyBike',
@@ -13,9 +13,8 @@ export const metadata: Metadata = {
 };
 
 export default async function CatalogPage() {
-    const context = await resolvePricingContext({});
     const [initialItems, initialDevice] = await Promise.all([
-        fetchCatalogV2(context.stateCode),
+        fetchCatalogV2(DEFAULT_CATALOG_STATE),
         getInitialDeviceType(),
     ]);
 

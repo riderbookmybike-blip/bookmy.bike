@@ -31,7 +31,6 @@ interface BaseVehicleCardAdapterProps {
     onLocationClick?: () => void;
     isTv?: boolean;
     leadId?: string;
-    fallbackDealerId?: string | null;
     walletCoins?: number | null;
     showOClubPrompt?: boolean;
     showBcoinBadge?: boolean;
@@ -67,7 +66,6 @@ function BaseVehicleCardAdapter({
     onLocationClick,
     isTv,
     leadId,
-    fallbackDealerId,
     walletCoins,
     showOClubPrompt,
     showBcoinBadge,
@@ -95,7 +93,6 @@ function BaseVehicleCardAdapter({
             onLocationClick={onLocationClick}
             isTv={isTv}
             leadId={leadId}
-            fallbackDealerId={fallbackDealerId}
             walletCoins={walletCoins}
             showOClubPrompt={showOClubPrompt}
             showBcoinBadge={showBcoinBadge}

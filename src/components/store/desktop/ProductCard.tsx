@@ -41,7 +41,7 @@ export const ProductCard = ({
     onColorChange,
     onExplodeColors,
     isTv = false,
-    bestOffer,
+    bestOffer: rawBestOffer,
     leadId,
     basePath = '/store',
     isParentCompact = false,
@@ -55,7 +55,6 @@ export const ProductCard = ({
     onCompare,
     isInCompare = false,
     onEditDownpayment,
-    fallbackDealerId,
     pricingMode: globalPricingMode = 'finance',
     onTogglePricingMode,
     offerMode: propOfferMode,
@@ -108,7 +107,6 @@ export const ProductCard = ({
     onCompare?: () => void;
     isInCompare?: boolean;
     onEditDownpayment?: () => void;
-    fallbackDealerId?: string | null;
     pricingMode?: 'cash' | 'finance';
     onTogglePricingMode?: () => void;
     offerMode?: 'BEST_OFFER' | 'FAST_DELIVERY';
@@ -254,9 +252,10 @@ export const ProductCard = ({
     }, [v.id, v.imageUrl, v.availableColors, v.zoomFactor, v.isFlipped, v.offsetX, v.offsetY]);
 
     const effectiveServerPricing = (v as any)?.serverPricing;
+    const bestOffer = isPdp ? rawBestOffer : null;
 
-    // Use the comprehensive price from SystemCatalogLogic (already includes offer)
-    const displayPrice = v.price?.offerPrice || v.price?.onRoad || v.price?.exShowroom || 0;
+    // Uniform Offer SOT: non-PDP uses state on-road pricing only.
+    const displayPrice = v.price?.onRoad || v.price?.exShowroom || 0;
 
     const liveOnRoad = typeof v.price?.onRoad === 'number' ? v.price.onRoad : undefined;
     const basePrice =
@@ -364,7 +363,7 @@ export const ProductCard = ({
     // SOT Rule 2: discount_inr = floor(available_coins / 13) * 1000
     // e.g. 26 coins → ₹2,000 | 13 coins → ₹1,000 | 0 coins → ₹0
     const bcoinAdjustment =
-        walletCoins && walletCoins > 0
+        isPdp && walletCoins && walletCoins > 0
             ? discountForCoins(Math.floor(walletCoins / 13) * 13) // round down to nearest 13-coin block
             : 0;
     const isShowingEffectivePrice = bcoinAdjustment > 0;
@@ -431,6 +430,7 @@ export const ProductCard = ({
         winnerTatHoursRaw !== null && winnerTatHoursRaw !== undefined ? Number(winnerTatHoursRaw) : null;
     const winnerTatDays = winnerTatDaysRaw !== null && winnerTatDaysRaw !== undefined ? Number(winnerTatDaysRaw) : null;
     const deliveryTatLabel = (() => {
+        if (!isPdp) return 'Check offer on PDP';
         if (winnerTatHours !== null && Number.isFinite(winnerTatHours) && winnerTatHours >= 0) {
             if (winnerTatHours === 0) return 'Delivery in 4 hrs';
             if (winnerTatHours <= 72) return `Delivery in ${winnerTatHours} hrs`;
@@ -445,6 +445,11 @@ export const ProductCard = ({
         }
         return 'Delivery ETA updating';
     })();
+    const priceHeaderLabel = isPdp
+        ? pricingLabel === 'ON-ROAD'
+            ? 'On-Road price'
+            : 'Ex-Showroom price'
+        : 'State On-Road price';
 
     const shouldDevanagari = language === 'hi' || language === 'mr';
     const scriptText = (value?: string) => {
@@ -524,7 +529,7 @@ export const ProductCard = ({
                 key={v.id}
                 data-testid="catalog-product-card"
                 data-product-id={v.id}
-                data-dealer-id={v.dealerId || bestOffer?.dealerId || fallbackDealerId || ''}
+                data-dealer-id={v.dealerId || bestOffer?.dealerId || ''}
                 data-offer-delta={offerDeltaForParity}
                 data-district={districtLabelDisplay || ''}
                 className="group bg-white border border-slate-200 rounded-[2.5rem] overflow-hidden flex shadow-sm hover:shadow-2xl transition-all duration-500 min-h-[22rem]"
@@ -647,7 +652,7 @@ export const ProductCard = ({
                         <div className="flex gap-16">
                             <div className="space-y-1">
                                 <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-                                    {pricingLabel === 'ON-ROAD' ? 'On-Road price' : 'Ex-Showroom price'}
+                                    {priceHeaderLabel}
                                 </p>
                                 <div className="flex flex-col">
                                     <div className="flex items-baseline gap-3">
@@ -806,7 +811,7 @@ export const ProductCard = ({
                                         }
                                         className="px-10 py-4 bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-[0_0_20px_rgba(244,176,0,0.3)] hover:shadow-[0_0_30px_rgba(244,176,0,0.5)] hover:-translate-y-1 transition-all"
                                     >
-                                        Know More
+                                        Check Offer
                                     </Link>
                                 )}
                             </div>
@@ -832,7 +837,7 @@ export const ProductCard = ({
                 key={v.id}
                 data-testid="catalog-product-card"
                 data-product-id={v.id}
-                data-dealer-id={v.dealerId || bestOffer?.dealerId || fallbackDealerId || ''}
+                data-dealer-id={v.dealerId || bestOffer?.dealerId || ''}
                 data-offer-delta={offerDeltaForParity}
                 data-district={districtLabelDisplay || ''}
                 onClick={handleCardClick}
@@ -1497,7 +1502,7 @@ export const ProductCard = ({
                                     disabled={isNavigating || isPending}
                                     className={`group/btn relative w-full ${isTv ? 'h-8 text-[9px]' : 'h-10 md:h-11 text-[10px]'} bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-xl font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(244,176,0,0.3)] hover:shadow-[0_6px_20px_rgba(244,176,0,0.4)] hover:-translate-y-0.5 active:scale-[0.99] transition-all disabled:opacity-70 disabled:pointer-events-none`}
                                 >
-                                    {isNavigating || isPending ? 'Opening...' : 'Compare Variants'}
+                                    {isNavigating || isPending ? 'Opening...' : 'Check Offer'}
                                     <ArrowRight
                                         size={12}
                                         className="opacity-0 group-hover/btn:opacity-100 -translate-x-2 group-hover/btn:translate-x-0 transition-all"
@@ -1521,7 +1526,7 @@ export const ProductCard = ({
                                     onClick={() => setIsNavigating(true)}
                                     className={`group/btn relative w-full ${isTv ? 'h-8 text-[9px]' : 'h-10 md:h-11 text-[10px]'} bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-xl font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(244,176,0,0.3)] hover:shadow-[0_6px_20px_rgba(244,176,0,0.4)] hover:-translate-y-0.5 active:scale-[0.99] transition-all`}
                                 >
-                                    {isNavigating || isPending ? 'Opening...' : 'Know More'}
+                                    {isNavigating || isPending ? 'Opening...' : 'Check Offer'}
                                     <ArrowRight
                                         size={12}
                                         className="opacity-0 group-hover/btn:opacity-100 -translate-x-2 group-hover/btn:translate-x-0 transition-all"

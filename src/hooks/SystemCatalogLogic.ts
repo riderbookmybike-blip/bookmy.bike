@@ -28,16 +28,13 @@ type CatalogSnapshotResponse = {
 const CATALOG_CACHE_TTL_MS = 60_000;
 
 export function useSystemCatalogLogic(leadId?: string, options?: { allowStateOnly?: boolean }) {
-    const allowStateOnly = options?.allowStateOnly ?? false;
+    const allowStateOnly = options?.allowStateOnly ?? true;
     const [items, setItems] = useState<ProductVariant[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [skuCount, setSkuCount] = useState<number>(0);
     const [locationVersion, setLocationVersion] = useState(0);
     const [needsLocation, setNeedsLocation] = useState(false);
-    const [resolvedDealerIdState, setResolvedDealerIdState] = useState<string | null>(null);
-    const [resolvedStudioId, setResolvedStudioId] = useState<string | null>(null);
-    const [resolvedDealerName, setResolvedDealerName] = useState<string | null>(null);
 
     const resolveLocationFromCache = () => {
         if (typeof window === 'undefined') {
@@ -139,9 +136,6 @@ export function useSystemCatalogLogic(leadId?: string, options?: { allowStateOnl
                                 const warmItems = warm.products || [];
                                 setItems(warmItems);
                                 setSkuCount(warmItems.reduce((sum, item) => sum + (item.skuIds?.length || 0), 0));
-                                setResolvedDealerIdState(warm.context?.dealerId || null);
-                                setResolvedStudioId(warm.context?.studioId || null);
-                                setResolvedDealerName(warm.context?.dealerName || null);
                                 setIsLoading(false);
                                 hadWarmCache = true;
                             }
@@ -164,10 +158,6 @@ export function useSystemCatalogLogic(leadId?: string, options?: { allowStateOnl
                 setItems(nextItems);
                 setSkuCount(nextItems.reduce((sum, item) => sum + (item.skuIds?.length || 0), 0));
 
-                setResolvedDealerIdState(payload.context?.dealerId || null);
-                setResolvedStudioId(payload.context?.studioId || null);
-                setResolvedDealerName(payload.context?.dealerName || null);
-
                 if (typeof window !== 'undefined') {
                     try {
                         sessionStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), payload }));
@@ -183,9 +173,6 @@ export function useSystemCatalogLogic(leadId?: string, options?: { allowStateOnl
                 if (!hadWarmCache) {
                     setError(err instanceof Error ? getErrorMessage(err) : 'Unknown error');
                     setItems([]);
-                    setResolvedDealerIdState(null);
-                    setResolvedStudioId(null);
-                    setResolvedDealerName(null);
                 }
             } finally {
                 if (!wasAborted) {
@@ -204,8 +191,8 @@ export function useSystemCatalogLogic(leadId?: string, options?: { allowStateOnl
         error,
         skuCount,
         needsLocation,
-        resolvedDealerId: resolvedDealerIdState,
-        resolvedStudioId,
-        resolvedDealerName,
+        resolvedDealerId: null,
+        resolvedStudioId: null,
+        resolvedDealerName: null,
     };
 }

@@ -89,12 +89,14 @@ export async function resolvePricingContext({
     district,
     state,
     studio,
+    mode = 'DEALER_AWARE',
 }: {
     leadId?: string | null;
     dealerId?: string | null;
     district?: string | null;
     state?: string | null;
     studio?: string | null;
+    mode?: 'DEALER_AWARE' | 'STATE_ONLY';
 }): Promise<PricingContext> {
     // Use adminClient for all DB operations to prevent Dynamic Server Usage errors
     const supabase = adminClient;
@@ -178,6 +180,17 @@ export async function resolvePricingContext({
         if (districtState?.state_code) {
             stateCode = normalizeStateCode(null, districtState.state_code);
         }
+    }
+
+    // Catalog/non-PDP state-only mode: stop before any dealer resolution.
+    if (mode === 'STATE_ONLY') {
+        return {
+            dealerId: null,
+            tenantName: null,
+            district: resolvedDistrict,
+            stateCode,
+            source: 'NONE',
+        };
     }
 
     // 2) Lead context (High Priority)
@@ -312,4 +325,18 @@ export async function resolvePricingContext({
         stateCode,
         source: 'NONE',
     };
+}
+
+export async function resolveStateOnlyPricingContext({
+    district,
+    state,
+}: {
+    district?: string | null;
+    state?: string | null;
+}): Promise<PricingContext> {
+    return resolvePricingContext({
+        district,
+        state,
+        mode: 'STATE_ONLY',
+    });
 }

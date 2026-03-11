@@ -21,7 +21,6 @@ interface CompactProductCardProps {
     basePath?: string;
     leadId?: string;
     onEditDownpayment?: () => void;
-    fallbackDealerId?: string | null;
     walletCoins?: number | null;
     showOClubPrompt?: boolean;
     onExplodeColors?: () => void;
@@ -40,7 +39,6 @@ export function CompactProductCard({
     basePath = '/store',
     leadId,
     onEditDownpayment,
-    fallbackDealerId,
     walletCoins,
     showOClubPrompt,
     onExplodeColors,
@@ -182,7 +180,7 @@ export function CompactProductCard({
         <div
             data-testid="catalog-compact-card"
             data-product-id={v.id}
-            data-dealer-id={v.dealerId || fallbackDealerId || ''}
+            data-dealer-id={v.dealerId || ''}
             data-offer-delta={offerDeltaForParity}
             data-district={navigableDistrict || ''}
             className="group relative flex flex-col bg-white border border-slate-100 rounded-2xl overflow-hidden hover:overflow-visible transition-all duration-300 active:scale-[0.98] shadow-sm hover:shadow-md hover:border-slate-200 hover:z-[50]"

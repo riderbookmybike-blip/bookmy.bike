@@ -70,9 +70,6 @@ interface DesktopCatalogProps {
     basePath?: string;
     mode?: 'default' | 'smart';
     needsLocation?: boolean;
-    resolvedDealerId?: string | null;
-    resolvedStudioId?: string | null;
-    resolvedDealerName?: string | null;
 }
 
 const StarRating = ({ rating = 4.5, size = 10 }: { rating?: number; size?: number }) => {
@@ -100,9 +97,6 @@ export const DesktopCatalog = ({
     basePath = '/store',
     mode = 'default',
     needsLocation = false,
-    resolvedDealerId = null,
-    resolvedStudioId = null,
-    resolvedDealerName = null,
 }: DesktopCatalogProps) => {
     // Prefer client-resolved items when available, otherwise SSR
     const router = useRouter();
@@ -1607,7 +1601,6 @@ export const DesktopCatalog = ({
                                         isTv={isTv}
                                         offerMode={offerMode}
                                         leadId={leadId}
-                                        fallbackDealerId={resolvedDealerId}
                                         walletCoins={isLoggedIn ? availableCoins : null}
                                         showOClubPrompt={!isLoggedIn}
                                         showBcoinBadge={isLoggedIn}
