@@ -45,6 +45,7 @@ interface ServiceEntry {
     name: string;
     description: string;
     price: number;
+    trigger_km_from: number;
     trigger_km: number;
     trigger_days: number;
     config: Record<string, any>;
@@ -165,6 +166,7 @@ export default function ServiceStepV2({ modelId, brandId, brandName, modelName }
             entriesByPkg[e.package_id].push({
                 ...e,
                 price: Number(e.price ?? 0),
+                trigger_km_from: Number(e.trigger_km_from ?? 0),
                 trigger_km: Number(e.trigger_km ?? 0),
                 trigger_days: Number(e.trigger_days ?? 0),
                 config: e.config || {},
@@ -227,8 +229,8 @@ export default function ServiceStepV2({ modelId, brandId, brandName, modelName }
             is_bundle: pkg.is_bundle,
             status: pkg.status,
             position: pkg.position,
-            price: String(pkg.price),
-            discount_price: String(pkg.discount_price),
+            price: Number(pkg.price),
+            discount_price: Number(pkg.discount_price),
             max_qty: pkg.max_qty,
         };
 
@@ -294,7 +296,8 @@ export default function ServiceStepV2({ modelId, brandId, brandName, modelName }
             package_id: entry.package_id,
             name: entry.name,
             description: entry.description,
-            price: String(entry.price),
+            price: Number(entry.price),
+            trigger_km_from: entry.trigger_km_from,
             trigger_km: entry.trigger_km,
             trigger_days: entry.trigger_days,
             config: entry.config,
@@ -334,6 +337,7 @@ export default function ServiceStepV2({ modelId, brandId, brandName, modelName }
             name: '',
             description: '',
             price: 0,
+            trigger_km_from: 0,
             trigger_km: 0,
             trigger_days: 0,
             config: category === 'DELIVERY' ? { method: 'DOORSTEP', timeline: '' } : {},
@@ -852,17 +856,31 @@ function EntryRow({ entry, category, onUpdate, onSave, onDelete }: EntryRowProps
                 />
             </div>
 
-            {/* FREE_SERVICE: KM + Days + Price */}
+            {/* FREE_SERVICE: KM Range + Days + Price */}
             {category === 'FREE_SERVICE' && (
                 <>
+                    {/* KM range */}
                     <div className="shrink-0">
-                        <label className="text-[8px] font-bold text-slate-400 uppercase">KM</label>
-                        <input
-                            type="number"
-                            value={entry.trigger_km != null ? entry.trigger_km : ''}
-                            onChange={e => onUpdate({ trigger_km: Number(e.target.value) })}
-                            className="w-20 text-xs font-bold bg-white dark:bg-white/5 rounded-lg px-2 py-1 border border-slate-200 dark:border-white/10 block"
-                        />
+                        <label className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-1 block">
+                            KM Range
+                        </label>
+                        <div className="flex items-center gap-1">
+                            <input
+                                type="number"
+                                value={entry.trigger_km_from != null ? entry.trigger_km_from : ''}
+                                onChange={e => onUpdate({ trigger_km_from: Number(e.target.value) })}
+                                placeholder="From"
+                                className="w-20 text-xs font-bold bg-white dark:bg-white/5 rounded-lg px-2 py-1 border border-slate-200 dark:border-white/10"
+                            />
+                            <span className="text-[10px] text-slate-300 font-bold">–</span>
+                            <input
+                                type="number"
+                                value={entry.trigger_km != null ? entry.trigger_km : ''}
+                                onChange={e => onUpdate({ trigger_km: Number(e.target.value) })}
+                                placeholder="To"
+                                className="w-20 text-xs font-bold bg-white dark:bg-white/5 rounded-lg px-2 py-1 border border-slate-200 dark:border-white/10"
+                            />
+                        </div>
                     </div>
                     <div className="shrink-0">
                         <label className="text-[8px] font-bold text-slate-400 uppercase">Days</label>

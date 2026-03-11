@@ -1207,6 +1207,7 @@ export type Database = {
                     price: number;
                     trigger_days: number;
                     trigger_km: number;
+                    trigger_km_from: number;
                 };
                 Insert: {
                     config?: Json;
@@ -1219,6 +1220,7 @@ export type Database = {
                     price?: number;
                     trigger_days?: number;
                     trigger_km?: number;
+                    trigger_km_from?: number;
                 };
                 Update: {
                     config?: Json;
@@ -1231,6 +1233,7 @@ export type Database = {
                     price?: number;
                     trigger_days?: number;
                     trigger_km?: number;
+                    trigger_km_from?: number;
                 };
                 Relationships: [
                     {
