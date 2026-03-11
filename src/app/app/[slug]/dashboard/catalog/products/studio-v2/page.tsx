@@ -393,7 +393,12 @@ export default function StudioV2Page() {
                     )}
                     {/* SERVICE category: simplified flow */}
                     {selectedCategory === 'SERVICE' && currentStep === 1 && (
-                        <ServiceStepV2 modelId={modelData?.id || ''} brandName={brand?.name} />
+                        <ServiceStepV2
+                            modelId={modelData?.id || ''}
+                            brandId={brand?.id}
+                            brandName={brand?.name}
+                            modelName={modelData?.name}
+                        />
                     )}
                     {selectedCategory === 'SERVICE' && currentStep === 2 && (
                         <div className="max-w-[1200px] mx-auto py-12 text-center">
