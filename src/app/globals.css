@@ -514,6 +514,9 @@ input[type='number'] {
 
     /* Compact header for 540px viewport height */
     --header-h: 56px;
+
+    /* #1 IMPROVEMENT: Font size boost for 75" screen at 6-8ft distance */
+    font-size: 17px; /* browser default 16px → 17px (+6.25%) */
 }
 
 /* Left/Right breathing room — md:px-6 override fix for TV */
@@ -521,7 +524,11 @@ input[type='number'] {
 [data-tv='1'] .page-container {
     padding-left: 3rem !important; /* 48px */
     padding-right: 3rem !important; /* 48px */
-    padding-top: 0.5rem !important; /* 8px — searchbar header ke paas */
+}
+
+/* Top breathing room only on store shell, NOT page-container (used by header!) */
+[data-tv='1'] .store-page-shell {
+    padding-top: 0.5rem !important; /* 8px — searchbar ke paas */
 }
 
 /* Kill backdrop-blur ONLY on Tailwind blur utility classes (not all * elements) */

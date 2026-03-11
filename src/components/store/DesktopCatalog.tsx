@@ -1627,10 +1627,9 @@ export const DesktopCatalog = ({
                                         : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full'
                             }`}
                         >
-                            {/* Ambient idle mode: first row rotates on TV & Desktop */}
+                            {/* Ambient idle mode: first row rotates with animation */}
                             {(() => {
                                 if (tvIdleMode && tvAmbientFirstRow) {
-                                    // Exclude first-row IDs from rest to prevent duplicate keys
                                     const firstRowIds = new Set(tvAmbientFirstRow.map(g => g.representative.id));
                                     const rest = visibleGroups.filter(g => !firstRowIds.has(g.representative.id));
                                     return [...tvAmbientFirstRow, ...rest];
@@ -1638,9 +1637,14 @@ export const DesktopCatalog = ({
                                 return visibleGroups;
                             })().map((group, idx) => {
                                 const v = group.representative;
-                                const key = `ambient-${tvRotationTick}-${v.id}-${idx}`;
+                                const isAmbientCard = tvIdleMode && tvAmbientFirstRow && idx < 3;
+                                // First row: new key each tick → triggers remount + animation
+                                // Rest: stable key → no unnecessary re-renders
+                                const key = isAmbientCard
+                                    ? `ambient-${tvRotationTick}-${v.id}`
+                                    : `stable-${v.id}-${(v as any).color || ''}`;
 
-                                return (
+                                const card = (
                                     <CatalogCardAdapter
                                         key={key}
                                         variant={v}
@@ -1654,7 +1658,7 @@ export const DesktopCatalog = ({
                                         leadId={leadId}
                                         walletCoins={isLoggedIn ? availableCoins : null}
                                         showOClubPrompt={!isLoggedIn}
-                                        showBcoinBadge={isLoggedIn}
+                                        showBcoinBadge={isLoggedIn || isTv}
                                         variantCount={group.variantCount}
                                         onExplore={() => {
                                             const make = String(group.make || '').trim();
@@ -1683,6 +1687,26 @@ export const DesktopCatalog = ({
                                         pricingMode={pricingMode}
                                     />
                                 );
+
+                                // Wrap first-row ambient cards in staggered slide-up animation
+                                if (isAmbientCard && tvRotationTick > 0) {
+                                    return (
+                                        <motion.div
+                                            key={key}
+                                            initial={{ opacity: 0, y: 28, scale: 0.95 }}
+                                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                                            transition={{
+                                                duration: 0.55,
+                                                ease: [0.22, 1, 0.36, 1],
+                                                delay: (idx % 3) * 0.12, // 0s, 0.12s, 0.24s stagger
+                                            }}
+                                        >
+                                            {card}
+                                        </motion.div>
+                                    );
+                                }
+
+                                return card;
                             })}
                         </motion.div>
                     </div>
