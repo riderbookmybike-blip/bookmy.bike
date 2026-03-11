@@ -42,7 +42,6 @@ import { CompareTray, type CompareItem } from './CompareTray';
 import { CompactProductCard } from './mobile/CompactProductCard';
 import { MobileFilterDrawer } from './mobile/MobileFilterDrawer';
 import { useOClubWallet } from '@/hooks/useOClubWallet';
-import { useCatalogMarketplace } from '@/hooks/useCatalogMarketplace';
 import { CatalogGridSkeleton } from './CatalogSkeleton';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { getSelfMemberLocation, updateSelfMemberLocation } from '@/actions/members';
@@ -235,8 +234,6 @@ export const DesktopCatalog = ({
         filteredVehicles,
         pricingMode,
         setPricingMode,
-        offerMode,
-        setOfferMode,
         toggleFilter,
         clearAll,
     } = filters;
@@ -247,7 +244,7 @@ export const DesktopCatalog = ({
 
     // Local State
     const isSmart = mode === 'smart';
-    const [sortBy] = useState<'popular' | 'price' | 'emi'>('popular');
+    const [sortBy] = useState<'popular' | 'price' | 'emi'>('price');
     const [viewMode, setViewMode] = useState<'grid' | 'list'>(VEHICLE_MODE_CONFIG.catalog.defaultView);
 
     const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -313,13 +310,6 @@ export const DesktopCatalog = ({
         userDistrict?: string; // User's actual district
         fallbackDistrict?: string; // Nearest serviceable district if user's is not serviceable
     }>({ status: 'loading' });
-
-    // Marketplace Hydration (TAT, Winner Engine)
-    const { winnersMap, isLoading: isMarketplaceLoading } = useCatalogMarketplace(
-        serviceability.district,
-        serviceability.stateCode,
-        offerMode
-    );
 
     const [isLocationPickerOpen, setIsLocationPickerOpen] = useState(false);
 
@@ -992,7 +982,9 @@ export const DesktopCatalog = ({
             vehicles.sort((a, b) => (b.popularityScore || 0) - (a.popularityScore || 0));
         }
         if (sortBy === 'price') {
-            vehicles.sort((a, b) => (a.price?.exShowroom || 0) - (b.price?.exShowroom || 0));
+            vehicles.sort(
+                (a, b) => (a.price?.onRoad || a.price?.exShowroom || 0) - (b.price?.onRoad || b.price?.exShowroom || 0)
+            );
         }
         if (sortBy === 'emi') {
             vehicles.sort((a, b) => {
@@ -1117,11 +1109,41 @@ export const DesktopCatalog = ({
         return pool;
     }, [isSmart, results, smartFilteredResults]);
 
-    // Enterprise rule: render all variants directly, no model grouping / explore-more layer.
+    // Enterprise rule: render all variants directly, clustered by model (contiguous ordering),
+    // with lowest-to-highest pricing as default reading order.
     const groupedDisplayResults = useMemo(() => {
-        return displayResults.map(v => ({
+        const priceOf = (v: ProductVariant) => v.price?.onRoad || v.price?.exShowroom || 0;
+        const modelMinPrice = new Map<string, number>();
+        const modelVariantCount = new Map<string, number>();
+
+        for (const vehicle of displayResults) {
+            const modelKey = String(vehicle.model || '').toLowerCase();
+            const price = priceOf(vehicle);
+            const currentMin = modelMinPrice.get(modelKey);
+            if (currentMin === undefined || price < currentMin) {
+                modelMinPrice.set(modelKey, price);
+            }
+            modelVariantCount.set(modelKey, (modelVariantCount.get(modelKey) || 0) + 1);
+        }
+
+        const sorted = [...displayResults].sort((a, b) => {
+            const aModelKey = String(a.model || '').toLowerCase();
+            const bModelKey = String(b.model || '').toLowerCase();
+            const aModelMin = modelMinPrice.get(aModelKey) ?? Number.MAX_SAFE_INTEGER;
+            const bModelMin = modelMinPrice.get(bModelKey) ?? Number.MAX_SAFE_INTEGER;
+
+            if (aModelMin !== bModelMin) return aModelMin - bModelMin;
+            if (aModelKey !== bModelKey) return aModelKey.localeCompare(bModelKey);
+
+            const priceCmp = priceOf(a) - priceOf(b);
+            if (priceCmp !== 0) return priceCmp;
+
+            return String(a.variant || '').localeCompare(String(b.variant || ''));
+        });
+
+        return sorted.map(v => ({
             representative: v,
-            variantCount: 1,
+            variantCount: modelVariantCount.get(String(v.model || '').toLowerCase()) || 1,
             make: v.make,
             model: v.model,
             modelSlug: v.modelSlug,
@@ -1239,7 +1261,6 @@ export const DesktopCatalog = ({
                               ? 'opacity-100 translate-y-0'
                               : 'opacity-0 -translate-y-full pointer-events-none'
                     }
-                    onFilterClick={() => setIsFilterOpen(true)}
                     searchQuery={searchQuery}
                     onSearchChange={setSearchQuery}
                     pricingMode={pricingMode}
@@ -1247,8 +1268,6 @@ export const DesktopCatalog = ({
                         setPricingMode(mode as any);
                         if (mode === 'finance') openDpEdit();
                     }}
-                    offerMode={offerMode}
-                    onOfferModeChange={setOfferMode}
                     reduceEffects={isTv && viewMode === 'list'}
                     onCompareClick={() => {
                         if (viewMode === 'list') {
@@ -1472,8 +1491,8 @@ export const DesktopCatalog = ({
                 <div
                     className={`flex gap-6 xl:gap-16 transition-all duration-700 ${viewMode === 'grid' ? 'max-w-full' : ''}`}
                 >
-                    {/* Sidebar Filter - Left Column (Only List View) */}
-                    {viewMode === 'list' && (
+                    {/* Filters removed by product decision; keep list view + compare only */}
+                    {false && viewMode === 'list' && (
                         <aside
                             className="hidden xl:block w-80 flex-shrink-0 space-y-6 sticky self-start pt-2 transition-all animate-in fade-in slide-in-from-left-4"
                             style={{ top: 'calc(var(--header-h) + 24px)' }}
@@ -1556,12 +1575,17 @@ export const DesktopCatalog = ({
                                         serviceability={serviceability}
                                         onLocationClick={() => setIsLocationPickerOpen(true)}
                                         isTv={isTv}
-                                        offerMode={offerMode}
                                         leadId={leadId}
                                         walletCoins={isLoggedIn ? availableCoins : null}
                                         showOClubPrompt={!isLoggedIn}
                                         showBcoinBadge={isLoggedIn}
                                         variantCount={group.variantCount}
+                                        onExplore={() => {
+                                            const modelName = String(group.model || '').trim();
+                                            if (!modelName) return;
+                                            setSearchQuery(modelName);
+                                            setViewMode(getSafeViewMode('catalog', 'grid'));
+                                        }}
                                         onCompare={() =>
                                             toggleCompare({
                                                 id: v.id,
@@ -1581,7 +1605,6 @@ export const DesktopCatalog = ({
                                             })
                                         }
                                         pricingMode={pricingMode}
-                                        bestOffer={winnersMap[v.id] as any}
                                     />
                                 );
                             })}
@@ -1589,7 +1612,7 @@ export const DesktopCatalog = ({
                     </div>
                 </div>
 
-                {isFilterOpen && viewMode === 'grid' ? (
+                {false && isFilterOpen && viewMode === 'grid' ? (
                     <AnimatePresence>
                         {isFilterOpen && viewMode === 'grid' && (
                             <>
@@ -1702,7 +1725,7 @@ export const DesktopCatalog = ({
                 ) : null}
 
                 {/* Mobile Filter Drawer + Trigger (phone only) */}
-                {isPhone && (
+                {false && isPhone && (
                     <>
                         <MobileFilterDrawer
                             isOpen={isMobileFilterOpen}

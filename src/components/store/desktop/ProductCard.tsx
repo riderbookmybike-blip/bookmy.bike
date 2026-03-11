@@ -7,6 +7,7 @@ import {
     MapPin,
     Bluetooth,
     ArrowRight,
+    Layers,
     Sparkles,
     Zap,
     CircleHelp,
@@ -430,7 +431,7 @@ export const ProductCard = ({
         winnerTatHoursRaw !== null && winnerTatHoursRaw !== undefined ? Number(winnerTatHoursRaw) : null;
     const winnerTatDays = winnerTatDaysRaw !== null && winnerTatDaysRaw !== undefined ? Number(winnerTatDaysRaw) : null;
     const deliveryTatLabel = (() => {
-        if (!isPdp) return 'Check offer on PDP';
+        if (!isPdp) return null;
         if (winnerTatHours !== null && Number.isFinite(winnerTatHours) && winnerTatHours >= 0) {
             if (winnerTatHours === 0) return 'Delivery in 4 hrs';
             if (winnerTatHours <= 72) return `Delivery in ${winnerTatHours} hrs`;
@@ -579,35 +580,51 @@ export const ProductCard = ({
                                 >
                                     {displayModel}
                                 </h3>
-                                {/* Delivery TAT Line - Replaces Ratings slot */}
-                                <div className="flex items-center gap-1.5">
-                                    <Clock size={10} className="text-slate-400" />
-                                    <span
-                                        className={`text-[9px] uppercase tracking-widest italic ${effectiveOfferMode === 'FAST_DELIVERY' ? 'font-black text-slate-600' : 'font-bold text-slate-400'}`}
-                                    >
-                                        {deliveryTatLabel}
-                                    </span>
-                                </div>
+                                {/* Delivery TAT Line - PDP only */}
+                                {deliveryTatLabel && (
+                                    <div className="flex items-center gap-1.5">
+                                        <Clock size={10} className="text-slate-400" />
+                                        <span
+                                            className={`text-[9px] uppercase tracking-widest italic ${effectiveOfferMode === 'FAST_DELIVERY' ? 'font-black text-slate-600' : 'font-bold text-slate-400'}`}
+                                        >
+                                            {deliveryTatLabel}
+                                        </span>
+                                    </div>
+                                )}
                             </div>
                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest relative">
                                 {displayVariant} • <span className="text-brand-primary">{displayColor}</span>
                             </p>
                         </div>
-                        <button
-                            onClick={() =>
-                                toggleFavorite({
-                                    id: v.id,
-                                    model: v.model,
-                                    variant: v.variant,
-                                    slug: v.slug,
-                                    imageUrl: v.imageUrl,
-                                })
-                            }
-                            className={`w-12 h-12 border border-slate-200 rounded-full flex items-center justify-center transition-all shadow-sm ${isSaved ? 'bg-rose-50 border-rose-200 text-rose-500' : 'text-slate-400 hover:text-rose-500 bg-white'}`}
-                            title={isSaved ? 'Saved to Wishlist' : 'Save to Wishlist'}
-                        >
-                            <Heart size={20} className={isSaved ? 'fill-current' : ''} />
-                        </button>
+                        <div className="flex items-center gap-2">
+                            {onExplore && (
+                                <button
+                                    onClick={e => {
+                                        e.stopPropagation();
+                                        handleExploreClick(e);
+                                    }}
+                                    className="w-12 h-12 border border-slate-200 rounded-full flex items-center justify-center transition-all shadow-sm text-slate-400 hover:text-brand-primary bg-white"
+                                    title="Show all variants of this model"
+                                >
+                                    <Layers size={18} />
+                                </button>
+                            )}
+                            <button
+                                onClick={() =>
+                                    toggleFavorite({
+                                        id: v.id,
+                                        model: v.model,
+                                        variant: v.variant,
+                                        slug: v.slug,
+                                        imageUrl: v.imageUrl,
+                                    })
+                                }
+                                className={`w-12 h-12 border border-slate-200 rounded-full flex items-center justify-center transition-all shadow-sm ${isSaved ? 'bg-rose-50 border-rose-200 text-rose-500' : 'text-slate-400 hover:text-rose-500 bg-white'}`}
+                                title={isSaved ? 'Saved to Wishlist' : 'Save to Wishlist'}
+                            >
+                                <Heart size={20} className={isSaved ? 'fill-current' : ''} />
+                            </button>
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-y-4 gap-x-12 py-6 border-y border-slate-100 relative z-10 mt-4 bg-slate-50/30 -mx-10 px-10">
@@ -809,9 +826,15 @@ export const ProductCard = ({
                                                 source: 'STORE_CATALOG',
                                             })
                                         }
-                                        className="px-10 py-4 bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-[0_0_20px_rgba(244,176,0,0.3)] hover:shadow-[0_0_30px_rgba(244,176,0,0.5)] hover:-translate-y-1 transition-all"
+                                        className="relative overflow-hidden px-10 py-4 bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-[0_0_20px_rgba(244,176,0,0.3)] hover:shadow-[0_0_30px_rgba(244,176,0,0.5)] hover:-translate-y-1 transition-all"
                                     >
-                                        Check Offer
+                                        <motion.div
+                                            aria-hidden
+                                            className="absolute inset-y-0 -left-1/3 w-1/3 bg-gradient-to-r from-transparent via-white/45 to-transparent skew-x-12"
+                                            animate={{ x: ['-120%', '420%'] }}
+                                            transition={{ duration: 2.2, repeat: Infinity, ease: 'linear' }}
+                                        />
+                                        <span className="relative z-10">Check Offer</span>
                                     </Link>
                                 )}
                             </div>
@@ -896,6 +919,18 @@ export const ProductCard = ({
                     )}
 
                     <div className="absolute top-4 right-4 z-20 flex flex-col gap-2">
+                        {onExplore && (
+                            <button
+                                onClick={e => {
+                                    e.stopPropagation();
+                                    handleExploreClick(e);
+                                }}
+                                className="w-8 h-8 rounded-full bg-white/80 border border-slate-200 text-slate-400 hover:text-brand-primary flex items-center justify-center shadow-[0_4px_14px_rgba(0,0,0,0.08)] transition-all hover:scale-105"
+                                title="Show all variants of this model"
+                            >
+                                <Layers size={14} />
+                            </button>
+                        )}
                         {onCompare && (
                             <button
                                 onClick={e => {
@@ -1303,7 +1338,7 @@ export const ProductCard = ({
                                                                             Pricing Breakup
                                                                         </p>
                                                                         <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">
-                                                                            Detailed Statement
+                                                                            Core Components
                                                                         </p>
                                                                     </div>
                                                                     <div className="px-2 py-0.5 bg-slate-100 rounded-md text-[8px] font-black text-slate-500 uppercase tracking-widest">
@@ -1326,14 +1361,8 @@ export const ProductCard = ({
                                                                             (v as any)?.serverPricing?.insurance
                                                                                 ?.total ||
                                                                             0;
-                                                                        const tOcircle = bcoinAdjustment || 0;
-
                                                                         const rawOnRoad =
                                                                             onRoad > 0 ? onRoad : tEx + tRto + tIns;
-                                                                        const residual =
-                                                                            rawOnRoad - (tEx + tRto + tIns);
-                                                                        const tOthers = Math.max(0, residual);
-
                                                                         const rows = [
                                                                             { label: 'Ex-Showroom', val: tEx },
                                                                             {
@@ -1341,13 +1370,6 @@ export const ProductCard = ({
                                                                                 val: tRto,
                                                                             },
                                                                             { label: 'Insurance', val: tIns },
-                                                                            { label: 'Insurance Add-ons', val: 0 },
-                                                                            { label: 'Mandatory Accessories', val: 0 },
-                                                                            { label: 'Optional Accessories', val: 0 },
-                                                                            {
-                                                                                label: 'Services & Others',
-                                                                                val: tOthers,
-                                                                            },
                                                                         ];
 
                                                                         return (
@@ -1369,67 +1391,21 @@ export const ProductCard = ({
                                                                                             </span>
                                                                                         </div>
                                                                                     ))}
-
-                                                                                    {/* Row: Delivery TAT */}
-                                                                                    <div className="flex justify-between items-center group/row">
-                                                                                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 group-hover/row:text-slate-900 transition-colors">
-                                                                                            Delivery TAT
+                                                                                    <div className="pt-2 mt-1 border-t border-slate-100 flex justify-between items-center">
+                                                                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-700">
+                                                                                            On-Road Total
                                                                                         </span>
-                                                                                        <span className="text-[11px] font-black text-slate-900 uppercase">
-                                                                                            {deliveryTatLabel
-                                                                                                .replace(
-                                                                                                    'Delivery in ',
-                                                                                                    ''
-                                                                                                )
-                                                                                                .replace(
-                                                                                                    'Delivery ',
-                                                                                                    ''
-                                                                                                )}
+                                                                                        <span className="text-[12px] font-mono font-black text-slate-900">
+                                                                                            ₹
+                                                                                            {formatRoundedPrice(
+                                                                                                rawOnRoad
+                                                                                            )}
                                                                                         </span>
                                                                                     </div>
                                                                                 </div>
-
-                                                                                {/* Unified O' Circle Privileged (Dealer + Coin Discounts) */}
-                                                                                {savings + tOcircle > 0 && (
-                                                                                    <div className="mt-4 p-3 bg-[#F4B000]/5 border border-[#F4B000]/20 rounded-2xl">
-                                                                                        <div className="flex justify-between items-center">
-                                                                                            <div className="flex flex-col">
-                                                                                                <span className="text-[10px] font-black uppercase tracking-widest text-[#F4B000]">
-                                                                                                    O' Circle Privileged
-                                                                                                </span>
-                                                                                                <span className="text-[8px] font-bold text-[#F4B000]/60 uppercase tracking-tight">
-                                                                                                    Exclusive Member
-                                                                                                    Reward
-                                                                                                </span>
-                                                                                            </div>
-                                                                                            <span className="text-[13px] font-mono font-black text-[#F4B000]">
-                                                                                                -₹
-                                                                                                {formatRoundedPrice(
-                                                                                                    savings + tOcircle
-                                                                                                )}
-                                                                                            </span>
-                                                                                        </div>
-                                                                                    </div>
-                                                                                )}
                                                                             </>
                                                                         );
                                                                     })()}
-                                                                </div>
-
-                                                                <div className="pt-4 border-t-2 border-slate-900/5 flex justify-between items-center group/total">
-                                                                    <div className="flex flex-col">
-                                                                        <span className="text-[11px] font-black text-slate-900 uppercase tracking-widest leading-none mb-1">
-                                                                            Net Offer Price
-                                                                        </span>
-                                                                        <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tight">
-                                                                            Final Payable Amount
-                                                                        </span>
-                                                                    </div>
-                                                                    <div className="flex flex-col items-end">
-                                                                        <span className="text-[18px] font-black text-brand-primary font-mono italic leading-none">
-                                                                            ₹{formatRoundedPrice(effectiveOfferPrice)}
-                                                                        </span>
-                                                                    </div>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -1500,12 +1476,20 @@ export const ProductCard = ({
                                 <button
                                     onClick={handleExploreClick}
                                     disabled={isNavigating || isPending}
-                                    className={`group/btn relative w-full ${isTv ? 'h-8 text-[9px]' : 'h-10 md:h-11 text-[10px]'} bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-xl font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(244,176,0,0.3)] hover:shadow-[0_6px_20px_rgba(244,176,0,0.4)] hover:-translate-y-0.5 active:scale-[0.99] transition-all disabled:opacity-70 disabled:pointer-events-none`}
+                                    className={`group/btn relative overflow-hidden w-full ${isTv ? 'h-8 text-[9px]' : 'h-10 md:h-11 text-[10px]'} bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-xl font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(244,176,0,0.3)] hover:shadow-[0_6px_20px_rgba(244,176,0,0.4)] hover:-translate-y-0.5 active:scale-[0.99] transition-all disabled:opacity-70 disabled:pointer-events-none`}
                                 >
-                                    {isNavigating || isPending ? 'Opening...' : 'Check Offer'}
+                                    <motion.div
+                                        aria-hidden
+                                        className="absolute inset-y-0 -left-1/3 w-1/3 bg-gradient-to-r from-transparent via-white/45 to-transparent skew-x-12"
+                                        animate={{ x: ['-120%', '420%'] }}
+                                        transition={{ duration: 2.2, repeat: Infinity, ease: 'linear' }}
+                                    />
+                                    <span className="relative z-10">
+                                        {isNavigating || isPending ? 'Opening...' : 'Check Offer'}
+                                    </span>
                                     <ArrowRight
                                         size={12}
-                                        className="opacity-0 group-hover/btn:opacity-100 -translate-x-2 group-hover/btn:translate-x-0 transition-all"
+                                        className="relative z-10 opacity-0 group-hover/btn:opacity-100 -translate-x-2 group-hover/btn:translate-x-0 transition-all"
                                     />
                                 </button>
                             ) : (
@@ -1524,27 +1508,37 @@ export const ProductCard = ({
                                         }).url
                                     }
                                     onClick={() => setIsNavigating(true)}
-                                    className={`group/btn relative w-full ${isTv ? 'h-8 text-[9px]' : 'h-10 md:h-11 text-[10px]'} bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-xl font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(244,176,0,0.3)] hover:shadow-[0_6px_20px_rgba(244,176,0,0.4)] hover:-translate-y-0.5 active:scale-[0.99] transition-all`}
+                                    className={`group/btn relative overflow-hidden w-full ${isTv ? 'h-8 text-[9px]' : 'h-10 md:h-11 text-[10px]'} bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-xl font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(244,176,0,0.3)] hover:shadow-[0_6px_20px_rgba(244,176,0,0.4)] hover:-translate-y-0.5 active:scale-[0.99] transition-all`}
                                 >
-                                    {isNavigating || isPending ? 'Opening...' : 'Check Offer'}
+                                    <motion.div
+                                        aria-hidden
+                                        className="absolute inset-y-0 -left-1/3 w-1/3 bg-gradient-to-r from-transparent via-white/45 to-transparent skew-x-12"
+                                        animate={{ x: ['-120%', '420%'] }}
+                                        transition={{ duration: 2.2, repeat: Infinity, ease: 'linear' }}
+                                    />
+                                    <span className="relative z-10">
+                                        {isNavigating || isPending ? 'Opening...' : 'Check Offer'}
+                                    </span>
                                     <ArrowRight
                                         size={12}
-                                        className="opacity-0 group-hover/btn:opacity-100 -translate-x-2 group-hover/btn:translate-x-0 transition-all"
+                                        className="relative z-10 opacity-0 group-hover/btn:opacity-100 -translate-x-2 group-hover/btn:translate-x-0 transition-all"
                                     />
                                 </Link>
                             )}
                         </div>
                     )}
 
-                    {/* Delivery TAT Line — below CTA, replaces old ratings strip */}
-                    <div className="mt-2 flex items-center justify-center gap-1.5">
-                        <Clock size={10} className="text-slate-400" />
-                        <span
-                            className={`text-[9px] uppercase tracking-widest italic ${effectiveOfferMode === 'FAST_DELIVERY' ? 'font-black text-slate-600' : 'font-bold text-slate-400'}`}
-                        >
-                            {deliveryTatLabel}
-                        </span>
-                    </div>
+                    {/* Delivery TAT Line — PDP only */}
+                    {deliveryTatLabel && (
+                        <div className="mt-2 flex items-center justify-center gap-1.5">
+                            <Clock size={10} className="text-slate-400" />
+                            <span
+                                className={`text-[9px] uppercase tracking-widest italic ${effectiveOfferMode === 'FAST_DELIVERY' ? 'font-black text-slate-600' : 'font-bold text-slate-400'}`}
+                            >
+                                {deliveryTatLabel}
+                            </span>
+                        </div>
+                    )}
                 </div>
             </motion.div>
         </div>
