@@ -1222,30 +1222,44 @@ export const DesktopCatalog = ({
         return renderedGroups.filter(group => compareIds.has(group.representative.id));
     }, [viewMode, renderedGroups, compareIds]);
 
-    // Ambient first-row items — rotate catalog, no duplicate model in same row (TV & Desktop)
+    // Ambient first-row: show all variants of one model at a time
+    // Cycles through distinct models using tvRotationTick
     const tvAmbientFirstRow = useMemo(() => {
         if (!tvIdleMode || visibleGroups.length === 0) return null;
-        const total = visibleGroups.length;
-        const result: typeof visibleGroups = [];
-        const seenModels = new Set<string>();
-        let i = tvRotationOffset % total;
-        let attempts = 0;
-        while (result.length < 3 && attempts < total) {
-            const item = visibleGroups[i % total];
-            const model = item.representative?.model || String(i);
-            if (!seenModels.has(model)) {
-                result.push(item);
-                seenModels.add(model);
+
+        // Build ordered model list + variant map (preserving catalog order)
+        const modelOrder: string[] = [];
+        const byModel = new Map<string, typeof visibleGroups>();
+        visibleGroups.forEach(g => {
+            const model = g.representative?.model || '';
+            if (!byModel.has(model)) {
+                byModel.set(model, []);
+                modelOrder.push(model);
             }
-            i++;
-            attempts++;
+            byModel.get(model)!.push(g);
+        });
+
+        const totalModels = modelOrder.length;
+        if (totalModels === 0) return null;
+
+        // Pick current model by tick — cycles all models
+        const currentModelIdx = tvRotationTick % totalModels;
+        const result: typeof visibleGroups = [];
+
+        // Fill 3 slots: current model variants first, overflow to next model
+        let modelPtr = currentModelIdx;
+        let modelLoops = 0;
+        while (result.length < 3 && modelLoops < totalModels) {
+            const model = modelOrder[modelPtr % totalModels];
+            const variants = byModel.get(model) || [];
+            const needed = 3 - result.length;
+            result.push(...variants.slice(0, needed));
+            modelPtr++;
+            modelLoops++;
         }
-        // Fallback: fill remaining spots if not enough unique models
-        while (result.length < Math.min(3, total)) {
-            result.push(visibleGroups[result.length]);
-        }
-        return result;
-    }, [isTv, tvIdleMode, tvRotationOffset, visibleGroups]);
+
+        return result.slice(0, 3);
+    }, [tvIdleMode, tvRotationTick, visibleGroups]);
 
     useEffect(() => {
         const minCompareSelection = VEHICLE_MODE_CONFIG.catalog.minCompareSelection;

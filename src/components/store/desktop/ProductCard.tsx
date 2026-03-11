@@ -833,13 +833,8 @@ export const ProductCard = ({
                                         }
                                         className="relative overflow-hidden px-10 py-4 bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-[0_0_20px_rgba(244,176,0,0.3)] hover:shadow-[0_0_30px_rgba(244,176,0,0.5)] hover:-translate-y-1 transition-all"
                                     >
-                                        <motion.div
-                                            aria-hidden
-                                            className="absolute inset-y-0 -left-1/3 w-1/3 bg-gradient-to-r from-transparent via-white/45 to-transparent skew-x-12"
-                                            animate={{ x: ['-120%', '420%'] }}
-                                            transition={{ duration: 2.2, repeat: Infinity, ease: 'linear' }}
-                                        />
-                                        <span className="relative z-10">Check Offer</span>
+                                        <div aria-hidden className="shimmer-bar" />
+                                        <span className="relative z-10">Check Offer 😊</span>
                                     </Link>
                                 )}
                             </div>
@@ -1484,14 +1479,9 @@ export const ProductCard = ({
                                     disabled={isNavigating || isPending}
                                     className={`group/btn relative overflow-hidden w-full ${isTv ? 'h-8 text-[9px]' : 'h-10 md:h-11 text-[10px]'} bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-xl font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(244,176,0,0.3)] hover:shadow-[0_6px_20px_rgba(244,176,0,0.4)] hover:-translate-y-0.5 active:scale-[0.99] transition-all disabled:opacity-70 disabled:pointer-events-none`}
                                 >
-                                    <motion.div
-                                        aria-hidden
-                                        className="absolute inset-y-0 -left-1/3 w-1/3 bg-gradient-to-r from-transparent via-white/45 to-transparent skew-x-12"
-                                        animate={{ x: ['-120%', '420%'] }}
-                                        transition={{ duration: 2.2, repeat: Infinity, ease: 'linear' }}
-                                    />
+                                    <div aria-hidden className="shimmer-bar" />
                                     <span className="relative z-10">
-                                        {isNavigating || isPending ? 'Opening...' : 'Check Offer'}
+                                        {isNavigating || isPending ? 'Opening...' : 'Check Offer 😊'}
                                     </span>
                                     <ArrowRight
                                         size={12}
@@ -1523,7 +1513,7 @@ export const ProductCard = ({
                                         transition={{ duration: 2.2, repeat: Infinity, ease: 'linear' }}
                                     />
                                     <span className="relative z-10">
-                                        {isNavigating || isPending ? 'Opening...' : 'Check Offer'}
+                                        {isNavigating || isPending ? 'Opening...' : 'Check Offer 😊'}
                                     </span>
                                     <ArrowRight
                                         size={12}
