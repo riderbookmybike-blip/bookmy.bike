@@ -375,7 +375,7 @@ export default function ServiceStepV2({ modelId, brandName }: ServiceStepV2Props
                                                 </label>
                                                 <input
                                                     type="number"
-                                                    value={parent.price || ''}
+                                                    value={parent.price != null ? parent.price : ''}
                                                     onChange={e =>
                                                         updateField(parent.id, 'price', Number(e.target.value))
                                                     }
@@ -394,7 +394,7 @@ export default function ServiceStepV2({ modelId, brandName }: ServiceStepV2Props
                                                 </label>
                                                 <input
                                                     type="number"
-                                                    value={parent.discount_price || ''}
+                                                    value={parent.discount_price != null ? parent.discount_price : ''}
                                                     onChange={e =>
                                                         updateField(parent.id, 'discount_price', Number(e.target.value))
                                                     }
@@ -496,7 +496,7 @@ export default function ServiceStepV2({ modelId, brandName }: ServiceStepV2Props
                                                     <div>
                                                         <input
                                                             type="number"
-                                                            value={child.price || ''}
+                                                            value={child.price != null ? child.price : ''}
                                                             onChange={e =>
                                                                 updateField(child.id, 'price', Number(e.target.value))
                                                             }
@@ -514,7 +514,11 @@ export default function ServiceStepV2({ modelId, brandName }: ServiceStepV2Props
                                                                 </label>
                                                                 <input
                                                                     type="number"
-                                                                    value={child.config?.trigger_km || ''}
+                                                                    value={
+                                                                        child.config?.trigger_km != null
+                                                                            ? child.config.trigger_km
+                                                                            : ''
+                                                                    }
                                                                     onChange={e =>
                                                                         updateConfig(
                                                                             child.id,
@@ -531,7 +535,11 @@ export default function ServiceStepV2({ modelId, brandName }: ServiceStepV2Props
                                                                 </label>
                                                                 <input
                                                                     type="number"
-                                                                    value={child.config?.trigger_days || ''}
+                                                                    value={
+                                                                        child.config?.trigger_days != null
+                                                                            ? child.config.trigger_days
+                                                                            : ''
+                                                                    }
                                                                     onChange={e =>
                                                                         updateConfig(
                                                                             child.id,
