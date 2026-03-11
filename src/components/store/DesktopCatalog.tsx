@@ -22,10 +22,8 @@ import {
 import { toast } from 'sonner';
 import { checkServiceability } from '@/actions/serviceArea';
 import Link from 'next/link';
-import { buildProductUrl, buildVariantExplorerUrl } from '@/lib/utils/urlHelper';
+import { buildProductUrl } from '@/lib/utils/urlHelper';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
-
-import { groupProductsByModel } from '@/utils/variantGrouping';
 import { formatPriceLabel } from '@/utils/formatVehicleSpec';
 import { DiscoveryBar } from '@/components/store/DiscoveryBar';
 
@@ -1009,7 +1007,6 @@ export const DesktopCatalog = ({
     const [smartModel, setSmartModel] = useState<string | null>(null);
     const [smartVariant, setSmartVariant] = useState<string | null>(null);
     const [smartColor, setSmartColor] = useState<string | null>(null);
-    const [explodedVariant, setExplodedVariant] = useState<string | null>(null);
     const { availableCoins, isLoggedIn } = useOClubWallet();
 
     useEffect(() => {
@@ -1018,7 +1015,6 @@ export const DesktopCatalog = ({
             setSmartModel(null);
             setSmartVariant(null);
             setSmartColor(null);
-            setExplodedVariant(null);
         }
     }, [isSmart, searchQuery]);
 
@@ -1063,13 +1059,11 @@ export const DesktopCatalog = ({
                 setSmartModel(model);
                 setSmartVariant(null);
                 setSmartColor(null);
-                setExplodedVariant(null);
             }
         } else if (uniqueModels.length === 0) {
             setSmartModel(null);
             setSmartVariant(null);
             setSmartColor(null);
-            setExplodedVariant(null);
         }
     }, [isSmart, resultsForQuery, searchQuery, smartModel]);
 
@@ -1120,56 +1114,19 @@ export const DesktopCatalog = ({
     const displayResults = useMemo(() => {
         // Source pool: smart mode uses smartFilteredResults, normal mode uses results
         const pool = isSmart ? smartFilteredResults : results;
-        if (explodedVariant) {
-            const explodedOnly = pool.filter(v => `${v.make}::${v.model}::${v.variant}` === explodedVariant);
-            return explodedOnly.flatMap(v => {
-                const colors = Array.isArray(v.availableColors) ? v.availableColors : [];
-                const filteredColors = smartColor
-                    ? colors.filter(c => normalize(c.name) === normalize(smartColor))
-                    : colors;
-                if (filteredColors.length === 0) return [v];
-                return filteredColors.map(color => ({
-                    ...v,
-                    id: color.id || v.id,
-                    color: color.name,
-                    imageUrl: color.imageUrl || v.imageUrl,
-                    zoomFactor: color.zoomFactor ?? v.zoomFactor,
-                    isFlipped: color.isFlipped ?? v.isFlipped,
-                    offsetX: color.offsetX ?? v.offsetX,
-                    offsetY: color.offsetY ?? v.offsetY,
-                    availableColors: [color, ...colors.filter(c => c.id !== color.id)],
-                }));
-            });
-        }
         return pool;
-    }, [isSmart, results, smartFilteredResults, smartColor, explodedVariant]);
+    }, [isSmart, results, smartFilteredResults]);
 
-    // Group displayResults by model — show only cheapest variant per model family
-    // When explodedVariant is set, skip grouping so every colour appears as its own card
+    // Enterprise rule: render all variants directly, no model grouping / explore-more layer.
     const groupedDisplayResults = useMemo(() => {
-        if (explodedVariant) {
-            // Each item in displayResults is already a colour-specific card — render 1:1
-            return displayResults.map(v => ({
-                representative: v,
-                variantCount: 1,
-                make: v.make,
-                model: v.model,
-                modelSlug: v.modelSlug,
-            }));
-        }
-        const groups = groupProductsByModel(displayResults);
-        return groups.map(group => {
-            // Sort by exShowroom price (ascending) and pick cheapest
-            const sorted = [...group.variants].sort((a, b) => (a.price?.exShowroom || 0) - (b.price?.exShowroom || 0));
-            return {
-                representative: sorted[0],
-                variantCount: group.variants.length,
-                make: group.make,
-                model: group.model,
-                modelSlug: group.modelSlug,
-            };
-        });
-    }, [displayResults, explodedVariant]);
+        return displayResults.map(v => ({
+            representative: v,
+            variantCount: 1,
+            make: v.make,
+            model: v.model,
+            modelSlug: v.modelSlug,
+        }));
+    }, [displayResults]);
 
     // Dynamic max downpayment = most expensive vehicle on catalog - ₹25,000 min loan
     const maxDp = useMemo(() => {
@@ -1616,18 +1573,6 @@ export const DesktopCatalog = ({
                                         }
                                         isInCompare={compareIds.has(v.id)}
                                         onEditDownpayment={openDpEdit}
-                                        onExplore={
-                                            group.variantCount > 1
-                                                ? () => {
-                                                      const url = buildVariantExplorerUrl(group.make, group.model);
-                                                      router.push(url);
-                                                  }
-                                                : undefined
-                                        }
-                                        onExplodeColors={() => {
-                                            const key = `${v.make}::${v.model}::${v.variant}`;
-                                            setExplodedVariant(prev => (prev === key ? null : key));
-                                        }}
                                         onTogglePricingMode={() =>
                                             setPricingMode(prev => {
                                                 const next = prev === 'cash' ? 'finance' : 'cash';
