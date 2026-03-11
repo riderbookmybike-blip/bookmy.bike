@@ -16,7 +16,28 @@ interface UseDealerContextProps {
     prefetchedPricing?: ServerPricing | null;
     prefetchedLocation?: any;
     offerMode?: OfferMode;
+    retrySignal?: number;
 }
+
+const DEALER_FETCH_TIMEOUT_MS = 3000;
+
+class DealerFetchTimeoutError extends Error {
+    code = 'DEALER_FETCH_TIMEOUT';
+    constructor() {
+        super('DEALER_FETCH_TIMEOUT');
+        this.name = 'DealerFetchTimeoutError';
+    }
+}
+
+const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T> => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const timeout = new Promise<T>((_, reject) => {
+        timer = setTimeout(() => reject(new DealerFetchTimeoutError()), ms);
+    });
+    return Promise.race([promise, timeout]).finally(() => {
+        if (timer) clearTimeout(timer);
+    });
+};
 
 const DEFAULT_PRICING_DEALER_TENANT_ID = process.env.NEXT_PUBLIC_DEFAULT_PRICING_DEALER_TENANT_ID || '';
 
@@ -149,6 +170,7 @@ export function useSystemDealerContext({
     prefetchedPricing,
     prefetchedLocation,
     offerMode,
+    retrySignal = 0,
 }: UseDealerContextProps) {
     // These states hold the "Hydrated" versions of data implies Dealer-specific overrides
     const [dealerColors, setDealerColors] = useState<any[]>(product.colors || []);
@@ -187,6 +209,8 @@ export function useSystemDealerContext({
 
     // SSPP v1: Server-Side Calculated Pricing (Single Source of Truth!)
     const [serverPricing, setServerPricing] = useState<ServerPricing | null>(prefetchedPricing || null);
+    const [dealerFetchState, setDealerFetchState] = useState<'IDLE' | 'GATED' | 'READY' | 'TIMEOUT' | 'ERROR'>('IDLE');
+    const [dealerFetchNotice, setDealerFetchNotice] = useState<string | null>(null);
 
     const [isHydrating, setIsHydrating] = useState(!disabled);
 
@@ -199,6 +223,8 @@ export function useSystemDealerContext({
     useEffect(() => {
         const hydrate = async () => {
             if (disabled) {
+                setDealerFetchState('GATED');
+                setDealerFetchNotice(null);
                 setIsHydrating(false);
                 return;
             }
@@ -208,6 +234,8 @@ export function useSystemDealerContext({
             }
 
             try {
+                setDealerFetchState('READY');
+                setDealerFetchNotice(null);
                 // 1. Resolve Location (Prop > LocalStorage)
                 let district = initialLocation?.district || initialLocation?.city;
                 let stateCode = initialLocation?.stateCode;
@@ -229,6 +257,7 @@ export function useSystemDealerContext({
                 }
 
                 if (!district && !overrideDealerId) {
+                    setDealerFetchState('GATED');
                     setIsHydrating(false);
                     return;
                 }
@@ -474,10 +503,14 @@ export function useSystemDealerContext({
 
                     if (useCandidateRpc) {
                         // @ts-ignore - Supabase types out of sync with recent M5 RPC
-                        const { data: offers } = (await supabase.rpc('get_market_candidate_offers', {
-                            p_district_name: district || 'ALL',
-                            p_state_code: stateCode || 'MH',
-                        })) as { data: any[]; error: any };
+                        const { data: offers } = (await withTimeout(
+                            // @ts-ignore - Supabase types out of sync with recent M5 RPC
+                            supabase.rpc('get_market_candidate_offers', {
+                                p_district_name: district || 'ALL',
+                                p_state_code: stateCode || 'MH',
+                            }),
+                            DEALER_FETCH_TIMEOUT_MS
+                        )) as { data: any[]; error: any };
 
                         if (offers && offers.length > 0) {
                             const skuIds = (product.colors || []).map((c: any) => c.skuId).filter(Boolean);
@@ -496,10 +529,14 @@ export function useSystemDealerContext({
                         }
                     } else {
                         // LEGACY RPC Fallback
-                        const { data: offers } = (await supabase.rpc('get_market_best_offers', {
-                            p_district_name: district || 'ALL',
-                            p_state_code: stateCode || 'MH',
-                        })) as { data: any[]; error: any };
+                        const { data: offers } = (await withTimeout(
+                            // @ts-ignore - Supabase types out of sync with recent M5 RPC
+                            supabase.rpc('get_market_best_offers', {
+                                p_district_name: district || 'ALL',
+                                p_state_code: stateCode || 'MH',
+                            }),
+                            DEALER_FETCH_TIMEOUT_MS
+                        )) as { data: any[]; error: any };
 
                         if (offers && offers.length > 0) {
                             const skuIds = (product.colors || []).map((c: any) => c.skuId).filter(Boolean);
@@ -670,6 +707,17 @@ export function useSystemDealerContext({
                     setDealerAccessories(updatedAccessories.filter(Boolean));
                 }
             } catch (err) {
+                if (
+                    (err as any)?.code === 'DEALER_FETCH_TIMEOUT' ||
+                    String((err as any)?.message || '') === 'DEALER_FETCH_TIMEOUT'
+                ) {
+                    setDealerFetchState('TIMEOUT');
+                    setDealerFetchNotice('Dealer price unavailable. Try again.');
+                    setOtherOffers([]);
+                    setIsHydrating(false);
+                    return;
+                }
+                setDealerFetchState('ERROR');
                 console.error('Failed to hydrate dealer context:', err);
             } finally {
                 setIsHydrating(false);
@@ -677,7 +725,7 @@ export function useSystemDealerContext({
         };
 
         hydrate();
-    }, [product.id, initialLocation?.district, selectedColor, disabled, mode]);
+    }, [product.id, initialLocation?.district, selectedColor, disabled, mode, retrySignal]);
 
     return {
         dealerColors,
@@ -687,6 +735,8 @@ export function useSystemDealerContext({
         isHydrating,
         resolvedLocation,
         serverPricing, // SSPP v1: Single Source of Truth pricing breakdown
+        dealerFetchState,
+        dealerFetchNotice,
         offerMode: mode,
         setOfferMode: setMode,
     };

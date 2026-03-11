@@ -433,21 +433,56 @@ export default function ProductClient({
     const [showQuoteSuccess, setShowQuoteSuccess] = useState(false);
     const [showEmailModal, setShowEmailModal] = useState(false);
     const [showReferralModal, setShowReferralModal] = useState(false);
+    const [dealerRetryCount, setDealerRetryCount] = useState(0);
     const shouldForcePhoneCapture = isTeamMember;
+    const pdpGateEnabled = process.env.NEXT_PUBLIC_PDP_GATE_ENABLED === 'true';
+    const [cachedLocationHint, setCachedLocationHint] = useState<{ district?: string; pincode?: string } | null>(null);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        try {
+            const cached = localStorage.getItem('bkmb_user_pincode');
+            if (!cached) return;
+            const parsed = JSON.parse(cached);
+            setCachedLocationHint({
+                district: parsed?.district || parsed?.taluka || parsed?.city || undefined,
+                pincode: parsed?.pincode || undefined,
+            });
+        } catch {
+            setCachedLocationHint(null);
+        }
+    }, []);
+
+    const hasResolvedLocation = Boolean(
+        initialLocation?.district ||
+        initialLocation?.pincode ||
+        cachedLocationHint?.district ||
+        cachedLocationHint?.pincode
+    );
+    const isDealerFetchDisabled = hasResolvedDealer || (pdpGateEnabled ? !isLoggedIn || !hasResolvedLocation : false);
 
     // Unified Dealer Context Hook
-    const { dealerColors, dealerAccessories, bestOffer, otherOffers, resolvedLocation, serverPricing } =
-        useSystemDealerContext({
-            product,
-            initialAccessories,
-            initialLocation,
-            selectedColor, // This relies on the color state from useSystemPDPLogic
-            overrideDealerId: initialDealerId, // Prioritize this dealer
-            disabled: hasResolvedDealer,
-            prefetchedPricing: initialServerPricing,
-            prefetchedLocation: initialLocation,
-            offerMode,
-        });
+    const {
+        dealerColors,
+        dealerAccessories,
+        bestOffer,
+        otherOffers,
+        resolvedLocation,
+        serverPricing,
+        dealerFetchState,
+        dealerFetchNotice,
+    } = useSystemDealerContext({
+        product,
+        initialAccessories,
+        initialLocation,
+        selectedColor, // This relies on the color state from useSystemPDPLogic
+        overrideDealerId: initialDealerId, // Prioritize this dealer
+        disabled: isDealerFetchDisabled,
+        prefetchedPricing: initialServerPricing,
+        prefetchedLocation: initialLocation,
+        offerMode,
+        retrySignal: dealerRetryCount,
+    });
 
     // Update client state when hook returns new data
     useEffect(() => {
@@ -476,6 +511,22 @@ export default function ProductClient({
             }
         }
     }, [dealerAccessories, hasTouchedAccessories, setSelectedAccessories]);
+
+    const legacyBestOffer = bestOffer as
+        | ({
+              dealer_id?: string;
+              id?: string;
+          } & typeof bestOffer)
+        | undefined;
+    const quoteTenantId =
+        sessionDealerId ||
+        product?.tenant_id ||
+        initialDealerId ||
+        ssppServerPricing?.dealer?.id ||
+        bestOffer?.dealerId ||
+        legacyBestOffer?.dealer_id ||
+        legacyBestOffer?.id ||
+        undefined;
 
     const shareInFlightRef = useRef(false);
 
@@ -757,6 +808,18 @@ export default function ProductClient({
 
     const handleConfirmQuote = async () => {
         if (!leadContext) return;
+        if (pdpGateEnabled && !isLoggedIn) {
+            toast.error('Login required to see dealer price + finance offer.');
+            return;
+        }
+        if (pdpGateEnabled && !hasResolvedLocation) {
+            toast.error('Add location (GPS or pincode) to unlock best price.');
+            return;
+        }
+        if (!quoteTenantId) {
+            toast.error(dealerFetchNotice || 'Best offer dealer abhi resolve nahi hua. Thodi der baad retry karein.');
+            return;
+        }
         if (!colorSkuId) {
             toast.error('Selected color SKU is unavailable. Please refresh or choose another color.');
             return;
@@ -768,7 +831,7 @@ export default function ProductClient({
             const { createQuoteAction } = await getCrmActions();
 
             const result: any = await createQuoteAction({
-                tenant_id: sessionDealerId || product.tenant_id || '', // Ensure tenant_id is available
+                tenant_id: quoteTenantId,
                 lead_id: leadContext.id,
                 variant_id: product.id,
                 color_id: colorSkuId || undefined,
@@ -802,6 +865,18 @@ export default function ProductClient({
     };
 
     const handleBookingRequest = async () => {
+        if (pdpGateEnabled && !isLoggedIn) {
+            toast.error('Login required to see dealer price + finance offer.');
+            return;
+        }
+        if (pdpGateEnabled && !hasResolvedLocation) {
+            toast.error('Add location (GPS or pincode) to unlock best price.');
+            return;
+        }
+        if (!quoteTenantId) {
+            toast.error(dealerFetchNotice || 'Best offer dealer abhi resolve nahi hua. Thodi der baad retry karein.');
+            return;
+        }
         if (!colorSkuId) {
             toast.error('Selected color SKU is unavailable. Please refresh or choose another color.');
             return;
@@ -853,15 +928,15 @@ export default function ProductClient({
                         customer_pincode: (member.pincode || member.aadhaar_pincode || undefined) as string | undefined,
                         customer_id: user.id, // Pass logged-in user's ID directly!
                         model: product.model || '',
-                        owner_tenant_id: (product.tenant_id || undefined) as string | undefined,
-                        selected_dealer_id: (sessionDealerId || undefined) as string | undefined,
+                        owner_tenant_id: quoteTenantId,
+                        selected_dealer_id: quoteTenantId,
                         source: 'PDP_QUICK_QUOTE',
                     });
 
                     if (leadResult.success && 'leadId' in leadResult && leadResult.leadId) {
                         const commercials = buildCommercials();
                         const quoteResult = await createQuoteAction({
-                            tenant_id: sessionDealerId || product.tenant_id || '',
+                            tenant_id: quoteTenantId,
                             lead_id: leadResult.leadId,
                             variant_id: product.id,
                             color_id: colorSkuId || undefined,
@@ -985,6 +1060,31 @@ export default function ProductClient({
         (bestOffer as any)?.tat_days ??
         (winnerTatHours !== null && winnerTatHours !== undefined ? Math.ceil(Number(winnerTatHours) / 24) : null);
 
+    const pdpDealerIdForParity =
+        ssppServerPricing?.dealer?.id ||
+        bestOffer?.dealerId ||
+        legacyBestOffer?.dealer_id ||
+        legacyBestOffer?.id ||
+        initialDealerId ||
+        '';
+    const pdpOfferDeltaForParity = Number(
+        ssppServerPricing?.dealer?.offer ??
+            bestOffer?.price ??
+            Number(data.colorSurge || 0) - Number(data.colorDiscount || 0)
+    );
+    const pdpDistrictForParity = String(
+        ssppServerPricing?.location?.district || resolvedLocation?.district || initialLocation?.district || ''
+    );
+    const pdpGateReason: 'LEGACY_MODE' | 'LOGIN_REQUIRED' | 'LOCATION_REQUIRED' | 'DEALER_TIMEOUT' | 'READY' =
+        !pdpGateEnabled
+            ? 'LEGACY_MODE'
+            : !isLoggedIn
+              ? 'LOGIN_REQUIRED'
+              : !hasResolvedLocation
+                ? 'LOCATION_REQUIRED'
+                : dealerFetchState === 'TIMEOUT'
+                  ? 'DEALER_TIMEOUT'
+                  : 'READY';
     const commonProps = {
         product,
         makeParam,
@@ -1005,37 +1105,11 @@ export default function ProductClient({
         showOClubPrompt: !isLoggedIn,
         isGated,
         forceMobileLayout,
+        gateReason: pdpGateReason,
+        dealerFetchState,
+        dealerFetchNotice: dealerFetchNotice || undefined,
+        onRetryDealerFetch: () => setDealerRetryCount(c => c + 1),
     };
-    const legacyBestOffer = bestOffer as
-        | ({
-              dealer_id?: string;
-              id?: string;
-          } & typeof bestOffer)
-        | undefined;
-    const quoteTenantId =
-        sessionDealerId ||
-        product?.tenant_id ||
-        initialDealerId ||
-        ssppServerPricing?.dealer?.id ||
-        bestOffer?.dealerId ||
-        legacyBestOffer?.dealer_id ||
-        legacyBestOffer?.id ||
-        undefined;
-    const pdpDealerIdForParity =
-        ssppServerPricing?.dealer?.id ||
-        bestOffer?.dealerId ||
-        legacyBestOffer?.dealer_id ||
-        legacyBestOffer?.id ||
-        initialDealerId ||
-        '';
-    const pdpOfferDeltaForParity = Number(
-        ssppServerPricing?.dealer?.offer ??
-            bestOffer?.price ??
-            Number(data.colorSurge || 0) - Number(data.colorDiscount || 0)
-    );
-    const pdpDistrictForParity = String(
-        ssppServerPricing?.location?.district || resolvedLocation?.district || initialLocation?.district || ''
-    );
     const leadDealerMismatch = Boolean(
         leadMeta?.leadDealerId && sessionDealerId && leadMeta.leadDealerId !== sessionDealerId
     );
@@ -1091,6 +1165,9 @@ export default function ProductClient({
                 data-offer-delta={pdpOfferDeltaForParity}
                 data-district={pdpDistrictForParity}
                 data-sku-id={colorSkuId || ''}
+                data-gate-reason={pdpGateReason}
+                data-dealer-fetch-state={dealerFetchState}
+                data-dealer-fetch-notice={dealerFetchNotice || ''}
                 style={{ display: 'none' }}
             />
             {/* Condition on forceMobileLayout to trigger MobilePDP */}

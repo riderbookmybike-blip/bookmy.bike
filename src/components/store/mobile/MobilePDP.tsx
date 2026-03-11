@@ -57,6 +57,10 @@ export interface MobilePDPProps {
     showOClubPrompt?: boolean;
     isGated?: boolean;
     forceMobileLayout?: boolean;
+    gateReason?: 'LEGACY_MODE' | 'LOGIN_REQUIRED' | 'LOCATION_REQUIRED' | 'DEALER_TIMEOUT' | 'READY';
+    dealerFetchState?: 'IDLE' | 'GATED' | 'READY' | 'TIMEOUT' | 'ERROR';
+    dealerFetchNotice?: string;
+    onRetryDealerFetch?: () => void;
     serviceability?: {
         isServiceable: boolean;
         status: string;
@@ -81,6 +85,10 @@ export const MobilePDP = ({
     walletCoins = null,
     showOClubPrompt = false,
     isGated = false,
+    gateReason = 'LEGACY_MODE',
+    dealerFetchState = 'IDLE',
+    dealerFetchNotice,
+    onRetryDealerFetch,
     serviceability,
 }: MobilePDPProps) => {
     const { language } = useI18n();
@@ -249,6 +257,43 @@ export const MobilePDP = ({
                 </h1>
                 <p className="text-[12px] font-bold text-[#F4B000] uppercase tracking-wider mb-2">{displayVariant}</p>
             </div>
+
+            {gateReason !== 'LEGACY_MODE' && gateReason !== 'READY' && (
+                <div className="px-5 mb-4">
+                    <div className="rounded-2xl border border-amber-300/70 bg-amber-50 px-3 py-2.5">
+                        <p className="text-[9px] font-black uppercase tracking-[0.16em] text-amber-900">
+                            Personalized Offer Locked
+                        </p>
+                        <p className="mt-1 text-[11px] text-amber-900/90">
+                            {gateReason === 'LOGIN_REQUIRED'
+                                ? 'Login to see dealer price + finance offer.'
+                                : gateReason === 'LOCATION_REQUIRED'
+                                  ? 'Add location (GPS or pincode) to unlock best price.'
+                                  : dealerFetchNotice || 'Dealer price unavailable. Try again.'}
+                        </p>
+                    </div>
+                </div>
+            )}
+
+            {dealerFetchState === 'TIMEOUT' && gateReason === 'READY' && (
+                <div className="px-5 mb-4">
+                    <div className="rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2.5">
+                        <p className="text-[9px] font-black uppercase tracking-[0.16em] text-rose-800">
+                            Dealer Fetch Timeout
+                        </p>
+                        <p className="mt-1 text-[11px] text-rose-900/90">
+                            {dealerFetchNotice || 'Dealer price unavailable. Try again.'}
+                        </p>
+                        <button
+                            type="button"
+                            onClick={onRetryDealerFetch}
+                            className="mt-2 inline-flex items-center rounded-lg border border-rose-300 bg-white px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-rose-800"
+                        >
+                            Try Again
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {otherOffers.length > 0 && (
                 <div className="px-5 mb-6">

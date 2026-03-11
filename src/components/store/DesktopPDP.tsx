@@ -124,6 +124,10 @@ interface DesktopPDPProps {
     showOClubPrompt?: boolean;
     isGated?: boolean;
     forceMobileLayout?: boolean;
+    gateReason?: 'LEGACY_MODE' | 'LOGIN_REQUIRED' | 'LOCATION_REQUIRED' | 'DEALER_TIMEOUT' | 'READY';
+    dealerFetchState?: 'IDLE' | 'GATED' | 'READY' | 'TIMEOUT' | 'ERROR';
+    dealerFetchNotice?: string;
+    onRetryDealerFetch?: () => void;
     serviceability?: {
         isServiceable: boolean;
         status: string;
@@ -166,6 +170,10 @@ export function DesktopPDP({
     showOClubPrompt = false,
     isGated = false,
     forceMobileLayout = false,
+    gateReason = 'LEGACY_MODE',
+    dealerFetchState = 'IDLE',
+    dealerFetchNotice,
+    onRetryDealerFetch,
     serviceability,
 }: DesktopPDPProps) {
     const params = useSearchParams();
@@ -645,6 +653,42 @@ export function DesktopPDP({
                 />
             </div>
             <div className="store-page-shell tv-pdp-shell pb-24 md:pb-28 space-y-8 relative z-10">
+                {gateReason !== 'LEGACY_MODE' && gateReason !== 'READY' && (
+                    <div className="rounded-3xl border border-amber-300/70 bg-amber-50 px-4 py-3 md:px-5 md:py-4">
+                        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-amber-900">
+                            Personalized Offer Locked
+                        </p>
+                        <p className="mt-1 text-sm text-amber-900/90">
+                            {gateReason === 'LOGIN_REQUIRED'
+                                ? 'Login to see dealer price + finance offer.'
+                                : gateReason === 'LOCATION_REQUIRED'
+                                  ? 'Add location (GPS or pincode) to unlock best price.'
+                                  : dealerFetchNotice || 'Dealer price unavailable. Try again.'}
+                        </p>
+                        <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-amber-800/80">
+                            Fallback: State SOT shown below
+                        </p>
+                    </div>
+                )}
+
+                {dealerFetchState === 'TIMEOUT' && gateReason === 'READY' && (
+                    <div className="rounded-3xl border border-rose-200 bg-rose-50 px-4 py-3 md:px-5 md:py-4">
+                        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-rose-800">
+                            Dealer Fetch Timeout
+                        </p>
+                        <p className="mt-1 text-sm text-rose-900/90">
+                            {dealerFetchNotice || 'Dealer price unavailable. Try again.'}
+                        </p>
+                        <button
+                            type="button"
+                            onClick={onRetryDealerFetch}
+                            className="mt-3 inline-flex items-center rounded-xl border border-rose-300 bg-white px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.14em] text-rose-800 hover:bg-rose-100"
+                        >
+                            Try Again
+                        </button>
+                    </div>
+                )}
+
                 {visibleOtherOffers.length > 0 && (
                     <div className="rounded-3xl border border-slate-200 bg-white/90 backdrop-blur-xl p-4 md:p-5">
                         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-3">
