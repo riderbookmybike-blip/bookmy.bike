@@ -501,26 +501,27 @@ input[type='number'] {
     animation: shimmer 2s infinite;
 }
 
-/* ── Check Offer button shimmer (all devices) ──────────────────────────────── */
+/* ── Check Offer button shimmer (all devices incl. TV) ─────────────────────── */
 @keyframes shimmer-sweep {
     0% {
-        left: -60%;
+        transform: translateX(-200%) skewX(-12deg);
     }
     100% {
-        left: 160%;
+        transform: translateX(400%) skewX(-12deg);
     }
 }
 
 .shimmer-bar {
     position: absolute;
     top: 0;
-    bottom: 0;
-    left: -60%;
-    width: 45%;
-    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.55) 50%, transparent 100%);
-    transform: skewX(-12deg);
-    animation: shimmer-sweep 2s linear infinite;
+    left: 0;
+    width: 40%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.6) 50%, transparent 100%);
+    transform: translateX(-200%) skewX(-12deg);
+    animation: shimmer-sweep 2.2s linear infinite;
     pointer-events: none;
+    will-change: transform;
 }
 
 /* ── Ambient card flip-in (idle mode rotation) ─────────────────────────────── */

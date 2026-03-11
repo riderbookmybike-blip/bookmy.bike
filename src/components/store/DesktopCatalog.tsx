@@ -1299,19 +1299,19 @@ export const DesktopCatalog = ({
                                             type === 'MOTORCYCLE' ? (
                                                 <img
                                                     src="/media/motorcycle.svg"
-                                                    className={`w-6 h-6 object-contain transition-all scale-x-[-1] ${isActive ? 'brightness-0' : 'opacity-70 grayscale'}`}
+                                                    className={`${isTv ? 'w-4 h-4' : 'w-6 h-6'} object-contain transition-all scale-x-[-1] ${isActive ? 'brightness-0' : 'opacity-70 grayscale'}`}
                                                     alt="Motorcycle"
                                                 />
                                             ) : type === 'SCOOTER' ? (
                                                 <img
                                                     src="/media/scooter.svg"
-                                                    className={`w-6 h-6 object-contain transition-all scale-x-[-1] ${isActive ? 'brightness-0' : 'opacity-70 grayscale'}`}
+                                                    className={`${isTv ? 'w-4 h-4' : 'w-6 h-6'} object-contain transition-all scale-x-[-1] ${isActive ? 'brightness-0' : 'opacity-70 grayscale'}`}
                                                     alt="Scooter"
                                                 />
                                             ) : (
                                                 <img
                                                     src="/media/moped.svg"
-                                                    className={`w-6 h-6 object-contain transition-all ${isActive ? 'brightness-0' : 'opacity-70 grayscale'}`}
+                                                    className={`${isTv ? 'w-4 h-4' : 'w-6 h-6'} object-contain transition-all ${isActive ? 'brightness-0' : 'opacity-70 grayscale'}`}
                                                     alt="Moped"
                                                 />
                                             );
@@ -1325,7 +1325,7 @@ export const DesktopCatalog = ({
                                             <button
                                                 key={type}
                                                 onClick={() => setSelectedBodyTypes(isActive ? [] : [type])}
-                                                className={`inline-flex items-center gap-2 px-4 h-10 rounded-2xl border text-[10px] font-black uppercase tracking-[0.1em] whitespace-nowrap transition-all duration-300 ${
+                                                className={`inline-flex items-center gap-1.5 ${isTv ? 'px-2 h-8 text-[8px]' : 'px-4 h-10 text-[10px]'} rounded-2xl border font-black uppercase tracking-[0.1em] whitespace-nowrap transition-all duration-300 ${
                                                     isActive
                                                         ? 'bg-[#F4B000] text-black border-black/20 shadow-md shadow-black/5'
                                                         : 'bg-white/70 text-slate-500 border-black/10 hover:bg-white hover:text-slate-900 hover:border-black/20'
