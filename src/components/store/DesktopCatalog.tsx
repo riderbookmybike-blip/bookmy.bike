@@ -49,6 +49,7 @@ import { resolveIpLocation } from '@/actions/resolveIpLocation';
 import { getEmiFactor } from '@/lib/constants/pricingConstants';
 import { useDiscovery } from '@/contexts/DiscoveryContext';
 import { StoreSearchBar } from '@/components/store/ui/StoreSearchBar';
+import { buildVariantExplorerUrl } from '@/lib/utils/urlHelper';
 import {
     VEHICLE_MODE_CONFIG,
     compareLimitMessage,
@@ -114,7 +115,9 @@ export const DesktopCatalog = ({
     useEffect(() => {
         if (typeof window === 'undefined') return;
         const syncTvViewport = () => {
-            setTvViewport(document.documentElement.dataset.tv === '1');
+            const explicitTv = document.documentElement.dataset.tv === '1';
+            const tvLikeViewport = window.innerWidth >= 1500 && window.innerHeight <= 1000;
+            setTvViewport(explicitTv || tvLikeViewport);
         };
         syncTvViewport();
         window.addEventListener('resize', syncTvViewport);
@@ -1225,7 +1228,18 @@ export const DesktopCatalog = ({
     const showLocationGate = needsLocation || serviceability.status === 'unset';
 
     return (
-        <div className="flex flex-col min-h-screen bg-slate-50 transition-colors duration-500 font-sans relative">
+        <div
+            className="flex flex-col min-h-screen bg-slate-50 transition-colors duration-500 font-sans relative"
+            style={
+                isTv
+                    ? {
+                          WebkitFontSmoothing: 'antialiased',
+                          MozOsxFontSmoothing: 'grayscale',
+                          textRendering: 'optimizeLegibility',
+                      }
+                    : undefined
+            }
+        >
             {/* Location Gate — SEO-safe: catalog HTML stays in DOM, overlay blocks interaction */}
             {showLocationGate && (
                 <div className="fixed inset-0 z-[200] flex items-center justify-center">
@@ -1268,7 +1282,7 @@ export const DesktopCatalog = ({
                         setPricingMode(mode as any);
                         if (mode === 'finance') openDpEdit();
                     }}
-                    reduceEffects={isTv && viewMode === 'list'}
+                    reduceEffects={isTv}
                     onCompareClick={() => {
                         if (viewMode === 'list') {
                             setViewMode(getSafeViewMode('catalog', 'grid'));
@@ -1581,10 +1595,10 @@ export const DesktopCatalog = ({
                                         showBcoinBadge={isLoggedIn}
                                         variantCount={group.variantCount}
                                         onExplore={() => {
-                                            const modelName = String(group.model || '').trim();
-                                            if (!modelName) return;
-                                            setSearchQuery(modelName);
-                                            setViewMode(getSafeViewMode('catalog', 'grid'));
+                                            const make = String(group.make || '').trim();
+                                            const model = String(group.model || '').trim();
+                                            if (!make || !model) return;
+                                            router.push(buildVariantExplorerUrl(make, model));
                                         }}
                                         onCompare={() =>
                                             toggleCompare({

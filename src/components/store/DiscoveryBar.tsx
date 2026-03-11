@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { SlidersHorizontal, LayoutGrid, List, Zap, Banknote, GitCompareArrows, Share2, Sparkles } from 'lucide-react';
+import { SlidersHorizontal, LayoutGrid, List, Zap, Banknote, GitCompareArrows, Share2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { StoreSearchBar } from '@/components/store/ui/StoreSearchBar';
 
@@ -12,8 +12,8 @@ interface DiscoveryBarProps {
     onSearchSubmit?: (query: string) => void;
     pricingMode: 'cash' | 'finance';
     onPricingModeChange: (mode: 'cash' | 'finance') => void;
-    offerMode: 'BEST_OFFER' | 'FAST_DELIVERY';
-    onOfferModeChange: (mode: 'BEST_OFFER' | 'FAST_DELIVERY') => void;
+    offerMode?: 'BEST_OFFER' | 'FAST_DELIVERY';
+    onOfferModeChange?: (mode: 'BEST_OFFER' | 'FAST_DELIVERY') => void;
     onShareClick?: () => void;
     shareLabel?: string;
     shareActive?: boolean;
@@ -148,28 +148,26 @@ export function DiscoveryBar({
                                 )}
                             </button>
 
-                            {/* ── OFFER MODE toggle (Single-button Flip CTA) ── */}
-                            <button
-                                onClick={() =>
-                                    onOfferModeChange(offerMode === 'BEST_OFFER' ? 'FAST_DELIVERY' : 'BEST_OFFER')
-                                }
-                                className={`${pillBase} bg-white shadow-sm border-black/10 text-slate-900 hover:border-black/20`}
-                                aria-label={
-                                    offerMode === 'BEST_OFFER' ? 'View fast delivery offers' : 'View best offers'
-                                }
-                            >
-                                {offerMode === 'BEST_OFFER' ? (
-                                    <>
-                                        <Zap size={11} className="text-blue-500" />
-                                        <span>Fast Delivery</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <Sparkles size={11} className="text-amber-500" />
-                                        <span>Best Offer</span>
-                                    </>
-                                )}
-                            </button>
+                            {/* ── VIEW MODE toggle (Grid ↔ List) ── */}
+                            {canToggleView && (
+                                <button
+                                    onClick={() => onViewModeChange!(nextViewMode)}
+                                    className={`${pillBase} bg-white shadow-sm border-black/10 text-slate-900 hover:border-black/20`}
+                                    aria-label={nextViewMode === 'list' ? 'Switch to list view' : 'Switch to grid view'}
+                                >
+                                    {viewMode === 'grid' ? (
+                                        <>
+                                            <List size={13} className="text-slate-700" />
+                                            <span>List</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <LayoutGrid size={13} className="text-slate-700" />
+                                            <span>Grid</span>
+                                        </>
+                                    )}
+                                </button>
+                            )}
 
                             {/* ── FILTER / COMPARE Slot (Consolidated) ── */}
                             <AnimatePresence mode="wait">

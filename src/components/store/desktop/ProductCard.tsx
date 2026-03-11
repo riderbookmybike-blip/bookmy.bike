@@ -180,6 +180,7 @@ export const ProductCard = ({
 
     const handleMouseMove = useCallback(
         (e: React.MouseEvent<HTMLDivElement>) => {
+            if (isTv) return;
             const el = cardRef.current;
             if (!el) return;
             const rect = el.getBoundingClientRect();
@@ -194,21 +195,23 @@ export const ProductCard = ({
             glareY.set(50 + dy * 50);
             glareOpacity.set(0.14);
         },
-        [rawTiltX, rawTiltY, glareX, glareY, glareOpacity]
+        [isTv, rawTiltX, rawTiltY, glareX, glareY, glareOpacity]
     );
 
     const handleMouseLeave = useCallback(() => {
+        if (isTv) return;
         rawTiltX.set(0);
         rawTiltY.set(0);
         scaleSpring.set(1);
         glareX.set(50);
         glareY.set(50);
         glareOpacity.set(0);
-    }, [rawTiltX, rawTiltY, scaleSpring, glareX, glareY, glareOpacity]);
+    }, [isTv, rawTiltX, rawTiltY, scaleSpring, glareX, glareY, glareOpacity]);
 
     const handleMouseEnter = useCallback(() => {
+        if (isTv) return;
         scaleSpring.set(1.015);
-    }, [scaleSpring]);
+    }, [isTv, scaleSpring]);
 
     useEffect(() => {
         setCardPricingMode(resolvedGlobalMode);
@@ -864,13 +867,13 @@ export const ProductCard = ({
                 data-offer-delta={offerDeltaForParity}
                 data-district={districtLabelDisplay || ''}
                 onClick={handleCardClick}
-                onMouseMove={handleMouseMove}
-                onMouseEnter={handleMouseEnter}
-                onMouseLeave={handleMouseLeave}
+                onMouseMove={isTv ? undefined : handleMouseMove}
+                onMouseEnter={isTv ? undefined : handleMouseEnter}
+                onMouseLeave={isTv ? undefined : handleMouseLeave}
                 style={{
-                    rotateX: tiltX,
-                    rotateY: tiltY,
-                    scale: scaleSpring,
+                    rotateX: isTv ? 0 : tiltX,
+                    rotateY: isTv ? 0 : tiltY,
+                    scale: isTv ? 1 : scaleSpring,
                     transformStyle: 'flat',
                     transformOrigin: 'center center',
                 }}
