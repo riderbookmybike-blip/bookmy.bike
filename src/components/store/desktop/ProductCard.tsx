@@ -895,7 +895,7 @@ export const ProductCard = ({
                     }}
                 />
                 <div
-                    className={`${isTvCompact ? 'h-[130px] p-2' : isTv ? 'h-[200px] p-6' : 'h-[340px] md:h-[344px] lg:h-[384px] p-4'} bg-slate-50 flex items-center justify-center relative border-b border-black/[0.04] overflow-hidden group/card`}
+                    className={`${isTvCompact ? 'h-[130px] p-2' : isTv ? 'h-[185px] p-5' : 'h-[340px] md:h-[344px] lg:h-[384px] p-4'} bg-slate-50 flex items-center justify-center relative border-b border-black/[0.04] overflow-hidden group/card`}
                     style={{ backgroundColor: selectedHex ? `${selectedHex}4D` : undefined }}
                 >
                     <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-transparent to-white/10 z-0" />
@@ -923,17 +923,19 @@ export const ProductCard = ({
                         </div>
                     )}
 
-                    <div className="absolute top-4 right-4 z-20 flex flex-col gap-2">
+                    <div
+                        className={`absolute ${isTv ? 'top-2 right-2 gap-1' : 'top-4 right-4 gap-2'} z-20 flex flex-col`}
+                    >
                         {onExplore && (
                             <button
                                 onClick={e => {
                                     e.stopPropagation();
                                     handleExploreClick(e);
                                 }}
-                                className="w-8 h-8 rounded-full bg-white/80 border border-slate-200 text-slate-400 hover:text-brand-primary flex items-center justify-center shadow-[0_4px_14px_rgba(0,0,0,0.08)] transition-all hover:scale-105"
+                                className={`${isTv ? 'w-5 h-5' : 'w-8 h-8'} rounded-full bg-white/80 border border-slate-200 text-slate-400 hover:text-brand-primary flex items-center justify-center shadow-[0_4px_14px_rgba(0,0,0,0.08)] transition-all hover:scale-105`}
                                 title="Show all variants of this model"
                             >
-                                <Layers size={14} />
+                                <Layers size={isTv ? 10 : 14} />
                             </button>
                         )}
                         {onCompare && (
@@ -942,10 +944,10 @@ export const ProductCard = ({
                                     e.stopPropagation();
                                     onCompare();
                                 }}
-                                className={`w-8 h-8 rounded-full border flex items-center justify-center shadow-[0_4px_14px_rgba(0,0,0,0.08)] transition-all hover:scale-105 ${isInCompare ? 'bg-[#F4B000]/20 border-[#F4B000]/40 text-[#F4B000]' : 'bg-white/80 border-slate-200 text-slate-400 hover:text-[#F4B000]'}`}
+                                className={`${isTv ? 'w-5 h-5' : 'w-8 h-8'} rounded-full border flex items-center justify-center shadow-[0_4px_14px_rgba(0,0,0,0.08)] transition-all hover:scale-105 ${isInCompare ? 'bg-[#F4B000]/20 border-[#F4B000]/40 text-[#F4B000]' : 'bg-white/80 border-slate-200 text-slate-400 hover:text-[#F4B000]'}`}
                                 title={isInCompare ? 'Remove from Compare' : 'Add to Compare'}
                             >
-                                <GitCompareArrows size={14} />
+                                <GitCompareArrows size={isTv ? 10 : 14} />
                             </button>
                         )}
                         {onExplodeColors && (
@@ -954,10 +956,10 @@ export const ProductCard = ({
                                     e.stopPropagation();
                                     onExplodeColors();
                                 }}
-                                className="w-8 h-8 rounded-full bg-white/80 border border-slate-200 text-slate-500 hover:text-brand-primary flex items-center justify-center shadow-[0_4px_14px_rgba(0,0,0,0.08)] transition-all hover:scale-105"
+                                className={`${isTv ? 'w-5 h-5' : 'w-8 h-8'} rounded-full bg-white/80 border border-slate-200 text-slate-500 hover:text-brand-primary flex items-center justify-center shadow-[0_4px_14px_rgba(0,0,0,0.08)] transition-all hover:scale-105`}
                                 title="Explode colors"
                             >
-                                <Palette size={14} />
+                                <Palette size={isTv ? 10 : 14} />
                             </button>
                         )}
                         <button
@@ -981,7 +983,7 @@ export const ProductCard = ({
                                     source: 'STORE_CATALOG',
                                 });
                             }}
-                            className={`w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center transition-all shadow-[0_4px_14px_rgba(0,0,0,0.08)] hover:scale-105 ${isSaved ? 'bg-rose-50 text-rose-500' : 'bg-white/80 text-slate-400 hover:text-rose-500'}`}
+                            className={`${isTv ? 'w-5 h-5' : 'w-8 h-8'} rounded-full border border-slate-200 flex items-center justify-center transition-all shadow-[0_4px_14px_rgba(0,0,0,0.08)] hover:scale-105 ${isSaved ? 'bg-rose-50 text-rose-500' : 'bg-white/80 text-slate-400 hover:text-rose-500'}`}
                             title={isSaved ? 'Saved to Wishlist' : 'Save to Wishlist'}
                         >
                             <motion.div
@@ -990,7 +992,7 @@ export const ProductCard = ({
                                 animate={{ scale: isSaved ? [1, 1.4, 1] : 1 }}
                                 transition={{ duration: 0.3, ease: 'backOut' }}
                             >
-                                <Heart size={14} className={isSaved ? 'fill-current' : ''} />
+                                <Heart size={isTv ? 10 : 14} className={isSaved ? 'fill-current' : ''} />
                             </motion.div>
                         </button>
                     </div>
@@ -1053,7 +1055,7 @@ export const ProductCard = ({
                                 : '/images/categories/motorcycle_nobg.png')
                         }
                         alt={v.model}
-                        className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 ${isTv ? 'w-[90%] h-[90%]' : 'w-full h-full'} object-contain z-10`}
+                        className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 ${isTv ? 'w-[80%] h-[80%]' : 'w-full h-full'} object-contain z-10`}
                     />
 
                     {/* Very Light Brand Watermark */}
@@ -1063,7 +1065,7 @@ export const ProductCard = ({
                 </div>
 
                 <div
-                    className={`${isTvCompact ? 'p-2.5' : isTv ? 'p-4' : 'p-3 md:p-6'} flex-1 flex flex-col justify-between relative bg-[#FAFAFA] z-10`}
+                    className={`${isTvCompact ? 'p-2.5' : isTv ? 'p-2' : 'p-3 md:p-6'} flex-1 flex flex-col justify-between relative bg-[#FAFAFA] z-10`}
                 >
                     <div className="relative z-10">
                         <div className="flex items-center justify-between">
@@ -1251,7 +1253,6 @@ export const ProductCard = ({
                                                     >
                                                         Downpayment
                                                     </p>
-                                                    <Pencil size={9} style={{ color: 'rgba(255,255,255,0.35)' }} />
                                                 </div>
                                                 <span
                                                     className={`font-black italic leading-none ${isTv ? 'text-[22px]' : 'text-[22px] md:text-[26px]'}`}
