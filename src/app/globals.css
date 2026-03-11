@@ -543,9 +543,7 @@ input[type='number'] {
 
 [data-tv='1'] .tv-ticker-wrapper {
     overflow: hidden;
-    /* bleed past side padding for full-width feel */
-    margin-left: -3rem;
-    margin-right: -3rem;
+    width: 100%; /* no negative margins — fits parent */
     padding: 0.75rem 0;
 }
 
@@ -553,7 +551,7 @@ input[type='number'] {
     display: flex;
     gap: 1rem;
     width: max-content;
-    animation: tv-ticker-scroll 35s linear infinite;
+    animation: tv-ticker-scroll 800s linear infinite;
     will-change: transform;
 }
 

@@ -834,7 +834,7 @@ export const ProductCard = ({
                                         className="relative overflow-hidden px-10 py-4 bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-[0_0_20px_rgba(244,176,0,0.3)] hover:shadow-[0_0_30px_rgba(244,176,0,0.5)] hover:-translate-y-1 transition-all"
                                     >
                                         <div aria-hidden className="shimmer-bar" />
-                                        <span className="relative z-10">Check Offer 😊</span>
+                                        <span className="relative z-10">Check Offer</span>
                                     </Link>
                                 )}
                             </div>
@@ -1481,7 +1481,7 @@ export const ProductCard = ({
                                 >
                                     <div aria-hidden className="shimmer-bar" />
                                     <span className="relative z-10">
-                                        {isNavigating || isPending ? 'Opening...' : 'Check Offer 😊'}
+                                        {isNavigating || isPending ? 'Opening...' : 'Check Offer'}
                                     </span>
                                     <ArrowRight
                                         size={12}
@@ -1513,7 +1513,7 @@ export const ProductCard = ({
                                         transition={{ duration: 2.2, repeat: Infinity, ease: 'linear' }}
                                     />
                                     <span className="relative z-10">
-                                        {isNavigating || isPending ? 'Opening...' : 'Check Offer 😊'}
+                                        {isNavigating || isPending ? 'Opening...' : 'Check Offer'}
                                     </span>
                                     <ArrowRight
                                         size={12}

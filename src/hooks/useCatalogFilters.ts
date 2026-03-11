@@ -84,7 +84,7 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
             if (stored) return parseInt(stored);
         }
         const dp = searchParams.get('dp');
-        return dp ? parseInt(dp) : 15000;
+        return dp ? parseInt(dp) : 999;
     });
     const setDownpayment = (val: number | ((prev: number) => number)) => {
         _setDownpayment(prev => {
