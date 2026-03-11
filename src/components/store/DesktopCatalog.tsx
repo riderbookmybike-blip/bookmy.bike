@@ -161,21 +161,16 @@ export const DesktopCatalog = ({
         return () => window.removeEventListener('toggleTvSearch', handleToggleSearch);
     }, [isTv]);
 
-    // TV ambient mode: if no activity for 2 min, gently rotate visible cards
+    // TV & Desktop ambient idle mode
     useEffect(() => {
-        if (!isTv) {
-            setTvIdleMode(false);
-            setTvRotationOffset(0);
-            if (tvIdleTimeoutRef.current) clearTimeout(tvIdleTimeoutRef.current);
-            if (tvRotateIntervalRef.current) clearInterval(tvRotateIntervalRef.current);
-            return;
-        }
-
         const scheduleIdleMode = () => {
             if (tvIdleTimeoutRef.current) clearTimeout(tvIdleTimeoutRef.current);
-            tvIdleTimeoutRef.current = setTimeout(() => {
-                setTvIdleMode(true);
-            }, 120000);
+            tvIdleTimeoutRef.current = setTimeout(
+                () => {
+                    setTvIdleMode(true);
+                },
+                isTv ? 60000 : 90000
+            ); // TV: 60s, Desktop: 90s
         };
 
         const handleActivity = () => {
@@ -200,6 +195,22 @@ export const DesktopCatalog = ({
             if (tvIdleTimeoutRef.current) clearTimeout(tvIdleTimeoutRef.current);
         };
     }, [isTv]);
+
+    // Ambient rotation: rotate first row every 10s when idle (TV & Desktop)
+    useEffect(() => {
+        if (!tvIdleMode) {
+            if (tvRotateIntervalRef.current) clearInterval(tvRotateIntervalRef.current);
+            setTvRotationOffset(0);
+            return;
+        }
+        tvRotateIntervalRef.current = setInterval(() => {
+            setTvRotationOffset(prev => prev + 3);
+            setTvRotationTick(prev => prev + 1);
+        }, 10000);
+        return () => {
+            if (tvRotateIntervalRef.current) clearInterval(tvRotateIntervalRef.current);
+        };
+    }, [tvIdleMode]);
 
     // Auto-hide header on TV after 4s of inactivity
     useEffect(() => {
@@ -1211,6 +1222,31 @@ export const DesktopCatalog = ({
         return renderedGroups.filter(group => compareIds.has(group.representative.id));
     }, [viewMode, renderedGroups, compareIds]);
 
+    // Ambient first-row items — rotate catalog, no duplicate model in same row (TV & Desktop)
+    const tvAmbientFirstRow = useMemo(() => {
+        if (!tvIdleMode || visibleGroups.length === 0) return null;
+        const total = visibleGroups.length;
+        const result: typeof visibleGroups = [];
+        const seenModels = new Set<string>();
+        let i = tvRotationOffset % total;
+        let attempts = 0;
+        while (result.length < 3 && attempts < total) {
+            const item = visibleGroups[i % total];
+            const model = item.representative?.model || String(i);
+            if (!seenModels.has(model)) {
+                result.push(item);
+                seenModels.add(model);
+            }
+            i++;
+            attempts++;
+        }
+        // Fallback: fill remaining spots if not enough unique models
+        while (result.length < Math.min(3, total)) {
+            result.push(visibleGroups[result.length]);
+        }
+        return result;
+    }, [isTv, tvIdleMode, tvRotationOffset, visibleGroups]);
+
     useEffect(() => {
         const minCompareSelection = VEHICLE_MODE_CONFIG.catalog.minCompareSelection;
         if (viewMode === 'list' && compareItems.length < minCompareSelection) {
@@ -1592,7 +1628,11 @@ export const DesktopCatalog = ({
                             }`}
                         >
                             {/* Results Grid */}
-                            {visibleGroups.map((group, idx) => {
+                            {/* Ambient idle mode: first row rotates on TV & Desktop */}
+                            {(tvIdleMode && tvAmbientFirstRow
+                                ? [...tvAmbientFirstRow, ...visibleGroups.slice(3)]
+                                : visibleGroups
+                            ).map((group, idx) => {
                                 const v = group.representative;
                                 const key = `${v.id}-${(v as any).color || v.imageUrl || idx}`;
 

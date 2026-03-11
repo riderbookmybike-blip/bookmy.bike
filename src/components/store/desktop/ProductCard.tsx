@@ -895,7 +895,7 @@ export const ProductCard = ({
                     }}
                 />
                 <div
-                    className={`${isTvCompact ? 'h-[130px] p-2' : isTv ? 'h-[170px] p-4' : 'h-[340px] md:h-[344px] lg:h-[384px] p-4'} bg-slate-50 flex items-center justify-center relative border-b border-black/[0.04] overflow-hidden group/card`}
+                    className={`${isTvCompact ? 'h-[130px] p-2' : isTv ? 'h-[200px] p-6' : 'h-[340px] md:h-[344px] lg:h-[384px] p-4'} bg-slate-50 flex items-center justify-center relative border-b border-black/[0.04] overflow-hidden group/card`}
                     style={{ backgroundColor: selectedHex ? `${selectedHex}4D` : undefined }}
                 >
                     <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-transparent to-white/10 z-0" />
@@ -1053,7 +1053,7 @@ export const ProductCard = ({
                                 : '/images/categories/motorcycle_nobg.png')
                         }
                         alt={v.model}
-                        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full object-contain z-10"
+                        className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 ${isTv ? 'w-[90%] h-[90%]' : 'w-full h-full'} object-contain z-10`}
                     />
 
                     {/* Very Light Brand Watermark */}
