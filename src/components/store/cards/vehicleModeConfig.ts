@@ -16,13 +16,13 @@ export const CATALOG_COMPARE_CAP = 8;
 export const VEHICLE_MODE_CONFIG: Record<VehicleCollectionMode, VehicleModeConfig> = {
     catalog: {
         defaultView: 'grid',
-        allowedViews: ['grid', 'list'],
+        allowedViews: ['grid'], // list hidden — only on compare page
         minCompareSelection: DEFAULT_MIN_COMPARE_SELECTION,
         compareCap: CATALOG_COMPARE_CAP,
     },
     favorites: {
         defaultView: 'grid',
-        allowedViews: ['grid', 'list'],
+        allowedViews: ['grid'], // list hidden — only on compare page
         minCompareSelection: DEFAULT_MIN_COMPARE_SELECTION,
         compareCap: DEFAULT_COMPARE_CAP,
     },
