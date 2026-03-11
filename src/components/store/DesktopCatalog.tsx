@@ -1626,85 +1626,144 @@ export const DesktopCatalog = ({
                     <div className={`flex-1 ${isTv ? 'space-y-1' : 'space-y-6'}`}>
                         {/* Results Header moved to Navbar via DiscoveryContext */}
 
-                        <motion.div
-                            key={isTv && tvIdleMode ? `tv-ambient-${tvRotationTick}` : 'catalog-static'}
-                            initial={isTv && tvIdleMode && viewMode !== 'list' ? { opacity: 1, y: 10 } : false}
-                            animate={{ opacity: 1, y: viewMode === 'list' ? 0 : 0 }}
-                            transition={{ duration: viewMode === 'list' ? 0 : 0.45, ease: 'easeOut' }}
-                            className={`grid ${
-                                viewMode === 'list'
-                                    ? 'grid-cols-1 w-full gap-6 subpixel-antialiased'
-                                    : isTv
-                                      ? 'grid-cols-3 gap-6 w-full'
-                                      : isPhone
-                                        ? 'grid-cols-1 gap-4 w-full'
-                                        : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full'
-                            }`}
-                        >
-                            {/* Ambient idle mode: first row rotates with animation */}
-                            {(() => {
-                                if (tvIdleMode && tvAmbientFirstRow) {
-                                    const firstRowIds = new Set(tvAmbientFirstRow.map(g => g.representative.id));
-                                    const rest = visibleGroups.filter(g => !firstRowIds.has(g.representative.id));
-                                    return [...tvAmbientFirstRow, ...rest];
-                                }
-                                return visibleGroups;
-                            })().map((group, idx) => {
-                                const v = group.representative;
-                                const isAmbientCard = tvIdleMode && tvAmbientFirstRow && idx < 3;
-                                // First row: new key each tick → triggers remount + animation
-                                // Rest: stable key → no unnecessary re-renders
-                                const key = isAmbientCard
-                                    ? `ambient-${tvRotationTick}-${v.id}`
-                                    : `stable-${v.id}-${(v as any).color || ''}`;
+                        {/* ── TV AMBIENT TICKER (idle mode) ── */}
+                        {isTv && tvIdleMode && viewMode !== 'list' ? (
+                            <div className="tv-ticker-wrapper">
+                                <div className="tv-ticker-track">
+                                    {/* Duplicate cards for seamless infinite loop */}
+                                    {[...visibleGroups, ...visibleGroups].map((group, idx) => {
+                                        const v = group.representative;
+                                        return (
+                                            <div
+                                                key={`ticker-${idx}-${v.id}`}
+                                                style={{ width: '260px', flexShrink: 0 }}
+                                            >
+                                                <CatalogCardAdapter
+                                                    variant={v}
+                                                    viewMode="grid"
+                                                    downpayment={downpayment}
+                                                    tenure={tenure}
+                                                    serviceability={serviceability}
+                                                    onLocationClick={() => setIsLocationPickerOpen(true)}
+                                                    isTv={true}
+                                                    isTvCompact={true}
+                                                    leadId={leadId}
+                                                    walletCoins={isLoggedIn ? availableCoins : null}
+                                                    showOClubPrompt={!isLoggedIn}
+                                                    showBcoinBadge={isLoggedIn || isTv}
+                                                    variantCount={group.variantCount}
+                                                    onExplore={() => {
+                                                        const make = String(group.make || '').trim();
+                                                        const model = String(group.model || '').trim();
+                                                        if (!make || !model) return;
+                                                        router.push(buildVariantExplorerUrl(make, model));
+                                                    }}
+                                                    onCompare={() =>
+                                                        toggleCompare({
+                                                            id: v.id,
+                                                            make: group.make,
+                                                            model: group.model,
+                                                            modelSlug: group.modelSlug,
+                                                            imageUrl: v.imageUrl || '/images/templates/t3_night.webp',
+                                                        })
+                                                    }
+                                                    isInCompare={compareIds.has(v.id)}
+                                                    onEditDownpayment={openDpEdit}
+                                                    onTogglePricingMode={() =>
+                                                        setPricingMode(prev => {
+                                                            const next = prev === 'cash' ? 'finance' : 'cash';
+                                                            if (next === 'finance') openDpEdit();
+                                                            return next;
+                                                        })
+                                                    }
+                                                    pricingMode={pricingMode}
+                                                />
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        ) : (
+                            <motion.div
+                                key={isTv && tvIdleMode ? `tv-ambient-${tvRotationTick}` : 'catalog-static'}
+                                initial={isTv && tvIdleMode && viewMode !== 'list' ? { opacity: 1, y: 10 } : false}
+                                animate={{ opacity: 1, y: viewMode === 'list' ? 0 : 0 }}
+                                transition={{ duration: viewMode === 'list' ? 0 : 0.45, ease: 'easeOut' }}
+                                className={`grid ${
+                                    viewMode === 'list'
+                                        ? 'grid-cols-1 w-full gap-6 subpixel-antialiased'
+                                        : isTv
+                                          ? 'grid-cols-3 gap-6 w-full'
+                                          : isPhone
+                                            ? 'grid-cols-1 gap-4 w-full'
+                                            : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full'
+                                }`}
+                            >
+                                {/* Ambient idle mode: first row rotates with animation */}
+                                {(() => {
+                                    if (tvIdleMode && tvAmbientFirstRow) {
+                                        const firstRowIds = new Set(tvAmbientFirstRow.map(g => g.representative.id));
+                                        const rest = visibleGroups.filter(g => !firstRowIds.has(g.representative.id));
+                                        return [...tvAmbientFirstRow, ...rest];
+                                    }
+                                    return visibleGroups;
+                                })().map((group, idx) => {
+                                    const v = group.representative;
+                                    const isAmbientCard = tvIdleMode && tvAmbientFirstRow && idx < 3;
+                                    // First row: new key each tick → triggers remount + animation
+                                    // Rest: stable key → no unnecessary re-renders
+                                    const key = isAmbientCard
+                                        ? `ambient-${tvRotationTick}-${v.id}`
+                                        : `stable-${v.id}-${(v as any).color || ''}`;
 
-                                const card = (
-                                    <CatalogCardAdapter
-                                        key={key}
-                                        variant={v}
-                                        viewMode={viewMode}
-                                        downpayment={downpayment}
-                                        tenure={tenure}
-                                        serviceability={serviceability}
-                                        onLocationClick={() => setIsLocationPickerOpen(true)}
-                                        isTv={isTv}
-                                        isTvCompact={false}
-                                        leadId={leadId}
-                                        walletCoins={isLoggedIn ? availableCoins : null}
-                                        showOClubPrompt={!isLoggedIn}
-                                        showBcoinBadge={isLoggedIn || isTv}
-                                        variantCount={group.variantCount}
-                                        onExplore={() => {
-                                            const make = String(group.make || '').trim();
-                                            const model = String(group.model || '').trim();
-                                            if (!make || !model) return;
-                                            router.push(buildVariantExplorerUrl(make, model));
-                                        }}
-                                        onCompare={() =>
-                                            toggleCompare({
-                                                id: v.id,
-                                                make: group.make,
-                                                model: group.model,
-                                                modelSlug: group.modelSlug,
-                                                imageUrl: v.imageUrl || '/images/templates/t3_night.webp',
-                                            })
-                                        }
-                                        isInCompare={compareIds.has(v.id)}
-                                        onEditDownpayment={openDpEdit}
-                                        onTogglePricingMode={() =>
-                                            setPricingMode(prev => {
-                                                const next = prev === 'cash' ? 'finance' : 'cash';
-                                                if (next === 'finance') openDpEdit();
-                                                return next;
-                                            })
-                                        }
-                                        pricingMode={pricingMode}
-                                    />
-                                );
+                                    const card = (
+                                        <CatalogCardAdapter
+                                            key={key}
+                                            variant={v}
+                                            viewMode={viewMode}
+                                            downpayment={downpayment}
+                                            tenure={tenure}
+                                            serviceability={serviceability}
+                                            onLocationClick={() => setIsLocationPickerOpen(true)}
+                                            isTv={isTv}
+                                            isTvCompact={false}
+                                            leadId={leadId}
+                                            walletCoins={isLoggedIn ? availableCoins : null}
+                                            showOClubPrompt={!isLoggedIn}
+                                            showBcoinBadge={isLoggedIn || isTv}
+                                            variantCount={group.variantCount}
+                                            onExplore={() => {
+                                                const make = String(group.make || '').trim();
+                                                const model = String(group.model || '').trim();
+                                                if (!make || !model) return;
+                                                router.push(buildVariantExplorerUrl(make, model));
+                                            }}
+                                            onCompare={() =>
+                                                toggleCompare({
+                                                    id: v.id,
+                                                    make: group.make,
+                                                    model: group.model,
+                                                    modelSlug: group.modelSlug,
+                                                    imageUrl: v.imageUrl || '/images/templates/t3_night.webp',
+                                                })
+                                            }
+                                            isInCompare={compareIds.has(v.id)}
+                                            onEditDownpayment={openDpEdit}
+                                            onTogglePricingMode={() =>
+                                                setPricingMode(prev => {
+                                                    const next = prev === 'cash' ? 'finance' : 'cash';
+                                                    if (next === 'finance') openDpEdit();
+                                                    return next;
+                                                })
+                                            }
+                                            pricingMode={pricingMode}
+                                        />
+                                    );
 
-                                return card;
-                            })}
-                        </motion.div>
+                                    return card;
+                                })}
+                            </motion.div>
+                        )}
                     </div>
                 </div>
 

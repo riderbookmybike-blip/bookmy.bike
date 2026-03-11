@@ -531,6 +531,37 @@ input[type='number'] {
     padding-top: 0.5rem !important; /* 8px — searchbar ke paas */
 }
 
+/* ── TV AMBIENT TICKER (idle mode) ─────────────────────────────────────────── */
+@keyframes tv-ticker-scroll {
+    0% {
+        transform: translateX(0);
+    }
+    100% {
+        transform: translateX(-50%);
+    }
+}
+
+[data-tv='1'] .tv-ticker-wrapper {
+    overflow: hidden;
+    /* bleed past side padding for full-width feel */
+    margin-left: -3rem;
+    margin-right: -3rem;
+    padding: 0.75rem 0;
+}
+
+[data-tv='1'] .tv-ticker-track {
+    display: flex;
+    gap: 1rem;
+    width: max-content;
+    animation: tv-ticker-scroll 35s linear infinite;
+    will-change: transform;
+}
+
+/* Pause on hover / mouse interaction */
+[data-tv='1'] .tv-ticker-wrapper:hover .tv-ticker-track {
+    animation-play-state: paused;
+}
+
 /* Kill backdrop-blur ONLY on Tailwind blur utility classes (not all * elements) */
 [data-tv='1'] .backdrop-blur-sm,
 [data-tv='1'] .backdrop-blur,
