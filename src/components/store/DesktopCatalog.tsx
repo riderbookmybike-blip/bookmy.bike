@@ -1566,21 +1566,20 @@ export const DesktopCatalog = ({
                         >
                             {visibleGroups.map((group, idx) => {
                                 const v = group.representative;
-                                // Sequential flip: slot s flips at ticks s, s+3, s+6...
-                                // version = how many times this slot has flipped
                                 const tick = tvRotationTick;
-                                const totalGroups = visibleGroups.length;
                                 const isAmbient = tvIdleMode && idx < 3;
+                                // Sequential flip: slot s flips at ticks s, s+3, s+6...
                                 const slotVersion = isAmbient ? Math.floor((tick + 2 - idx) / 3) : 0;
                                 const key = isAmbient
                                     ? `ambient-${idx}-${slotVersion}`
                                     : `stable-${v.id}-${(v as any).color || ''}`;
-                                // Each slot independently shows a different catalog card
-                                const displayGroup =
-                                    isAmbient && totalGroups > 3
-                                        ? visibleGroups[(idx + slotVersion * 3) % totalGroups]
-                                        : group;
-                                const dv = displayGroup.representative;
+                                // Cycle through ALL color variants (flat displayResults) — different color each rotation
+                                const allVariants = tvIdleMode ? displayResults : [];
+                                const totalVariants = allVariants.length;
+                                const dv =
+                                    isAmbient && totalVariants > 3
+                                        ? allVariants[(idx + slotVersion * 3) % totalVariants]
+                                        : v;
                                 return (
                                     <div key={key} className={isAmbient ? 'ambient-card-enter' : undefined}>
                                         <CatalogCardAdapter
