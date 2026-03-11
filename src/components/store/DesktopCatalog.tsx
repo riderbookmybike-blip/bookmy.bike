@@ -112,7 +112,6 @@ export const DesktopCatalog = ({
     });
     const [showHeader, setShowHeader] = useState(true);
     const [tvIdleMode, setTvIdleMode] = useState(false);
-    const [tvRotationOffset, setTvRotationOffset] = useState(0);
     const [tvRotationTick, setTvRotationTick] = useState(0);
     const tvIdleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const tvRotateIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -161,52 +160,32 @@ export const DesktopCatalog = ({
         return () => window.removeEventListener('toggleTvSearch', handleToggleSearch);
     }, [isTv]);
 
-    // TV & Desktop ambient idle mode
+    // Idle detection — flip effect triggers after inactivity
     useEffect(() => {
-        const scheduleIdleMode = () => {
+        const schedule = () => {
             if (tvIdleTimeoutRef.current) clearTimeout(tvIdleTimeoutRef.current);
-            tvIdleTimeoutRef.current = setTimeout(
-                () => {
-                    setTvIdleMode(true);
-                },
-                isTv ? 60000 : 90000
-            ); // TV: 60s, Desktop: 90s
+            tvIdleTimeoutRef.current = setTimeout(() => setTvIdleMode(true), isTv ? 60000 : 90000);
         };
-
-        const handleActivity = () => {
+        const onActivity = () => {
             setTvIdleMode(false);
-            scheduleIdleMode();
+            schedule();
         };
-
-        scheduleIdleMode();
-        const events: Array<keyof WindowEventMap> = [
-            'mousemove',
-            'mousedown',
-            'click',
-            'keydown',
-            'touchstart',
-            'wheel',
-            'scroll',
-        ];
-        events.forEach(event => window.addEventListener(event, handleActivity, { passive: true }));
-
+        schedule();
+        const events = ['mousemove', 'mousedown', 'click', 'keydown', 'touchstart', 'scroll'] as const;
+        events.forEach(e => window.addEventListener(e, onActivity, { passive: true }));
         return () => {
-            events.forEach(event => window.removeEventListener(event, handleActivity));
+            events.forEach(e => window.removeEventListener(e, onActivity));
             if (tvIdleTimeoutRef.current) clearTimeout(tvIdleTimeoutRef.current);
         };
     }, [isTv]);
 
-    // Ambient rotation: rotate first row every 10s when idle (TV & Desktop)
+    // Flip rotation: cycle 3 cards every 10s while idle
     useEffect(() => {
         if (!tvIdleMode) {
             if (tvRotateIntervalRef.current) clearInterval(tvRotateIntervalRef.current);
-            setTvRotationOffset(0);
             return;
         }
-        tvRotateIntervalRef.current = setInterval(() => {
-            setTvRotationOffset(prev => prev + 3);
-            setTvRotationTick(prev => prev + 1);
-        }, 10000);
+        tvRotateIntervalRef.current = setInterval(() => setTvRotationTick(t => t + 1), 10000);
         return () => {
             if (tvRotateIntervalRef.current) clearInterval(tvRotateIntervalRef.current);
         };
@@ -1200,20 +1179,6 @@ export const DesktopCatalog = ({
         return Math.max(Math.max(...prices) - 25000, 0);
     }, [displayResults]);
 
-    // TV auto-rotation disabled by UX decision.
-    useEffect(() => {
-        if (tvRotateIntervalRef.current) clearInterval(tvRotateIntervalRef.current);
-        setTvRotationOffset(0);
-    }, [groupedDisplayResults.length]);
-
-    useEffect(() => {
-        if (groupedDisplayResults.length === 0) {
-            setTvRotationOffset(0);
-            return;
-        }
-        setTvRotationOffset(prev => prev % groupedDisplayResults.length);
-    }, [groupedDisplayResults.length]);
-
     const renderedGroups = useMemo(() => groupedDisplayResults, [groupedDisplayResults]);
 
     const compareIds = useMemo(() => new Set(compareItems.map(item => item.id)), [compareItems]);
@@ -1221,45 +1186,6 @@ export const DesktopCatalog = ({
         if (viewMode !== 'list') return renderedGroups;
         return renderedGroups.filter(group => compareIds.has(group.representative.id));
     }, [viewMode, renderedGroups, compareIds]);
-
-    // Ambient first-row: show all variants of one model at a time
-    // Cycles through distinct models using tvRotationTick
-    const tvAmbientFirstRow = useMemo(() => {
-        if (!tvIdleMode || visibleGroups.length === 0) return null;
-
-        // Build ordered model list + variant map (preserving catalog order)
-        const modelOrder: string[] = [];
-        const byModel = new Map<string, typeof visibleGroups>();
-        visibleGroups.forEach(g => {
-            const model = g.representative?.model || '';
-            if (!byModel.has(model)) {
-                byModel.set(model, []);
-                modelOrder.push(model);
-            }
-            byModel.get(model)!.push(g);
-        });
-
-        const totalModels = modelOrder.length;
-        if (totalModels === 0) return null;
-
-        // Pick current model by tick — cycles all models
-        const currentModelIdx = tvRotationTick % totalModels;
-        const result: typeof visibleGroups = [];
-
-        // Fill 3 slots: current model variants first, overflow to next model
-        let modelPtr = currentModelIdx;
-        let modelLoops = 0;
-        while (result.length < 3 && modelLoops < totalModels) {
-            const model = modelOrder[modelPtr % totalModels];
-            const variants = byModel.get(model) || [];
-            const needed = 3 - result.length;
-            result.push(...variants.slice(0, needed));
-            modelPtr++;
-            modelLoops++;
-        }
-
-        return result.slice(0, 3);
-    }, [tvIdleMode, tvRotationTick, visibleGroups]);
 
     useEffect(() => {
         const minCompareSelection = VEHICLE_MODE_CONFIG.catalog.minCompareSelection;
@@ -1640,49 +1566,63 @@ export const DesktopCatalog = ({
                         >
                             {visibleGroups.map((group, idx) => {
                                 const v = group.representative;
-                                const key = `stable-${v.id}-${(v as any).color || ''}`;
+                                // First 3 cards rotate when idle — key changes on tick → CSS flip triggers
+                                const isAmbient = tvIdleMode && idx < 3;
+                                const key = isAmbient
+                                    ? `ambient-${tvRotationTick}-${idx}`
+                                    : `stable-${v.id}-${(v as any).color || ''}`;
+                                // Rotate which 3 cards to show in first row
+                                const totalGroups = visibleGroups.length;
+                                const offset = totalGroups > 3 ? (tvRotationTick * 3) % totalGroups : 0;
+                                const displayGroup =
+                                    tvIdleMode && idx < 3 && totalGroups > 3
+                                        ? visibleGroups[(offset + idx) % totalGroups]
+                                        : group;
+                                const dv = displayGroup.representative;
                                 return (
-                                    <CatalogCardAdapter
-                                        key={key}
-                                        variant={v}
-                                        viewMode={viewMode}
-                                        downpayment={downpayment}
-                                        tenure={tenure}
-                                        serviceability={serviceability}
-                                        onLocationClick={() => setIsLocationPickerOpen(true)}
-                                        isTv={isTv}
-                                        isTvCompact={false}
-                                        leadId={leadId}
-                                        walletCoins={isLoggedIn ? availableCoins : null}
-                                        showOClubPrompt={!isLoggedIn}
-                                        showBcoinBadge={isLoggedIn || isTv}
-                                        variantCount={group.variantCount}
-                                        onExplore={() => {
-                                            const make = String(group.make || '').trim();
-                                            const model = String(group.model || '').trim();
-                                            if (!make || !model) return;
-                                            router.push(buildVariantExplorerUrl(make, model));
-                                        }}
-                                        onCompare={() =>
-                                            toggleCompare({
-                                                id: v.id,
-                                                make: group.make,
-                                                model: group.model,
-                                                modelSlug: group.modelSlug,
-                                                imageUrl: v.imageUrl || '/images/templates/t3_night.webp',
-                                            })
-                                        }
-                                        isInCompare={compareIds.has(v.id)}
-                                        onEditDownpayment={openDpEdit}
-                                        onTogglePricingMode={() =>
-                                            setPricingMode(prev => {
-                                                const next = prev === 'cash' ? 'finance' : 'cash';
-                                                if (next === 'finance') openDpEdit();
-                                                return next;
-                                            })
-                                        }
-                                        pricingMode={pricingMode}
-                                    />
+                                    <div key={key} className={isAmbient ? 'ambient-card-enter' : undefined}>
+                                        <CatalogCardAdapter
+                                            key={`inner-${key}`}
+                                            variant={dv}
+                                            viewMode={viewMode}
+                                            downpayment={downpayment}
+                                            tenure={tenure}
+                                            serviceability={serviceability}
+                                            onLocationClick={() => setIsLocationPickerOpen(true)}
+                                            isTv={isTv}
+                                            isTvCompact={false}
+                                            leadId={leadId}
+                                            walletCoins={isLoggedIn ? availableCoins : null}
+                                            showOClubPrompt={!isLoggedIn}
+                                            showBcoinBadge={isLoggedIn || isTv}
+                                            variantCount={group.variantCount}
+                                            onExplore={() => {
+                                                const make = String(group.make || '').trim();
+                                                const model = String(group.model || '').trim();
+                                                if (!make || !model) return;
+                                                router.push(buildVariantExplorerUrl(make, model));
+                                            }}
+                                            onCompare={() =>
+                                                toggleCompare({
+                                                    id: v.id,
+                                                    make: group.make,
+                                                    model: group.model,
+                                                    modelSlug: group.modelSlug,
+                                                    imageUrl: v.imageUrl || '/images/templates/t3_night.webp',
+                                                })
+                                            }
+                                            isInCompare={compareIds.has(v.id)}
+                                            onEditDownpayment={openDpEdit}
+                                            onTogglePricingMode={() =>
+                                                setPricingMode(prev => {
+                                                    const next = prev === 'cash' ? 'finance' : 'cash';
+                                                    if (next === 'finance') openDpEdit();
+                                                    return next;
+                                                })
+                                            }
+                                            pricingMode={pricingMode}
+                                        />
+                                    </div>
                                 );
                             })}
                         </motion.div>
