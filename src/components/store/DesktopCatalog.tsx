@@ -1627,14 +1627,18 @@ export const DesktopCatalog = ({
                                         : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full'
                             }`}
                         >
-                            {/* Results Grid */}
                             {/* Ambient idle mode: first row rotates on TV & Desktop */}
-                            {(tvIdleMode && tvAmbientFirstRow
-                                ? [...tvAmbientFirstRow, ...visibleGroups.slice(3)]
-                                : visibleGroups
-                            ).map((group, idx) => {
+                            {(() => {
+                                if (tvIdleMode && tvAmbientFirstRow) {
+                                    // Exclude first-row IDs from rest to prevent duplicate keys
+                                    const firstRowIds = new Set(tvAmbientFirstRow.map(g => g.representative.id));
+                                    const rest = visibleGroups.filter(g => !firstRowIds.has(g.representative.id));
+                                    return [...tvAmbientFirstRow, ...rest];
+                                }
+                                return visibleGroups;
+                            })().map((group, idx) => {
                                 const v = group.representative;
-                                const key = `${v.id}-${(v as any).color || v.imageUrl || idx}`;
+                                const key = `ambient-${tvRotationTick}-${v.id}-${idx}`;
 
                                 return (
                                     <CatalogCardAdapter
