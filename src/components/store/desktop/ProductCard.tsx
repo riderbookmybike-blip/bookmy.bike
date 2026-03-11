@@ -42,6 +42,7 @@ export const ProductCard = ({
     onColorChange,
     onExplodeColors,
     isTv = false,
+    isTvCompact = false,
     bestOffer: rawBestOffer,
     leadId,
     basePath = '/store',
@@ -74,6 +75,7 @@ export const ProductCard = ({
     };
     onLocationClick?: () => void;
     isTv?: boolean;
+    isTvCompact?: boolean;
     bestOffer?: {
         price?: number;
         dealer?: string;
@@ -877,7 +879,7 @@ export const ProductCard = ({
                     transformStyle: 'flat',
                     transformOrigin: 'center center',
                 }}
-                className={`group bg-white border border-black/[0.04] rounded-[2rem] overflow-hidden flex flex-col shadow-[0_1px_2px_rgba(0,0,0,0.02),0_4px_12px_rgba(0,0,0,0.03),0_12px_24px_-4px_rgba(0,0,0,0.08)] hover:shadow-[0_20px_40px_-12px_rgba(244,176,0,0.15)] hover:border-brand-primary/30 transition-[border-color,box-shadow,opacity] duration-700 ${isTv ? 'min-h-[328px]' : 'min-h-[580px] md:min-h-[660px]'} ${isNavigating || isPending ? 'opacity-80' : ''}`}
+                className={`group bg-white border border-black/[0.04] rounded-[2rem] overflow-hidden flex flex-col shadow-[0_1px_2px_rgba(0,0,0,0.02),0_4px_12px_rgba(0,0,0,0.03),0_12px_24px_-4px_rgba(0,0,0,0.08)] hover:shadow-[0_20px_40px_-12px_rgba(244,176,0,0.15)] hover:border-brand-primary/30 transition-[border-color,box-shadow,opacity] duration-700 ${isTvCompact ? 'min-h-[270px]' : isTv ? 'min-h-[400px]' : 'min-h-[580px] md:min-h-[660px]'} ${isNavigating || isPending ? 'opacity-80' : ''}`}
             >
                 {/* Glare overlay */}
                 <motion.div
@@ -893,7 +895,7 @@ export const ProductCard = ({
                     }}
                 />
                 <div
-                    className={`${isTv ? 'h-[170px]' : 'h-[340px] md:h-[344px] lg:h-[384px]'} bg-slate-50 flex items-center justify-center relative p-4 border-b border-black/[0.04] overflow-hidden group/card`}
+                    className={`${isTvCompact ? 'h-[130px] p-2' : isTv ? 'h-[170px] p-4' : 'h-[340px] md:h-[344px] lg:h-[384px] p-4'} bg-slate-50 flex items-center justify-center relative border-b border-black/[0.04] overflow-hidden group/card`}
                     style={{ backgroundColor: selectedHex ? `${selectedHex}4D` : undefined }}
                 >
                     <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-transparent to-white/10 z-0" />
@@ -1061,7 +1063,7 @@ export const ProductCard = ({
                 </div>
 
                 <div
-                    className={`${isTv ? 'p-3' : 'p-3 md:p-6'} flex-1 flex flex-col justify-between relative bg-[#FAFAFA] z-10`}
+                    className={`${isTvCompact ? 'p-2.5' : isTv ? 'p-4' : 'p-3 md:p-6'} flex-1 flex flex-col justify-between relative bg-[#FAFAFA] z-10`}
                 >
                     <div className="relative z-10">
                         <div className="flex items-center justify-between">
@@ -1465,7 +1467,7 @@ export const ProductCard = ({
 
                     {!isPdp && (
                         <div
-                            className={`${isTv ? 'mt-1 space-y-1' : 'mt-1.5 md:mt-4 space-y-1.5 md:space-y-2'} relative z-20 w-full`}
+                            className={`${isTv ? 'mt-2 space-y-1.5 pb-3' : 'mt-1.5 md:mt-4 space-y-1.5 md:space-y-2'} relative z-20 w-full`}
                         >
                             {isUnserviceable ? (
                                 <button

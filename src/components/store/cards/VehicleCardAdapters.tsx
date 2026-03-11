@@ -30,6 +30,7 @@ interface BaseVehicleCardAdapterProps {
     };
     onLocationClick?: () => void;
     isTv?: boolean;
+    isTvCompact?: boolean;
     leadId?: string;
     walletCoins?: number | null;
     showOClubPrompt?: boolean;
@@ -65,6 +66,7 @@ function BaseVehicleCardAdapter({
     serviceability,
     onLocationClick,
     isTv,
+    isTvCompact,
     leadId,
     walletCoins,
     showOClubPrompt,
@@ -92,6 +94,7 @@ function BaseVehicleCardAdapter({
             serviceability={serviceability}
             onLocationClick={onLocationClick}
             isTv={isTv}
+            isTvCompact={isTvCompact}
             leadId={leadId}
             walletCoins={walletCoins}
             showOClubPrompt={showOClubPrompt}

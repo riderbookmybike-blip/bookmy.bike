@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter, JetBrains_Mono, Bruno_Ace_SC } from 'next/font/google';
 import './globals.css';
 
@@ -24,6 +24,13 @@ export const metadata: Metadata = {
     description:
         'The smartest way to buy your dream bike. Explore, compare, and book the best scooters and motorcycles with instant finance options.',
     // Robots configuration will be handled by robots.ts for host-based indexing
+};
+
+export const viewport: Viewport = {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 1,
+    viewportFit: 'cover',
 };
 
 import { ThemeProvider } from '@/components/providers/ThemeProvider';
@@ -61,6 +68,7 @@ export default function RootLayout({
     return (
         <html lang="en" suppressHydrationWarning>
             <head>
+                <meta name="viewport" content="width=device-width, initial-scale=1.0" />
                 <script id="theme-bootstrap" dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />
             </head>
             <body

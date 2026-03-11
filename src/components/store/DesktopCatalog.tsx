@@ -103,6 +103,13 @@ export const DesktopCatalog = ({
     const isPhone = device === 'phone';
     const [tvViewport, setTvViewport] = useState(false);
     const isTv = tvViewport;
+    const [viewportDebug, setViewportDebug] = useState({
+        width: 0,
+        height: 0,
+        dpr: 1,
+        tvLike: false,
+        forced: 'auto' as 'auto' | '1' | '0',
+    });
     const [showHeader, setShowHeader] = useState(true);
     const [tvIdleMode, setTvIdleMode] = useState(false);
     const [tvRotationOffset, setTvRotationOffset] = useState(0);
@@ -115,13 +122,35 @@ export const DesktopCatalog = ({
     useEffect(() => {
         if (typeof window === 'undefined') return;
         const syncTvViewport = () => {
+            const params = new URLSearchParams(window.location.search);
+            const forced = params.get('tv');
             const explicitTv = document.documentElement.dataset.tv === '1';
-            const tvLikeViewport = window.innerWidth >= 1500 && window.innerHeight <= 1000;
-            setTvViewport(explicitTv || tvLikeViewport);
+            const width = window.innerWidth || document.documentElement.clientWidth || 0;
+            const height = window.innerHeight || document.documentElement.clientHeight || 0;
+            // TV browser often reports reduced CSS viewport (e.g. 960x540 @ dpr2).
+            const tvLikeViewport =
+                (width >= 1500 && height <= 1000) || (width >= 900 && width <= 1200 && height >= 500 && height <= 700);
+            const forcedTv = forced === '1' ? true : forced === '0' ? false : null;
+            setViewportDebug({
+                width,
+                height,
+                dpr: window.devicePixelRatio || 1,
+                tvLike: tvLikeViewport,
+                forced: forced === '1' || forced === '0' ? (forced as '1' | '0') : 'auto',
+            });
+            const resolved = forcedTv ?? (explicitTv || tvLikeViewport);
+            setTvViewport(resolved);
+            // Propagate heuristic TV detection to DOM so CSS [data-tv="1"] works
+            // even for Windows Chrome where UA-based detection returns false
+            document.documentElement.dataset.tv = resolved ? '1' : '0';
         };
         syncTvViewport();
+        window.addEventListener('popstate', syncTvViewport);
         window.addEventListener('resize', syncTvViewport);
-        return () => window.removeEventListener('resize', syncTvViewport);
+        return () => {
+            window.removeEventListener('popstate', syncTvViewport);
+            window.removeEventListener('resize', syncTvViewport);
+        };
     }, []);
 
     // Listen for TV search toggle
@@ -1160,22 +1189,11 @@ export const DesktopCatalog = ({
         return Math.max(Math.max(...prices) - 25000, 0);
     }, [displayResults]);
 
+    // TV auto-rotation disabled by UX decision.
     useEffect(() => {
-        if (!isTv || !tvIdleMode || groupedDisplayResults.length <= 1) {
-            if (tvRotateIntervalRef.current) clearInterval(tvRotateIntervalRef.current);
-            return;
-        }
-
         if (tvRotateIntervalRef.current) clearInterval(tvRotateIntervalRef.current);
-        tvRotateIntervalRef.current = setInterval(() => {
-            setTvRotationOffset(prev => (prev + 1) % groupedDisplayResults.length);
-            setTvRotationTick(prev => prev + 1);
-        }, 7000);
-
-        return () => {
-            if (tvRotateIntervalRef.current) clearInterval(tvRotateIntervalRef.current);
-        };
-    }, [isTv, tvIdleMode, groupedDisplayResults.length]);
+        setTvRotationOffset(0);
+    }, [groupedDisplayResults.length]);
 
     useEffect(() => {
         if (groupedDisplayResults.length === 0) {
@@ -1185,12 +1203,7 @@ export const DesktopCatalog = ({
         setTvRotationOffset(prev => prev % groupedDisplayResults.length);
     }, [groupedDisplayResults.length]);
 
-    const renderedGroups = useMemo(() => {
-        if (!isTv || !tvIdleMode || groupedDisplayResults.length <= 1) return groupedDisplayResults;
-        const offset = tvRotationOffset % groupedDisplayResults.length;
-        if (offset === 0) return groupedDisplayResults;
-        return [...groupedDisplayResults.slice(offset), ...groupedDisplayResults.slice(0, offset)];
-    }, [isTv, tvIdleMode, tvRotationOffset, groupedDisplayResults]);
+    const renderedGroups = useMemo(() => groupedDisplayResults, [groupedDisplayResults]);
 
     const compareIds = useMemo(() => new Set(compareItems.map(item => item.id)), [compareItems]);
     const visibleGroups = useMemo(() => {
@@ -1266,7 +1279,11 @@ export const DesktopCatalog = ({
                     </div>
                 </div>
             )}
-            <div className={`flex-1 store-page-shell ${showLocationGate ? 'pointer-events-none select-none' : ''}`}>
+            <div
+                className={`flex-1 store-page-shell ${showLocationGate ? 'pointer-events-none select-none' : ''} ${
+                    isTv ? 'px-12' : ''
+                }`}
+            >
                 <DiscoveryBar
                     className={
                         isTv
@@ -1556,7 +1573,7 @@ export const DesktopCatalog = ({
                     )}
 
                     {/* Main Content Area */}
-                    <div className="flex-1 space-y-6">
+                    <div className={`flex-1 ${isTv ? 'space-y-1' : 'space-y-6'}`}>
                         {/* Results Header moved to Navbar via DiscoveryContext */}
 
                         <motion.div
@@ -1568,7 +1585,7 @@ export const DesktopCatalog = ({
                                 viewMode === 'list'
                                     ? 'grid-cols-1 w-full gap-6 subpixel-antialiased'
                                     : isTv
-                                      ? 'tv-catalog-grid w-full'
+                                      ? 'grid-cols-3 gap-6 w-full'
                                       : isPhone
                                         ? 'grid-cols-1 gap-4 w-full'
                                         : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full'
@@ -1589,6 +1606,7 @@ export const DesktopCatalog = ({
                                         serviceability={serviceability}
                                         onLocationClick={() => setIsLocationPickerOpen(true)}
                                         isTv={isTv}
+                                        isTvCompact={false}
                                         leadId={leadId}
                                         walletCoins={isLoggedIn ? availableCoins : null}
                                         showOClubPrompt={!isLoggedIn}
@@ -1965,6 +1983,30 @@ export const DesktopCatalog = ({
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {/* TV/Desktop Debug Footer Badge */}
+            <div className="fixed bottom-2 right-2 z-[250] pointer-events-none">
+                <div className="rounded-lg border border-slate-200 bg-white/95 px-2.5 py-1.5 text-[10px] font-bold text-slate-700 shadow-lg backdrop-blur-sm">
+                    <div className="leading-tight">
+                        <span className={isTv ? 'text-emerald-600' : 'text-blue-600'}>
+                            {isTv ? 'TV_MODE' : 'DESKTOP_MODE'}
+                        </span>
+                        <span className="text-slate-400"> | </span>
+                        <span>
+                            {viewportDebug.width}x{viewportDebug.height}
+                        </span>
+                    </div>
+                    <div className="leading-tight text-slate-500">
+                        <span>dpr:{viewportDebug.dpr.toFixed(2)}</span>
+                        <span className="text-slate-400"> | </span>
+                        <span>tv-like:{viewportDebug.tvLike ? 'Y' : 'N'}</span>
+                        <span className="text-slate-400"> | </span>
+                        <span>zoom~{Math.round((1 / viewportDebug.dpr) * 100)}%</span>
+                        <span className="text-slate-400"> | </span>
+                        <span>forced:{viewportDebug.forced}</span>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 };

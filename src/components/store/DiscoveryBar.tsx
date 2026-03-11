@@ -73,7 +73,7 @@ export function DiscoveryBar({
 
     return (
         <header
-            className={`hidden md:block ${disableSticky ? '' : 'sticky z-[90] mb-6'} py-0 transition-all duration-700 ease-in-out ${className}`}
+            className={`hidden md:block ${disableSticky ? '' : `sticky z-[90] ${reduceEffects ? 'mb-2' : 'mb-6'}`} py-0 transition-all duration-700 ease-in-out ${className}`}
             style={disableSticky ? {} : { top: 'var(--header-h)' }}
         >
             <div className="w-full">

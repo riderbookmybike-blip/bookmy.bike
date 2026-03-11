@@ -500,3 +500,64 @@ input[type='number'] {
 .animate-shimmer {
     animation: shimmer 2s infinite;
 }
+
+/* =============================================
+   TCL TV OPTIMIZATION (960×540 CSS px, DPR 2.0, Physical 1920×1080)
+   Activated when data-tv="1" on <html> — set by DesktopCatalog heuristic.
+   SURGICAL approach: only target specific blur utilities, not all elements.
+   ============================================= */
+[data-tv='1'] {
+    /* Global crisp text rendering */
+    -webkit-font-smoothing: antialiased !important;
+    -moz-osx-font-smoothing: grayscale !important;
+    text-rendering: optimizeLegibility !important;
+
+    /* Compact header for 540px viewport height */
+    --header-h: 56px;
+}
+
+/* Left/Right breathing room — md:px-6 override fix for TV */
+[data-tv='1'] .store-page-shell,
+[data-tv='1'] .page-container {
+    padding-left: 3rem !important; /* 48px */
+    padding-right: 3rem !important; /* 48px */
+    padding-top: 0.5rem !important; /* 8px — searchbar header ke paas */
+}
+
+/* Kill backdrop-blur ONLY on Tailwind blur utility classes (not all * elements) */
+[data-tv='1'] .backdrop-blur-sm,
+[data-tv='1'] .backdrop-blur,
+[data-tv='1'] .backdrop-blur-md,
+[data-tv='1'] .backdrop-blur-lg,
+[data-tv='1'] .backdrop-blur-xl,
+[data-tv='1'] .backdrop-blur-2xl,
+[data-tv='1'] .backdrop-blur-3xl {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+/* Note: header background intentionally NOT overridden — let it render as desktop */
+
+/* Focus ring — yellow brand color, clearly visible from 6-8 feet */
+[data-tv='1'] :focus-visible {
+    outline: 3px solid #ffd700 !important;
+    outline-offset: 3px !important;
+    border-radius: 8px !important;
+}
+
+/* Crisp image rendering at native DPR */
+[data-tv='1'] img {
+    image-rendering: -webkit-optimize-contrast;
+}
+
+/* TV readable typography */
+[data-tv='1'] body {
+    font-size: 15px;
+    line-height: 1.5;
+}
+
+/* Scrollbar: slightly thicker for TV */
+[data-tv='1'] .scrollbar-thin::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}

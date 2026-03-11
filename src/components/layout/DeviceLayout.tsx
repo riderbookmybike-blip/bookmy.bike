@@ -33,8 +33,8 @@ export const DeviceLayout: React.FC<DeviceLayoutProps> = ({ mobile, tablet, desk
     const dpr = typeof window !== 'undefined' ? window.devicePixelRatio : 1;
     const isTv =
         width >= 2000 ||
-        (width === 960 && height === 540 && dpr >= 2) ||
-        (width === 1280 && height === 720 && dpr >= 2) ||
+        (width >= 920 && width <= 1000 && height >= 500 && height <= 580 && dpr >= 1.5) ||
+        (width >= 1240 && width <= 1320 && height >= 680 && height <= 760 && dpr >= 1.5) ||
         (width >= 1110 && width <= 1200 && height >= 600 && height <= 700);
 
     if (isTv && tv) {
