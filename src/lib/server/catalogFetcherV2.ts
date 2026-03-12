@@ -636,7 +636,7 @@ export async function fetchCatalogV2(stateCode: string = 'MH'): Promise<ProductV
         },
         ['catalog-v2-mapped', stateCode],
         {
-            revalidate: 300,
+            revalidate: false, // Cache indefinitely — invalidated via revalidateTag() on price/catalog writes
             tags: [CACHE_TAGS.catalog, CACHE_TAGS.catalog_global],
         }
     );

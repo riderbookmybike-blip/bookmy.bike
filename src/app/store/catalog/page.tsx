@@ -4,7 +4,7 @@ import SystemCatalogRouter from './SystemCatalogRouter';
 import { Metadata } from 'next';
 import { getInitialDeviceType } from '@/lib/utils/device';
 
-export const revalidate = 300;
+export const revalidate = false; // Cache indefinitely — invalidated via revalidateTag() on price/catalog updates
 const DEFAULT_CATALOG_STATE = 'MH';
 
 export const metadata: Metadata = {
