@@ -40,6 +40,7 @@ import {
     Instagram,
     Eye,
     ExternalLink,
+    Check,
 } from 'lucide-react';
 import { useFavorites } from '@/lib/favorites/favoritesContext';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
@@ -193,31 +194,79 @@ ${referralUrl}`;
     const encodedReferralText = useMemo(() => encodeURIComponent(referralText), [referralText]);
     const encodedReferralUrl = useMemo(() => encodeURIComponent(referralUrl), [referralUrl]);
 
+    // Real brand SVGs with brand colors
+    const BrandIcons = {
+        whatsapp: (
+            <svg viewBox="0 0 24 24" fill="#25D366" width="14" height="14">
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" />
+                <path d="M12 0C5.373 0 0 5.373 0 12c0 2.126.556 4.12 1.527 5.849L0 24l6.335-1.524A11.94 11.94 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-5.006-1.374l-.36-.214-3.724.897.939-3.619-.234-.373A9.818 9.818 0 0112 2.182c5.424 0 9.818 4.394 9.818 9.818S17.424 21.818 12 21.818z" />
+            </svg>
+        ),
+        instagram: (
+            <svg viewBox="0 0 24 24" width="14" height="14">
+                <defs>
+                    <linearGradient id="ig-grad" x1="0%" y1="100%" x2="100%" y2="0%">
+                        <stop offset="0%" stopColor="#f09433" />
+                        <stop offset="25%" stopColor="#e6683c" />
+                        <stop offset="50%" stopColor="#dc2743" />
+                        <stop offset="75%" stopColor="#cc2366" />
+                        <stop offset="100%" stopColor="#bc1888" />
+                    </linearGradient>
+                </defs>
+                <path
+                    fill="url(#ig-grad)"
+                    d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"
+                />
+            </svg>
+        ),
+        facebook: (
+            <svg viewBox="0 0 24 24" fill="#1877F2" width="14" height="14">
+                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+            </svg>
+        ),
+        twitter: (
+            <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
+                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.26 5.632zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+            </svg>
+        ),
+        telegram: (
+            <svg viewBox="0 0 24 24" fill="#229ED9" width="14" height="14">
+                <path d="M11.944 0A12 12 0 000 12a12 12 0 0012 12 12 12 0 0012-12A12 12 0 0012 0a12 12 0 00-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 01.171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z" />
+            </svg>
+        ),
+    };
+
     const socialShareLinks = useMemo(
         () => [
             {
                 key: 'whatsapp',
                 label: 'WhatsApp',
                 href: `https://api.whatsapp.com/send?text=${encodedReferralText}`,
-                icon: MessageSquare,
+                brandIcon: 'whatsapp',
+            },
+            {
+                key: 'instagram',
+                label: 'Instagram',
+                href: `https://www.instagram.com/?url=${encodedReferralUrl}`,
+                brandIcon: 'instagram',
             },
             {
                 key: 'facebook',
                 label: 'Facebook',
                 href: `https://www.facebook.com/sharer/sharer.php?u=${encodedReferralUrl}`,
-                icon: Facebook,
+                brandIcon: 'facebook',
             },
             {
                 key: 'twitter',
                 label: 'X',
                 href: `https://twitter.com/intent/tweet?text=${encodedReferralText}`,
-                icon: Twitter,
+                brandIcon: 'twitter',
             },
             {
                 key: 'telegram',
                 label: 'Telegram',
                 href: `https://t.me/share/url?url=${encodedReferralUrl}&text=${encodedReferralText}`,
-                icon: Send,
+                brandIcon: 'telegram',
             },
         ],
         [encodedReferralText, encodedReferralUrl]
@@ -1415,87 +1464,53 @@ ${referralUrl}`;
                                                     />
                                                 </motion.div>
                                             )}
-
-                                            {/* Earn Now - Referral share */}
+                                            {/* Share & Earn — compact badge */}
                                             {user && referralCode && (
                                                 <motion.div
                                                     variants={itemVariants}
-                                                    className="rounded-3xl border border-amber-200/80 dark:border-amber-500/30 bg-gradient-to-br from-amber-50 to-white dark:from-amber-500/10 dark:to-white/[0.02] p-3.5 space-y-3"
+                                                    className="flex items-center gap-2 px-3 py-2 rounded-2xl border border-amber-200/70 dark:border-amber-500/20 bg-amber-50/60 dark:bg-amber-500/5"
                                                 >
-                                                    <div className="flex items-center justify-between">
-                                                        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-amber-700 dark:text-amber-300">
-                                                            Earn Now
-                                                        </p>
-                                                        <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
-                                                            Code: {referralCode}
-                                                        </span>
-                                                    </div>
-
-                                                    <div className="rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#0B1224] px-3 py-2.5">
-                                                        <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                                                            Referral URL
-                                                        </p>
-                                                        <p className="mt-1 text-[11px] font-semibold text-slate-700 dark:text-slate-200 break-all">
-                                                            {referralUrl}
+                                                    {/* Label */}
+                                                    <div className="flex items-center gap-1.5 shrink-0">
+                                                        <div className="w-6 h-6 rounded-lg bg-amber-100 dark:bg-amber-500/20 flex items-center justify-center">
+                                                            <Share2
+                                                                size={12}
+                                                                className="text-amber-600 dark:text-amber-400"
+                                                            />
+                                                        </div>
+                                                        <p className="text-[8px] font-black uppercase tracking-[0.14em] text-amber-700 dark:text-amber-400 whitespace-nowrap">
+                                                            Share & Earn
                                                         </p>
                                                     </div>
 
-                                                    <div className="grid grid-cols-5 gap-2">
+                                                    {/* Social icons — real brand colors */}
+                                                    <div className="flex items-center gap-1.5 flex-1 justify-end">
                                                         {socialShareLinks.map(item => (
                                                             <a
                                                                 key={item.key}
                                                                 href={item.href}
                                                                 target="_blank"
                                                                 rel="noopener noreferrer"
-                                                                className="h-10 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.02] text-slate-600 dark:text-slate-300 hover:text-brand-primary hover:border-brand-primary/40 transition-all flex items-center justify-center"
-                                                                title={`Share on ${item.label}`}
-                                                                aria-label={`Share on ${item.label}`}
+                                                                title={item.label}
+                                                                className="w-7 h-7 rounded-xl border border-slate-200/80 dark:border-white/10 bg-white dark:bg-white/[0.04] transition-all flex items-center justify-center hover:scale-110 hover:shadow-sm"
                                                             >
-                                                                <item.icon size={15} />
+                                                                {BrandIcons[item.brandIcon as keyof typeof BrandIcons]}
                                                             </a>
                                                         ))}
+                                                        {/* Copy */}
                                                         <button
                                                             type="button"
                                                             onClick={handleCopyReferralUrl}
-                                                            className={`h-10 rounded-xl border transition-all flex items-center justify-center ${
+                                                            title="Copy referral link"
+                                                            className={`w-7 h-7 rounded-xl border flex items-center justify-center transition-all ${
                                                                 referralCopied
                                                                     ? 'border-emerald-300 bg-emerald-50 text-emerald-600 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-300'
-                                                                    : 'border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.02] text-slate-600 dark:text-slate-300 hover:text-brand-primary hover:border-brand-primary/40'
+                                                                    : 'border-amber-200/80 dark:border-amber-500/20 bg-white dark:bg-white/[0.04] text-slate-600 dark:text-slate-300 hover:text-amber-600 hover:border-amber-400'
                                                             }`}
-                                                            title="Copy referral URL"
-                                                            aria-label="Copy referral URL"
                                                         >
-                                                            <Copy size={15} />
+                                                            {referralCopied ? <Check size={12} /> : <Copy size={12} />}
                                                         </button>
                                                     </div>
-
-                                                    <div className="grid grid-cols-2 gap-2">
-                                                        <a
-                                                            href={`/referral-invite/${referralCode}`}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="h-10 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.02] text-slate-700 dark:text-slate-200 hover:text-brand-primary hover:border-brand-primary/40 transition-all flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-[0.08em]"
-                                                        >
-                                                            <ExternalLink size={14} />
-                                                            View Live
-                                                        </a>
-                                                        <button
-                                                            type="button"
-                                                            onClick={handleShareReferralImage}
-                                                            className="h-10 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.02] text-slate-700 dark:text-slate-200 hover:text-brand-primary hover:border-brand-primary/40 transition-all flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-[0.08em]"
-                                                        >
-                                                            <Share2 size={14} />
-                                                            Share Card
-                                                        </button>
-                                                    </div>
-                                                    <button
-                                                        type="button"
-                                                        onClick={handleDownloadReferralImage}
-                                                        className="w-full h-11 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-black font-black text-[10px] uppercase tracking-[0.16em] hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-lg"
-                                                    >
-                                                        <Download size={15} />
-                                                        Download Premium Invite
-                                                    </button>
                                                 </motion.div>
                                             )}
 
