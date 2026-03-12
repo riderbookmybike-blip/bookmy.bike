@@ -208,7 +208,7 @@ export default function ProductClient({
                 .eq('id', user.id)
                 .maybeSingle();
             const role = String(memberProfile?.role || '').toUpperCase();
-            const roleSignalsStaff = !!role && !['MEMBER', 'BMB_USER', 'CUSTOMER'].includes(role);
+            const roleSignalsStaff = !!role && !['MEMBER', 'CUSTOMER'].includes(role);
             const emailSignalsStaff = user.email?.endsWith('@bookmy.bike') || false;
 
             if (active) {
@@ -454,10 +454,18 @@ export default function ProductClient({
     }, []);
 
     const hasResolvedLocation = Boolean(
-        initialLocation?.district ||
-        initialLocation?.pincode ||
-        cachedLocationHint?.district ||
-        cachedLocationHint?.pincode
+        // Require lat/lng (for 200km radius RPC) OR pincode (can be geo-resolved)
+        (() => {
+            if (typeof window === 'undefined') return false;
+            try {
+                const cached = localStorage.getItem('bkmb_user_pincode');
+                if (!cached) return false;
+                const parsed = JSON.parse(cached);
+                return Boolean(parsed?.lat && parsed?.lng) || Boolean(parsed?.pincode);
+            } catch {
+                return false;
+            }
+        })()
     );
     const isDealerFetchDisabled = hasResolvedDealer || (pdpGateEnabled ? !isLoggedIn || !hasResolvedLocation : false);
 
@@ -527,6 +535,10 @@ export default function ProductClient({
         legacyBestOffer?.dealer_id ||
         legacyBestOffer?.id ||
         undefined;
+    const resolvedStudioIdForUrl =
+        ssppServerPricing?.dealer?.studio_id ||
+        initialServerPricing?.dealer?.studio_id ||
+        initialPrice?.dealer?.studio_id;
 
     const shareInFlightRef = useRef(false);
 
@@ -542,10 +554,11 @@ export default function ProductClient({
         // Remove legacy pincode if it somehow exists
         url.searchParams.delete('pincode');
 
-        if (initialLocation?.district) {
-            url.searchParams.set('district', initialLocation.district);
-        } else if (initialLocation?.pincode) {
-            url.searchParams.set('district', initialLocation.pincode);
+        url.searchParams.delete('district');
+        if (resolvedStudioIdForUrl) {
+            url.searchParams.set('studio', String(resolvedStudioIdForUrl).toUpperCase());
+        } else {
+            url.searchParams.delete('studio');
         }
 
         const existingState = url.searchParams.get('state');
@@ -714,15 +727,10 @@ export default function ProductClient({
                 district: resolvedLocation?.district || null,
                 stateCode: resolvedLocation?.stateCode || null,
                 delivery_tat_days:
-                    ((bestOffer as any)?.delivery_tat_days ??
+                    (bestOffer as any)?.delivery_tat_days ??
                     (bestOffer as any)?.deliveryTatDays ??
                     (bestOffer as any)?.tat_days ??
-                    ((bestOffer as any)?.tat_effective_hours ?? (bestOffer as any)?.tatEffectiveHours ?? null) !== null)
-                        ? Math.ceil(
-                              Number((bestOffer as any)?.tat_effective_hours ?? (bestOffer as any)?.tatEffectiveHours) /
-                                  24
-                          )
-                        : null,
+                    null,
                 checked_at: new Date().toISOString(),
             },
             pricing_snapshot: {
@@ -1049,16 +1057,12 @@ export default function ProductClient({
         setUserDownPayment,
     };
 
-    const winnerTatHours =
-        (bestOffer as any)?.tat_effective_hours ??
-        (bestOffer as any)?.tatEffectiveHours ??
-        (bestOffer as any)?.delivery_tat_hours ??
-        null;
     const winnerTatDays =
         (bestOffer as any)?.delivery_tat_days ??
         (bestOffer as any)?.deliveryTatDays ??
         (bestOffer as any)?.tat_days ??
-        (winnerTatHours !== null && winnerTatHours !== undefined ? Math.ceil(Number(winnerTatHours) / 24) : null);
+        (ssppServerPricing as any)?.dealer?.delivery_tat_days ??
+        null;
 
     const pdpDealerIdForParity =
         ssppServerPricing?.dealer?.id ||
@@ -1092,7 +1096,7 @@ export default function ProductClient({
         variantParam,
         data: {
             ...data,
-            tat_effective_hours: winnerTatHours,
+            tat_effective_hours: null,
             delivery_tat_days: winnerTatDays,
         },
         handlers,
