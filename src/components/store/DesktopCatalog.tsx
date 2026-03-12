@@ -511,6 +511,17 @@ export const DesktopCatalog = ({
                     console.error('[Location] Cookie set failed:', err);
                 }
                 window.dispatchEvent(new Event('locationChanged'));
+                // Save lat/lng to profile (fire-and-forget)
+                if (cachedData.lat && cachedData.lng) {
+                    updateSelfMemberLocation({
+                        pincode: updated.pincode,
+                        district: updated.district || null,
+                        taluka: updated.taluka || null,
+                        state: updated.state || null,
+                        latitude: cachedData.lat,
+                        longitude: cachedData.lng,
+                    }).catch(err => console.error('[Location] Profile update failed:', err));
+                }
                 return; // STOP HERE - don't ask for geolocation
             }
             // Tier 3: Browser Geolocation
@@ -712,6 +723,17 @@ export const DesktopCatalog = ({
                                                 console.error('[Location] Cookie set failed:', cookieErr);
                                             }
                                             window.dispatchEvent(new Event('locationChanged'));
+                                            // Save lat/lng to profile (fire-and-forget)
+                                            updateSelfMemberLocation({
+                                                pincode,
+                                                district: userDist || null,
+                                                taluka: nearest.taluka || null,
+                                                state: result.state || null,
+                                                latitude,
+                                                longitude,
+                                            }).catch(err =>
+                                                console.error('[Location] Profile update (retry) failed:', err)
+                                            );
                                             return;
                                         }
                                     } catch (retryErr) {
@@ -1034,52 +1056,87 @@ export const DesktopCatalog = ({
 
     const normalize = (value?: string) => (value || '').toLowerCase().trim();
 
+    // Fuzzy match: tolerates small typos (max 2 char edit distance for words >=4 chars)
+    const fuzzyMatch = (text: string, query: string): boolean => {
+        if (!text || !query) return false;
+        if (text.includes(query)) return true;
+        // Word-level fuzzy: each query word checked against each text word
+        const qWords = query.split(/\s+/).filter(Boolean);
+        const tWords = text.split(/\s+/).filter(Boolean);
+        return qWords.every(qw => {
+            if (text.includes(qw)) return true;
+            return tWords.some(tw => {
+                if (tw.includes(qw) || qw.includes(tw)) return true;
+                // Levenshtein for longer words
+                if (qw.length < 3) return false;
+                const maxDist = qw.length <= 4 ? 1 : 2;
+                const m = qw.length,
+                    n = tw.length;
+                if (Math.abs(m - n) > maxDist) return false;
+                const dp: number[][] = Array.from({ length: m + 1 }, (_, i) =>
+                    Array.from({ length: n + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0))
+                );
+                for (let i = 1; i <= m; i++)
+                    for (let j = 1; j <= n; j++)
+                        dp[i][j] =
+                            qw[i - 1] === tw[j - 1]
+                                ? dp[i - 1][j - 1]
+                                : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+                return dp[m][n] <= maxDist;
+            });
+        });
+    };
+
+    // Search dropdown state
+    const [searchFocused, setSearchFocused] = useState(false);
+    const searchContainerRef = useRef<HTMLDivElement>(null);
+
+    // Close dropdown on outside click
+    useEffect(() => {
+        const handler = (e: MouseEvent) => {
+            if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+                setSearchFocused(false);
+            }
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+
     const resultsForQuery = useMemo(() => {
         const query = normalize(searchQuery);
         if (!query) return [];
         return results.filter(v => {
-            const makeMatch = normalize(v.make).includes(query);
-            const modelMatch = normalize(v.model).includes(query);
-            const variantMatch = normalize(v.variant).includes(query);
-            return makeMatch || modelMatch || variantMatch;
+            const makeText = normalize(v.make);
+            const modelText = normalize(v.model);
+            const variantText = normalize(v.variant);
+            return fuzzyMatch(makeText, query) || fuzzyMatch(modelText, query) || fuzzyMatch(variantText, query);
         });
     }, [results, searchQuery]);
 
-    const modelCounts = useMemo(() => {
-        const map = new Map<string, number>();
-        const source = resultsForQuery.length > 0 ? resultsForQuery : [];
-        source.forEach(v => {
-            const key = v.model;
-            map.set(key, (map.get(key) || 0) + 1);
-        });
-        return map;
-    }, [resultsForQuery]);
-
-    const modelOptions = useMemo(() => {
+    // Instant dropdown suggestions — unique model+make combos, max 6
+    const searchSuggestions = useMemo(() => {
         const query = normalize(searchQuery);
-        if (!query) return [];
-        return Array.from(modelCounts.keys()).slice(0, 8);
-    }, [modelCounts, searchQuery]);
-
-    useEffect(() => {
-        if (!isSmart) return;
-        const query = normalize(searchQuery);
-        if (!query) return;
-        const exactMatches = resultsForQuery.filter(v => normalize(v.model) === query);
-        const uniqueModels = Array.from(new Set(exactMatches.map(v => v.model)));
-        if (uniqueModels.length === 1) {
-            const model = uniqueModels[0];
-            if (smartModel !== model) {
-                setSmartModel(model);
-                setSmartVariant(null);
-                setSmartColor(null);
+        if (!query || query.length < 1) return [];
+        const seen = new Set<string>();
+        const suggestions: { key: string; make: string; model: string; count: number; bodyType?: string }[] = [];
+        for (const v of results) {
+            const key = `${normalize(v.make)}-${normalize(v.model)}`;
+            if (seen.has(key)) continue;
+            const makeText = normalize(v.make);
+            const modelText = normalize(v.model);
+            if (fuzzyMatch(makeText, query) || fuzzyMatch(modelText, query)) {
+                seen.add(key);
+                const count = results.filter(r => normalize(r.model) === normalize(v.model)).length;
+                suggestions.push({ key, make: v.make, model: v.model, count, bodyType: (v as any).bodyType });
             }
-        } else if (uniqueModels.length === 0) {
-            setSmartModel(null);
-            setSmartVariant(null);
-            setSmartColor(null);
+            if (suggestions.length >= 6) break;
         }
-    }, [isSmart, resultsForQuery, searchQuery, smartModel]);
+        return suggestions;
+    }, [results, searchQuery]);
+
+    const modelOptions: string[] = [];
+
+    // Removed: smart model auto-selection from search query (pills replaced by dropdown)
 
     const variantOptions = useMemo(() => {
         if (!smartModel) return [];
@@ -1270,6 +1327,8 @@ export const DesktopCatalog = ({
                     }
                     searchQuery={searchQuery}
                     onSearchChange={setSearchQuery}
+                    searchSuggestions={searchSuggestions}
+                    onSuggestionSelect={(make, model) => router.push(buildVariantExplorerUrl(make, model))}
                     pricingMode={pricingMode}
                     onPricingModeChange={mode => {
                         setPricingMode(mode as any);
@@ -1290,8 +1349,8 @@ export const DesktopCatalog = ({
                     allowedViewModes={VEHICLE_MODE_CONFIG.catalog.allowedViews}
                     centerContent={
                         <>
-                            {/* Body type quick-filter pills — show when no search is typed */}
-                            {!searchQuery && (
+                            {/* Body type quick-filter pills — always visible */}
+                            {
                                 <div className="hidden lg:flex items-center gap-1.5">
                                     {bodyOptions.map(type => {
                                         const isActive = selectedBodyTypes.includes(type);
@@ -1337,102 +1396,7 @@ export const DesktopCatalog = ({
                                         );
                                     })}
                                 </div>
-                            )}
-                            {isSmart && !smartModel && (
-                                <div className="flex items-center gap-2">
-                                    {modelOptions.map(model => (
-                                        <button
-                                            key={`model-${model}`}
-                                            onClick={() => {
-                                                setSmartModel(model);
-                                                setSmartVariant(null);
-                                                setSmartColor(null);
-                                                setSearchQuery(model);
-                                            }}
-                                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/70 border border-slate-200 text-[9px] font-black uppercase tracking-widest text-slate-700 hover:border-brand-primary/40 hover:text-brand-primary transition-all whitespace-nowrap shadow-sm"
-                                        >
-                                            {model}
-                                            <span className="text-slate-400">•</span>
-                                            <span className="text-brand-primary">{modelCounts.get(model) || 0}</span>
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-
-                            {isSmart && smartModel && (
-                                <div className="flex items-center gap-2">
-                                    {!smartVariant && (
-                                        <>
-                                            <button
-                                                onClick={() => {
-                                                    setSmartModel(null);
-                                                    setSmartVariant(null);
-                                                    setSmartColor(null);
-                                                    setSearchQuery('');
-                                                }}
-                                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-slate-900 text-[9px] font-black uppercase tracking-widest text-white whitespace-nowrap shadow-lg"
-                                            >
-                                                {smartModel}
-                                                <X size={10} className="text-brand-primary" />
-                                            </button>
-                                            {variantOptions.map(v => (
-                                                <button
-                                                    key={`variant-${v.name}`}
-                                                    onClick={() => {
-                                                        setSmartVariant(v.name);
-                                                        setSmartColor(null);
-                                                    }}
-                                                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/70 border border-slate-200 text-[9px] font-black uppercase tracking-widest text-slate-700 hover:border-brand-primary/40 hover:text-brand-primary transition-all whitespace-nowrap shadow-sm"
-                                                >
-                                                    {v.name}
-                                                    <span className="text-slate-400">•</span>
-                                                    <span className="text-brand-primary">{v.count}</span>
-                                                </button>
-                                            ))}
-                                        </>
-                                    )}
-                                    {smartVariant && (
-                                        <>
-                                            <button
-                                                onClick={() => {
-                                                    setSmartVariant(null);
-                                                    setSmartColor(null);
-                                                }}
-                                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-slate-900 text-[9px] font-black uppercase tracking-widest text-white whitespace-nowrap shadow-lg"
-                                            >
-                                                {smartVariant}
-                                                <X size={10} className="text-brand-primary" />
-                                            </button>
-                                            <div className="flex items-center gap-1.5 ml-2 pl-2 border-l border-slate-200">
-                                                {colorOptions.map(c => (
-                                                    <button
-                                                        key={`color-${c.name}`}
-                                                        onClick={() => setSmartColor(c.name)}
-                                                        className={`w-5 h-5 rounded-full shadow-[0_0_0_1px_rgba(0,0,0,0.12)] relative hover:scale-110 transition-all duration-300 cursor-pointer overflow-hidden shrink-0 ${normalize(smartColor || undefined) === normalize(c.name) ? 'ring-2 ring-brand-primary/60 ring-offset-1' : ''}`}
-                                                        style={{ background: c.hex || '#999' }}
-                                                        title={`${c.name}${c.finish ? ` (${c.finish})` : ''}`}
-                                                    >
-                                                        {c.finish?.toUpperCase() === 'GLOSSY' && (
-                                                            <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/60 to-white/20 pointer-events-none" />
-                                                        )}
-                                                        {c.finish?.toUpperCase() === 'MATTE' && (
-                                                            <div className="absolute inset-0 shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)] pointer-events-none" />
-                                                        )}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                            {smartColor && (
-                                                <button
-                                                    onClick={() => setSmartColor(null)}
-                                                    className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-slate-100 text-[8px] font-black uppercase tracking-widest text-slate-500 hover:text-rose-500 transition-colors"
-                                                >
-                                                    Clear
-                                                </button>
-                                            )}
-                                        </>
-                                    )}
-                                </div>
-                            )}
+                            }
                         </>
                     }
                 />

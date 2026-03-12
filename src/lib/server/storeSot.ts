@@ -9,7 +9,7 @@
  * 1. All queries use `adminClient` (bypasses RLS).
  * 2. SKU query JOINs `cat_colours!colour_id` and `cat_variants_vehicle`.
  * 3. Images from `primary_image` + `gallery_img_1..6` columns only.
- * 4. Pricing requires `publish_stage='PUBLISHED'`.
+ * 4. Pricing accepts `publish_stage in ('LIVE','PUBLISHED')` with LIVE-first intent.
  * 5. No synthetic default SKUs.
  */
 
@@ -491,11 +491,11 @@ export async function resolveActiveSkus(
 // ─── 4. Pricing Fetch ────────────────────────────────────────
 
 /**
- * Fetch PUBLISHED pricing for a set of SKU IDs.
+ * Fetch pricing for a set of SKU IDs (LIVE + legacy PUBLISHED).
  * Falls back from provided stateCode to 'MH'.
  * Returns the best matching price row (preferring rto_total_state > 0).
  */
-export async function fetchPublishedPricing(
+export async function fetchLivePricing(
     skuIds: string[],
     stateCode: string,
     preferredSkuId?: string | null
@@ -508,7 +508,7 @@ export async function fetchPublishedPricing(
         .select(PRICE_SELECT)
         .in('sku_id', skuIds)
         .eq('state_code', stateCode)
-        .eq('publish_stage', 'PUBLISHED')
+        .in('publish_stage', ['LIVE', 'PUBLISHED'])
         .order('updated_at', { ascending: false });
 
     let rows: any[] | null = stateRows || null;
@@ -520,7 +520,7 @@ export async function fetchPublishedPricing(
             .select(PRICE_SELECT)
             .in('sku_id', skuIds)
             .eq('state_code', 'MH')
-            .eq('publish_stage', 'PUBLISHED')
+            .in('publish_stage', ['LIVE', 'PUBLISHED'])
             .order('updated_at', { ascending: false });
         rows = fallbackRows || null;
     }
@@ -737,7 +737,7 @@ export async function getPdpSnapshot({
             .select('sku_id')
             .in('sku_id', skuIds)
             .eq('state_code', stateCode)
-            .eq('publish_stage', 'PUBLISHED');
+            .in('publish_stage', ['LIVE', 'PUBLISHED']);
 
         const stateSkuSet = new Set((stateRows || []).map((r: any) => String(r?.sku_id || '')).filter(Boolean));
 
@@ -748,7 +748,7 @@ export async function getPdpSnapshot({
                 .select('sku_id')
                 .in('sku_id', skuIds)
                 .eq('state_code', 'MH')
-                .eq('publish_stage', 'PUBLISHED');
+                .in('publish_stage', ['LIVE', 'PUBLISHED']);
             pricedSkuSet = new Set((fallbackRows || []).map((r: any) => String(r?.sku_id || '')).filter(Boolean));
         }
 
@@ -760,7 +760,7 @@ export async function getPdpSnapshot({
     }
 
     const pricedSkuIds = pricedSkus.map(s => s.id).filter(Boolean);
-    const { priceRow, snapshot } = await fetchPublishedPricing(pricedSkuIds, stateCode, preferredSkuId);
+    const { priceRow, snapshot } = await fetchLivePricing(pricedSkuIds, stateCode, preferredSkuId);
 
     return {
         model: modelRow,
@@ -861,7 +861,7 @@ export async function getCatalogSnapshot(stateCode: string = 'MH'): Promise<Cata
     const fetchActiveCatalogSkus = async (client: any) => {
         return client.from('cat_skus').select(CATALOG_SKU_SELECT).eq('status', 'ACTIVE').order('position');
     };
-    const fetchPublishedPricingRows = async (client: any, skuIds: string[]) => {
+    const fetchLivePricingRows = async (client: any, skuIds: string[]) => {
         return client
             .from('cat_price_state_mh')
             .select(
@@ -869,7 +869,7 @@ export async function getCatalogSnapshot(stateCode: string = 'MH'): Promise<Cata
             )
             .in('sku_id', skuIds)
             .eq('state_code', stateCode)
-            .eq('publish_stage', 'PUBLISHED');
+            .in('publish_stage', ['LIVE', 'PUBLISHED']);
     };
 
     try {
@@ -962,7 +962,7 @@ export async function getCatalogSnapshot(stateCode: string = 'MH'): Promise<Cata
         const skuIds = vehicleSkus.map((s: any) => s.id);
         let pricing: any[] | null = null;
         try {
-            const { data } = await fetchPublishedPricingRows(adminClient as any, skuIds);
+            const { data } = await fetchLivePricingRows(adminClient as any, skuIds);
             pricing = data || [];
         } catch {
             const fallbackUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
@@ -972,7 +972,7 @@ export async function getCatalogSnapshot(stateCode: string = 'MH'): Promise<Cata
                     const fallbackClient = createSupabaseClient(fallbackUrl, fallbackAnonKey, {
                         auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
                     });
-                    const { data } = await fetchPublishedPricingRows(fallbackClient as any, skuIds);
+                    const { data } = await fetchLivePricingRows(fallbackClient as any, skuIds);
                     pricing = data || [];
                     console.warn('[StoreSot:getCatalogSnapshot] Pricing recovered using anon fallback client.');
                 } catch {

@@ -161,16 +161,30 @@ export default function LocationSettings({ dealerId }: LocationSettingsProps) {
 function LocationModal({ dealerId, initialData, onClose, onSuccess }: any) {
     const [loading, setLoading] = useState(false);
     const [lookupLoading, setLookupLoading] = useState(false);
-    const [formData, setFormData] = useState({
+    const [formData, setFormData] = useState<{
+        name: string;
+        type: string;
+        address_line_1: string;
+        district: string;
+        taluka: string;
+        state: string;
+        pincode: string;
+        contact_phone: string;
+        contact_email: string;
+        latitude: number | null;
+        longitude: number | null;
+    }>({
         name: '',
         type: 'SHOWROOM',
         address_line_1: '',
-        district: '', // City/District
-        taluka: '', // Block
+        district: '',
+        taluka: '',
         state: '',
         pincode: '',
         contact_phone: '',
         contact_email: '',
+        latitude: null,
+        longitude: null,
     });
 
     useEffect(() => {
@@ -185,6 +199,8 @@ function LocationModal({ dealerId, initialData, onClose, onSuccess }: any) {
                 pincode: initialData.pincode || '',
                 contact_phone: initialData.contact_phone || '',
                 contact_email: initialData.contact_email || '',
+                latitude: initialData.lat ?? null,
+                longitude: initialData.lng ?? null,
             });
         }
     }, [initialData]);
@@ -195,74 +211,40 @@ function LocationModal({ dealerId, initialData, onClose, onSuccess }: any) {
         if (pincode.length === 6) {
             setLookupLoading(true);
             try {
-                // 1. Fetch address details from Postal Pincode API
-                const postalRes = await fetch(`https://api.postalpincode.in/pincode/${pincode}`);
-                const postalData = await postalRes.json();
+                const supabase = createClient();
 
-                let foundState = '';
-                let foundDistrict = '';
-                let foundTaluka = '';
+                // 1. Fetch coordinates + address from our own loc_pincodes DB (free, fast, no external API)
+                const { data: pinRow } = await supabase
+                    .from('loc_pincodes')
+                    .select('latitude, longitude, district, taluka, state, area')
+                    .eq('pincode', pincode)
+                    .maybeSingle();
 
-                if (postalData?.[0]?.Status === 'Success') {
-                    const postOffice = postalData[0].PostOffice[0];
-                    foundState = postOffice.State;
-                    foundDistrict = postOffice.District;
-                    foundTaluka = postOffice.Block;
-
-                    setFormData(prev => ({
-                        ...prev,
-                        state: foundState,
-                        district: foundDistrict,
-                        taluka: foundTaluka,
-                    }));
-                }
-
-                // 2. Fetch coordinates from Nominatim (OSM)
-                const geoRes = await fetch(
-                    `https://nominatim.openstreetmap.org/search?postalcode=${pincode}&country=India&format=json`,
-                    {
-                        headers: {
-                            'Accept-Language': 'en-US,en;q=0.5',
-                            'User-Agent': 'BookMyBike-App',
-                        },
-                    }
-                );
-                const geoData = await geoRes.json();
-
-                if (geoData && geoData.length > 0) {
-                    const { lat, lon } = geoData[0];
-                    const latitude = parseFloat(lat);
-                    const longitude = parseFloat(lon);
-
+                if (pinRow) {
                     setFormData(
                         prev =>
                             ({
                                 ...prev,
-                                latitude,
-                                longitude,
+                                state: (pinRow as any).state || prev.state,
+                                district: (pinRow as any).district || prev.district,
+                                taluka: (pinRow as any).taluka || prev.taluka,
+                                latitude: (pinRow as any).latitude ?? prev.latitude,
+                                longitude: (pinRow as any).longitude ?? prev.longitude,
                             }) as any
                     );
+                } else {
+                    // 2. Fallback: Postal Pincode API for address details
+                    const postalRes = await fetch(`https://api.postalpincode.in/pincode/${pincode}`);
+                    const postalData = await postalRes.json();
 
-                    // 3. Proactively update loc_pincodes if coords are missing there
-                    // This powers the ServiceAreaManager proximity logic
-                    const supabase = createClient();
-                    const { data: existingPin } = await supabase
-                        .from('loc_pincodes')
-                        .select('latitude, longitude')
-                        .eq('pincode', pincode)
-                        .maybeSingle();
-
-                    if (existingPin && (!(existingPin as any).latitude || !(existingPin as any).longitude)) {
-                        await supabase
-                            .from('loc_pincodes')
-                            .update({
-                                latitude,
-                                longitude,
-                                district: foundDistrict || (existingPin as any).district,
-                                state: foundState || (existingPin as any).state,
-                                taluka: foundTaluka || (existingPin as any).taluka,
-                            })
-                            .eq('pincode', pincode);
+                    if (postalData?.[0]?.Status === 'Success') {
+                        const postOffice = postalData[0].PostOffice[0];
+                        setFormData(prev => ({
+                            ...prev,
+                            state: postOffice.State,
+                            district: postOffice.District,
+                            taluka: postOffice.Block,
+                        }));
                     }
                 }
             } catch (error) {
@@ -279,13 +261,16 @@ function LocationModal({ dealerId, initialData, onClose, onSuccess }: any) {
         const supabase = createClient();
 
         try {
-            // Exclude latitude/longitude - they don't exist in id_locations table
+            // lat/lng columns exist in id_locations (added via migration)
             const { latitude, longitude, ...cleanFormData } = formData as any;
 
             const payload = {
                 ...cleanFormData,
                 city: formData.district, // Map district to city for legacy compatibility
                 tenant_id: dealerId,
+                // Save coordinates for Haversine dealer-distance RPC
+                lat: typeof latitude === 'number' && isFinite(latitude) ? latitude : null,
+                lng: typeof longitude === 'number' && isFinite(longitude) ? longitude : null,
             };
 
             // console.log('[LOCATION_DEBUG] Saving location:', payload);

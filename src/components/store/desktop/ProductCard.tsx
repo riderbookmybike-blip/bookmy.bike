@@ -1071,57 +1071,50 @@ export const ProductCard = ({
                             </h3>
                             {/* Swatches (Standardized) */}
                             {(() => {
-                                const swatches = (v.availableColors || [])
-                                    .filter(c => typeof c?.hexCode === 'string' && c.hexCode.trim().length > 0)
-                                    .sort((a, b) => (a.position ?? 999) - (b.position ?? 999));
+                                const swatches =
+                                    (v.availableColors || []).filter(
+                                        c => typeof c?.hexCode === 'string' && c.hexCode.trim().length > 0
+                                    ) || [];
                                 if (swatches.length === 0) return null;
 
-                                const visibleSwatches = swatches.slice(0, 3);
-                                const overflowCount = Math.max(0, swatches.length - visibleSwatches.length);
-
                                 return (
-                                    <div className="flex items-center justify-end min-h-[1.25rem] w-[6.25rem]">
-                                        <div className="flex items-center gap-1.5 cursor-default">
-                                            {visibleSwatches.map((c, i) => (
-                                                <div
-                                                    key={c.id || `${c.name}-${i}`}
-                                                    onClick={e => {
-                                                        e.stopPropagation();
-                                                        if (c.imageUrl) {
-                                                            setSelectedColorImage(c.imageUrl);
-                                                            setSelectedColorZoom(c.zoomFactor || null);
-                                                            setSelectedColorFlip(c.isFlipped || false);
-                                                            setSelectedColorOffsetX(c.offsetX || 0);
-                                                            setSelectedColorOffsetY(c.offsetY || 0);
-                                                            setSelectedColorFinish(c.finish || null);
-                                                        }
-                                                        if (c.hexCode) {
-                                                            setSelectedHex(c.hexCode);
-                                                        }
-                                                        if (onColorChange && c.id) {
-                                                            onColorChange(c.id);
-                                                        }
-                                                    }}
-                                                    className={`w-5 h-5 rounded-full shadow-[0_0_0_1px_rgba(0,0,0,0.12)] relative hover:scale-110 transition-all duration-300 cursor-pointer overflow-hidden ${selectedHex?.toLowerCase() === c.hexCode?.toLowerCase() ? 'ring-2 ring-brand-primary/60 ring-offset-1' : ''}`}
-                                                    style={{ background: c.hexCode }}
-                                                    title={`${c.name}${c.finish ? ` (${c.finish})` : ''}`}
-                                                >
-                                                    {c.finish?.toUpperCase() === 'GLOSS' && (
-                                                        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/60 to-white/20 pointer-events-none" />
-                                                    )}
-                                                    {c.finish?.toUpperCase() === 'MATTE' && (
-                                                        <div className="absolute inset-0 shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)] pointer-events-none" />
-                                                    )}
-                                                </div>
-                                            ))}
-                                            {overflowCount > 0 && (
-                                                <div
-                                                    className="w-5 h-5 rounded-full bg-slate-200 text-[8px] font-black text-slate-700 flex items-center justify-center shadow-[0_0_0_1px_rgba(0,0,0,0.1)]"
-                                                    title={`${overflowCount} more colors`}
-                                                >
-                                                    +{overflowCount}
-                                                </div>
-                                            )}
+                                    <div className="flex items-center min-h-[1.25rem] flex-nowrap">
+                                        <div className="flex items-center gap-2 cursor-default">
+                                            {[...swatches]
+                                                .sort((a, b) => (a.position ?? 999) - (b.position ?? 999))
+                                                .map((c, i) => (
+                                                    <div
+                                                        key={i}
+                                                        onClick={e => {
+                                                            e.stopPropagation();
+                                                            if (c.imageUrl) {
+                                                                setSelectedColorImage(c.imageUrl);
+                                                                setSelectedColorZoom(c.zoomFactor || null);
+                                                                setSelectedColorFlip(c.isFlipped || false);
+                                                                setSelectedColorOffsetX(c.offsetX || 0);
+                                                                setSelectedColorOffsetY(c.offsetY || 0);
+                                                                setSelectedColorFinish(c.finish || null);
+                                                            }
+                                                            if (c.hexCode) {
+                                                                setSelectedHex(c.hexCode);
+                                                            }
+                                                            // Trigger callback if provided (e.g., in PDP)
+                                                            if (onColorChange && c.id) {
+                                                                onColorChange(c.id);
+                                                            }
+                                                        }}
+                                                        className="w-5 h-5 rounded-full shadow-[0_0_0_1px_rgba(0,0,0,0.12)] relative hover:scale-110 transition-all duration-300 cursor-pointer overflow-hidden"
+                                                        style={{ background: c.hexCode }}
+                                                        title={`${c.name}${c.finish ? ` (${c.finish})` : ''}`}
+                                                    >
+                                                        {c.finish?.toUpperCase() === 'GLOSS' && (
+                                                            <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/60 to-white/20 pointer-events-none" />
+                                                        )}
+                                                        {c.finish?.toUpperCase() === 'MATTE' && (
+                                                            <div className="absolute inset-0 shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)] pointer-events-none" />
+                                                        )}
+                                                    </div>
+                                                ))}
                                         </div>
                                     </div>
                                 );

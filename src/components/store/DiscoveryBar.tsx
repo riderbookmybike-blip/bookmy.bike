@@ -1,7 +1,7 @@
 'use client';
 
-import React from 'react';
-import { SlidersHorizontal, LayoutGrid, List, Zap, Banknote, GitCompareArrows, Share2 } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { SlidersHorizontal, LayoutGrid, List, Zap, Banknote, GitCompareArrows, Share2, Search } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { StoreSearchBar } from '@/components/store/ui/StoreSearchBar';
 
@@ -10,6 +10,8 @@ interface DiscoveryBarProps {
     searchQuery: string;
     onSearchChange: (query: string) => void;
     onSearchSubmit?: (query: string) => void;
+    searchSuggestions?: { key: string; make: string; model: string; count: number; bodyType?: string }[];
+    onSuggestionSelect?: (make: string, model: string) => void;
     pricingMode: 'cash' | 'finance';
     onPricingModeChange: (mode: 'cash' | 'finance') => void;
     offerMode?: 'BEST_OFFER' | 'FAST_DELIVERY';
@@ -35,6 +37,8 @@ export function DiscoveryBar({
     searchQuery,
     onSearchChange,
     onSearchSubmit,
+    searchSuggestions = [],
+    onSuggestionSelect,
     pricingMode,
     onPricingModeChange,
     offerMode,
@@ -62,6 +66,20 @@ export function DiscoveryBar({
 
     const canToggleView =
         onViewModeChange && viewMode && allowedViewModes.includes(viewMode) && allowedViewModes.length > 1;
+
+    // Dropdown state
+    const [dropdownOpen, setDropdownOpen] = useState(false);
+    const searchRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        const handler = (e: MouseEvent) => {
+            if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+                setDropdownOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+
     const nextPricingMode: 'cash' | 'finance' = pricingMode === 'finance' ? 'cash' : 'finance';
     const nextViewMode: 'grid' | 'list' =
         viewMode === 'grid' && allowedViewModes.includes('list')
@@ -93,13 +111,15 @@ export function DiscoveryBar({
                     }}
                 >
                     <div className="flex items-center gap-3 w-full">
-                        {/* ── Search bar (left) ── */}
-                        <div className="flex-none min-w-[220px] lg:min-w-[300px] py-1">
+                        {/* ── Search bar (left) with instant dropdown ── */}
+                        <div className="flex-none min-w-[220px] lg:min-w-[300px] py-1 relative" ref={searchRef}>
                             <div
                                 onKeyDown={e => {
                                     if (e.key === 'Enter' && searchQuery.trim()) {
                                         onSearchSubmit?.(searchQuery.trim());
+                                        setDropdownOpen(false);
                                     }
+                                    if (e.key === 'Escape') setDropdownOpen(false);
                                 }}
                                 className={`${reduceEffects ? 'h-9' : 'h-10'} rounded-2xl transition-all duration-300 border border-black/10`}
                                 style={{
@@ -111,11 +131,54 @@ export function DiscoveryBar({
                                 <StoreSearchBar
                                     value={searchQuery}
                                     placeholder="FIND YOUR NEXT RIDE PARTNER..."
-                                    onChange={onSearchChange}
-                                    onClear={() => onSearchChange('')}
+                                    onChange={v => {
+                                        onSearchChange(v);
+                                        setDropdownOpen(true);
+                                    }}
+                                    onClear={() => {
+                                        onSearchChange('');
+                                        setDropdownOpen(false);
+                                    }}
+                                    onFocus={() => setDropdownOpen(true)}
+                                    variant="smart"
                                     className="h-full bg-transparent border-0"
                                 />
                             </div>
+
+                            {/* Instant search dropdown */}
+                            {dropdownOpen && searchSuggestions.length > 0 && (
+                                <div className="absolute left-0 right-0 top-full mt-2 z-[200] bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
+                                    {searchSuggestions.map((s, i) => (
+                                        <button
+                                            key={s.key}
+                                            onMouseDown={e => {
+                                                e.preventDefault();
+                                                onSuggestionSelect?.(s.make, s.model);
+                                                onSearchChange(s.model);
+                                                setDropdownOpen(false);
+                                            }}
+                                            className={`w-full flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-slate-50 transition-colors text-left ${
+                                                i > 0 ? 'border-t border-slate-50' : ''
+                                            }`}
+                                        >
+                                            <div className="flex items-center gap-2.5 min-w-0">
+                                                <Search size={11} className="text-slate-300 shrink-0" />
+                                                <div className="min-w-0">
+                                                    <span className="text-[11px] font-black uppercase tracking-wider text-slate-800 truncate block">
+                                                        {s.model}
+                                                    </span>
+                                                    <span className="text-[9px] text-slate-400 font-semibold uppercase tracking-widest">
+                                                        {s.make}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <span className="text-[9px] font-black text-[#F4B000] shrink-0">
+                                                {s.count} variant{s.count !== 1 ? 's' : ''}
+                                            </span>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
                         {/* ── Center: flexible slot ── */}

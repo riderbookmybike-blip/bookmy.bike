@@ -240,15 +240,21 @@ export function useSystemDealerContext({
                 let district = initialLocation?.district || initialLocation?.city;
                 let stateCode = initialLocation?.stateCode;
                 let pincode = initialLocation?.pincode;
+                let userLat: number | null = null;
+                let userLng: number | null = null;
 
-                if (!district) {
+                if (!district || !userLat) {
                     const cached = localStorage.getItem('bkmb_user_pincode');
                     if (cached) {
                         const parsed = JSON.parse(cached);
-                        district = parsed?.district || parsed?.taluka || parsed?.city;
-                        stateCode = parsed?.stateCode;
-                        pincode = parsed?.pincode;
-
+                        district = district || parsed?.district || parsed?.taluka || parsed?.city;
+                        stateCode = stateCode || parsed?.stateCode;
+                        pincode = pincode || parsed?.pincode;
+                        // Read lat/lng stored by pincode lookup
+                        if (parsed?.lat && parsed?.lng) {
+                            userLat = Number(parsed.lat);
+                            userLng = Number(parsed.lng);
+                        }
                         // Fallback for State Code if missing in cache but state name exists
                         if (!stateCode && parsed?.state?.toUpperCase?.().includes('MAHARASHTRA')) {
                             stateCode = 'MH';
@@ -256,10 +262,14 @@ export function useSystemDealerContext({
                     }
                 }
 
-                if (!district && !overrideDealerId) {
-                    setDealerFetchState('GATED');
-                    setIsHydrating(false);
-                    return;
+                // Gate: need either lat/lng OR overrideDealerId to proceed
+                if (!userLat && !overrideDealerId) {
+                    // Only gate completely if we have no district fallback at all
+                    if (!district) {
+                        setDealerFetchState('GATED');
+                        setIsHydrating(false);
+                        return;
+                    }
                 }
 
                 // Update Resolved Location for UI
@@ -499,15 +509,18 @@ export function useSystemDealerContext({
                         ];
                     }
                 } else {
-                    // MARKET BEST RESOLUTION (Default)
+                    // MARKET BEST RESOLUTION — Haversine lat/lng RPC (replaces district-based)
+                    const activeStateCode2 = normalizeClientStateCode(stateCode);
 
-                    if (useCandidateRpc) {
-                        // @ts-ignore - Supabase types out of sync with recent M5 RPC
+                    if (userLat && userLng) {
+                        // ✅ New Haversine RPC: user coordinates → 200km radius dealer winner
+                        // Types not yet regenerated — cast to any to bypass stale RPC signature
                         const { data: offers } = (await withTimeout(
-                            // @ts-ignore - Supabase types out of sync with recent M5 RPC
-                            supabase.rpc('get_market_candidate_offers', {
-                                p_district_name: district || 'ALL',
-                                p_state_code: stateCode || 'MH',
+                            (supabase as any).rpc('get_market_best_offers', {
+                                p_user_lat: userLat,
+                                p_user_lng: userLng,
+                                p_state_code: activeStateCode2,
+                                p_radius_km: 200,
                             }),
                             DEALER_FETCH_TIMEOUT_MS
                         )) as { data: any[]; error: any };
@@ -524,16 +537,18 @@ export function useSystemDealerContext({
                                         ...o,
                                         distance_km: distanceKm,
                                         delivery_charge: getDeliveryChargeByDistance(distanceKm),
+                                        // delivery_tat_days comes directly from new RPC
                                     };
                                 });
                         }
-                    } else {
-                        // LEGACY RPC Fallback
+                    } else if (district) {
+                        // ⚠️ Fallback: district-based (deprecated, kept for graceful degradation)
+                        // @ts-ignore
                         const { data: offers } = (await withTimeout(
-                            // @ts-ignore - Supabase types out of sync with recent M5 RPC
+                            // @ts-ignore
                             supabase.rpc('get_market_best_offers', {
                                 p_district_name: district || 'ALL',
-                                p_state_code: stateCode || 'MH',
+                                p_state_code: activeStateCode2,
                             }),
                             DEALER_FETCH_TIMEOUT_MS
                         )) as { data: any[]; error: any };
@@ -552,37 +567,6 @@ export function useSystemDealerContext({
                                         delivery_charge: getDeliveryChargeByDistance(distanceKm),
                                     };
                                 });
-
-                            // Phase 6D: async shadow log — fire-and-forget
-                            // Logs the legacy winner for the active SKU to shadow_compare_log.
-                            if (activeSku) {
-                                const legacyWinner = relevantOffers.find((o: any) => o.vehicle_color_id === activeSku);
-                                if (legacyWinner) {
-                                    void (async () => {
-                                        try {
-                                            // Fix #2 (Phase 6D audit): dealer_id must be a genuine dealer UUID.
-                                            // vehicle_color_id is a SKU UUID — never use it as a dealer_id fallback.
-                                            // If legacyWinner has no dealer_id, skip shadow logging for this row.
-                                            const legacyDealerId = legacyWinner.dealer_id ?? null;
-                                            if (!legacyDealerId) return;
-
-                                            // @ts-ignore — log_winner_read not yet in generated types (Phase 6D M22)
-                                            await supabase.rpc('log_winner_read', {
-                                                p_sku_id: activeSku,
-                                                p_state_code: normalizeClientStateCode(stateCode),
-                                                p_district: district || 'ALL',
-                                                p_legacy_dealer_id: legacyDealerId,
-                                                p_legacy_offer: Number(
-                                                    legacyWinner.best_offer ?? legacyWinner.offer_amount ?? 0
-                                                ),
-                                                p_legacy_tat: Number(legacyWinner.delivery_tat_days ?? 0) * 24,
-                                            });
-                                        } catch {
-                                            // Shadow logging is non-blocking — errors silently discarded
-                                        }
-                                    })();
-                                }
-                            }
                         }
                     }
                 }
