@@ -61,12 +61,12 @@ export function rankCandidates(
 
     return scoredOffers.sort((a, b) => {
         const aTat =
-            a.tat_effective_hours !== null && a.tat_effective_hours !== undefined
-                ? Number(a.tat_effective_hours)
+            a.delivery_tat_days !== null && a.delivery_tat_days !== undefined
+                ? Number(a.delivery_tat_days)
                 : Number.MAX_SAFE_INTEGER;
         const bTat =
-            b.tat_effective_hours !== null && b.tat_effective_hours !== undefined
-                ? Number(b.tat_effective_hours)
+            b.delivery_tat_days !== null && b.delivery_tat_days !== undefined
+                ? Number(b.delivery_tat_days)
                 : Number.MAX_SAFE_INTEGER;
 
         const aScore = a.winner_score;

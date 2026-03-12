@@ -884,10 +884,9 @@ export default async function Page({ params, searchParams }: Props) {
               breakdown: null,
           };
 
-    // 4.5 Resolve Dealer Offers (Primary Dealer Only)
-    let marketOffers: Record<string, number> = {};
-    let winningDealerId: string | null = pricingContext.dealerId || null;
-    let bundleIdsForDealer: Set<string> = new Set();
+    // Dealer resolution is NEVER done server-side.
+    // Client-side useSystemDealerContext RPC picks best offer within 200km radius.
+    let winningDealerId: string | null = null;
     const leadId = resolvedLeadId;
     let accessoryRules: Map<string, { offer: number; inclusion: string; isActive: boolean }> = new Map();
 

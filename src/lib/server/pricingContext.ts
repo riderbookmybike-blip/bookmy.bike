@@ -1,15 +1,11 @@
-import { createClient } from '../supabase/server';
-import { adminClient } from '../supabase/admin';
 import { cookies } from 'next/headers';
-import { withCache } from '../cache/cache';
-import { CACHE_TAGS, districtTag } from '../cache/tags';
 
-export type PricingSource = 'EXPLICIT' | 'TEAM' | 'PRIMARY_DISTRICT' | 'PRIMARY_STATE' | 'PRIMARY_COUNTRY' | 'NONE';
+export type PricingSource = 'NONE';
 
 export interface PricingContext {
-    dealerId: string | null;
-    tenantName: string | null;
-    district: string | null;
+    dealerId: null;
+    tenantName: null;
+    district: null;
     stateCode: string;
     source: PricingSource;
 }
@@ -39,304 +35,41 @@ export const normalizeStateCode = (state?: string | null, stateCode?: string | n
 };
 
 /**
- * FETCHERS
+ * Resolve state code only (for RTO/pricing).
+ * No dealer, no district, no primary dealer.
+ * Client-side RPC handles best-offer resolution (200km radius).
  */
-
-async function getRawPrimaryDealer(stateCode: string, district: string) {
-    // Use adminClient (no cookies) for cached operations
-    const { data } = await (adminClient as any)
-        .from('id_primary_dealer_districts')
-        .select('tenant_id, district')
-        .eq('state_code', stateCode)
-        .ilike('district', district)
-        .eq('is_active', true)
-        .maybeSingle();
-    return data || null;
-}
-
-async function getDealerLocation(tenantId: string) {
-    // Use adminClient (no cookies) for cached operations
-    const { data } = await (adminClient as any)
-        .from('id_locations')
-        .select('district, state')
-        .eq('tenant_id', tenantId)
-        .eq('is_active', true)
-        .order('type', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-    return data || null;
-}
-
-async function getDealerIdByStudioId(studioId: string) {
-    // Use adminClient (no cookies) for cached operations
-    const { data } = await (adminClient as any)
-        .from('id_tenants')
-        .select('id')
-        .ilike('studio_id', studioId)
-        .limit(1)
-        .maybeSingle();
-    return data?.id || null;
-}
-
-async function getTenantName(tenantId: string) {
-    const { data } = await adminClient.from('id_tenants').select('name').eq('id', tenantId).maybeSingle();
-    return data?.name || null;
-}
-
-export async function resolvePricingContext({
-    leadId,
-    dealerId,
-    district,
-    state,
-    studio,
-    mode = 'DEALER_AWARE',
-}: {
+export async function resolvePricingContext(_input?: {
     leadId?: string | null;
     dealerId?: string | null;
     district?: string | null;
     state?: string | null;
     studio?: string | null;
-    mode?: 'DEALER_AWARE' | 'STATE_ONLY';
+    mode?: string;
 }): Promise<PricingContext> {
-    // Use adminClient for all DB operations to prevent Dynamic Server Usage errors
-    const supabase = adminClient;
     const cookieStore = await cookies();
+    let stateCode = 'MH';
 
-    const hasExplicitState = Boolean(state);
-    let resolvedDistrict = district?.trim() || null;
-    let stateCode = normalizeStateCode(state, null);
-
-    // If district is actually a pincode, resolve it to district + state_code
-    if (resolvedDistrict && /^\d{6}$/.test(resolvedDistrict)) {
-        const { data: pin } = await supabase
-            .from('loc_pincodes')
-            .select('district, state_code')
-            .eq('pincode', resolvedDistrict)
-            .maybeSingle();
-
-        if (pin?.district) {
-            resolvedDistrict = pin.district;
-            stateCode = pin.state_code || stateCode;
-        }
-    }
-
-    // 1) Location from cookie (if district not explicitly provided)
     const locationCookie = cookieStore.get('bkmb_user_pincode')?.value;
     if (locationCookie) {
-        let data: any = null;
         try {
-            data = JSON.parse(locationCookie);
-        } catch {
-            if (/^\d{6}$/.test(locationCookie)) {
-                data = { pincode: locationCookie };
-            }
-        }
-
-        if (data) {
-            if (!resolvedDistrict) {
-                resolvedDistrict = data.district || data.taluka || data.city || null;
-                if (!hasExplicitState) {
-                    stateCode = normalizeStateCode(data.state, data.stateCode);
-                }
-            } else if (!hasExplicitState && (data.state || data.stateCode)) {
+            const data = JSON.parse(locationCookie);
+            if (data?.stateCode || data?.state) {
                 stateCode = normalizeStateCode(data.state, data.stateCode);
             }
-
-            if (!resolvedDistrict && data.pincode) {
-                const { data: pin } = await supabase
-                    .from('loc_pincodes')
-                    .select('district, state_code')
-                    .eq('pincode', data.pincode)
-                    .maybeSingle();
-
-                if (pin?.district) {
-                    resolvedDistrict = pin.district;
-                    stateCode = pin.state_code || stateCode;
-                }
-            }
+        } catch {
+            // ignore bad cookie
         }
-    }
-
-    // Ensure stateCode is aligned to dealer location if a dealer is explicitly resolved
-    const applyDealerLocation = async (tenantId: string) => {
-        const loc = await getDealerLocation(tenantId);
-        if (loc?.state) {
-            stateCode = normalizeStateCode(loc.state, null);
-        }
-        if (!resolvedDistrict && loc?.district) {
-            resolvedDistrict = loc.district;
-        }
-    };
-
-    // If state is not explicit, infer state_code from district itself to avoid bad cookie state pollution.
-    if (!hasExplicitState && resolvedDistrict) {
-        const { data: districtState } = await supabase
-            .from('loc_pincodes')
-            .select('state_code')
-            .ilike('district', resolvedDistrict)
-            .not('state_code', 'is', null)
-            .limit(1)
-            .maybeSingle();
-        if (districtState?.state_code) {
-            stateCode = normalizeStateCode(null, districtState.state_code);
-        }
-    }
-
-    // Catalog/non-PDP state-only mode: stop before any dealer resolution.
-    if (mode === 'STATE_ONLY') {
-        return {
-            dealerId: null,
-            tenantName: null,
-            district: resolvedDistrict,
-            stateCode,
-            source: 'NONE',
-        };
-    }
-
-    // 2) Lead context (High Priority)
-    // If leadId is present, the associated lead's tenant dictates pricing.
-    // Precedence: selected_dealer_tenant_id > tenant_id
-    if (leadId) {
-        const { data: lead } = await supabase
-            .from('crm_leads')
-            .select('tenant_id, selected_dealer_tenant_id, customer_pincode')
-            .eq('id', leadId)
-            .maybeSingle();
-
-        if (lead) {
-            const leadTenantId = lead.selected_dealer_tenant_id || lead.tenant_id;
-
-            if (leadTenantId) {
-                // Verify tenant exists and is active before locking
-                const { data: tenant } = await supabase
-                    .from('id_tenants')
-                    .select('id')
-                    .eq('id', leadTenantId)
-                    .maybeSingle();
-
-                if (tenant) {
-                    await applyDealerLocation(leadTenantId);
-                    return {
-                        dealerId: leadTenantId,
-                        tenantName: await getTenantName(leadTenantId),
-                        district: resolvedDistrict,
-                        stateCode,
-                        source: 'EXPLICIT', // Lead context acts as explicit authority
-                    };
-                } else {
-                    console.warn(
-                        `[PricingContext] Lead ${leadId} references missing/inactive tenant ${leadTenantId}. Falling back to location.`
-                    );
-                }
-            }
-
-            // Still resolve location from lead if tenant lock failed or wasn't present
-            const pincode = lead.customer_pincode;
-            if (pincode && !resolvedDistrict) {
-                const { data: pin } = await supabase
-                    .from('loc_pincodes')
-                    .select('district, state_code')
-                    .eq('pincode', pincode)
-                    .maybeSingle();
-
-                if (pin?.district) {
-                    resolvedDistrict = pin.district;
-                    stateCode = pin.state_code || stateCode;
-                }
-            }
-        }
-    }
-
-    // 3) Resolve dealer (explicit dealer id or studio id from URL parameters)
-    let resolvedDealerId: string | null = dealerId || null;
-    if (!resolvedDealerId && studio) {
-        resolvedDealerId = await getDealerIdByStudioId(studio.trim());
-    }
-
-    if (resolvedDealerId) {
-        await applyDealerLocation(resolvedDealerId);
-        return {
-            dealerId: resolvedDealerId,
-            tenantName: await getTenantName(resolvedDealerId),
-            district: resolvedDistrict,
-            stateCode,
-            source: 'EXPLICIT',
-        };
-    }
-
-    // Removed TEAM session lock from marketplace to unify experience
-
-    if (resolvedDistrict) {
-        // Use withCache for primary dealer resolution (District)
-        const primaryDistrict = await withCache(
-            () => getRawPrimaryDealer(stateCode, resolvedDistrict!),
-            ['primary-dealer', stateCode, resolvedDistrict],
-            { revalidate: 3600, tags: [CACHE_TAGS.districts, districtTag(resolvedDistrict)] }
-        );
-
-        if (primaryDistrict?.tenant_id) {
-            return {
-                dealerId: primaryDistrict.tenant_id,
-                tenantName: await getTenantName(primaryDistrict.tenant_id),
-                district: resolvedDistrict,
-                stateCode,
-                source: 'PRIMARY_DISTRICT',
-            };
-        }
-    }
-
-    // Fallback: Primary dealer for the state (district = ALL)
-    const primaryState = await withCache(
-        () => getRawPrimaryDealer(stateCode, 'ALL'),
-        ['primary-dealer', stateCode, 'ALL'],
-        { revalidate: 3600, tags: [CACHE_TAGS.districts, districtTag(resolvedDistrict || 'ALL')] }
-    );
-
-    if (primaryState?.tenant_id) {
-        return {
-            dealerId: primaryState.tenant_id,
-            tenantName: await getTenantName(primaryState.tenant_id),
-            district: resolvedDistrict,
-            stateCode,
-            source: 'PRIMARY_STATE',
-        };
-    }
-
-    // Final fallback: Primary dealer for the country (state = ALL, district = ALL)
-    const primaryCountry = await withCache(() => getRawPrimaryDealer('ALL', 'ALL'), ['primary-dealer', 'ALL', 'ALL'], {
-        revalidate: 3600,
-        tags: [CACHE_TAGS.districts, districtTag('ALL')],
-    });
-
-    if (primaryCountry?.tenant_id) {
-        return {
-            dealerId: primaryCountry.tenant_id,
-            tenantName: await getTenantName(primaryCountry.tenant_id),
-            district: resolvedDistrict,
-            stateCode,
-            source: 'PRIMARY_COUNTRY',
-        };
     }
 
     return {
         dealerId: null,
         tenantName: null,
-        district: resolvedDistrict,
+        district: null,
         stateCode,
         source: 'NONE',
     };
 }
 
-export async function resolveStateOnlyPricingContext({
-    district,
-    state,
-}: {
-    district?: string | null;
-    state?: string | null;
-}): Promise<PricingContext> {
-    return resolvePricingContext({
-        district,
-        state,
-        mode: 'STATE_ONLY',
-    });
-}
+export const resolveStoreContext = resolvePricingContext;
+export const resolveStateOnlyPricingContext = resolvePricingContext;

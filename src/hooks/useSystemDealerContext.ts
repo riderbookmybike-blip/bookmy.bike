@@ -4,6 +4,7 @@ import { ProductVariant } from '@/types/productMaster';
 import { IDV_DEPRECIATION_RATE } from '@/lib/constants/pricingConstants';
 import { getDeliveryChargeByDistance } from '@/lib/pricing/deliveryCharge';
 import { OfferMode, rankCandidates, type CandidateOffer } from '@/lib/marketplace/winnerEngine';
+import { calculateDistance } from '@/utils/geoUtils';
 
 interface UseDealerContextProps {
     product: any;
@@ -85,36 +86,7 @@ type OtherOffer = {
 };
 
 const rankOffers = (offers: RankedOffer[]) => {
-    return [...offers].sort((a, b) => {
-        const aOffer = Number(a.best_offer || 0);
-        const bOffer = Number(b.best_offer || 0);
-        const aDelivery = Number(a.delivery_charge || 0);
-        const bDelivery = Number(b.delivery_charge || 0);
-
-        // Primary: lower final effective add-on wins
-        const aFinalEffective = aOffer + aDelivery;
-        const bFinalEffective = bOffer + bDelivery;
-        if (aFinalEffective !== bFinalEffective) return aFinalEffective - bFinalEffective;
-
-        // Tie-break 1: nearest dealer wins
-        const aDistance = Number.isFinite(Number(a.distance_km)) ? Number(a.distance_km) : Number.MAX_SAFE_INTEGER;
-        const bDistance = Number.isFinite(Number(b.distance_km)) ? Number(b.distance_km) : Number.MAX_SAFE_INTEGER;
-        if (aDistance !== bDistance) return aDistance - bDistance;
-
-        // Tie-break 2: lower TAT wins
-        const aTat = Number.isFinite(Number(a.delivery_tat_days))
-            ? Number(a.delivery_tat_days)
-            : Number.MAX_SAFE_INTEGER;
-        const bTat = Number.isFinite(Number(b.delivery_tat_days))
-            ? Number(b.delivery_tat_days)
-            : Number.MAX_SAFE_INTEGER;
-        if (aTat !== bTat) return aTat - bTat;
-
-        // Tie-break 3: latest update wins
-        const aUpdated = a.updated_at ? Date.parse(a.updated_at) : 0;
-        const bUpdated = b.updated_at ? Date.parse(b.updated_at) : 0;
-        return bUpdated - aUpdated;
-    });
+    return [...offers].sort((a, b) => Number(a.best_offer || 0) - Number(b.best_offer || 0));
 };
 
 // SSPP v2: Server-side calculated pricing structure (SOT JSON)
@@ -139,7 +111,10 @@ interface ServerPricing {
         name: string | null;
         id: string | null;
         studio_id?: string | null;
+        distance_km?: number | null;
         is_serviceable: boolean;
+        tat_effective_hours?: number | null;
+        delivery_tat_days?: number | null;
     };
     final_on_road: number;
     location: {
@@ -185,8 +160,11 @@ export function useSystemDealerContext({
               isServiceable: boolean;
               dealerLocation?: string;
               studio_id?: string;
+              distance_km?: number | null;
               bundleValue?: number;
               bundlePrice?: number;
+              delivery_tat_days?: number | null;
+              tat_effective_hours?: number | null;
           }
         | undefined
     >(() => {
@@ -198,8 +176,17 @@ export function useSystemDealerContext({
             isServiceable: true,
             dealerLocation: prefetchedPricing.location?.district || prefetchedLocation?.district || undefined,
             studio_id: prefetchedPricing.dealer?.studio_id || undefined,
+            distance_km: Number.isFinite(Number((prefetchedPricing.dealer as any)?.distance_km))
+                ? Number((prefetchedPricing.dealer as any)?.distance_km)
+                : null,
             bundleValue: 0,
             bundlePrice: 0,
+            delivery_tat_days: Number.isFinite(Number((prefetchedPricing.dealer as any)?.delivery_tat_days))
+                ? Number((prefetchedPricing.dealer as any)?.delivery_tat_days)
+                : null,
+            tat_effective_hours: Number.isFinite(Number((prefetchedPricing.dealer as any)?.tat_effective_hours))
+                ? Number((prefetchedPricing.dealer as any)?.tat_effective_hours)
+                : null,
         };
     });
 
@@ -262,10 +249,9 @@ export function useSystemDealerContext({
                     }
                 }
 
-                // Gate: need either lat/lng OR overrideDealerId to proceed
-                if (!userLat && !overrideDealerId) {
-                    // Only gate completely if we have no district fallback at all
-                    if (!district) {
+                // Gate: need lat/lng to proceed
+                if (!userLat || !userLng) {
+                    if (!overrideDealerId) {
                         setDealerFetchState('GATED');
                         setIsHydrating(false);
                         return;
@@ -303,6 +289,9 @@ export function useSystemDealerContext({
                     setOtherOffers([]);
 
                     const dealerOffer = Number(pricingData?.dealer?.offer || 0);
+                    const dealerTatDays = Number.isFinite(Number(pricingData?.dealer?.delivery_tat_days))
+                        ? Number(pricingData.dealer.delivery_tat_days)
+                        : null;
                     setBestOffer({
                         price: dealerOffer,
                         dealer: pricingData.dealer?.name || 'Studio',
@@ -312,6 +301,8 @@ export function useSystemDealerContext({
                         studio_id: pricingData.dealer?.studio_id || undefined,
                         bundleValue: 0,
                         bundlePrice: 0,
+                        tat_effective_hours: null,
+                        delivery_tat_days: dealerTatDays,
                     });
 
                     setDealerColors(prev =>
@@ -456,11 +447,31 @@ export function useSystemDealerContext({
                         .select('id, name, studio_id')
                         .eq('id', overrideDealerId)
                         .single();
+                    const { data: dealerLoc } = await supabase
+                        .from('id_locations')
+                        .select('lat, lng')
+                        .eq('tenant_id', overrideDealerId)
+                        .eq('is_active', true)
+                        .limit(1)
+                        .maybeSingle();
+
+                    const overrideDistanceKm =
+                        Number.isFinite(Number(userLat)) &&
+                        Number.isFinite(Number(userLng)) &&
+                        Number.isFinite(Number((dealerLoc as any)?.lat)) &&
+                        Number.isFinite(Number((dealerLoc as any)?.lng))
+                            ? calculateDistance(
+                                  Number(userLat),
+                                  Number(userLng),
+                                  Number((dealerLoc as any).lat),
+                                  Number((dealerLoc as any).lng)
+                              )
+                            : null;
 
                     if (skuIds.length > 0) {
                         const { data: dealerRules } = await supabase
                             .from('cat_price_dealer')
-                            .select('vehicle_color_id, offer_amount')
+                            .select('vehicle_color_id, offer_amount, tat_days, tat_effective_hours')
                             .in('vehicle_color_id', skuIds)
                             .eq('tenant_id', overrideDealerId)
                             .eq('state_code', stateCode || 'MH')
@@ -473,9 +484,11 @@ export function useSystemDealerContext({
                                 dealer_name: dealerInfo?.name || 'Assigned Dealer',
                                 studio_id: dealerInfo?.studio_id || null,
                                 best_offer: Number(r.offer_amount),
-                                distance_km: 0,
-                                delivery_charge: getDeliveryChargeByDistance(0),
+                                distance_km: overrideDistanceKm,
+                                delivery_charge: getDeliveryChargeByDistance(overrideDistanceKm),
                                 bundle_ids: [],
+                                tat_effective_hours: r.tat_effective_hours ?? null,
+                                delivery_tat_days: r.tat_days ?? null,
                             }));
                         } else {
                             // Valid SKUs but no rules -> Dummy offer to lock dealer
@@ -486,8 +499,8 @@ export function useSystemDealerContext({
                                     dealer_name: dealerInfo?.name || 'Assigned Dealer',
                                     studio_id: dealerInfo?.studio_id || null,
                                     best_offer: 0,
-                                    distance_km: 0,
-                                    delivery_charge: getDeliveryChargeByDistance(0),
+                                    distance_km: overrideDistanceKm,
+                                    delivery_charge: getDeliveryChargeByDistance(overrideDistanceKm),
                                     bundle_ids: [],
                                 },
                             ];
@@ -502,19 +515,16 @@ export function useSystemDealerContext({
                                 dealer_name: dealerInfo?.name || 'Assigned Dealer',
                                 studio_id: dealerInfo?.studio_id || null,
                                 best_offer: 0,
-                                distance_km: 0,
-                                delivery_charge: getDeliveryChargeByDistance(0),
+                                distance_km: overrideDistanceKm,
+                                delivery_charge: getDeliveryChargeByDistance(overrideDistanceKm),
                                 bundle_ids: [],
                             },
                         ];
                     }
                 } else {
-                    // MARKET BEST RESOLUTION — Haversine lat/lng RPC (replaces district-based)
+                    // MARKET BEST RESOLUTION — lat/lng 200km radius, best offer
                     const activeStateCode2 = normalizeClientStateCode(stateCode);
-
                     if (userLat && userLng) {
-                        // ✅ New Haversine RPC: user coordinates → 200km radius dealer winner
-                        // Types not yet regenerated — cast to any to bypass stale RPC signature
                         const { data: offers } = (await withTimeout(
                             (supabase as any).rpc('get_market_best_offers', {
                                 p_user_lat: userLat,
@@ -529,44 +539,13 @@ export function useSystemDealerContext({
                             const skuIds = (product.colors || []).map((c: any) => c.skuId).filter(Boolean);
                             relevantOffers = offers
                                 .filter((o: any) => skuIds.includes(o.vehicle_color_id))
-                                .map((o: any) => {
-                                    const distanceKm = Number.isFinite(Number(o?.distance_km))
-                                        ? Number(o.distance_km)
-                                        : null;
-                                    return {
-                                        ...o,
-                                        distance_km: distanceKm,
-                                        delivery_charge: getDeliveryChargeByDistance(distanceKm),
-                                        // delivery_tat_days comes directly from new RPC
-                                    };
-                                });
-                        }
-                    } else if (district) {
-                        // ⚠️ Fallback: district-based (deprecated, kept for graceful degradation)
-                        // @ts-ignore
-                        const { data: offers } = (await withTimeout(
-                            // @ts-ignore
-                            supabase.rpc('get_market_best_offers', {
-                                p_district_name: district || 'ALL',
-                                p_state_code: activeStateCode2,
-                            }),
-                            DEALER_FETCH_TIMEOUT_MS
-                        )) as { data: any[]; error: any };
-
-                        if (offers && offers.length > 0) {
-                            const skuIds = (product.colors || []).map((c: any) => c.skuId).filter(Boolean);
-                            relevantOffers = offers
-                                .filter((o: any) => skuIds.includes(o.vehicle_color_id))
-                                .map((o: any) => {
-                                    const distanceKm = Number.isFinite(Number(o?.distance_km))
-                                        ? Number(o.distance_km)
-                                        : null;
-                                    return {
-                                        ...o,
-                                        distance_km: distanceKm,
-                                        delivery_charge: getDeliveryChargeByDistance(distanceKm),
-                                    };
-                                });
+                                .map((o: any) => ({
+                                    ...o,
+                                    distance_km: Number.isFinite(Number(o?.distance_km)) ? Number(o.distance_km) : null,
+                                    delivery_charge: getDeliveryChargeByDistance(
+                                        Number.isFinite(Number(o?.distance_km)) ? Number(o.distance_km) : null
+                                    ),
+                                }));
                         }
                     }
                 }
@@ -609,8 +588,15 @@ export function useSystemDealerContext({
                                   id: winningDealerId,
                                   name: winningDealerName,
                                   studio_id: winningOffer.studio_id,
+                                  distance_km: Number.isFinite(Number((winningOffer as any).distance_km))
+                                      ? Number((winningOffer as any).distance_km)
+                                      : null,
                                   offer: winningOfferAmount,
                                   is_serviceable: true,
+                                  tat_effective_hours: null,
+                                  delivery_tat_days: Number.isFinite(Number((winningOffer as any).delivery_tat_days))
+                                      ? Number((winningOffer as any).delivery_tat_days)
+                                      : null,
                               },
                           }
                         : null
@@ -623,8 +609,15 @@ export function useSystemDealerContext({
                     isServiceable: true,
                     dealerLocation: serverPricing?.location?.district || undefined,
                     studio_id: winningOffer.studio_id || undefined,
+                    distance_km: Number.isFinite(Number((winningOffer as any).distance_km))
+                        ? Number((winningOffer as any).distance_km)
+                        : null,
                     bundleValue: 0,
                     bundlePrice: 0,
+                    delivery_tat_days: Number.isFinite(Number(winningOffer.delivery_tat_days))
+                        ? Number(winningOffer.delivery_tat_days)
+                        : null,
+                    tat_effective_hours: null,
                 });
 
                 setOtherOffers(
