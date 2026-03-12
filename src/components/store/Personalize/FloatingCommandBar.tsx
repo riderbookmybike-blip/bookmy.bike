@@ -143,6 +143,7 @@ export default function FloatingCommandBar({
         amount: string;
         amountClass?: string;
         labelClass?: string;
+        containerClass?: string;
         bCoin?: number;
     }[] = [
         {
@@ -150,14 +151,21 @@ export default function FloatingCommandBar({
             icon: Wallet,
             label: 'On-Road',
             amount: `₹ ${onRoadBase.toLocaleString('en-IN')}`,
+            amountClass: 'text-slate-900',
+            labelClass: 'text-slate-500',
+            containerClass: 'border-slate-200/60 bg-slate-50/40 hover:border-slate-300',
         },
         {
             key: 'accessories',
             icon: Package,
             label: accessoriesCount > 0 ? `${accessoriesCount} Accessories` : 'Accessories',
             amount: accessoriesCount > 0 ? `+ ₹ ${accessoriesTotal.toLocaleString('en-IN')}` : `₹ 0`,
-            amountClass: accessoriesCount > 0 ? 'text-slate-700' : 'text-slate-400',
-            labelClass: accessoriesCount > 0 ? 'text-slate-500' : 'text-slate-400',
+            amountClass: accessoriesCount > 0 ? 'text-violet-700' : 'text-slate-400',
+            labelClass: accessoriesCount > 0 ? 'text-violet-500' : 'text-slate-400',
+            containerClass:
+                accessoriesCount > 0
+                    ? 'border-violet-200/60 bg-violet-50/30 hover:border-violet-300'
+                    : 'border-slate-200/70 hover:border-slate-300',
         },
         {
             key: 'insurance-addons',
@@ -166,28 +174,32 @@ export default function FloatingCommandBar({
             amount: `₹ ${Math.round(insuranceAddonAmount).toLocaleString('en-IN')}`,
             amountClass: insuranceAddonAmount > 0 ? 'text-blue-600' : 'text-slate-400',
             labelClass: insuranceAddonAmount > 0 ? 'text-blue-500' : 'text-slate-400',
+            containerClass:
+                insuranceAddonAmount > 0
+                    ? 'border-blue-200/60 bg-blue-50/30 hover:border-blue-300'
+                    : 'border-slate-200/70 hover:border-slate-300',
         },
     ];
 
     return (
         <div className="fixed inset-x-0 top-[var(--header-h)] z-[95]">
             <div className="page-container mt-4 md:mt-6">
-                <div className="relative overflow-hidden rounded-2xl md:rounded-full border border-white/60 bg-white/70 backdrop-blur-2xl shadow-[0_4px_40px_rgba(15,23,42,0.10),0_8px_30px_rgba(15,23,42,0.08)]">
+                <div className="relative overflow-hidden rounded-2xl md:rounded-full border border-white/60 bg-white/80 backdrop-blur-3xl shadow-[0_8px_40px_rgba(15,23,42,0.12),0_12px_32px_rgba(15,23,42,0.08)]">
                     {/* Subtle gradient overlay */}
-                    <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.8),rgba(255,255,255,0.2)_50%,rgba(255,215,0,0.03))]" />
+                    <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.95),rgba(255,255,255,0.4)_50%,rgba(255,215,0,0.03))]" />
 
-                    <div className="relative z-10 p-3 md:px-6 md:py-3.5 flex items-center justify-between gap-3">
+                    <div className="relative z-10 p-3 md:px-6 md:py-3 flex items-center justify-between gap-3">
                         {/* ═══ SECTION 1: Vehicle Identity (Left) — 3 rows: Model, Variant, Color ═══ */}
                         <div
-                            className={`${forceMobileLayout ? 'hidden' : 'hidden md:flex'} items-center gap-3.5 min-w-0 shrink-0`}
+                            className={`${forceMobileLayout ? 'hidden' : 'hidden md:flex'} items-center gap-4 min-w-0 shrink-0`}
                         >
-                            <div className="w-12 h-12 relative flex items-center justify-center bg-slate-50 border border-slate-200/80 rounded-xl overflow-hidden shrink-0">
+                            <div className="w-12 h-12 relative flex items-center justify-center bg-white border border-slate-200/80 shadow-sm rounded-xl overflow-hidden shrink-0">
                                 <Image
                                     src={getProductImage()}
                                     alt={displayModel}
                                     fill
                                     sizes="48px"
-                                    className="object-contain"
+                                    className="object-contain p-1"
                                 />
                             </div>
                             <div className="flex flex-col min-w-0 gap-0.5">
@@ -196,22 +208,22 @@ export default function FloatingCommandBar({
                                     {displayModel}
                                 </span>
                                 {/* Row 2: Variant */}
-                                <span className="text-[10px] font-semibold text-slate-500 tracking-[0.08em] leading-none truncate">
+                                <span className="text-[9px] font-bold text-slate-500 tracking-[0.05em] leading-none truncate uppercase">
                                     {displayVariant}
                                 </span>
                                 {/* Row 3: Color */}
                                 <div className="flex items-center gap-1.5 mt-0.5">
                                     <div
-                                        className="w-2.5 h-2.5 rounded-full border border-slate-300 shadow-sm"
+                                        className="w-2 h-2 rounded-full border border-slate-300 shadow-sm"
                                         style={{ backgroundColor: activeColorConfig.hex }}
                                     />
-                                    <span className="text-[9px] font-semibold tracking-[0.08em] text-slate-400 uppercase leading-none truncate">
+                                    <span className="text-[9px] font-bold tracking-[1px] text-slate-400/80 uppercase leading-none truncate">
                                         {displayColor}
                                     </span>
                                 </div>
                             </div>
                             {/* Section Divider */}
-                            <div className="w-px h-10 bg-gradient-to-b from-transparent via-slate-200 to-transparent ml-1" />
+                            <div className="w-px h-10 bg-gradient-to-b from-transparent via-slate-200 to-transparent ml-2" />
                         </div>
 
                         {/* ═══ SECTION 2: Pricing Details (Center) ═══ */}
@@ -221,17 +233,17 @@ export default function FloatingCommandBar({
                                     {desktopMetrics.map(metric => (
                                         <div
                                             key={metric.key}
-                                            className={`flex-1 flex flex-col items-center justify-center text-center px-3 py-2 rounded-xl border border-slate-200/70 hover:border-slate-300 hover:shadow-sm transition-all duration-200`}
+                                            className={`flex-1 flex flex-col items-center justify-center text-center px-3 py-1.5 rounded-xl border transition-all duration-300 ${metric.containerClass || 'border-slate-200/70 hover:border-slate-300'}`}
                                         >
-                                            <div className="flex items-end gap-1.5 justify-center">
+                                            <div className="flex items-end gap-1 justify-center">
                                                 <p
-                                                    className={`text-[13px] font-black font-mono tabular-nums leading-none ${metric.amountClass || 'text-slate-800'}`}
+                                                    className={`text-[12px] font-black font-mono tabular-nums leading-none ${metric.amountClass || 'text-slate-800'}`}
                                                 >
                                                     {metric.amount}
                                                 </p>
                                             </div>
                                             <p
-                                                className={`mt-1 inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-[0.08em] ${metric.labelClass || 'text-slate-500'}`}
+                                                className={`mt-1 inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-[0.04em] ${metric.labelClass || 'text-slate-500'}`}
                                             >
                                                 <metric.icon size={9} />
                                                 {metric.label}
@@ -240,14 +252,14 @@ export default function FloatingCommandBar({
                                     ))}
 
                                     {/* O'Circle Privileged — emerald card */}
-                                    <div className="flex-[1.2] flex flex-col items-center justify-center text-center px-3 py-2 rounded-xl border border-emerald-300/70 hover:border-emerald-400 hover:shadow-sm transition-all duration-200">
-                                        <p className="text-[13px] font-black font-mono tabular-nums leading-none text-emerald-600">
+                                    <div className="flex-[1.2] flex flex-col items-center justify-center text-center px-3 py-1.5 rounded-xl border border-emerald-300/60 bg-emerald-50/20 hover:border-emerald-400 hover:shadow-sm transition-all duration-300">
+                                        <p className="text-[12px] font-black font-mono tabular-nums leading-none text-emerald-600">
                                             − ₹ {Math.max(0, totalSavings).toLocaleString('en-IN')}
                                         </p>
                                         <div className="mt-1 inline-flex items-center gap-1">
-                                            <OCircleLogo size={10} color="#7EB4E2" strokeWidth={16} />
-                                            <span className="text-[8px] font-bold tracking-[-0.03em]">
-                                                <span className="text-[#7EB4E2]">O&apos;</span>
+                                            <OCircleLogo size={9} color="#10B981" strokeWidth={20} />
+                                            <span className="text-[8px] font-black tracking-[0.04em] uppercase">
+                                                <span className="text-emerald-500">O&apos;</span>
                                                 <span className="text-slate-700">Circle</span>
                                             </span>
                                         </div>
@@ -255,61 +267,61 @@ export default function FloatingCommandBar({
 
                                     {/* bCoin Wallet — amber card */}
                                     {bCoinDiscount > 0 && (
-                                        <div className="flex-[1.2] flex flex-col items-center justify-center text-center px-3 py-2 rounded-xl border border-amber-300/70 hover:border-amber-400 hover:shadow-sm transition-all duration-200">
-                                            <p className="text-[13px] font-black font-mono tabular-nums leading-none text-amber-600">
+                                        <div className="flex-[1.2] flex flex-col items-center justify-center text-center px-3 py-1.5 rounded-xl border border-amber-300/60 bg-amber-50/20 hover:border-amber-400 hover:shadow-sm transition-all duration-300">
+                                            <p className="text-[12px] font-black font-mono tabular-nums leading-none text-amber-600">
                                                 − ₹ {bCoinDiscount.toLocaleString('en-IN')}
                                             </p>
                                             <div className="mt-1 inline-flex items-center gap-1">
                                                 <Logo variant="icon" size={9} customColor="#C99700" />
-                                                <span className="text-[8px] font-black text-slate-900 leading-none">
+                                                <span className="text-[8px] font-black text-slate-900 leading-none uppercase tracking-[0.04em]">
                                                     Wallet
                                                 </span>
                                             </div>
                                         </div>
                                     )}
 
-                                    {/* Final Offer — gold accent card */}
-                                    <div className="flex-[2] flex flex-col items-center justify-center text-center px-3 py-2 rounded-xl border border-[#FFD700]/50 hover:border-[#FFD700] hover:shadow-sm transition-all duration-200">
-                                        <div className="flex items-center gap-2 justify-center">
-                                            <p className="text-[14px] font-black font-mono tabular-nums leading-none text-[#C99700]">
-                                                ₹ {displayOnRoad.toLocaleString('en-IN')}
-                                            </p>
-                                            <div className="flex items-center gap-0.5">
-                                                <Logo variant="icon" size={12} customColor="#FFD700" />
-                                                <span className="text-[14px] font-black text-[#FFD700] font-mono tabular-nums leading-none">
-                                                    {coinsNeededForPrice(displayOnRoad).toLocaleString('en-IN')}
-                                                </span>
-                                            </div>
-                                        </div>
-                                        <p className="mt-1 inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-[0.08em] text-brand-primary">
-                                            <Zap size={9} />
-                                            Final Offer
+                                    {/* Delivery By — Premium Blue Card */}
+                                    <div className="flex-1 flex flex-col items-center justify-center text-center px-3 py-1.5 rounded-xl border border-blue-200/60 bg-blue-50/30 hover:border-blue-300 hover:shadow-sm transition-all duration-300">
+                                        <p className="text-[11px] font-black text-blue-700 leading-none">
+                                            {deliveryByLabel || 'TBD'}
                                         </p>
-                                    </div>
-
-                                    {/* Delivery + Studio Info */}
-                                    <div className="flex-[1.8] flex flex-col items-start justify-center px-3 py-2 rounded-xl border border-slate-200/70 hover:border-slate-300 hover:shadow-sm transition-all duration-200">
-                                        <p className="inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-[0.08em] text-slate-500">
+                                        <p className="mt-1 inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-[0.08em] text-blue-500/80">
                                             <CalendarClock size={9} />
                                             Delivery By
                                         </p>
-                                        <p className="mt-0.5 text-[11px] font-black text-slate-900 leading-none">
-                                            {deliveryByLabel || 'TBD'}
-                                        </p>
-                                        <p className="mt-1 inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-[0.08em] text-slate-500">
-                                            <Building2 size={9} />
-                                            Studio ID
-                                        </p>
-                                        <div className="mt-0.5 flex items-center gap-1.5">
-                                            <p className="text-[10px] font-black text-slate-700 leading-none">
+                                    </div>
+
+                                    {/* Studio ID — Premium Indigo Card */}
+                                    <div className="flex-1 flex flex-col items-center justify-center text-center px-3 py-1.5 rounded-xl border border-indigo-200/60 bg-indigo-50/30 hover:border-indigo-300 hover:shadow-sm transition-all duration-300">
+                                        <div className="flex flex-col items-center gap-0.5">
+                                            <p className="text-[10px] font-black text-indigo-700 leading-none">
                                                 {displayStudioCode}
                                             </p>
                                             {distanceLabel && (
-                                                <p className="text-[8px] font-bold uppercase tracking-[0.08em] text-slate-500 leading-none">
+                                                <p className="text-[7px] font-bold uppercase tracking-[0.04em] text-indigo-400 leading-none">
                                                     {distanceLabel}
                                                 </p>
                                             )}
                                         </div>
+                                    </div>
+
+                                    {/* Final Offer — gold accent card (Last) */}
+                                    <div className="flex-[2] flex flex-col items-center justify-center text-center px-4 py-1.5 rounded-xl border border-amber-400/50 bg-amber-50/30 hover:border-amber-500 hover:shadow-md transition-all duration-300 group">
+                                        <div className="flex items-center gap-2.5 justify-center">
+                                            <p className="text-[15px] font-black font-mono tabular-nums leading-none text-amber-700">
+                                                ₹ {displayOnRoad.toLocaleString('en-IN')}
+                                            </p>
+                                            <div className="flex items-center gap-0.5">
+                                                <Logo variant="icon" size={11} customColor="#F59E0B" />
+                                                <span className="text-[14px] font-black text-amber-500 font-mono tabular-nums leading-none">
+                                                    {coinsNeededForPrice(displayOnRoad).toLocaleString('en-IN')}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <p className="mt-1 inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-[0.1em] text-amber-600">
+                                            <Zap size={9} className="fill-amber-600" />
+                                            Final Offer
+                                        </p>
                                     </div>
                                 </div>
                             )}

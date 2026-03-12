@@ -45,6 +45,12 @@ export interface ProductVariant {
         offsetY?: number;
         finish?: string;
         position?: number;
+        price?: {
+            exShowroom: number;
+            onRoad: number;
+            offerPrice?: number;
+            discount?: number;
+        };
     }>;
     imageUrl: string;
     zoomFactor?: number;

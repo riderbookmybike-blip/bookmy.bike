@@ -450,6 +450,16 @@ function mapV2ToProductVariants(rows: RawProductRow[]): ProductVariant[] {
                 offsetX: s.offset_x ?? undefined,
                 offsetY: s.offset_y ?? undefined,
                 finish: s.finish || undefined,
+                price: {
+                    exShowroom: s.ex_showroom ?? 0,
+                    onRoad: s.on_road_price ?? s.ex_showroom ?? 0,
+                    offerPrice:
+                        s.dealer_offer !== 0
+                            ? (s.on_road_price ?? s.ex_showroom ?? 0) + (s.dealer_offer ?? 0)
+                            : undefined,
+                    discount:
+                        s.dealer_offer !== 0 && (s.dealer_offer ?? 0) < 0 ? Math.abs(s.dealer_offer ?? 0) : undefined,
+                },
             }));
 
         // Build specifications from variant data — comprehensive mapping

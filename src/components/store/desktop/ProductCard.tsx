@@ -133,6 +133,7 @@ export const ProductCard = ({
     const [selectedColorOffsetX, setSelectedColorOffsetX] = useState<number>(v.offsetX || 0);
     const [selectedColorOffsetY, setSelectedColorOffsetY] = useState<number>(v.offsetY || 0);
     const [selectedColorFinish, setSelectedColorFinish] = useState<string | null>(null);
+    const [selectedSkuId, setSelectedSkuId] = useState<string | null>(null);
     const [cachedScheme, setCachedScheme] = useState<{
         interestRate: number;
         interestType?: 'FLAT' | 'REDUCING';
@@ -247,6 +248,7 @@ export const ProductCard = ({
             v.availableColors?.find(c => c.imageUrl && c.imageUrl === v.imageUrl) ||
             v.availableColors?.find(c => c.imageUrl) ||
             v.availableColors?.[0];
+        setSelectedSkuId(primaryColor?.id || null);
         setSelectedColorImage(primaryColor?.imageUrl || v.imageUrl || null);
         setSelectedColorZoom(primaryColor?.zoomFactor ?? v.zoomFactor ?? null);
         setSelectedColorFlip(primaryColor?.isFlipped ?? v.isFlipped ?? false);
@@ -260,9 +262,16 @@ export const ProductCard = ({
     const bestOffer = rawBestOffer || null;
 
     // Uniform Offer SOT: non-PDP uses state on-road pricing only.
-    const displayPrice = v.price?.onRoad || v.price?.exShowroom || 0;
+    const activeColorPrice = v.availableColors?.find(c => c.id === selectedSkuId)?.price;
+    const displayPrice =
+        activeColorPrice?.onRoad || activeColorPrice?.exShowroom || v.price?.onRoad || v.price?.exShowroom || 0;
 
-    const liveOnRoad = typeof v.price?.onRoad === 'number' ? v.price.onRoad : undefined;
+    const liveOnRoad =
+        typeof activeColorPrice?.onRoad === 'number'
+            ? activeColorPrice.onRoad
+            : typeof v.price?.onRoad === 'number'
+              ? v.price.onRoad
+              : undefined;
     const basePrice =
         isPdp && liveOnRoad !== undefined ? liveOnRoad : displayPrice || effectiveServerPricing?.final_on_road || 0;
 
@@ -349,7 +358,7 @@ export const ProductCard = ({
         null;
     const bestOfferDelta = rawWinnerDelta !== null && rawWinnerDelta !== undefined ? Number(rawWinnerDelta) : null;
     const offerPriceFromWinner = bestOfferDelta !== null && Number.isFinite(onRoad) ? onRoad + bestOfferDelta : null;
-    const offerPrice = offerPriceFromWinner ?? v.price?.offerPrice ?? basePrice;
+    const offerPrice = offerPriceFromWinner ?? activeColorPrice?.offerPrice ?? v.price?.offerPrice ?? basePrice;
     const discountBasedDelta = typeof v.price?.discount === 'number' ? -Number(v.price.discount || 0) : 0;
     const mappedOfferDelta =
         typeof v.price?.offerPrice === 'number' && typeof v.price?.onRoad === 'number'
@@ -1086,6 +1095,7 @@ export const ProductCard = ({
                                                             if (c.hexCode) {
                                                                 setSelectedHex(c.hexCode);
                                                             }
+                                                            setSelectedSkuId(c.id);
                                                             // Trigger callback if provided (e.g., in PDP)
                                                             if (onColorChange && c.id) {
                                                                 onColorChange(c.id);

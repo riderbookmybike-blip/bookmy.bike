@@ -209,12 +209,6 @@ export function useSystemDealerContext({
 
     useEffect(() => {
         const hydrate = async () => {
-            if (disabled) {
-                setDealerFetchState('GATED');
-                setDealerFetchNotice(null);
-                setIsHydrating(false);
-                return;
-            }
             if (typeof window === 'undefined') {
                 setIsHydrating(false);
                 return;
@@ -250,11 +244,10 @@ export function useSystemDealerContext({
                 }
 
                 // Gate: need lat/lng to proceed
-                if (!userLat || !userLng) {
+                if (disabled || !userLat || !userLng) {
                     if (!overrideDealerId) {
                         setDealerFetchState('GATED');
-                        setIsHydrating(false);
-                        return;
+                        // Note: We don't return here anymore, because we still need to resolve base pricing for the SKU
                     }
                 }
 
@@ -273,6 +266,7 @@ export function useSystemDealerContext({
                 // selectedColor might be color NAME (e.g. 'pearl-igneous-black') or color ID
                 // We need the actual skuId (UUID) from product.colors array
                 let activeSku: string | undefined;
+                let currentBasePricing: any = serverPricing; // Use local variable to avoid stale state issues in this effect
 
                 if (selectedColor) {
                     // Try to find the color by id or name and get its skuId
@@ -305,6 +299,7 @@ export function useSystemDealerContext({
                         delivery_tat_days: dealerTatDays,
                     });
 
+                    // Sync all colors if pricing data provides it, otherwise just the active one
                     setDealerColors(prev =>
                         prev.map((c: any) => {
                             if (c.skuId === activeSku) {
@@ -411,7 +406,7 @@ export function useSystemDealerContext({
                                 },
                                 final_on_road: Number(priceRow.on_road_price || priceRow.ex_showroom || 0),
                                 location: {
-                                    district: 'ALL',
+                                    district: district || 'ALL',
                                     state_code: activeStateCode,
                                 },
                                 meta: {
@@ -424,13 +419,23 @@ export function useSystemDealerContext({
                                 insurance_breakdown: [],
                             };
                             applyPricing(pricingSnap);
+                            currentBasePricing = pricingSnap; // Update local tracker for later steps
                         }
+                    } else {
+                        currentBasePricing = prefetchedPricing;
                     }
                 } // end: if (!prefetchCoversActiveSku)
 
                 // 3. Resolve Market Best Offers OR Specific Dealer Offers
-                let relevantOffers: any[] = [];
+                // If gated and no override, skip dealer resolution but we still resolved base pricing!
+                if (dealerFetchState === 'GATED' && !overrideDealerId) {
+                    setBestOffer(undefined);
+                    setOtherOffers([]);
+                    setIsHydrating(false);
+                    return;
+                }
                 const useCandidateRpc = process.env.NEXT_PUBLIC_USE_CANDIDATE_RPC === 'true';
+                let relevantOffers: any[] = [];
 
                 if (overrideDealerId) {
                     // DIRECT DEALER RESOLUTION (Quote Context)
@@ -557,61 +562,83 @@ export function useSystemDealerContext({
                     return;
                 }
 
-                // 5. Identify Winning Dealer (final_effective -> distance -> tat -> updated_at)
+                // 5. Filter for Active SKU and Identify Winning Dealer
+                const activeSkuOffers = relevantOffers.filter(o => o.vehicle_color_id === activeSku);
+
                 let rankedOffers: any[] = [];
+                const bp =
+                    Number(currentBasePricing?.ex_showroom || 0) +
+                    Number(currentBasePricing?.rto?.STATE || 0) +
+                    Number(currentBasePricing?.insurance?.base_total || 0);
 
                 if (useCandidateRpc) {
-                    const bp =
-                        Number(serverPricing?.ex_showroom || 0) +
-                        Number(serverPricing?.rto?.STATE || 0) +
-                        Number(serverPricing?.insurance?.base_total || 0);
                     rankedOffers = rankCandidates(
-                        relevantOffers as CandidateOffer[],
+                        activeSkuOffers as CandidateOffer[],
                         mode,
                         bp,
                         getDeliveryChargeByDistance
                     );
                 } else {
-                    rankedOffers = rankOffers(relevantOffers as RankedOffer[]);
+                    rankedOffers = rankOffers(activeSkuOffers as RankedOffer[]);
                 }
-                const winningOffer = rankedOffers[0];
+
+                // If no rules for active SKU, but we have rules for others, winner for UI is STILL active SKU (with 0 offer)
+                // unless we want to fallback to the absolute best across all SKUs? (User says NO, separate per SKU)
+                const winningOffer = rankedOffers[0] || {
+                    vehicle_color_id: activeSku,
+                    dealer_id: relevantOffers[0].dealer_id,
+                    dealer_name: relevantOffers[0].dealer_name,
+                    studio_id: relevantOffers[0].studio_id,
+                    best_offer: 0,
+                    offer_amount: 0,
+                    distance_km: relevantOffers[0].distance_km,
+                    delivery_tat_days: relevantOffers[0].delivery_tat_days,
+                };
+
                 const winningDealerId = winningOffer.dealer_id;
                 const winningDealerName = winningOffer.dealer_name;
                 const winningOfferAmount = useCandidateRpc
-                    ? // Market RPC returns column as 'best_offer' (SQL alias), direct-dealer path sets 'offer_amount'
-                      // Use nullish fallback so both paths work correctly
-                      Number((winningOffer as any).offer_amount ?? (winningOffer as any).best_offer ?? 0)
+                    ? Number((winningOffer as any).offer_amount ?? (winningOffer as any).best_offer ?? 0)
                     : Number(winningOffer.best_offer || 0);
 
-                // SSPP v1.6: Merge Winner Details back into SSPP state
-                setServerPricing(prev =>
-                    prev
-                        ? {
-                              ...prev,
-                              dealer: {
-                                  id: winningDealerId,
-                                  name: winningDealerName,
-                                  studio_id: winningOffer.studio_id,
-                                  distance_km: Number.isFinite(Number((winningOffer as any).distance_km))
-                                      ? Number((winningOffer as any).distance_km)
-                                      : null,
-                                  offer: winningOfferAmount,
-                                  is_serviceable: true,
-                                  tat_effective_hours: null,
-                                  delivery_tat_days: Number.isFinite(Number((winningOffer as any).delivery_tat_days))
-                                      ? Number((winningOffer as any).delivery_tat_days)
-                                      : null,
-                              },
-                          }
-                        : null
-                );
+                const finalPricing: any = {
+                    ...currentBasePricing,
+                    success: true,
+                    dealer: {
+                        id: winningDealerId,
+                        name: winningDealerName,
+                        studio_id: winningOffer.studio_id,
+                        distance_km: Number.isFinite(Number((winningOffer as any).distance_km))
+                            ? Number((winningOffer as any).distance_km)
+                            : null,
+                        offer: winningOfferAmount,
+                        is_serviceable: true,
+                        tat_effective_hours: null,
+                        delivery_tat_days: Number.isFinite(Number((winningOffer as any).delivery_tat_days))
+                            ? Number((winningOffer as any).delivery_tat_days)
+                            : null,
+                    },
+                    location: {
+                        district: district || 'ALL',
+                        state_code: stateCode || 'MH',
+                    },
+                };
+
+                // Add in final_on_road calculation
+                finalPricing.final_on_road =
+                    (finalPricing.ex_showroom || 0) +
+                    (finalPricing.rto?.STATE || 0) +
+                    (finalPricing.insurance?.base_total || 0) +
+                    winningOfferAmount;
+
+                setServerPricing(finalPricing);
 
                 setBestOffer({
                     price: winningOfferAmount,
                     dealer: winningDealerName,
                     dealerId: winningDealerId,
                     isServiceable: true,
-                    dealerLocation: serverPricing?.location?.district || undefined,
+                    dealerLocation: finalPricing.location?.district || undefined,
                     studio_id: winningOffer.studio_id || undefined,
                     distance_km: Number.isFinite(Number((winningOffer as any).distance_km))
                         ? Number((winningOffer as any).distance_km)
@@ -623,6 +650,23 @@ export function useSystemDealerContext({
                         : null,
                     tat_effective_hours: null,
                 });
+
+                // Update ALL color offers at once from the RPC results
+                setDealerColors(prev =>
+                    prev.map((c: any) => {
+                        const bestSkuOffer = relevantOffers.find((o: any) => o.vehicle_color_id === c.skuId);
+                        return {
+                            ...c,
+                            pricingOverride: {
+                                ...c.pricingOverride,
+                                exShowroom: finalPricing.ex_showroom, // Use current active ex-showroom as fallback
+                            },
+                            dealerOffer: bestSkuOffer
+                                ? Number(bestSkuOffer.offer_amount || bestSkuOffer.best_offer || 0)
+                                : 0,
+                        };
+                    })
+                );
 
                 // Deduplicate by dealer_id — RPC returns one row per SKU/color,
                 // so same dealer can appear N times (once per color variant).
@@ -650,13 +694,23 @@ export function useSystemDealerContext({
 
                 setDealerColors(prev =>
                     prev.map((c: any) => {
-                        if (c.skuId === activeSku) {
-                            return {
-                                ...c,
-                                dealerOffer: winningOfferAmount,
-                            };
-                        }
-                        return c;
+                        // Find the absolute best offer for THIS specific color SKU in the relevantOffers pool
+                        const skuOffers = relevantOffers.filter(o => o.vehicle_color_id === c.skuId);
+                        if (skuOffers.length === 0) return c;
+
+                        const skuRanked = useCandidateRpc
+                            ? rankCandidates(skuOffers as CandidateOffer[], mode, bp, getDeliveryChargeByDistance)
+                            : rankOffers(skuOffers as RankedOffer[]);
+
+                        const bestSkuOffer = skuRanked[0];
+                        const bestSkuOfferAmount = useCandidateRpc
+                            ? Number((bestSkuOffer as any).offer_amount ?? (bestSkuOffer as any).best_offer ?? 0)
+                            : Number((bestSkuOffer as any).best_offer || 0);
+
+                        return {
+                            ...c,
+                            dealerOffer: bestSkuOfferAmount,
+                        };
                     })
                 );
 
