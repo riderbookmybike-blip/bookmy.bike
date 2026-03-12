@@ -408,6 +408,7 @@ export const MobilePDP = ({
                     showOClubPrompt={showOClubPrompt}
                     isGated={isGated}
                     leadName={leadContext?.name}
+                    initialLocation={initialLocation}
                     serviceability={serviceability}
                     isOpen={openContentCard === 'pricing'}
                     onToggle={() => toggleCard('pricing')}

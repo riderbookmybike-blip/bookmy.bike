@@ -1,313 +1,438 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useRouter, useParams } from 'next/navigation';
 import {
     Building2,
-    MapPin,
     Users,
-    Package,
-    Settings,
-    Activity,
-    Fingerprint,
-    Globe,
-    Shield,
-    Landmark,
-    Zap,
+    BarChart3,
+    ShieldCheck,
+    MapPin,
+    CreditCard,
+    Settings2,
+    ExternalLink,
     ChevronRight,
-    ShieldCheck
+    Globe,
+    Loader2,
+    Fingerprint,
+    HardDrive,
+    Wallet,
+    LayoutGrid,
+    Search as SearchIcon,
+    Plus,
+    Activity,
+    Save,
+    X,
+    Pencil,
 } from 'lucide-react';
+import IdentitySettings from './settings/IdentitySettings';
+import LocationSettings from './settings/LocationSettings';
+import ComplianceSettings from './settings/ComplianceSettings';
+import FinanceSettings from './settings/FinanceSettings';
+import TeamAccess from './TeamAccess';
 import { createClient } from '@/lib/supabase/client';
-import Link from 'next/link';
-import { format } from 'date-fns';
-
-// Settings Components
-import IdentitySettings from '@/components/dealers/settings/IdentitySettings';
-import LocationSettings from '@/components/dealers/settings/LocationSettings';
-import ComplianceSettings from '@/components/dealers/settings/ComplianceSettings';
-import FinanceSettings from '@/components/dealers/settings/FinanceSettings';
-import AddMemberModal from '@/components/dealers/AddMemberModal';
+import MasterListDetailLayout from '@/components/templates/MasterListDetailLayout';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
+import { getAllTenants } from '@/actions/tenants';
+import { toast } from 'sonner';
 
 interface DealerProfileContentProps {
     dealerId: string;
-    superAdminMode?: boolean; // If true, shows Network View / back buttons
-    currentTenantSlug?: string; // Needed for back links
+    superAdminMode?: boolean;
+    currentTenantSlug?: string;
     isCompanyProfile?: boolean;
 }
 
-export default function DealerProfileContent({ dealerId, superAdminMode = false, currentTenantSlug, isCompanyProfile = false }: DealerProfileContentProps) {
-    const [activeTab, setActiveTab] = useState('config');
+type TabType = 'intelligence' | 'personnel' | 'commerce' | 'identity' | 'location' | 'compliance' | 'finance';
+
+export default function DealerProfileContent({
+    dealerId: initialDealerId,
+    superAdminMode = false,
+    currentTenantSlug,
+    isCompanyProfile = false,
+}: DealerProfileContentProps) {
+    const { device } = useBreakpoint();
+    const router = useRouter();
+    const params = useParams();
+    const slug = typeof params?.slug === 'string' ? params.slug : Array.isArray(params?.slug) ? params.slug[0] : '';
+
+    const [dealers, setDealers] = useState<any[]>([]);
+    const [selectedDealerId, setSelectedDealerId] = useState<string>(initialDealerId);
     const [dealer, setDealer] = useState<any>(null);
-    const [members, setMembers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [listLoading, setListLoading] = useState(superAdminMode);
+    const [activeTab, setActiveTab] = useState<TabType>('identity');
+    const [searchQuery, setSearchQuery] = useState('');
 
-    // Config Sub-tab
-    const [configTab, setConfigTab] = useState('identity');
-
-    // Add Member Modal
-    const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
+    // --- Fetch Dealer List (SuperAdmin only) ---
+    const fetchDealerList = useCallback(async () => {
+        if (!superAdminMode) return;
+        setListLoading(true);
+        try {
+            const data = await getAllTenants(searchQuery);
+            setDealers(data);
+        } catch (error) {
+            console.error('Failed to fetch dealers:', error);
+            toast.error('Failed to load dealer registry');
+        } finally {
+            setListLoading(false);
+        }
+    }, [superAdminMode, searchQuery]);
 
     useEffect(() => {
-        if (dealerId) {
-            fetchDealerDetails(dealerId);
-        }
-    }, [dealerId]);
+        if (superAdminMode) fetchDealerList();
+    }, [fetchDealerList, superAdminMode]);
 
-    const fetchDealerDetails = async (id: string) => {
+    // --- Fetch Specific Dealer Detail ---
+    const fetchDealerDetail = useCallback(async (id: string) => {
         setLoading(true);
         const supabase = createClient();
-        const { data: tenant } = await supabase.from('id_tenants').select('*').eq('id', id).single();
-        if (tenant) {
-            setDealer(tenant);
+        try {
+            const { data } = await supabase.from('id_tenants').select('*').eq('id', id).maybeSingle();
 
-            // Fetch team records
-            const { data: team } = await supabase
-                .from('id_team')
-                .select('*')
-                .eq('tenant_id', id);
-
-            if (team && team.length > 0) {
-                // Get member details separately since no FK exists between id_team.user_id and id_members
-                const memberIds = team.map(t => t.user_id).filter((uid): uid is string => uid !== null);
-
-                if (memberIds.length > 0) {
-                    const { data: memberDetails } = await supabase
-                        .from('id_members')
-                        .select('id, full_name, email, primary_phone')
-                        .in('id', memberIds);
-
-                    // Merge member details with team records
-                    const enrichedTeam = team.map(t => ({
-                        ...t,
-                        user: memberDetails?.find((m: any) => m.id === t.user_id) || null
-                    }));
-
-                    setMembers(enrichedTeam);
-                } else {
-                    setMembers(team);
-                }
-            } else {
-                setMembers([]);
-            }
+            if (data) setDealer(data);
+        } catch (error) {
+            console.error('Failed to fetch dealer detail:', error);
+            toast.error('Failed to load dealer context');
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
+    }, []);
+
+    useEffect(() => {
+        if (selectedDealerId) fetchDealerDetail(selectedDealerId);
+    }, [selectedDealerId, fetchDealerDetail]);
+
+    // --- Real-time Updates ---
+    useEffect(() => {
+        if (!selectedDealerId) return;
+        const supabase = createClient();
+        const channel = supabase
+            .channel(`dealer-${selectedDealerId}`)
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'id_tenants', filter: `id=eq.${selectedDealerId}` },
+                () => fetchDealerDetail(selectedDealerId)
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [selectedDealerId, fetchDealerDetail]);
+
+    // --- Navigation Helpers ---
+    const handleOpenDealer = (id: string) => {
+        setSelectedDealerId(id);
+        if (superAdminMode && slug) {
+            router.push(`/app/${slug}/dashboard/dealers/${id}`);
+        }
     };
 
-    if (loading) return <div className="flex h-[80vh] items-center justify-center"><div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" /></div>;
-    if (!dealer) return <div className="p-10 text-center text-slate-400">Dealer not found</div>;
+    const filteredDealers = useMemo(() => {
+        return dealers.filter(
+            d =>
+                d.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (d.slug || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (d.location || '').toLowerCase().includes(searchQuery.toLowerCase())
+        );
+    }, [dealers, searchQuery]);
 
-    return (
-        <div className="space-y-6 pb-24 animate-in fade-in duration-500">
-            {/* 1. Integrated Hero Header */}
-            <div className="relative group overflow-hidden rounded-[2.5rem] bg-slate-900 border border-slate-800 p-8 md:p-10">
-                <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-500/10 rounded-full blur-[120px] -mr-32 -mt-32 pointer-events-none" />
-                <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-emerald-500/5 rounded-full blur-[100px] -ml-20 -mb-20 pointer-events-none" />
+    const tabs = useMemo(
+        () => [
+            { id: 'identity', label: 'Identity Registry', icon: Fingerprint, group: 'ARCHITECTURE' },
+            { id: 'location', label: 'Geo-Coordinate Hubs', icon: MapPin, group: 'ARCHITECTURE' },
+            { id: 'compliance', label: 'Regulatory Vault', icon: ShieldCheck, group: 'ARCHITECTURE' },
+            { id: 'finance', label: 'Financial Nexus', icon: CreditCard, group: 'ARCHITECTURE' },
+            { id: 'personnel', label: 'Operational Roster', icon: Users, group: 'ANALYTICS' },
+            { id: 'intelligence', label: 'Market Intelligence', icon: BarChart3, group: 'ANALYTICS' },
+            { id: 'commerce', label: 'Commerce Cockpit', icon: Building2, group: 'ANALYTICS' },
+        ],
+        []
+    );
 
-                <div className="relative flex flex-col md:flex-row justify-between gap-8 items-start md:items-center">
-                    <div className="flex items-center gap-6">
-                        <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/50 flex items-center justify-center shadow-2xl shadow-black/20">
-                            {dealer.logo_url ? (
-                                <img src={dealer.logo_url} alt="Logo" className="w-full h-full object-cover rounded-2xl" />
-                            ) : (
-                                <Building2 size={36} className="text-slate-600" />
-                            )}
-                        </div>
-                        <div className="space-y-1.5">
-                            <div className="flex items-center gap-3">
-                                <h1 className="text-3xl font-black text-white tracking-tight">{dealer.name}</h1>
-                                <span className="px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                                    {dealer.status} Node
-                                </span>
-                            </div>
-                            <div className="flex items-center gap-4 text-sm font-medium text-slate-400">
-                                <span className="flex items-center gap-1.5 hover:text-indigo-400 transition-colors cursor-pointer">
-                                    <MapPin size={14} /> {dealer.location || 'Location Pending'}
-                                </span>
-                                <span className="w-1 h-1 rounded-full bg-slate-700" />
-                                <span className="flex items-center gap-1.5 font-mono opacity-60">
-                                    <Fingerprint size={14} /> {dealer.slug}
-                                </span>
-                            </div>
-                        </div>
+    const detailContent = (
+        <div className="flex-1 flex flex-col h-full bg-white animate-in fade-in duration-500 overflow-hidden">
+            {loading ? (
+                <div className="flex h-full flex-col items-center justify-center space-y-4">
+                    <Loader2 className="w-10 h-10 text-indigo-500 animate-spin" />
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                        Initialising Node Context...
+                    </p>
+                </div>
+            ) : !dealer ? (
+                <div className="flex h-full flex-col items-center justify-center space-y-4">
+                    <div className="w-16 h-16 bg-rose-50 rounded-2xl flex items-center justify-center text-rose-500 mb-4 border border-rose-100">
+                        <ShieldCheck size={32} />
                     </div>
-
-                    {superAdminMode && currentTenantSlug && (
-                        <div className="flex items-center gap-3">
-                            <Link href={`/app/${currentTenantSlug}/dashboard/dealers`} className="px-5 py-3 rounded-xl bg-white/5 border border-white/10 text-slate-300 text-xs font-bold hover:bg-white/10 transition-colors uppercase tracking-wider">
-                                Network View
-                            </Link>
-                            {/* Live Dashboard Button could go here */}
-                        </div>
-                    )}
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                        Node Not Found In Registry
+                    </p>
                 </div>
-
-                {/* Navigation Pills */}
-                <div className="flex items-center gap-2 mt-10 p-1.5 bg-black/20 backdrop-blur-md rounded-2xl w-fit border border-white/5">
-                    <NavPill id="overview" label="Performance" icon={Activity} active={activeTab} onClick={setActiveTab} />
-                    <NavPill id="team" label="Team Access" icon={Users} active={activeTab} onClick={setActiveTab} />
-                    <NavPill id="inventory" label="Inventory" icon={Package} active={activeTab} onClick={setActiveTab} />
-                    <NavPill id="config" label="Settings & Config" icon={Settings} active={activeTab} onClick={setActiveTab} />
-                </div>
-            </div>
-
-            {/* Content Area */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-
-                {/* Main Content */}
-                <div className="lg:col-span-8 space-y-6">
-                    {activeTab === 'config' && (
-                        <div className="flex flex-col md:flex-row gap-6">
-                            {/* Settings Navigation Sidebar */}
-                            <div className="w-full md:w-64 shrink-0 space-y-2">
-                                <h3 className="px-4 text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3 mt-1">Configuration</h3>
-                                <ConfigNavBtn id="identity" label="Identity" sublabel="Logo & Brand" icon={Fingerprint} active={configTab} onClick={setConfigTab} />
-                                <ConfigNavBtn id="locations" label="Locations" sublabel="Showrooms/Hubs" icon={Globe} active={configTab} onClick={setConfigTab} />
-                                <ConfigNavBtn id="compliance" label="Compliance" sublabel="Docs & Legal" icon={Shield} active={configTab} onClick={setConfigTab} />
-                                <ConfigNavBtn id="finance" label="Finance" sublabel="Bank Accounts" icon={Landmark} active={configTab} onClick={setConfigTab} />
-                            </div>
-
-                            {/* Settings Viewport */}
-                            <div className="flex-1 min-h-[600px] bg-slate-900 border border-slate-800 rounded-3xl p-6 md:p-8 relative">
-                                <div className="absolute top-0 right-0 p-8 opacity-20 pointer-events-none">
-                                    {configTab === 'identity' && <Fingerprint size={120} className="text-white" />}
-                                    {configTab === 'locations' && <Globe size={120} className="text-white" />}
-                                    {configTab === 'compliance' && <Shield size={120} className="text-white" />}
-                                    {configTab === 'finance' && <Landmark size={120} className="text-white" />}
+            ) : (
+                <>
+                    {/* Compact Professional Header */}
+                    <div className="px-8 pt-8 pb-0 border-b border-slate-100 dark:border-white/5">
+                        <div className="flex items-start justify-between">
+                            <div className="flex items-center gap-6">
+                                <div className="w-14 h-14 bg-slate-50 dark:bg-white/5 rounded-xl flex items-center justify-center overflow-hidden border border-slate-200 dark:border-white/10 shadow-sm">
+                                    {dealer.logo_url ? (
+                                        <img
+                                            src={dealer.logo_url}
+                                            alt=""
+                                            className="w-full h-full object-contain p-2"
+                                        />
+                                    ) : (
+                                        <Building2 size={24} className="text-slate-400" />
+                                    )}
                                 </div>
-
-                                <div className="relative z-10">
-                                    {configTab === 'identity' && <IdentitySettings dealer={dealer} onUpdate={() => fetchDealerDetails(dealer.id)} />}
-                                    {configTab === 'locations' && <LocationSettings dealerId={dealer.id} />}
-                                    {configTab === 'compliance' && <ComplianceSettings dealerId={dealer.id} />}
-                                    {configTab === 'finance' && <FinanceSettings dealerId={dealer.id} />}
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {activeTab === 'overview' && (
-                        <div className="p-12 text-center border-2 border-dashed border-slate-800 rounded-3xl text-slate-500 bg-slate-900/50">
-                            <Activity size={48} className="mx-auto text-slate-700 mb-4" />
-                            <h3 className="text-xl font-bold text-white">Performance Overview</h3>
-                            <p className="text-sm mt-2">Charts and metrics coming in next update.</p>
-                        </div>
-                    )}
-
-                    {activeTab === 'team' && (
-                        <div className="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden">
-                            <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
                                 <div>
-                                    <h3 className="text-lg font-bold text-white">Team Members</h3>
-                                    <p className="text-xs text-slate-500">Manage access and roles.</p>
+                                    <div className="flex items-center gap-3">
+                                        <h1 className="text-xl font-black tracking-tight text-slate-900 dark:text-white uppercase">
+                                            {dealer.name}
+                                        </h1>
+                                        <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+                                            Operational Node
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-3 mt-1.5 text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                                        <span className="flex items-center gap-1.5">
+                                            <MapPin size={10} /> {dealer.location || 'GLOBAL_NODE'}
+                                        </span>
+                                        <span className="text-slate-200">|</span>
+                                        <span className="flex items-center gap-1.5 font-black text-indigo-600">
+                                            {dealer.slug?.toUpperCase() || 'CORE'}.STATION
+                                        </span>
+                                        <span className="text-slate-200">|</span>
+                                        <span className="text-[9px] opacity-70">UID: {dealer.id.slice(0, 12)}...</span>
+                                    </div>
                                 </div>
-                                <button
-                                    onClick={() => setIsAddMemberOpen(true)}
-                                    className="text-[10px] font-black text-indigo-400 hover:text-indigo-300 bg-indigo-500/10 hover:bg-indigo-500/20 px-4 py-2 rounded-lg transition-colors border border-indigo-500/20 uppercase tracking-wider"
-                                >
-                                    + Add Member
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <button className="p-2.5 bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 rounded-xl text-slate-400 hover:text-slate-600 transition-all shadow-sm">
+                                    <ExternalLink size={14} />
+                                </button>
+                                <button className="px-6 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-indigo-600 dark:hover:bg-indigo-50 shadow-lg shadow-slate-900/10 transition-all">
+                                    Sync Assets
                                 </button>
                             </div>
-                            <div className="divide-y divide-slate-800">
-                                {members.map((member) => (
-                                    <div key={member.id} className="p-5 flex items-center justify-between hover:bg-white/5 transition-colors group">
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center text-white font-bold text-xs ring-1 ring-white/10">
-                                                {member.user?.full_name?.[0] || 'U'}
-                                            </div>
-                                            <div>
-                                                <p className="text-sm font-bold text-white group-hover:text-indigo-400 transition-colors">{member.user?.full_name || 'Unknown User'}</p>
-                                                <div className="flex items-center gap-2 mt-0.5">
-                                                    <p className="text-xs text-slate-500 font-mono">{member.role}</p>
-                                                    {member.reports_to && <span className="text-[9px] px-1.5 py-0.5 bg-slate-800 rounded text-slate-400">↳ Reports</span>}
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <span className="px-2.5 py-1 rounded bg-slate-800 text-slate-400 text-[10px] font-bold uppercase tracking-wider">{member.status}</span>
-                                    </div>
-                                ))}
-                                {members.length === 0 && <div className="p-10 text-center text-slate-600 font-mono text-xs">NO MEMBERS FOUND</div>}
-                            </div>
                         </div>
-                    )}
-                </div>
 
-                {/* Sidebar Stats */}
-                <div className="lg:col-span-4 space-y-6">
-
-
-                    <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6">
-                        <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-6">System Metadata</h3>
-                        <div className="space-y-4">
-                            <MetadataRow label="Created" value={format(new Date(dealer.created_at), 'dd MMM yyyy')} />
-                            <MetadataRow label="Zone" value="West Zone (MH)" />
-                            <MetadataRow label="Type" value={dealer.type.replace('_', ' ')} />
-                            <div className="flex justify-between items-center text-xs">
-                                <span className="font-bold text-slate-500 uppercase">Brand</span>
-                                <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-widest ${dealer.brand_type === 'MULTIBRAND'
-                                    ? 'bg-indigo-500/10 text-indigo-400'
-                                    : 'bg-emerald-500/10 text-emerald-400'
-                                    }`}>
-                                    {dealer.brand_type === 'MULTIBRAND' ? 'Multibrand' : 'Monobrand'}
-                                </span>
-                            </div>
-                            <MetadataRow label="System ID" value={dealer.id.slice(0, 8)} isMono />
+                        {/* Zoho Style Tabs */}
+                        <div className="flex items-center gap-1 mt-10 overflow-x-auto no-scrollbar">
+                            {tabs.map(t => (
+                                <button
+                                    key={t.id}
+                                    onClick={() => setActiveTab(t.id as TabType)}
+                                    className={`flex items-center gap-2 px-5 py-3 text-[10px] font-black uppercase tracking-[0.15em] transition-all relative border-t border-x border-transparent rounded-t-xl shrink-0 ${
+                                        activeTab === t.id
+                                            ? 'bg-[#f8fafc]/50 text-indigo-600 border-slate-100 z-10'
+                                            : 'text-slate-400 hover:text-slate-600 bg-transparent'
+                                    }`}
+                                >
+                                    <t.icon
+                                        size={13}
+                                        className={activeTab === t.id ? 'text-indigo-600' : 'text-slate-300'}
+                                    />
+                                    {t.label}
+                                    {activeTab === t.id && (
+                                        <div className="absolute top-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-full" />
+                                    )}
+                                </button>
+                            ))}
                         </div>
                     </div>
+
+                    {/* Scrollable Content Container */}
+                    <div className="flex-1 overflow-y-auto no-scrollbar bg-[#f8fafc]/50 p-8">
+                        <div className="max-w-5xl space-y-8 animate-in slide-in-from-bottom-2 duration-300">
+                            {activeTab === 'identity' && (
+                                <IdentitySettings
+                                    dealer={dealer}
+                                    onUpdate={() => fetchDealerDetail(selectedDealerId)}
+                                />
+                            )}
+                            {activeTab === 'location' && <LocationSettings dealerId={dealer.id} />}
+                            {activeTab === 'compliance' && <ComplianceSettings dealerId={dealer.id} />}
+                            {activeTab === 'finance' && <FinanceSettings dealerId={dealer.id} />}
+
+                            {activeTab === 'personnel' && (
+                                <div className="bg-white border border-slate-200 rounded-2xl p-8 shadow-sm">
+                                    <div className="flex items-center justify-between border-b border-slate-100 pb-6 mb-8">
+                                        <div>
+                                            <h2 className="text-sm font-black text-slate-900 uppercase tracking-[0.2em]">
+                                                Personnel Roster
+                                            </h2>
+                                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1.5 flex items-center gap-2">
+                                                <ShieldCheck size={12} className="text-emerald-500" /> Nodal permission
+                                                and access management protocol.
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <TeamAccess dealer={dealer} />
+                                </div>
+                            )}
+
+                            {(activeTab === 'intelligence' || activeTab === 'commerce') && (
+                                <div className="bg-white border border-slate-100 rounded-2xl py-32 flex flex-col items-center justify-center text-center shadow-sm border-dashed">
+                                    <div className="w-20 h-20 bg-slate-50 rounded-3xl flex items-center justify-center text-slate-200 mb-6 border border-slate-100">
+                                        <Settings2 size={40} strokeWidth={1.5} />
+                                    </div>
+                                    <h3 className="text-xs font-black text-slate-900 uppercase tracking-[0.2em]">
+                                        {activeTab} Vector Calibration
+                                    </h3>
+                                    <p className="text-[10px] text-slate-400 mt-3 font-bold uppercase tracking-widest max-w-xs leading-relaxed opacity-70">
+                                        This operational stream is currently in a state of high-fidelity
+                                        synchronization.
+                                    </p>
+                                    <button className="mt-8 px-8 py-2.5 bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-md">
+                                        Initialize Protocol
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Node Footer Meta */}
+                        <div className="mt-12 flex items-center justify-between text-[8px] font-black text-slate-300 uppercase tracking-[0.2em] px-2 mb-8">
+                            <div className="flex items-center gap-8">
+                                <span className="flex items-center gap-2">
+                                    <Fingerprint size={10} className="text-slate-200" />
+                                    SECURE_NODE_IDENT: {dealer.id.toUpperCase()}
+                                </span>
+                                <span className="hidden sm:inline">
+                                    KERNEL: {new Date().getFullYear()}.
+                                    {String(new Date().getMonth() + 1).padStart(2, '0')}.STABLE
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-4">
+                                <Activity size={10} className="text-emerald-400" />
+                                ENCRYPTED_AUMS_SESSION // Node: {slug?.toUpperCase() || 'CORE'}
+                            </div>
+                        </div>
+                    </div>
+                </>
+            )}
+        </div>
+    );
+
+    // --- Main Layout Controller ---
+    if (superAdminMode) {
+        return (
+            <div className="h-screen bg-white flex overflow-hidden font-sans">
+                <MasterListDetailLayout
+                    mode="list-detail"
+                    listPosition="left"
+                    device={device}
+                    hasActiveDetail={!!selectedDealerId}
+                    onBack={() => setSelectedDealerId('')}
+                >
+                    {/* List Pane */}
+                    <div className="h-full flex flex-col bg-[#fdfdfd] border-r border-slate-200 w-full animate-in slide-in-from-left duration-500">
+                        <div className="p-5 border-b border-slate-200 space-y-5">
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-xs font-black uppercase tracking-[0.2em] text-slate-900">
+                                    Dealer <span className="text-indigo-600">Registry</span>
+                                </h2>
+                                <button className="p-1.5 hover:bg-slate-100 rounded-lg transition-all text-slate-400">
+                                    <LayoutGrid size={14} />
+                                </button>
+                            </div>
+                            <div className="relative">
+                                <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 w-3.5 h-3.5" />
+                                <input
+                                    type="text"
+                                    value={searchQuery}
+                                    onChange={e => setSearchQuery(e.target.value)}
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 pl-9 pr-4 text-[11px] font-bold text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-indigo-500/50 focus:ring-4 focus:ring-indigo-500/5 transition-all outline-none"
+                                    placeholder="Search nodes..."
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-2.5 space-y-1.5 no-scrollbar">
+                            {listLoading ? (
+                                <div className="space-y-2 p-2">
+                                    {[1, 2, 3, 4, 5].map(i => (
+                                        <div key={i} className="h-20 bg-slate-50 rounded-xl animate-pulse" />
+                                    ))}
+                                </div>
+                            ) : filteredDealers.length === 0 ? (
+                                <div className="p-8 text-center space-y-3">
+                                    <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center mx-auto border border-slate-100">
+                                        <SearchIcon size={16} className="text-slate-300" />
+                                    </div>
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                        No nodes matched
+                                    </p>
+                                </div>
+                            ) : (
+                                filteredDealers.map(d => {
+                                    const isActive = selectedDealerId === d.id;
+                                    return (
+                                        <button
+                                            key={d.id}
+                                            onClick={() => handleOpenDealer(d.id)}
+                                            className={`w-full text-left rounded-xl p-4 transition-all border ${
+                                                isActive
+                                                    ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-600/20 active-node'
+                                                    : 'bg-white border-slate-100 hover:border-slate-300 hover:bg-slate-50 hover:shadow-sm'
+                                            }`}
+                                        >
+                                            <div className="flex items-center justify-between mb-2">
+                                                <span
+                                                    className={`text-[9px] font-black uppercase tracking-widest ${isActive ? 'text-indigo-100' : 'text-indigo-600'}`}
+                                                >
+                                                    {d.slug?.toUpperCase() || 'CORE'}
+                                                </span>
+                                                <div
+                                                    className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-white' : 'bg-emerald-400'} shadow-[0_0_8px_rgba(52,211,153,0.5)]`}
+                                                />
+                                            </div>
+                                            <div
+                                                className={`text-[12px] font-black uppercase tracking-tight mb-1 truncate ${isActive ? 'text-white' : 'text-slate-900'}`}
+                                            >
+                                                {d.name}
+                                            </div>
+                                            <div
+                                                className={`text-[9px] font-bold uppercase tracking-widest ${isActive ? 'text-indigo-200' : 'text-slate-400'}`}
+                                            >
+                                                {d.location || 'GLOBAL_ZONE'}
+                                            </div>
+                                        </button>
+                                    );
+                                })
+                            )}
+                        </div>
+
+                        {/* List Footer */}
+                        <div className="p-4 border-t border-slate-100 bg-slate-50/30 flex items-center justify-between">
+                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">
+                                AUMS Registry v2.0
+                            </p>
+                            <div className="flex items-center gap-1.5">
+                                <div className="w-1 h-1 rounded-full bg-emerald-500" />
+                                <span className="text-[8px] font-black text-emerald-600 uppercase tracking-widest">
+                                    Live
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Detail Pane */}
+                    {detailContent}
+                </MasterListDetailLayout>
+            </div>
+        );
+    }
+
+    // --- Standard Company Profile Layout ---
+    return (
+        <div className="min-h-screen bg-[#f8fafc] text-slate-900 font-sans">
+            <div className="max-w-[1600px] mx-auto min-h-screen lg:px-6 lg:py-8 flex flex-col">
+                <div className="bg-white border border-slate-200 lg:rounded-3xl shadow-[0_1px_3px_rgba(0,0,0,0.02),0_10px_30px_-10px_rgba(0,0,0,0.05)] overflow-hidden flex-1 flex flex-col">
+                    {detailContent}
                 </div>
             </div>
-
-            {/* Add Member Modal */}
-            <AddMemberModal
-                isOpen={isAddMemberOpen}
-                onClose={() => setIsAddMemberOpen(false)}
-                tenantId={dealerId}
-                onSuccess={() => fetchDealerDetails(dealerId)}
-            />
         </div>
     );
 }
-
-// Minimal Sub-components for Polish
-const NavPill = ({ id, label, icon: Icon, active, onClick }: any) => (
-    <button
-        onClick={() => onClick(id)}
-        className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all ${active === id
-            ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/25'
-            : 'text-slate-400 hover:text-white hover:bg-white/5'
-            }`}
-    >
-        <Icon size={14} />
-        {label}
-    </button>
-);
-
-const ConfigNavBtn = ({ id, label, sublabel, icon: Icon, active, onClick }: any) => {
-    const isActive = active === id;
-    return (
-        <button
-            onClick={() => onClick(id)}
-            className={`w-full group flex items-center justify-between p-3 rounded-xl transition-all border ${isActive
-                ? 'bg-indigo-500/10 border-indigo-500/20'
-                : 'bg-transparent border-transparent hover:bg-white/5'
-                }`}
-        >
-            <div className={`flex items-center gap-3 ${isActive ? 'text-indigo-400' : 'text-slate-500 group-hover:text-slate-300'}`}>
-                <div className={`p-2 rounded-lg transition-colors ${isActive ? 'bg-indigo-500/20 text-indigo-400' : 'bg-slate-800 text-slate-600 group-hover:bg-slate-700'}`}>
-                    <Icon size={16} />
-                </div>
-                <div className="text-left">
-                    <p className={`text-xs font-bold ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-white'}`}>{label}</p>
-                    <p className="text-[10px] font-medium opacity-60">{sublabel}</p>
-                </div>
-            </div>
-            {isActive && <ChevronRight size={14} className="text-indigo-500" />}
-        </button>
-    );
-};
-
-const MetadataRow = ({ label, value, isMono }: any) => (
-    <div className="flex justify-between items-center text-xs">
-        <span className="font-bold text-slate-500 uppercase">{label}</span>
-        <span className={`font-bold text-slate-300 ${isMono ? 'font-mono' : ''}`}>{value}</span>
-    </div>
-);

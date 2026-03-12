@@ -425,21 +425,30 @@ export function DesktopPDP({
         : null;
 
     const priceBreakupData = [
-        { label: 'Ex-Showroom', value: baseExShowroom },
+        // Group 1: Charges
+        { label: 'Ex-Showroom', value: baseExShowroom, caption: 'Factory List Price' },
         {
-            label: `Registration (${regType})`,
+            label: `Registration`,
             value: rtoEstimates,
+            caption: `${(initialLocation?.state || initialLocation?.district || 'STATE').toUpperCase()} • Road Tax & Fees ${regType === 'COMPANY' ? 'Company' : regType === 'BH' ? 'Bharat Series' : 'Individual'}`,
             breakdown: rtoBreakdown,
             comparisonOptions: data?.rtoOptions,
         },
-        { label: 'Insurance', value: baseInsurance, breakdown: insuranceBreakdown },
+        {
+            label: 'Insurance',
+            value: baseInsurance,
+            caption: 'Comprehensive (1+5 Years)',
+            breakdown: insuranceBreakdown,
+        },
         {
             label: 'Insurance Add-ons',
             value: Math.round((data.insuranceAddonsPrice || 0) + (data.insuranceAddonsDiscount || 0)),
+            caption: 'Zero Dep & RSA Benefits',
         },
         {
             label: 'Mandatory Accessories',
             value: accessoriesPrice,
+            caption: 'Dealer Standard Fitment',
             breakdown: activeAccessories
                 .filter((a: any) => a.isMandatory)
                 .map((a: any) => ({ label: a.displayName || a.name, amount: a.discountPrice || a.price })),
@@ -447,15 +456,25 @@ export function DesktopPDP({
         {
             label: 'Optional Accessories',
             value: (data.accessoriesPrice || 0) + (data.accessoriesDiscount || 0) - accessoriesPrice,
+            caption: 'Consumer Selection',
         },
-        { label: 'Services', value: (data.servicesPrice || 0) + (data.servicesDiscount || 0) },
-        ...(otherCharges > 0 ? [{ label: 'Other Charges', value: otherCharges }] : []),
-        { label: 'Delivery TAT', value: deliveryTatLabel, isInfo: true },
+        {
+            label: 'Services',
+            value: (data.servicesPrice || 0) + (data.servicesDiscount || 0),
+            caption: 'RSA & Maintenance Pak',
+        },
+        ...(otherCharges > 0 ? [{ label: 'Other Charges', value: otherCharges, caption: 'Handling & Fees' }] : []),
+
+        // Spacer to Group 2
+        { label: '', value: '', isSpacer: true },
+
+        // Group 2: Discounts / Surge
         ...(totalSavings > 0
             ? [
                   {
                       label: "O' Circle Privileged",
                       value: totalSavings,
+                      caption: 'Exclusive Member Benefit',
                       isDeduction: true,
                       helpText: savingsHelpLines,
                   },
@@ -466,11 +485,43 @@ export function DesktopPDP({
                   {
                       label: `Bcoin Used - ${coinPricing.coinsUsed}`,
                       value: coinPricing.discount,
+                      caption: 'Loyalty Points Applied',
                       isDeduction: true,
                   },
               ]
             : []),
-        ...(totalSurge > 0 ? [{ label: 'Surge Charges', value: totalSurge, helpText: surgeHelpLines }] : []),
+        ...(totalSurge > 0
+            ? [{ label: 'Surge Charges', value: totalSurge, caption: 'Demand Adjustments', helpText: surgeHelpLines }]
+            : []),
+
+        // Spacer to Group 3
+        { label: '', value: '', isSpacer: true },
+
+        // Group 3: Delivery Info
+        { label: 'TAT', value: deliveryTatLabel, caption: 'Operational Timeline', isInfo: true },
+        ...(deliveryByLabel
+            ? [{ label: 'Delivery By', value: deliveryByLabel, caption: 'Est. Handover', isInfo: true }]
+            : []),
+        ...(studioIdLabel
+            ? [
+                  {
+                      label: 'Studio ID',
+                      value: String(studioIdLabel).toUpperCase(),
+                      caption: 'Dispatch Node',
+                      isInfo: true,
+                  },
+              ]
+            : []),
+        ...(Number.isFinite(Number(studioDistanceKm)) && Number(studioDistanceKm) >= 0
+            ? [
+                  {
+                      label: 'Distance',
+                      value: `${Number(studioDistanceKm).toFixed(1)} km away`,
+                      caption: 'Logistics Proximity',
+                      isInfo: true,
+                  },
+              ]
+            : []),
     ];
 
     const getProductImage = () => {
@@ -920,6 +971,10 @@ export function DesktopPDP({
                                                                     }
                                                                     leadName={leadContext?.name}
                                                                     isGated={isGated}
+                                                                    deliveryByLabel={deliveryByLabel}
+                                                                    deliveryLabel="Delivery By"
+                                                                    studioIdLabel={studioIdLabel}
+                                                                    studioDistanceKm={studioDistanceKm}
                                                                 />
                                                             </div>
                                                         )}
@@ -1263,10 +1318,6 @@ export function DesktopPDP({
                     accessoriesTotal={accessoriesPrice}
                     insuranceTotal={baseInsurance + insuranceAddonsPrice}
                     insuranceAddonsCount={selectedInsuranceAddons.length}
-                    deliveryByLabel={deliveryByLabel}
-                    studioIdLabel={studioIdLabel}
-                    dealerIdLabel={dealerIdLabel}
-                    studioDistanceKm={studioDistanceKm}
                     onOpenVideo={() => setIsVideoOpen(true)}
                 />
             </div>

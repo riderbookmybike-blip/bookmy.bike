@@ -1,9 +1,21 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, Phone, User, Shield, CheckCircle2, AlertCircle, Loader2, UserPlus } from 'lucide-react';
+import {
+    X,
+    Phone,
+    User,
+    Shield,
+    CheckCircle2,
+    AlertCircle,
+    Loader2,
+    UserPlus,
+    Fingerprint,
+    Activity,
+} from 'lucide-react';
 import { lookupMemberByPhone } from '@/app/dashboard/dealers/actions';
 import { getErrorMessage } from '@/lib/utils/errorMessage';
+import { toast } from 'sonner';
 
 interface AddMemberModalProps {
     isOpen: boolean;
@@ -15,11 +27,15 @@ interface AddMemberModalProps {
 type Step = 'phone' | 'details' | 'success';
 
 const ROLES = [
-    { value: 'OWNER', label: 'Owner', description: 'Full access to all settings and data' },
-    { value: 'MANAGER', label: 'Manager', description: 'Can manage inventory, leads, and team' },
-    { value: 'SALES', label: 'Sales', description: 'Can view leads and create quotes' },
-    { value: 'FINANCE', label: 'Finance', description: 'Access to financial reports and payouts' },
-    { value: 'VIEWER', label: 'Viewer', description: 'Read-only access to dashboard' },
+    {
+        value: 'OWNER',
+        label: 'OPERATIONAL_OWNER',
+        description: 'Full architectural clearance and system white-labeling.',
+    },
+    { value: 'MANAGER', label: 'REGIONAL_MANAGER', description: 'Nodal inventory management and team orchestration.' },
+    { value: 'SALES', label: 'COMMERCE_OPERATOR', description: 'Lead resolution and transaction orchestration.' },
+    { value: 'FINANCE', label: 'FINANCIAL_AUDITOR', description: 'Settlement matrix analytics and payout management.' },
+    { value: 'VIEWER', label: 'SYSTEM_OBSERVER', description: 'Read-only telemetry and registry access.' },
 ];
 
 export default function AddMemberModal({ isOpen, onClose, tenantId, onSuccess }: AddMemberModalProps) {
@@ -30,7 +46,6 @@ export default function AddMemberModal({ isOpen, onClose, tenantId, onSuccess }:
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
 
-    // Reset state when modal opens
     useEffect(() => {
         if (isOpen) {
             setStep('phone');
@@ -43,7 +58,7 @@ export default function AddMemberModal({ isOpen, onClose, tenantId, onSuccess }:
 
     const handlePhoneVerify = async () => {
         if (phone.length < 10) {
-            setError('Enter valid 10-digit phone number');
+            setError('VALID_INPUT_REQUIRED: Enter 10-digit sequence');
             return;
         }
 
@@ -56,15 +71,16 @@ export default function AddMemberModal({ isOpen, onClose, tenantId, onSuccess }:
             if (result.found && result.member) {
                 setVerifiedMember({
                     id: result.member.id,
-                    name: result.member.full_name || 'Unknown',
+                    name: result.member.full_name || 'Unknown Subject',
                     email: (result.member as any).email,
                 });
                 setStep('details');
+                toast.success('Subject identity verified');
             } else {
-                setError('No member found with this phone number. Member must register first.');
+                setError('NULL_RESPONSE: Identity not found in global registry.');
             }
         } catch (err: unknown) {
-            setError(getErrorMessage(err) || 'Verification failed');
+            setError(getErrorMessage(err) || 'VERIFICATION_SEQUENCE_FAILURE');
         } finally {
             setIsLoading(false);
         }
@@ -90,16 +106,18 @@ export default function AddMemberModal({ isOpen, onClose, tenantId, onSuccess }:
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.error || 'Failed to add member');
+                throw new Error(data.error || 'INTEGRATION_FAILURE');
             }
 
             setStep('success');
+            toast.success('Personnel successfully integrated');
             setTimeout(() => {
                 onSuccess();
                 onClose();
             }, 1500);
         } catch (err: unknown) {
-            setError(getErrorMessage(err) || 'Failed to add member');
+            setError(getErrorMessage(err) || 'INTEGRATION_FAIlURE');
+            toast.error('Failed to link member');
         } finally {
             setIsLoading(false);
         }
@@ -108,77 +126,81 @@ export default function AddMemberModal({ isOpen, onClose, tenantId, onSuccess }:
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            {/* Backdrop */}
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-
-            {/* Modal */}
-            <div className="relative w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300">
+            <div className="relative w-full max-w-lg bg-white rounded-[2.5rem] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
                 {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-slate-800">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center">
-                            <UserPlus size={20} className="text-indigo-400" />
+                <div className="flex items-center justify-between p-10 pb-6 border-b border-slate-50">
+                    <div className="flex items-center gap-5">
+                        <div className="w-14 h-14 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shadow-sm">
+                            <UserPlus size={28} />
                         </div>
                         <div>
-                            <h2 className="text-lg font-bold text-white">Add Team Member</h2>
-                            <p className="text-xs text-slate-500">
-                                {step === 'phone' && 'Verify member by phone'}
-                                {step === 'details' && 'Assign role and permissions'}
-                                {step === 'success' && 'Member added successfully'}
+                            <h2 className="text-sm font-black text-slate-900 uppercase tracking-[0.2em]">
+                                Add Team Operator
+                            </h2>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1.5 opacity-70">
+                                {step === 'phone' && 'Verify Subject Identity'}
+                                {step === 'details' && 'Assing Clearance Tier'}
+                                {step === 'success' && 'Integration Successful'}
                             </p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/10 transition-colors">
-                        <X size={20} className="text-slate-400" />
+                    <button
+                        onClick={onClose}
+                        className="p-2.5 rounded-xl hover:bg-slate-50 transition-all text-slate-300 hover:text-slate-600 border border-transparent hover:border-slate-100"
+                    >
+                        <X size={20} />
                     </button>
                 </div>
 
                 {/* Content */}
-                <div className="p-6">
+                <div className="p-10 space-y-8">
                     {error && (
-                        <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center gap-3">
-                            <AlertCircle size={18} className="text-red-400 shrink-0" />
-                            <p className="text-sm text-red-300">{error}</p>
+                        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-100 flex items-center gap-4 animate-in slide-in-from-top-2">
+                            <AlertCircle size={20} className="text-rose-500 shrink-0" />
+                            <p className="text-[10px] font-black text-rose-600 uppercase tracking-widest leading-relaxed">
+                                {error}
+                            </p>
                         </div>
                     )}
 
                     {/* Step 1: Phone Verification */}
                     {step === 'phone' && (
-                        <div className="space-y-6">
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                                    Member's Phone Number
+                        <div className="space-y-8">
+                            <div className="space-y-3">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">
+                                    Operator Identification (Phone)
                                 </label>
-                                <div className="flex items-center gap-2 p-4 bg-slate-800 rounded-xl border border-slate-700 focus-within:border-indigo-500 transition-colors">
-                                    <Phone size={18} className="text-slate-500" />
-                                    <span className="text-slate-400 font-mono">+91</span>
+                                <div className="flex items-center gap-4 p-5 bg-[#fcfdfe] border border-slate-200 rounded-2xl focus-within:border-indigo-500/50 focus-within:ring-4 focus-within:ring-indigo-500/5 transition-all shadow-sm">
+                                    <Phone size={20} className="text-slate-300" />
+                                    <span className="text-slate-400 font-black text-lg tracking-widest">+91</span>
                                     <input
                                         type="tel"
                                         value={phone}
                                         onChange={e => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                                        placeholder="9876543210"
-                                        className="flex-1 bg-transparent text-white font-mono text-lg focus:outline-none placeholder:text-slate-600"
+                                        placeholder="000 000 0000"
+                                        className="flex-1 bg-transparent text-slate-900 font-black text-lg tracking-[0.2em] focus:outline-none placeholder:text-slate-200"
                                         autoFocus
                                     />
                                 </div>
-                                <p className="text-xs text-slate-500">
-                                    Member must be registered on BookMyBike platform
-                                </p>
+                                <div className="flex items-center gap-2 px-1 text-[9px] text-slate-400 font-bold uppercase tracking-widest opacity-60">
+                                    <Activity size={10} className="text-emerald-400" /> Subject must exist in public
+                                    registry.
+                                </div>
                             </div>
 
                             <button
                                 onClick={handlePhoneVerify}
                                 disabled={phone.length < 10 || isLoading}
-                                className="w-full py-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 disabled:text-slate-500 text-white font-bold text-sm uppercase tracking-wider transition-colors flex items-center justify-center gap-2"
+                                className="w-full py-5 rounded-2xl bg-slate-900 hover:bg-indigo-600 disabled:bg-slate-100 disabled:text-slate-300 text-white font-black text-[11px] uppercase tracking-[0.3em] transition-all shadow-xl shadow-slate-900/10 flex items-center justify-center gap-3"
                             >
                                 {isLoading ? (
                                     <>
                                         <Loader2 size={18} className="animate-spin" />
-                                        Verifying...
+                                        SYNCHRONIZING...
                                     </>
                                 ) : (
-                                    'Verify Member'
+                                    <>VERIFY IDENTITY</>
                                 )}
                             </button>
                         </div>
@@ -186,60 +208,60 @@ export default function AddMemberModal({ isOpen, onClose, tenantId, onSuccess }:
 
                     {/* Step 2: Role Selection */}
                     {step === 'details' && verifiedMember && (
-                        <div className="space-y-6">
+                        <div className="space-y-8">
                             {/* Verified Member Info */}
-                            <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-12 h-12 rounded-xl bg-emerald-500/20 flex items-center justify-center">
-                                        <User size={24} className="text-emerald-400" />
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-bold text-white">{verifiedMember.name}</p>
-                                        <p className="text-xs text-slate-400">{verifiedMember.email || phone}</p>
-                                    </div>
-                                    <CheckCircle2 size={20} className="text-emerald-400 ml-auto" />
+                            <div className="p-6 bg-emerald-500/5 border border-emerald-500/10 rounded-2xl flex items-center gap-5">
+                                <div className="w-14 h-14 rounded-2xl bg-white border border-emerald-100 flex items-center justify-center text-emerald-500 shadow-sm">
+                                    <User size={28} />
+                                </div>
+                                <div>
+                                    <p className="text-[13px] font-black text-slate-900 uppercase tracking-tight">
+                                        {verifiedMember.name}
+                                    </p>
+                                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1 opacity-70">
+                                        UID: {verifiedMember.id.slice(0, 12).toUpperCase()}...
+                                    </p>
+                                </div>
+                                <div className="ml-auto w-10 h-10 bg-emerald-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-emerald-500/20">
+                                    <CheckCircle2 size={24} />
                                 </div>
                             </div>
 
                             {/* Role Selection */}
-                            <div className="space-y-3">
-                                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                                    Select Role
+                            <div className="space-y-4">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">
+                                    Assign Clearance Level
                                 </label>
-                                <div className="space-y-2">
+                                <div className="space-y-3 max-h-[280px] overflow-y-auto no-scrollbar pr-1">
                                     {ROLES.map(role => (
                                         <button
                                             key={role.value}
                                             onClick={() => setSelectedRole(role.value)}
-                                            className={`w-full p-4 rounded-xl border text-left transition-all ${
+                                            className={`w-full p-5 rounded-2xl border text-left transition-all duration-300 relative group ${
                                                 selectedRole === role.value
-                                                    ? 'bg-indigo-500/10 border-indigo-500/50'
-                                                    : 'bg-slate-800/50 border-slate-700 hover:border-slate-600'
+                                                    ? 'bg-indigo-600 border-indigo-600 text-white shadow-xl shadow-indigo-600/20'
+                                                    : 'bg-white border-slate-100 hover:border-slate-300 hover:bg-slate-50'
                                             }`}
                                         >
                                             <div className="flex items-center justify-between">
                                                 <div>
                                                     <p
-                                                        className={`text-sm font-bold ${
-                                                            selectedRole === role.value
-                                                                ? 'text-indigo-400'
-                                                                : 'text-white'
-                                                        }`}
+                                                        className={`text-[11px] font-black uppercase tracking-[0.15em] ${selectedRole === role.value ? 'text-white' : 'text-slate-900 group-hover:text-indigo-600'}`}
                                                     >
                                                         {role.label}
                                                     </p>
-                                                    <p className="text-xs text-slate-500 mt-0.5">{role.description}</p>
+                                                    <p
+                                                        className={`text-[9px] mt-1.5 font-bold uppercase tracking-widest leading-relaxed ${selectedRole === role.value ? 'text-indigo-100/70' : 'text-slate-400 group-hover:text-slate-500'}`}
+                                                    >
+                                                        {role.description}
+                                                    </p>
                                                 </div>
                                                 <div
-                                                    className={`w-4 h-4 rounded-full border-2 ${
-                                                        selectedRole === role.value
-                                                            ? 'border-indigo-500 bg-indigo-500'
-                                                            : 'border-slate-600'
-                                                    }`}
+                                                    className={`w-5 h-5 rounded-full border-2 transition-all ${selectedRole === role.value ? 'border-indigo-400 bg-white scale-110' : 'border-slate-200'}`}
                                                 >
                                                     {selectedRole === role.value && (
                                                         <div className="w-full h-full flex items-center justify-center">
-                                                            <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                                                            <div className="w-1.5 h-1.5 rounded-full bg-indigo-600" />
                                                         </div>
                                                     )}
                                                 </div>
@@ -252,17 +274,17 @@ export default function AddMemberModal({ isOpen, onClose, tenantId, onSuccess }:
                             <button
                                 onClick={handleAddMember}
                                 disabled={isLoading}
-                                className="w-full py-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 text-white font-bold text-sm uppercase tracking-wider transition-colors flex items-center justify-center gap-2"
+                                className="w-full py-5 rounded-2xl bg-slate-900 hover:bg-indigo-600 disabled:bg-slate-100 text-white font-black text-[11px] uppercase tracking-[0.3em] transition-all shadow-xl shadow-slate-900/10 flex items-center justify-center gap-3"
                             >
                                 {isLoading ? (
                                     <>
                                         <Loader2 size={18} className="animate-spin" />
-                                        Adding Member...
+                                        INTEGRATING...
                                     </>
                                 ) : (
                                     <>
                                         <Shield size={18} />
-                                        Add to Team
+                                        DEPLOY OPERATOR
                                     </>
                                 )}
                             </button>
@@ -271,13 +293,15 @@ export default function AddMemberModal({ isOpen, onClose, tenantId, onSuccess }:
 
                     {/* Step 3: Success */}
                     {step === 'success' && (
-                        <div className="text-center py-8">
-                            <div className="w-20 h-20 mx-auto rounded-full bg-emerald-500/20 flex items-center justify-center mb-4">
-                                <CheckCircle2 size={40} className="text-emerald-400" />
+                        <div className="text-center py-12 animate-in fade-in zoom-in-95 duration-500">
+                            <div className="w-24 h-24 mx-auto rounded-[2rem] bg-emerald-500 flex items-center justify-center mb-8 shadow-2xl shadow-emerald-500/30">
+                                <CheckCircle2 size={48} className="text-white" />
                             </div>
-                            <h3 className="text-xl font-bold text-white mb-2">Member Added!</h3>
-                            <p className="text-sm text-slate-400">
-                                {verifiedMember?.name} has been added to your team as {selectedRole}
+                            <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight mb-3">
+                                Integration Complete
+                            </h3>
+                            <p className="text-[11px] text-slate-400 font-bold uppercase tracking-[0.2em] leading-relaxed max-w-[240px] mx-auto">
+                                Subject {verifiedMember?.name} successfully deployed to nodal squad.
                             </p>
                         </div>
                     )}

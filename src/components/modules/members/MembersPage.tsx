@@ -9,7 +9,7 @@ import MasterListDetailLayout from '@/components/templates/MasterListDetailLayou
 import StatsHeader from '@/components/modules/shared/StatsHeader';
 import ModuleLanding from '@/components/modules/shared/ModuleLanding';
 import MemberEditorWrapper from '@/components/modules/members/MemberEditorWrapper';
-import { UserCheck, Activity, LayoutGrid, Search as SearchIcon } from 'lucide-react';
+import { UserCheck, Activity, LayoutGrid, Search as SearchIcon, User } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDisplayId } from '@/utils/displayId';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
@@ -93,9 +93,7 @@ export default function MembersPage({ initialMemberId }: { initialMemberId?: str
             setSelectedMemberId(initialMemberId);
             return;
         }
-        if (memberIdParam) {
-            setSelectedMemberId(memberIdParam);
-        }
+        if (memberIdParam) setSelectedMemberId(memberIdParam);
     }, [initialMemberId, memberIdParam]);
 
     const filteredMembers = useMemo(
@@ -121,116 +119,70 @@ export default function MembersPage({ initialMemberId }: { initialMemberId?: str
 
     const handleOpenMember = (memberId: string) => {
         setSelectedMemberId(memberId);
-        if (slug) {
-            router.push(`/app/${slug}/members/${memberId}`);
-        }
+        if (slug) router.push(`/app/${slug}/members/${memberId}`);
     };
 
     const handleCloseDetail = () => {
         setSelectedMemberId(null);
-        if (slug) {
-            router.push(`/app/${slug}/members`);
-        }
+        if (slug) router.push(`/app/${slug}/members`);
     };
+
+    const effectiveView = device === 'phone' ? 'list' : view;
 
     if (!selectedMemberId) {
         return (
-            <div className="h-full bg-slate-50 dark:bg-[#0b0d10] -m-6 md:-m-8">
+            <div className="h-full bg-[#f8fafc]">
                 <ModuleLanding
-                    title="Members"
-                    subtitle="Customer Profiles"
-                    onNew={() => toast.info('Create Member from Leads/Signup')}
-                    searchPlaceholder="Search Members..."
+                    title="Members Hub"
+                    subtitle="CORE_IDENTITY"
+                    onNew={() => toast.info('Register via Leads module')}
+                    searchPlaceholder="Search Members Hub..."
                     onSearch={setSearchQuery}
                     statsContent={<StatsHeader stats={stats} device={device} />}
-                    view={device === 'phone' ? 'list' : view}
+                    view={effectiveView}
                     onViewChange={setView}
                     device={device}
                 >
-                    {isLoading ? (
-                        <div className="py-10 text-center text-xs font-bold text-slate-400 uppercase tracking-[0.3em]">
-                            Loading members…
-                        </div>
-                    ) : filteredMembers.length === 0 ? (
-                        <div className="py-10 text-center text-xs font-bold text-slate-400 uppercase tracking-[0.3em]">
-                            No members found
-                        </div>
-                    ) : view === 'grid' ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-20">
+                    {effectiveView === 'grid' ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-20">
                             {filteredMembers.map(member => (
                                 <div
                                     key={member.id}
                                     onClick={() => handleOpenMember(member.id)}
-                                    className="group relative bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[2.5rem] p-8 cursor-pointer transition-all duration-500 hover:scale-[1.02] hover:shadow-2xl hover:shadow-indigo-500/10 hover:border-indigo-500/30 overflow-hidden"
+                                    className="group bg-white border border-slate-200 rounded-xl p-5 cursor-pointer transition-all hover:shadow-lg hover:border-indigo-500/30 shadow-sm"
                                 >
-                                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-600/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-                                    <div className="relative z-10">
-                                        <div className="flex justify-between items-start mb-6">
-                                            <div className="text-[10px] font-black text-indigo-500 uppercase tracking-widest bg-indigo-500/10 px-3 py-1 rounded-full border border-indigo-500/20">
-                                                {formatDisplayId(member.displayId)}
-                                            </div>
-                                            <div className="text-indigo-600 font-black text-sm italic tracking-tighter">
-                                                {member.status}
-                                            </div>
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div className="text-[10px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-2.5 py-1 rounded-md border border-indigo-100">
+                                            {formatDisplayId(member.displayId)}
                                         </div>
-                                        <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter italic uppercase mb-2 truncate group-hover:text-indigo-600 transition-colors">
-                                            {member.fullName}
-                                        </h3>
-                                        <div className="text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-tighter truncate mb-6">
-                                            {member.phone || 'No phone'}
+                                        <div className="px-2 py-0.5 rounded bg-emerald-50 text-[9px] font-black uppercase text-emerald-600 border border-emerald-100">
+                                            {member.status}
                                         </div>
+                                    </div>
+                                    <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight mb-1 truncate">
+                                        {member.fullName}
+                                    </h3>
+                                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                        {member.phone || 'No phone'}
                                     </div>
                                 </div>
                             ))}
                         </div>
-                    ) : /* ── LIST VIEW: Phone-optimized cards vs Desktop table ── */
-                    device === 'phone' ? (
-                        <div className="space-y-2 pb-4">
-                            {filteredMembers.map(member => (
-                                <button
-                                    key={member.id}
-                                    onClick={() => handleOpenMember(member.id)}
-                                    className="w-full text-left bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl overflow-hidden transition-all active:scale-[0.98] min-h-[56px]"
-                                >
-                                    <div className="flex">
-                                        <div className="w-1 shrink-0 bg-indigo-500" />
-                                        <div className="flex-1 px-4 py-3 min-w-0">
-                                            <div className="flex items-center justify-between mb-1">
-                                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">
-                                                    {formatDisplayId(member.displayId)}
-                                                </span>
-                                                <span className="text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-600">
-                                                    {member.status || 'ACTIVE'}
-                                                </span>
-                                            </div>
-                                            <div className="text-[14px] font-black tracking-tight uppercase truncate text-slate-900 dark:text-white mb-0.5">
-                                                {member.fullName}
-                                            </div>
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-[10px] font-bold text-slate-400 truncate">
-                                                    {member.phone || '—'}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </button>
-                            ))}
-                        </div>
                     ) : (
-                        <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[2.5rem] overflow-hidden shadow-sm">
+                        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
                             <table className="w-full text-left border-collapse">
                                 <thead>
-                                    <tr className="border-b border-slate-100 dark:border-white/5">
-                                        <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                            Member ID
+                                    <tr className="bg-slate-50/50 border-b border-slate-200">
+                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                                            Node ID
                                         </th>
-                                        <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                            Name
+                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                                            Identity
                                         </th>
-                                        <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                            Phone
+                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                                            Communication
                                         </th>
-                                        <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 text-center">
                                             Status
                                         </th>
                                     </tr>
@@ -240,25 +192,26 @@ export default function MembersPage({ initialMemberId }: { initialMemberId?: str
                                         <tr
                                             key={member.id}
                                             onClick={() => handleOpenMember(member.id)}
-                                            className="group hover:bg-slate-50 dark:hover:bg-white/5 transition-colors cursor-pointer border-b border-slate-50 dark:border-white/5 last:border-0"
+                                            className="group hover:bg-slate-50 transition-colors cursor-pointer border-b border-slate-100 last:border-0"
                                         >
-                                            <td className="p-6">
-                                                <div className="text-xs font-black text-indigo-500 uppercase tracking-widest">
-                                                    {formatDisplayId(member.displayId)}
+                                            <td className="px-6 py-4 text-[10px] font-black text-indigo-600 uppercase tracking-widest">
+                                                {formatDisplayId(member.displayId)}
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400">
+                                                        <User size={14} />
+                                                    </div>
+                                                    <div className="text-xs font-black text-slate-900 uppercase tracking-tight">
+                                                        {member.fullName}
+                                                    </div>
                                                 </div>
                                             </td>
-                                            <td className="p-6">
-                                                <div className="text-sm font-black italic uppercase tracking-tighter text-slate-900 dark:text-white group-hover:text-indigo-600 transition-colors">
-                                                    {member.fullName}
-                                                </div>
+                                            <td className="px-6 py-4 text-xs font-bold text-slate-500">
+                                                {member.phone || '—'}
                                             </td>
-                                            <td className="p-6">
-                                                <div className="text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase">
-                                                    {member.phone || '—'}
-                                                </div>
-                                            </td>
-                                            <td className="p-6">
-                                                <div className="px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest inline-block bg-slate-100 dark:bg-white/5 text-slate-400">
+                                            <td className="px-6 py-4 text-center">
+                                                <div className="px-2.5 py-1 rounded inline-block text-[9px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-600 border border-emerald-100">
                                                     {member.status}
                                                 </div>
                                             </td>
@@ -274,7 +227,7 @@ export default function MembersPage({ initialMemberId }: { initialMemberId?: str
     }
 
     return (
-        <div className="h-full bg-slate-50 dark:bg-slate-950 flex overflow-hidden font-sans -m-6 md:-m-8">
+        <div className="h-full bg-white flex overflow-hidden font-sans">
             <MasterListDetailLayout
                 mode="list-detail"
                 listPosition="left"
@@ -282,84 +235,61 @@ export default function MembersPage({ initialMemberId }: { initialMemberId?: str
                 hasActiveDetail={!!selectedMemberId}
                 onBack={handleCloseDetail}
             >
-                <div className="h-full flex flex-col bg-white dark:bg-[#0b0d10] border-r border-slate-200 dark:border-white/5 w-full">
-                    <div className="p-6 border-b border-slate-100 dark:border-white/5 space-y-4">
+                <div className="h-full flex flex-col bg-[#fdfdfd] border-r border-slate-200 w-full">
+                    <div className="p-4 border-b border-slate-200 space-y-4">
                         <div className="flex items-center justify-between">
-                            <h2 className="text-xl font-black italic uppercase tracking-tighter text-slate-900 dark:text-white">
-                                Members <span className="text-indigo-600">Index</span>
+                            <h2 className="text-xs font-black uppercase tracking-[0.2em] text-slate-900">
+                                Members <span className="text-indigo-600">Core</span>
                             </h2>
                             <button
                                 onClick={handleCloseDetail}
-                                className="p-2 hover:bg-slate-100 dark:hover:bg-white/5 rounded-xl transition-all text-slate-400"
+                                className="p-1.5 hover:bg-slate-100 rounded-lg transition-all text-slate-400"
                             >
-                                <LayoutGrid size={18} />
+                                <LayoutGrid size={14} />
                             </button>
                         </div>
                         <div className="relative">
-                            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-3.5 h-3.5" />
+                            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 w-3 h-3" />
                             <input
                                 type="text"
                                 value={searchQuery}
                                 onChange={e => setSearchQuery(e.target.value)}
-                                className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl py-2 pl-9 pr-4 text-xs font-bold focus:outline-none focus:border-indigo-500/50"
-                                placeholder="Search members..."
+                                className="w-full bg-white border border-slate-200 rounded-lg py-2 pl-8 pr-4 text-[10px] font-bold text-slate-900 placeholder:text-slate-400 focus:border-indigo-500/50 shadow-sm"
+                                placeholder="Search members core..."
                             />
                         </div>
                     </div>
-
-                    <div className="flex-1 overflow-y-auto p-3 space-y-1.5 no-scrollbar">
+                    <div className="flex-1 overflow-y-auto p-2 space-y-1 no-scrollbar">
                         {filteredMembers.map(member => {
                             const isActive = selectedMemberId === member.id;
                             return (
                                 <button
                                     key={member.id}
                                     onClick={() => handleOpenMember(member.id)}
-                                    className={`w-full text-left rounded-xl border transition-all duration-300 group overflow-hidden ${
-                                        isActive
-                                            ? 'bg-indigo-600 border-indigo-500 shadow-lg shadow-indigo-500/20 text-white'
-                                            : 'bg-white dark:bg-white/[0.03] border-slate-100 dark:border-white/[0.06] hover:border-indigo-500/30 text-slate-900 dark:text-white hover:shadow-md'
-                                    }`}
+                                    className={`w-full text-left rounded-lg p-3 transition-all border ${isActive ? 'bg-indigo-50 border-indigo-200 text-indigo-900' : 'bg-white border-transparent hover:bg-slate-50'}`}
                                 >
-                                    <div className="flex">
-                                        <div className={`w-1 shrink-0 ${isActive ? 'bg-white/30' : 'bg-indigo-500'}`} />
-                                        <div className="flex-1 px-3.5 py-3 min-w-0">
-                                            <div className="flex items-center justify-between mb-1.5">
-                                                <span
-                                                    className={`text-[9px] font-black uppercase tracking-wider ${isActive ? 'text-white/70' : 'text-slate-400'}`}
-                                                >
-                                                    {formatDisplayId(member.displayId)}
-                                                </span>
-                                                <span
-                                                    className={`text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded ${
-                                                        isActive
-                                                            ? 'bg-white/20 text-white'
-                                                            : 'bg-indigo-500/10 text-indigo-600'
-                                                    }`}
-                                                >
-                                                    {member.status || 'ACTIVE'}
-                                                </span>
-                                            </div>
-                                            <div
-                                                className={`text-[12px] font-black tracking-tight uppercase truncate mb-0.5 ${isActive ? 'text-white' : 'text-slate-800 dark:text-white'}`}
-                                            >
-                                                {member.fullName}
-                                            </div>
-                                            <div className="flex items-center justify-between">
-                                                <span
-                                                    className={`text-[10px] font-bold truncate ${isActive ? 'text-white/70' : 'text-slate-400'}`}
-                                                >
-                                                    {member.phone || '—'}
-                                                </span>
-                                            </div>
-                                        </div>
+                                    <div className="flex items-center justify-between mb-1.5">
+                                        <span
+                                            className={`text-[8px] font-black uppercase tracking-widest ${isActive ? 'text-indigo-600' : 'text-slate-400'}`}
+                                        >
+                                            {formatDisplayId(member.displayId)}
+                                        </span>
+                                        <div
+                                            className={`w-1.5 h-1.5 rounded-full ${member.status === 'ACTIVE' ? 'bg-emerald-400' : 'bg-slate-300'}`}
+                                        />
+                                    </div>
+                                    <div className="text-[11px] font-black text-slate-900 uppercase tracking-tight mb-1 truncate">
+                                        {member.fullName}
+                                    </div>
+                                    <div className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">
+                                        {member.phone || '—'}
                                     </div>
                                 </button>
                             );
                         })}
                     </div>
                 </div>
-
-                <div className="h-full flex flex-col overflow-y-auto no-scrollbar bg-slate-50 dark:bg-[#08090b]">
+                <div className="h-full flex flex-col overflow-y-auto no-scrollbar bg-white">
                     <MemberEditorWrapper memberId={selectedMemberId} />
                 </div>
             </MasterListDetailLayout>

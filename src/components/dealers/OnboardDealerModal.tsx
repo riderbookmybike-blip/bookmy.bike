@@ -21,6 +21,7 @@ import {
     checkSlugAvailability,
     searchExistingTenants,
 } from '@/app/dashboard/dealers/actions';
+import { generateDealerStudioId } from '@/lib/utils/dealerStudioId';
 
 const formatStudioId = (value: string) => {
     const upper = value
@@ -96,6 +97,11 @@ export default function OnboardDealerModal({ isOpen, onClose, onSuccess }: Onboa
         }, 300);
         return () => clearTimeout(timer);
     }, [formData.dealerName]);
+
+    useEffect(() => {
+        const nextStudioId = generateDealerStudioId(formData.dealerName, formData.slug, formData.pincode);
+        setFormData(prev => ({ ...prev, studioId: formatStudioId(nextStudioId) }));
+    }, [formData.dealerName, formData.slug, formData.pincode]);
 
     // Check slug availability with debounce
     useEffect(() => {
@@ -480,19 +486,13 @@ export default function OnboardDealerModal({ isOpen, onClose, onSuccess }: Onboa
                                     />
                                     <input
                                         type="text"
-                                        placeholder="Dealer Code (e.g., BAJ-SUR-VAS)"
-                                        maxLength={5}
+                                        placeholder="Auto-generated dealer code"
                                         className="w-full pl-12 pr-20 py-3.5 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-2xl text-sm font-bold placeholder:text-slate-400 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all"
                                         value={formData.studioId}
-                                        onChange={e =>
-                                            setFormData(prev => ({
-                                                ...prev,
-                                                studioId: formatStudioId(e.target.value),
-                                            }))
-                                        }
+                                        readOnly
                                     />
                                     <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] font-bold text-slate-300 uppercase">
-                                        Optional
+                                        Auto
                                     </span>
                                 </div>
 

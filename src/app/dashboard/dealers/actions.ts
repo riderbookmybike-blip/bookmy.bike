@@ -4,6 +4,7 @@ import { adminClient } from '@/lib/supabase/admin';
 import { revalidatePath } from 'next/cache';
 import { getErrorMessage } from '@/lib/utils/errorMessage';
 import { getPhoneLookupVariants } from '@/lib/utils/phoneUtils';
+import { generateDealerStudioId } from '@/lib/utils/dealerStudioId';
 
 /**
  * Lookup member by phone number - used for dealer onboarding verification
@@ -100,23 +101,17 @@ export async function onboardDealer(formData: {
     // console.log('[OnboardDealer] Starting onboarding for:', formData.dealerName);
 
     try {
-        const normalizedStudioId = String(formData.studioId || '')
-            .trim()
-            .toUpperCase();
         const normalizedPincode = String(formData.pincode || '')
             .replace(/\D/g, '')
             .slice(0, 6);
 
-        if (!/^[A-Z0-9]{3}-[A-Z0-9]{3}-[A-Z0-9]{3}$/.test(normalizedStudioId)) {
-            throw new Error('Dealer code required in format XXX-XXX-XXX');
-        }
         if (!/^\d{6}$/.test(normalizedPincode)) {
             throw new Error('Valid 6-digit pincode is required');
         }
 
         const { data: pinRow } = await adminClient
             .from('loc_pincodes')
-            .select('pincode, taluka, district, state, latitude, longitude')
+            .select('pincode, area, taluka, district, state, latitude, longitude')
             .eq('pincode', normalizedPincode)
             .maybeSingle();
 
@@ -125,7 +120,6 @@ export async function onboardDealer(formData: {
         if (!pinRow || !Number.isFinite(lat) || !Number.isFinite(lng)) {
             throw new Error('Coordinates missing for pincode. Dealer onboarding blocked until location is mappable.');
         }
-
         // 1. Use the pre-validated slug from form (already checked for availability)
         const slug = formData.slug
             .toLowerCase()
@@ -135,6 +129,10 @@ export async function onboardDealer(formData: {
         if (!slug || slug.length < 2) {
             throw new Error('Invalid slug provided');
         }
+        const areaName = String(
+            (pinRow as any)?.area || (pinRow as any)?.taluka || (pinRow as any)?.district || ''
+        ).trim();
+        const normalizedStudioId = generateDealerStudioId(formData.dealerName, slug, areaName);
 
         // console.log('[OnboardDealer] Using slug:', slug);
 

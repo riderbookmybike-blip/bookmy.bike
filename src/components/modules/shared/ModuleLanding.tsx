@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Search, Plus, LayoutGrid, List } from 'lucide-react';
+import { Search, Plus, List, LayoutGrid } from 'lucide-react';
 
 type Device = 'phone' | 'tablet' | 'desktop';
 
@@ -37,78 +37,77 @@ export default function ModuleLanding({
     const isPhone = device === 'phone';
     const isTablet = device === 'tablet';
 
-    // Responsive classes
-    const wrapperPadding = isPhone ? 'p-4' : isTablet ? 'p-6' : 'p-8';
-    const titleSize = isPhone ? 'text-3xl' : isTablet ? 'text-4xl' : 'text-6xl';
+    // Enterprise Responsive sizing
+    const wrapperPadding = isPhone ? 'p-4' : 'px-6 py-6';
+    const titleSize = isPhone ? 'text-xl' : 'text-2xl';
 
     return (
-        <div
-            className={`flex flex-col h-full bg-slate-50 dark:bg-[#0b0d10] ${wrapperPadding} overflow-y-auto no-scrollbar`}
-        >
-            {/* Header Section */}
+        <div className={`flex flex-col h-full bg-[#f8fafc] ${wrapperPadding} overflow-y-auto no-scrollbar`}>
+            {/* 1. Header Section - Clean & Persistent */}
             <div
-                className={`flex flex-col ${isPhone ? 'gap-4 mb-6' : 'md:flex-row md:items-end justify-between gap-6 mb-12'}`}
+                className={`flex flex-col ${isPhone ? 'gap-4 mb-6' : 'md:flex-row md:items-center justify-between gap-6 mb-8'}`}
             >
-                <div>
-                    <div className="text-indigo-500 text-[10px] font-black uppercase tracking-[0.4em] mb-3 flex items-center gap-2">
-                        <span className="w-8 h-[2px] bg-indigo-500 rounded-full" />
-                        {subtitle}
+                <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-2">
+                        <span className="w-6 h-[1.5px] bg-indigo-500 rounded-full" />
+                        <span className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.2em]">
+                            {subtitle}
+                        </span>
                     </div>
-                    <h1
-                        className={`${titleSize} font-black text-slate-900 dark:text-white tracking-tighter italic uppercase leading-none`}
-                    >
+                    <h1 className={`${titleSize} font-black text-slate-900 uppercase tracking-tight`}>
                         {title}
                         <span className="text-indigo-600">.</span>
                     </h1>
                 </div>
 
-                <div className={`flex items-center gap-3 ${isPhone ? 'w-full' : 'gap-4'}`}>
-                    {/* View Switcher — hidden on phone (forces list view) */}
-                    {!isPhone && (
-                        <div className="flex items-center bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 p-1 rounded-2xl">
-                            <button
-                                onClick={() => onViewChange?.('list')}
-                                className={`p-3 rounded-xl transition-all ${view === 'list' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'text-slate-400 hover:text-slate-600 dark:hover:text-white'}`}
-                            >
-                                <List size={20} />
-                            </button>
-                            <button
-                                onClick={() => onViewChange?.('grid')}
-                                className={`p-3 rounded-xl transition-all ${view === 'grid' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'text-slate-400 hover:text-slate-600 dark:hover:text-white'}`}
-                            >
-                                <LayoutGrid size={20} />
-                            </button>
-                        </div>
-                    )}
-
-                    <div className={`relative group ${isPhone ? 'flex-1' : 'max-w-md'}`}>
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+                <div className={`flex items-center gap-2 ${isPhone ? 'w-full' : ''}`}>
+                    {/* Compact Search */}
+                    <div className={`relative group ${isPhone ? 'flex-1' : 'w-72'}`}>
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
                         <input
                             type="text"
                             onChange={e => onSearch?.(e.target.value)}
                             placeholder={searchPlaceholder}
-                            className={`bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all placeholder:text-slate-400 text-slate-900 dark:text-white w-full ${
-                                isPhone ? 'py-3 pl-10 pr-4' : 'py-4 pl-12 pr-6 min-w-[300px]'
-                            }`}
+                            className="w-full bg-white border border-slate-200 rounded-lg py-2.5 pl-9 pr-4 text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-sm"
                         />
                     </div>
+
+                    {/* View Switcher - Enterprise Compact */}
+                    {!isPhone && (
+                        <div className="flex items-center bg-white border border-slate-200 p-1 rounded-lg shadow-sm">
+                            <button
+                                onClick={() => onViewChange?.('list')}
+                                className={`p-1.5 rounded transition-all ${view === 'list' ? 'bg-slate-100 text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
+                            >
+                                <List size={16} />
+                            </button>
+                            <button
+                                onClick={() => onViewChange?.('grid')}
+                                className={`p-1.5 rounded transition-all ${view === 'grid' ? 'bg-slate-100 text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
+                            >
+                                <LayoutGrid size={16} />
+                            </button>
+                        </div>
+                    )}
 
                     {onNew && !hideActions && (
                         <button
                             onClick={onNew}
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white p-4 rounded-2xl transition-all active:scale-95 shadow-xl shadow-indigo-600/20 group shrink-0"
+                            className="bg-slate-900 hover:bg-indigo-600 text-white p-2.5 rounded-lg transition-all active:scale-95 shadow-md shadow-slate-900/10 group"
                         >
-                            <Plus size={24} className="group-hover:rotate-90 transition-transform duration-300" />
+                            <Plus size={18} className="group-hover:rotate-90 transition-transform duration-300" />
                         </button>
                     )}
                 </div>
             </div>
 
-            {/* Stats Section */}
-            {statsContent && <div className="animate-in fade-in slide-in-from-top-4 duration-700">{statsContent}</div>}
+            {/* 2. Stats Section - Gated Visibility */}
+            {statsContent && (
+                <div className="mb-6 animate-in fade-in slide-in-from-top-2 duration-500">{statsContent}</div>
+            )}
 
-            {/* Main Content (Grid/List) */}
-            <div className="flex-1 mt-4">{children}</div>
+            {/* 3. Main Content Rendering */}
+            <div className="flex-1">{children}</div>
         </div>
     );
 }

@@ -19,6 +19,7 @@ export interface PdpPricingSectionProps {
     showOClubPrompt?: boolean;
     isGated?: boolean;
     leadName?: string;
+    initialLocation?: any;
     serviceability?: {
         isServiceable: boolean;
         status: string;
@@ -30,7 +31,7 @@ export interface PdpPricingSectionProps {
 }
 
 // ─── Shared price breakup builder ─────────────────────────
-export function buildPriceBreakup(data: any, coinPricing: any, isReferralActive: boolean) {
+export function buildPriceBreakup(data: any, coinPricing: any, isReferralActive: boolean, initialLocation?: any) {
     const REFERRAL_BONUS = 5000;
     const {
         baseExShowroom,
@@ -96,22 +97,42 @@ export function buildPriceBreakup(data: any, coinPricing: any, isReferralActive:
         return 'ETA UPDATING';
     })();
 
+    const studioIdLabel = data?.studio_id || data?.studioId || data?.studio || null;
+    const deliveryByLabel = (() => {
+        if (winnerTatDays === null || !Number.isFinite(winnerTatDays) || winnerTatDays < 0) return null;
+        const now = new Date();
+        const by = new Date(now);
+        by.setDate(by.getDate() + winnerTatDays);
+        const datePart = by.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+        return winnerTatDays === 0 ? `Today, ${datePart}` : `${datePart}`;
+    })();
+    const studioDistanceKm = Number.isFinite(Number(data?.distance_km)) ? Number(data?.distance_km) : null;
+
     const breakup = [
-        { label: 'Ex-Showroom', value: baseExShowroom },
+        // Group 1: Charges
+        { label: 'Ex-Showroom', value: baseExShowroom, caption: 'Factory List Price' },
         {
-            label: `Registration (${regType})`,
+            label: `Registration`,
             value: rtoEstimates,
+            caption: `${(initialLocation?.state || initialLocation?.district || 'STATE').toUpperCase()} • Road Tax & Fees ${regType === 'COMPANY' ? 'Company' : regType === 'BH' ? 'Bharat Series' : 'Individual'}`,
             breakdown: rtoBreakdown,
             comparisonOptions: data?.rtoOptions,
         },
-        { label: 'Insurance', value: baseInsurance, breakdown: insuranceBreakdown },
+        {
+            label: 'Insurance',
+            value: baseInsurance,
+            caption: 'Comprehensive (1+5 Years)',
+            breakdown: insuranceBreakdown,
+        },
         {
             label: 'Insurance Add-ons',
             value: Math.round((data.insuranceAddonsPrice || 0) + (data.insuranceAddonsDiscount || 0)),
+            caption: 'Zero Dep & RSA Benefits',
         },
         {
             label: 'Mandatory Accessories',
             value: accessoriesPrice,
+            caption: 'Dealer Standard Fitment',
             breakdown: (activeAccessories || [])
                 .filter((a: any) => a.isMandatory)
                 .map((a: any) => ({ label: a.displayName || a.name, amount: a.discountPrice || a.price })),
@@ -119,16 +140,25 @@ export function buildPriceBreakup(data: any, coinPricing: any, isReferralActive:
         {
             label: 'Optional Accessories',
             value: (data.accessoriesPrice || 0) + (data.accessoriesDiscount || 0) - accessoriesPrice,
+            caption: 'Consumer Selection',
         },
-        { label: 'Services', value: (data.servicesPrice || 0) + (data.servicesDiscount || 0) },
-        ...(otherCharges > 0 ? [{ label: 'Other Charges', value: otherCharges }] : []),
-        { label: 'Delivery TAT', value: deliveryTatLabel, isInfo: true },
+        {
+            label: 'Services',
+            value: (data.servicesPrice || 0) + (data.servicesDiscount || 0),
+            caption: 'RSA & Maintenance Pak',
+        },
+        ...(otherCharges > 0 ? [{ label: 'Other Charges', value: otherCharges, caption: 'Handling & Fees' }] : []),
 
+        // Spacer to Group 2
+        { label: '', value: '', isSpacer: true },
+
+        // Group 2: Discounts / Surge
         ...(totalSavings > 0
             ? [
                   {
                       label: "O' Circle Privileged",
                       value: totalSavings,
+                      caption: 'Exclusive Member Benefit',
                       isDeduction: true,
                       helpText: [...savingsHelpLines],
                   },
@@ -139,11 +169,43 @@ export function buildPriceBreakup(data: any, coinPricing: any, isReferralActive:
                   {
                       label: `Bcoin Used - ${coinPricing.coinsUsed}`,
                       value: coinPricing.discount,
+                      caption: 'Loyalty Points Applied',
                       isDeduction: true,
                   },
               ]
             : []),
-        ...(totalSurge > 0 ? [{ label: 'Surge Charges', value: totalSurge, helpText: surgeHelpLines }] : []),
+        ...(totalSurge > 0
+            ? [{ label: 'Surge Charges', value: totalSurge, caption: 'Demand Adjustments', helpText: surgeHelpLines }]
+            : []),
+
+        // Spacer to Group 3
+        { label: '', value: '', isSpacer: true },
+
+        // Group 3: Delivery Info
+        { label: 'TAT', value: deliveryTatLabel, caption: 'Operational Timeline', isInfo: true },
+        ...(deliveryByLabel
+            ? [{ label: 'Delivery By', value: deliveryByLabel, caption: 'Est. Handover', isInfo: true }]
+            : []),
+        ...(studioIdLabel
+            ? [
+                  {
+                      label: 'Studio ID',
+                      value: String(studioIdLabel).toUpperCase(),
+                      caption: 'Dispatch Node',
+                      isInfo: true,
+                  },
+              ]
+            : []),
+        ...(studioDistanceKm !== null
+            ? [
+                  {
+                      label: 'Distance',
+                      value: `${studioDistanceKm.toFixed(1)} km away`,
+                      caption: 'Logistics Proximity',
+                      isInfo: true,
+                  },
+              ]
+            : []),
     ];
 
     return { breakup, totalSavings, totalSurge, savingsHelpLines, surgeHelpLines };
@@ -161,6 +223,7 @@ export function PdpPricingSection({
     showOClubPrompt = false,
     isGated = false,
     leadName,
+    initialLocation,
     serviceability,
     isOpen,
     onToggle,
@@ -176,7 +239,7 @@ export function PdpPricingSection({
     const displayOnRoad = coinPricing?.effectivePrice ?? totalOnRoad;
     const bCoinEquivalent = coinsNeededForPrice(displayOnRoad);
 
-    const { breakup, totalSavings } = buildPriceBreakup(data, coinPricing, isReferralActive);
+    const { breakup, totalSavings } = buildPriceBreakup(data, coinPricing, isReferralActive, initialLocation);
 
     const originalPrice =
         (product.mrp || Math.round(data.baseExShowroom * 1.06)) +

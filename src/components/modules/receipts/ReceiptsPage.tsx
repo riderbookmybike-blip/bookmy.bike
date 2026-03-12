@@ -9,15 +9,7 @@ import MasterListDetailLayout from '@/components/templates/MasterListDetailLayou
 import StatsHeader from '@/components/modules/shared/StatsHeader';
 import ModuleLanding from '@/components/modules/shared/ModuleLanding';
 import ReceiptEditorWrapper from '@/components/modules/receipts/ReceiptEditorWrapper';
-import {
-    Receipt,
-    CreditCard,
-    Landmark,
-    CheckCircle2,
-    AlertCircle,
-    LayoutGrid,
-    Search as SearchIcon,
-} from 'lucide-react';
+import { Receipt, CreditCard, CheckCircle2, AlertCircle, LayoutGrid, Search as SearchIcon, User } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDisplayId } from '@/utils/displayId';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
@@ -97,7 +89,8 @@ export default function ReceiptsPage({ initialReceiptId }: { initialReceiptId?: 
             receipts.filter(
                 r =>
                     formatDisplayId(r.displayId).toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    r.method.toLowerCase().includes(searchQuery.toLowerCase())
+                    r.method.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    (r.memberName || '').toLowerCase().includes(searchQuery.toLowerCase())
             ),
         [receipts, searchQuery]
     );
@@ -118,12 +111,6 @@ export default function ReceiptsPage({ initialReceiptId }: { initialReceiptId?: 
             icon: AlertCircle,
             color: 'amber' as const,
         },
-        {
-            label: 'Methods',
-            value: new Set(receipts.map(r => r.method)).size || 0,
-            icon: CreditCard,
-            color: 'blue' as const,
-        },
     ];
 
     const handleOpenReceipt = (receiptId: string) => {
@@ -136,131 +123,73 @@ export default function ReceiptsPage({ initialReceiptId }: { initialReceiptId?: 
         if (slug) router.push(`/app/${slug}/receipts`);
     };
 
+    const effectiveView = device === 'phone' ? 'list' : view;
+
     if (!selectedReceiptId) {
         return (
-            <div className="h-full bg-slate-50 dark:bg-[#0b0d10] -m-6 md:-m-8">
+            <div className="h-full bg-[#f8fafc]">
                 <ModuleLanding
-                    title="Receipts"
-                    subtitle="Customer Collections"
-                    onNew={() => toast.info('Create Receipt from Booking')}
-                    searchPlaceholder="Search Receipts..."
+                    title="Receipts Registry"
+                    subtitle="FINANCIAL_LOG"
+                    onNew={() => toast.info('Register from Booking node')}
+                    searchPlaceholder="Search Receipts Registry..."
                     onSearch={setSearchQuery}
-                    statsContent={<StatsHeader stats={stats} />}
-                    view={view}
+                    statsContent={<StatsHeader stats={stats} device={device} />}
+                    view={effectiveView}
                     onViewChange={setView}
+                    device={device}
                 >
-                    {view === 'grid' ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-20">
+                    {effectiveView === 'grid' ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-20">
                             {filteredReceipts.map(receipt => (
                                 <div
                                     key={receipt.id}
                                     onClick={() => handleOpenReceipt(receipt.id)}
-                                    className="group relative bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[2.5rem] p-8 cursor-pointer transition-all duration-500 hover:scale-[1.02] hover:shadow-2xl hover:shadow-indigo-500/10 hover:border-indigo-500/30 overflow-hidden"
+                                    className="group bg-white border border-slate-200 rounded-xl p-5 cursor-pointer transition-all hover:shadow-lg hover:border-indigo-500/30 shadow-sm"
                                 >
-                                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-600/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-                                    <div className="relative z-10">
-                                        <div className="flex justify-between items-start mb-6">
-                                            <div className="text-[10px] font-black text-indigo-500 uppercase tracking-widest bg-indigo-500/10 px-3 py-1 rounded-full border border-indigo-500/20">
-                                                {formatDisplayId(receipt.displayId)}
-                                            </div>
-                                            <div className="text-indigo-600 font-black text-sm italic tracking-tighter">
-                                                ₹{receipt.amount.toLocaleString()}
-                                            </div>
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div className="text-[10px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-2.5 py-1 rounded-md border border-indigo-100">
+                                            {formatDisplayId(receipt.displayId)}
                                         </div>
-                                        <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter italic uppercase mb-2 truncate group-hover:text-indigo-600 transition-colors">
-                                            {receipt.method}
-                                        </h3>
-                                        <div className="text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-tighter truncate mb-6">
+                                        <div className="text-slate-900 font-black text-sm tabular-nums">
+                                            ₹{receipt.amount.toLocaleString()}
+                                        </div>
+                                    </div>
+                                    <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight mb-1 truncate">
+                                        {receipt.memberName || receipt.method}
+                                    </h3>
+                                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">
+                                        {receipt.date}
+                                    </div>
+                                    <div className="flex items-center justify-between pt-4 border-t border-slate-100 mt-4">
+                                        <div className="px-2 py-0.5 rounded bg-slate-50 text-[9px] font-black uppercase text-slate-400 border border-slate-100">
                                             {receipt.status}
                                         </div>
-                                        <div className="flex items-center justify-between pt-6 border-t border-slate-100 dark:border-white/5">
-                                            <div className="px-3 py-1 rounded-xl text-[9px] font-black uppercase tracking-widest bg-slate-100 dark:bg-white/5 text-slate-400">
-                                                {receipt.status}
-                                            </div>
-                                            <div className="text-[9px] font-bold text-slate-400">{receipt.date}</div>
+                                        <div className="text-[9px] font-black text-indigo-600 uppercase tracking-widest">
+                                            {receipt.method}
                                         </div>
                                     </div>
                                 </div>
                             ))}
                         </div>
-                    ) : device === 'phone' ? (
-                        <div className="space-y-3 pb-20 px-4">
-                            {filteredReceipts.map(receipt => {
-                                const isActive = selectedReceiptId === receipt.id;
-                                const statusLower = String(receipt.status).toLowerCase();
-                                const isSuccess = ['captured', 'success', 'paid'].includes(statusLower);
-                                const isPending = ['pending', 'processing'].includes(statusLower);
-
-                                return (
-                                    <button
-                                        key={receipt.id}
-                                        onClick={() => handleOpenReceipt(receipt.id)}
-                                        className="w-full text-left bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl overflow-hidden shadow-sm active:scale-[0.98] transition-all"
-                                    >
-                                        <div className="flex">
-                                            <div
-                                                className={`w-1 shrink-0 ${
-                                                    isSuccess
-                                                        ? 'bg-emerald-500'
-                                                        : isPending
-                                                          ? 'bg-amber-500'
-                                                          : 'bg-indigo-500'
-                                                }`}
-                                            />
-                                            <div className="flex-1 px-4 py-3 min-w-0">
-                                                <div className="flex items-center justify-between mb-1">
-                                                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                                                        {formatDisplayId(receipt.displayId)}
-                                                    </span>
-                                                    <div className="flex items-center gap-1.5">
-                                                        {isActive && (
-                                                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
-                                                        )}
-                                                        <span
-                                                            className={`text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded ${
-                                                                isSuccess
-                                                                    ? 'bg-emerald-500/10 text-emerald-600'
-                                                                    : isPending
-                                                                      ? 'bg-amber-500/10 text-amber-600'
-                                                                      : 'bg-indigo-500/10 text-indigo-600'
-                                                            }`}
-                                                        >
-                                                            {receipt.status}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                                <div className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight truncate mb-1">
-                                                    {receipt.method}
-                                                </div>
-                                                <div className="flex items-center justify-between">
-                                                    <span className="text-[10px] font-bold text-slate-400 truncate max-w-[60%]">
-                                                        {receipt.date}
-                                                    </span>
-                                                    <span className="text-[11px] font-black text-slate-700 dark:text-slate-300">
-                                                        ₹{receipt.amount.toLocaleString('en-IN')}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </button>
-                                );
-                            })}
-                        </div>
                     ) : (
-                        <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[2.5rem] overflow-hidden shadow-sm">
+                        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
                             <table className="w-full text-left border-collapse">
                                 <thead>
-                                    <tr className="border-b border-slate-100 dark:border-white/5">
-                                        <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                            Receipt ID
+                                    <tr className="bg-slate-50/50 border-b border-slate-200">
+                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                                            Node ID
                                         </th>
-                                        <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                            Method
+                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                                            Identity
                                         </th>
-                                        <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                            Amount
+                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                                            Mode
                                         </th>
-                                        <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 text-right">
+                                            Valuation
+                                        </th>
+                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 text-center">
                                             Status
                                         </th>
                                     </tr>
@@ -270,25 +199,29 @@ export default function ReceiptsPage({ initialReceiptId }: { initialReceiptId?: 
                                         <tr
                                             key={receipt.id}
                                             onClick={() => handleOpenReceipt(receipt.id)}
-                                            className="group hover:bg-slate-50 dark:hover:bg-white/5 transition-colors cursor-pointer border-b border-slate-50 dark:border-white/5 last:border-0"
+                                            className="group hover:bg-slate-50 transition-colors cursor-pointer border-b border-slate-100 last:border-0"
                                         >
-                                            <td className="p-6">
-                                                <div className="text-xs font-black text-indigo-500 uppercase tracking-widest">
-                                                    {formatDisplayId(receipt.displayId)}
+                                            <td className="px-6 py-4 text-[10px] font-black text-indigo-600 uppercase tracking-widest">
+                                                {formatDisplayId(receipt.displayId)}
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400">
+                                                        <User size={14} />
+                                                    </div>
+                                                    <div className="text-xs font-black text-slate-900 uppercase tracking-tight">
+                                                        {receipt.memberName || 'N/A'}
+                                                    </div>
                                                 </div>
                                             </td>
-                                            <td className="p-6">
-                                                <div className="text-sm font-black italic uppercase tracking-tighter text-slate-900 dark:text-white group-hover:text-indigo-600 transition-colors">
-                                                    {receipt.method}
-                                                </div>
+                                            <td className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                                                {receipt.method}
                                             </td>
-                                            <td className="p-6">
-                                                <div className="text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase">
-                                                    ₹{receipt.amount.toLocaleString()}
-                                                </div>
+                                            <td className="px-6 py-4 text-right text-xs font-black text-slate-900 tabular-nums">
+                                                ₹{receipt.amount.toLocaleString()}
                                             </td>
-                                            <td className="p-6">
-                                                <div className="px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest inline-block bg-slate-100 dark:bg-white/5 text-slate-400">
+                                            <td className="px-6 py-4 text-center">
+                                                <div className="px-2.5 py-1 rounded inline-block text-[9px] font-black uppercase tracking-wider bg-slate-50 text-slate-400 border border-slate-100">
                                                     {receipt.status}
                                                 </div>
                                             </td>
@@ -304,7 +237,7 @@ export default function ReceiptsPage({ initialReceiptId }: { initialReceiptId?: 
     }
 
     return (
-        <div className="h-full bg-slate-50 dark:bg-slate-950 flex overflow-hidden font-sans -m-6 md:-m-8">
+        <div className="h-full bg-white flex overflow-hidden font-sans">
             <MasterListDetailLayout
                 mode="list-detail"
                 listPosition="left"
@@ -312,80 +245,64 @@ export default function ReceiptsPage({ initialReceiptId }: { initialReceiptId?: 
                 hasActiveDetail={!!selectedReceiptId}
                 onBack={handleCloseDetail}
             >
-                <div className="h-full flex flex-col bg-white dark:bg-[#0b0d10] border-r border-slate-200 dark:border-white/5 w-full">
-                    <div className="p-6 border-b border-slate-100 dark:border-white/5 space-y-4">
+                <div className="h-full flex flex-col bg-[#fdfdfd] border-r border-slate-200 w-full">
+                    <div className="p-4 border-b border-slate-200 space-y-4">
                         <div className="flex items-center justify-between">
-                            <h2 className="text-xl font-black italic uppercase tracking-tighter text-slate-900 dark:text-white">
-                                Receipts <span className="text-indigo-600">Index</span>
+                            <h2 className="text-xs font-black uppercase tracking-[0.2em] text-slate-900">
+                                Receipts <span className="text-indigo-600">Core</span>
                             </h2>
                             <button
                                 onClick={handleCloseDetail}
-                                className="p-2 hover:bg-slate-100 dark:hover:bg-white/5 rounded-xl transition-all text-slate-400"
+                                className="p-1.5 hover:bg-slate-100 rounded-lg transition-all text-slate-400"
                             >
-                                <LayoutGrid size={18} />
+                                <LayoutGrid size={14} />
                             </button>
                         </div>
                         <div className="relative">
-                            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-3.5 h-3.5" />
+                            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 w-3 h-3" />
                             <input
                                 type="text"
                                 value={searchQuery}
                                 onChange={e => setSearchQuery(e.target.value)}
-                                className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl py-2 pl-9 pr-4 text-xs font-bold focus:outline-none focus:border-indigo-500/50"
-                                placeholder="Search receipts..."
+                                className="w-full bg-white border border-slate-200 rounded-lg py-2 pl-8 pr-4 text-[10px] font-bold text-slate-900 placeholder:text-slate-400 focus:border-indigo-500/50 shadow-sm"
+                                placeholder="Search receipt nodes..."
                             />
                         </div>
                     </div>
-
-                    <div className="flex-1 overflow-y-auto p-3 space-y-1.5 no-scrollbar">
+                    <div className="flex-1 overflow-y-auto p-2 space-y-1 no-scrollbar">
                         {filteredReceipts.map(receipt => {
                             const isActive = selectedReceiptId === receipt.id;
                             return (
                                 <button
                                     key={receipt.id}
                                     onClick={() => handleOpenReceipt(receipt.id)}
-                                    className={`w-full text-left rounded-xl border transition-all duration-300 group overflow-hidden ${
-                                        isActive
-                                            ? 'bg-indigo-600 border-indigo-500 shadow-lg shadow-indigo-500/20 text-white'
-                                            : 'bg-white dark:bg-white/[0.03] border-slate-100 dark:border-white/[0.06] hover:border-indigo-500/30 text-slate-900 dark:text-white hover:shadow-md'
-                                    }`}
+                                    className={`w-full text-left rounded-lg p-3 transition-all border ${isActive ? 'bg-indigo-50 border-indigo-200 text-indigo-900' : 'bg-white border-transparent hover:bg-slate-50'}`}
                                 >
-                                    <div className="flex">
-                                        <div className={`w-1 shrink-0 ${isActive ? 'bg-white/30' : 'bg-indigo-500'}`} />
-                                        <div className="flex-1 px-3.5 py-3 min-w-0">
-                                            <div className="flex items-center justify-between mb-1.5">
-                                                <span
-                                                    className={`text-[9px] font-black uppercase tracking-wider ${isActive ? 'text-white/70' : 'text-slate-400'}`}
-                                                >
-                                                    {formatDisplayId(receipt.displayId)}
-                                                </span>
-                                                <span
-                                                    className={`text-[7px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded ${isActive ? 'bg-white/20 text-white' : 'bg-indigo-500/10 text-indigo-600'}`}
-                                                >
-                                                    {receipt.status}
-                                                </span>
-                                            </div>
-                                            <div
-                                                className={`text-[12px] font-black tracking-tight uppercase truncate mb-0.5 ${isActive ? 'text-white' : 'text-slate-800 dark:text-white'}`}
-                                            >
-                                                ₹{receipt.amount.toLocaleString()}
-                                            </div>
-                                            <div className="flex items-center justify-between">
-                                                <span
-                                                    className={`text-[10px] font-bold truncate ${isActive ? 'text-white/70' : 'text-slate-400'}`}
-                                                >
-                                                    {receipt.method}
-                                                </span>
-                                            </div>
-                                        </div>
+                                    <div className="flex items-center justify-between mb-1.5">
+                                        <span
+                                            className={`text-[8px] font-black uppercase tracking-widest ${isActive ? 'text-indigo-600' : 'text-slate-400'}`}
+                                        >
+                                            {formatDisplayId(receipt.displayId)}
+                                        </span>
+                                        <div
+                                            className={`w-1.5 h-1.5 rounded-full ${receipt.status === 'success' ? 'bg-emerald-400' : 'bg-indigo-400'}`}
+                                        />
+                                    </div>
+                                    <div className="text-[11px] font-black text-slate-900 uppercase tracking-tight mb-1 truncate">
+                                        {receipt.memberName || 'N/A'}
+                                    </div>
+                                    <div className="flex items-center justify-between text-[8px] font-bold text-slate-400 uppercase tracking-widest">
+                                        <span>{receipt.method}</span>
+                                        <span className="text-slate-900 font-black tabular-nums">
+                                            ₹{(receipt.amount / 1000).toFixed(1)}k
+                                        </span>
                                     </div>
                                 </button>
                             );
                         })}
                     </div>
                 </div>
-
-                <div className="h-full flex flex-col overflow-y-auto no-scrollbar bg-slate-50 dark:bg-[#08090b]">
+                <div className="h-full flex flex-col overflow-y-auto no-scrollbar bg-white">
                     <ReceiptEditorWrapper receiptId={selectedReceiptId} />
                 </div>
             </MasterListDetailLayout>
