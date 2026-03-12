@@ -261,6 +261,7 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
     const [isEditing, setIsEditing] = useState(false);
     const [editSaving, setEditSaving] = useState(false);
     const [editFields, setEditFields] = useState({
+        fullName: profile.member?.full_name || '',
         primaryEmail: profile.member?.primary_email || profile.member?.email || '',
         panNumber: profile.member?.pan_number || '',
         aadhaarNumber: profile.member?.aadhaar_number || '',
@@ -310,6 +311,7 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
         setEditSaving(true);
         try {
             const result = await updateMemberProfile(profile.member.id, {
+                fullName: editFields.fullName || undefined,
                 primaryEmail: editFields.primaryEmail || undefined,
                 dob: editFields.dob || undefined,
                 workCompany: editFields.workCompany || undefined,
@@ -337,6 +339,7 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
 
     const handleCancelEdit = () => {
         setEditFields({
+            fullName: profile.member?.full_name || '',
             primaryEmail: profile.member?.primary_email || profile.member?.email || '',
             panNumber: profile.member?.pan_number || '',
             aadhaarNumber: profile.member?.aadhaar_number || '',
@@ -1057,9 +1060,19 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
                             </div>
                             <div className="min-w-0">
                                 <div className="flex items-center gap-3">
-                                    <h1 className="text-xl font-black tracking-tight truncate">
-                                        {profile.member?.full_name || 'Unnamed Member'}
-                                    </h1>
+                                    {isEditing ? (
+                                        <input
+                                            type="text"
+                                            value={editFields.fullName}
+                                            onChange={e => handleEditField('fullName', e.target.value)}
+                                            className="text-xl font-black tracking-tight bg-slate-50 dark:bg-white/5 border border-indigo-400 rounded-xl px-3 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 text-slate-900 dark:text-white min-w-[200px]"
+                                            placeholder="Full Name"
+                                        />
+                                    ) : (
+                                        <h1 className="text-xl font-black tracking-tight truncate">
+                                            {profile.member?.full_name || 'Unnamed Member'}
+                                        </h1>
+                                    )}
                                     <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-emerald-500/10 text-emerald-600">
                                         Verified Identity
                                     </span>

@@ -103,7 +103,8 @@ export default function MembersPage({ initialMemberId }: { initialMemberId?: str
             members.filter(
                 m =>
                     m.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    formatDisplayId(m.displayId).toLowerCase().includes(searchQuery.toLowerCase())
+                    formatDisplayId(m.displayId).toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    (m.phone || '').toLowerCase().includes(searchQuery.toLowerCase())
             ),
         [members, searchQuery]
     );

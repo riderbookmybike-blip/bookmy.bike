@@ -1,8 +1,26 @@
 'use client';
 
-import React, { useState, useCallback, useEffect } from 'react';
-import { X, Building2, MapPin, Phone, Loader2, Rocket, CheckCircle2, XCircle, User, Link2, AlertCircle } from 'lucide-react';
-import { onboardDealer, lookupMemberByPhone, checkSlugAvailability } from '@/app/dashboard/dealers/actions';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import {
+    X,
+    Building2,
+    MapPin,
+    Phone,
+    Loader2,
+    Rocket,
+    CheckCircle2,
+    XCircle,
+    User,
+    Link2,
+    AlertCircle,
+    AlertTriangle,
+} from 'lucide-react';
+import {
+    onboardDealer,
+    lookupMemberByPhone,
+    checkSlugAvailability,
+    searchExistingTenants,
+} from '@/app/dashboard/dealers/actions';
 
 const formatStudioId = (value: string) => {
     const upper = value.toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -12,7 +30,10 @@ const formatStudioId = (value: string) => {
 };
 
 const generateSlug = (name: string) => {
-    return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    return name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
 };
 
 interface OnboardDealerModalProps {
@@ -45,12 +66,32 @@ export default function OnboardDealerModal({ isOpen, onClose, onSuccess }: Onboa
     const [slugState, setSlugState] = useState<SlugState>('idle');
     const [slugSuggestion, setSlugSuggestion] = useState<string | null>(null);
 
+    // Existing tenant name suggestions (duplicate warning)
+    const [nameSuggestions, setNameSuggestions] = useState<{ id: string; name: string; slug: string }[]>([]);
+    const [showNameDropdown, setShowNameDropdown] = useState(false);
+    const nameInputRef = useRef<HTMLInputElement>(null);
+
     // Auto-generate slug from dealer name
     useEffect(() => {
         if (formData.dealerName && !formData.slug) {
             const autoSlug = generateSlug(formData.dealerName);
             setFormData(prev => ({ ...prev, slug: autoSlug }));
         }
+    }, [formData.dealerName]);
+
+    // Search existing tenants as user types dealer name
+    useEffect(() => {
+        if (!formData.dealerName || formData.dealerName.length < 2) {
+            setNameSuggestions([]);
+            setShowNameDropdown(false);
+            return;
+        }
+        const timer = setTimeout(async () => {
+            const results = await searchExistingTenants(formData.dealerName);
+            setNameSuggestions(results);
+            setShowNameDropdown(results.length > 0);
+        }, 300);
+        return () => clearTimeout(timer);
     }, [formData.dealerName]);
 
     // Check slug availability with debounce
@@ -126,7 +167,7 @@ export default function OnboardDealerModal({ isOpen, onClose, onSuccess }: Onboa
             slug: formData.slug,
             studioId: formData.studioId,
             pincode: formData.pincode,
-            memberId: verifiedMember.id
+            memberId: verifiedMember.id,
         });
 
         if (result.success) {
@@ -139,7 +180,8 @@ export default function OnboardDealerModal({ isOpen, onClose, onSuccess }: Onboa
         }
     };
 
-    const canSubmit = verificationState === 'verified' && slugState === 'available' && formData.dealerName && formData.pincode;
+    const canSubmit =
+        verificationState === 'verified' && slugState === 'available' && formData.dealerName && formData.pincode;
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xl animate-in fade-in duration-300">
@@ -147,7 +189,10 @@ export default function OnboardDealerModal({ isOpen, onClose, onSuccess }: Onboa
                 {/* Header */}
                 <div className="relative p-8 pb-4">
                     <button
-                        onClick={() => { handleReset(); onClose(); }}
+                        onClick={() => {
+                            handleReset();
+                            onClose();
+                        }}
                         className="absolute top-6 right-6 p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-white/5 text-slate-400 transition-colors"
                     >
                         <X size={20} />
@@ -156,7 +201,9 @@ export default function OnboardDealerModal({ isOpen, onClose, onSuccess }: Onboa
                     <div className="space-y-1">
                         <div className="flex items-center gap-2 px-2.5 py-1 bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20 rounded-lg w-fit">
                             <Rocket size={12} className="text-indigo-600" />
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-400">Node Expansion</span>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-400">
+                                Node Expansion
+                            </span>
                         </div>
                         <h2 className="text-3xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">
                             Onboard <span className="text-indigo-600">New Dealer</span>
@@ -175,26 +222,32 @@ export default function OnboardDealerModal({ isOpen, onClose, onSuccess }: Onboa
                     <div className="space-y-4">
                         <label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] ml-1 flex items-center gap-2">
                             Step 1: Verify Admin
-                            {verificationState === 'verified' && <CheckCircle2 size={14} className="text-emerald-500" />}
+                            {verificationState === 'verified' && (
+                                <CheckCircle2 size={14} className="text-emerald-500" />
+                            )}
                         </label>
 
                         <div className="flex gap-3">
                             <div className="relative group flex-1">
-                                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={18} />
+                                <Phone
+                                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors"
+                                    size={18}
+                                />
                                 <input
                                     required
                                     type="tel"
                                     placeholder="Admin Mobile Number"
                                     maxLength={10}
                                     disabled={verificationState === 'verified'}
-                                    className={`w-full pl-12 pr-4 py-3.5 bg-slate-50 dark:bg-white/5 border rounded-2xl text-sm font-bold placeholder:text-slate-400 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all ${verificationState === 'verified'
-                                        ? 'border-emerald-300 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10'
-                                        : verificationState === 'not_found'
-                                            ? 'border-rose-300 dark:border-rose-500/30'
-                                            : 'border-slate-100 dark:border-white/5'
-                                        }`}
+                                    className={`w-full pl-12 pr-4 py-3.5 bg-slate-50 dark:bg-white/5 border rounded-2xl text-sm font-bold placeholder:text-slate-400 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all ${
+                                        verificationState === 'verified'
+                                            ? 'border-emerald-300 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10'
+                                            : verificationState === 'not_found'
+                                              ? 'border-rose-300 dark:border-rose-500/30'
+                                              : 'border-slate-100 dark:border-white/5'
+                                    }`}
                                     value={phoneInput}
-                                    onChange={(e) => {
+                                    onChange={e => {
                                         setPhoneInput(e.target.value.replace(/\D/g, ''));
                                         if (verificationState === 'not_found') setVerificationState('idle');
                                     }}
@@ -232,8 +285,12 @@ export default function OnboardDealerModal({ isOpen, onClose, onSuccess }: Onboa
                             <div className="flex items-center gap-3 px-4 py-3 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 rounded-xl">
                                 <User size={18} className="text-emerald-600" />
                                 <div className="flex-1">
-                                    <p className="text-sm font-bold text-emerald-800 dark:text-emerald-300">{verifiedMember.full_name}</p>
-                                    <p className="text-[10px] text-emerald-600 dark:text-emerald-400">Will be assigned as Dealership Admin</p>
+                                    <p className="text-sm font-bold text-emerald-800 dark:text-emerald-300">
+                                        {verifiedMember.full_name}
+                                    </p>
+                                    <p className="text-[10px] text-emerald-600 dark:text-emerald-400">
+                                        Will be assigned as Dealership Admin
+                                    </p>
                                 </div>
                                 <CheckCircle2 size={20} className="text-emerald-500" />
                             </div>
@@ -243,8 +300,12 @@ export default function OnboardDealerModal({ isOpen, onClose, onSuccess }: Onboa
                             <div className="flex items-center gap-3 px-4 py-3 bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 rounded-xl">
                                 <XCircle size={18} className="text-rose-600" />
                                 <div className="flex-1">
-                                    <p className="text-sm font-bold text-rose-800 dark:text-rose-300">Member Not Found</p>
-                                    <p className="text-[10px] text-rose-600 dark:text-rose-400">This mobile is not registered. Ask user to sign up first.</p>
+                                    <p className="text-sm font-bold text-rose-800 dark:text-rose-300">
+                                        Member Not Found
+                                    </p>
+                                    <p className="text-[10px] text-rose-600 dark:text-rose-400">
+                                        This mobile is not registered. Ask user to sign up first.
+                                    </p>
                                 </div>
                             </div>
                         )}
@@ -253,64 +314,130 @@ export default function OnboardDealerModal({ isOpen, onClose, onSuccess }: Onboa
                     {/* STEP 2: Dealer Details (shown only after verification) */}
                     {verificationState === 'verified' && (
                         <div className="space-y-4 animate-in slide-in-from-bottom-4 duration-300">
-                            <label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] ml-1">Step 2: Dealership Details</label>
+                            <label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] ml-1">
+                                Step 2: Dealership Details
+                            </label>
                             <div className="grid grid-cols-1 gap-4">
-                                {/* Dealer Name */}
+                                {/* Dealer Name with duplicate detection */}
                                 <div className="relative group">
-                                    <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={18} />
+                                    <Building2
+                                        className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors z-10"
+                                        size={18}
+                                    />
                                     <input
+                                        ref={nameInputRef}
                                         required
                                         type="text"
                                         placeholder="Dealership Name"
-                                        className="w-full pl-12 pr-4 py-3.5 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-2xl text-sm font-bold placeholder:text-slate-400 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all"
+                                        autoComplete="off"
+                                        className={`w-full pl-12 pr-4 py-3.5 bg-slate-50 dark:bg-white/5 border rounded-2xl text-sm font-bold placeholder:text-slate-400 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all ${
+                                            showNameDropdown
+                                                ? 'border-amber-300 dark:border-amber-500/40 rounded-b-none'
+                                                : 'border-slate-100 dark:border-white/5'
+                                        }`}
                                         value={formData.dealerName}
-                                        onChange={(e) => {
+                                        onChange={e => {
                                             const name = e.target.value;
                                             setFormData(prev => ({
                                                 ...prev,
                                                 dealerName: name,
-                                                slug: generateSlug(name)
+                                                slug: generateSlug(name),
                                             }));
                                         }}
+                                        onBlur={() => setTimeout(() => setShowNameDropdown(false), 150)}
+                                        onFocus={() => nameSuggestions.length > 0 && setShowNameDropdown(true)}
                                     />
+
+                                    {/* Existing tenant suggestions dropdown */}
+                                    {showNameDropdown && (
+                                        <div className="absolute left-0 right-0 top-full z-50 bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-500/40 border-t-0 rounded-b-2xl shadow-xl overflow-hidden">
+                                            <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-500/10 border-b border-amber-100 dark:border-amber-500/20">
+                                                <AlertTriangle
+                                                    size={12}
+                                                    className="text-amber-600 dark:text-amber-400 shrink-0"
+                                                />
+                                                <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-400">
+                                                    Similar dealers already exist — are you sure?
+                                                </span>
+                                            </div>
+                                            {nameSuggestions.map(t => (
+                                                <button
+                                                    key={t.id}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setFormData(prev => ({
+                                                            ...prev,
+                                                            dealerName: t.name,
+                                                            slug: t.slug,
+                                                        }));
+                                                        setShowNameDropdown(false);
+                                                    }}
+                                                    className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors text-left"
+                                                >
+                                                    <span className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                                                        {t.name}
+                                                    </span>
+                                                    <span className="text-[10px] font-mono text-slate-400">
+                                                        /{t.slug}
+                                                    </span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* URL Slug (Editable) */}
                                 <div className="space-y-2">
                                     <div className="relative group">
-                                        <Link2 className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={18} />
+                                        <Link2
+                                            className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors"
+                                            size={18}
+                                        />
                                         <input
                                             required
                                             type="text"
                                             placeholder="url-slug"
-                                            className={`w-full pl-12 pr-20 py-3.5 bg-slate-50 dark:bg-white/5 border rounded-2xl text-sm font-mono font-bold placeholder:text-slate-400 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all ${slugState === 'available'
+                                            className={`w-full pl-12 pr-20 py-3.5 bg-slate-50 dark:bg-white/5 border rounded-2xl text-sm font-mono font-bold placeholder:text-slate-400 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all ${
+                                                slugState === 'available'
                                                     ? 'border-emerald-300 dark:border-emerald-500/30'
                                                     : slugState === 'taken'
-                                                        ? 'border-rose-300 dark:border-rose-500/30'
-                                                        : 'border-slate-100 dark:border-white/5'
-                                                }`}
+                                                      ? 'border-rose-300 dark:border-rose-500/30'
+                                                      : 'border-slate-100 dark:border-white/5'
+                                            }`}
                                             value={formData.slug}
-                                            onChange={(e) => setFormData(prev => ({
-                                                ...prev,
-                                                slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '')
-                                            }))}
+                                            onChange={e =>
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''),
+                                                }))
+                                            }
                                         />
                                         <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                                            {slugState === 'checking' && <Loader2 size={16} className="animate-spin text-slate-400" />}
-                                            {slugState === 'available' && <CheckCircle2 size={16} className="text-emerald-500" />}
+                                            {slugState === 'checking' && (
+                                                <Loader2 size={16} className="animate-spin text-slate-400" />
+                                            )}
+                                            {slugState === 'available' && (
+                                                <CheckCircle2 size={16} className="text-emerald-500" />
+                                            )}
                                             {slugState === 'taken' && <XCircle size={16} className="text-rose-500" />}
                                         </div>
                                     </div>
 
                                     {/* Slug Preview & Status */}
-                                    <div className={`px-3 py-2 rounded-xl text-xs font-medium ${slugState === 'available'
-                                            ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
-                                            : slugState === 'taken'
-                                                ? 'bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-300'
-                                                : 'bg-slate-50 dark:bg-white/5 text-slate-500'
-                                        }`}>
+                                    <div
+                                        className={`px-3 py-2 rounded-xl text-xs font-medium ${
+                                            slugState === 'available'
+                                                ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                                                : slugState === 'taken'
+                                                  ? 'bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-300'
+                                                  : 'bg-slate-50 dark:bg-white/5 text-slate-500'
+                                        }`}
+                                    >
                                         {slugState === 'available' && (
-                                            <span>✓ Will be available at: <span className="font-mono font-bold">/dealer/{formData.slug}</span></span>
+                                            <span>
+                                                ✓ Will be available at:{' '}
+                                                <span className="font-mono font-bold">/dealer/{formData.slug}</span>
+                                            </span>
                                         )}
                                         {slugState === 'taken' && (
                                             <div className="flex items-center justify-between">
@@ -320,7 +447,9 @@ export default function OnboardDealerModal({ isOpen, onClose, onSuccess }: Onboa
                                                 {slugSuggestion && (
                                                     <button
                                                         type="button"
-                                                        onClick={() => setFormData(prev => ({ ...prev, slug: slugSuggestion! }))}
+                                                        onClick={() =>
+                                                            setFormData(prev => ({ ...prev, slug: slugSuggestion! }))
+                                                        }
                                                         className="text-indigo-600 hover:underline font-bold"
                                                     >
                                                         Use "{slugSuggestion}"
@@ -329,30 +458,42 @@ export default function OnboardDealerModal({ isOpen, onClose, onSuccess }: Onboa
                                             </div>
                                         )}
                                         {slugState === 'checking' && <span>Checking availability...</span>}
-                                        {slugState === 'idle' && formData.slug && <span>Enter at least 2 characters</span>}
+                                        {slugState === 'idle' && formData.slug && (
+                                            <span>Enter at least 2 characters</span>
+                                        )}
                                     </div>
                                 </div>
 
                                 {/* Studio ID */}
                                 <div className="relative group">
-                                    <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={18} />
+                                    <Building2
+                                        className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors"
+                                        size={18}
+                                    />
                                     <input
                                         type="text"
                                         placeholder="Studio ID (e.g., 48C) — Optional"
                                         maxLength={5}
                                         className="w-full pl-12 pr-20 py-3.5 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-2xl text-sm font-bold placeholder:text-slate-400 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all"
                                         value={formData.studioId}
-                                        onChange={(e) => setFormData(prev => ({
-                                            ...prev,
-                                            studioId: formatStudioId(e.target.value)
-                                        }))}
+                                        onChange={e =>
+                                            setFormData(prev => ({
+                                                ...prev,
+                                                studioId: formatStudioId(e.target.value),
+                                            }))
+                                        }
                                     />
-                                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] font-bold text-slate-300 uppercase">Optional</span>
+                                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] font-bold text-slate-300 uppercase">
+                                        Optional
+                                    </span>
                                 </div>
 
                                 {/* Pincode */}
                                 <div className="relative group">
-                                    <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={18} />
+                                    <MapPin
+                                        className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors"
+                                        size={18}
+                                    />
                                     <input
                                         required
                                         type="text"
@@ -360,7 +501,12 @@ export default function OnboardDealerModal({ isOpen, onClose, onSuccess }: Onboa
                                         maxLength={6}
                                         className="w-full pl-12 pr-4 py-3.5 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-2xl text-sm font-bold placeholder:text-slate-400 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all"
                                         value={formData.pincode}
-                                        onChange={(e) => setFormData(prev => ({ ...prev, pincode: e.target.value.replace(/\D/g, '') }))}
+                                        onChange={e =>
+                                            setFormData(prev => ({
+                                                ...prev,
+                                                pincode: e.target.value.replace(/\D/g, ''),
+                                            }))
+                                        }
                                     />
                                 </div>
                             </div>
@@ -376,7 +522,10 @@ export default function OnboardDealerModal({ isOpen, onClose, onSuccess }: Onboa
                     <div className="flex gap-4 pt-4">
                         <button
                             type="button"
-                            onClick={() => { handleReset(); onClose(); }}
+                            onClick={() => {
+                                handleReset();
+                                onClose();
+                            }}
                             className="flex-1 px-8 py-4 bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400 rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] hover:bg-slate-200 dark:hover:bg-white/10 transition-all"
                         >
                             Cancel

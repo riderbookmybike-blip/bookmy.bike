@@ -1051,6 +1051,13 @@ export default function PricingPage() {
                                   ? Number(s.originalExShowroom)
                                   : 0;
 
+                        // Auto-promote: DRAFT + valid price being saved → LIVE automatically
+                        const isDraftAutopromote =
+                            (!s.publishStage || s.publishStage === 'DRAFT') &&
+                            exShowroomSafe > 0 &&
+                            s.exShowroom !== s.originalExShowroom;
+                        const resolvedStage = isDraftAutopromote ? 'LIVE' : s.publishStage || 'DRAFT';
+
                         return {
                             vehicle_color_id: s.id,
                             state_code: activeStateCode,
@@ -1058,7 +1065,7 @@ export default function PricingPage() {
                             ex_showroom_price: exShowroomSafe,
                             is_active: true,
                             is_popular: s.isPopular || false,
-                            ...(s.publishStage !== s.originalPublishStage && { publish_stage: s.publishStage }),
+                            publish_stage: resolvedStage,
                         };
                     })
                     .filter(row => row.ex_showroom_price > 0);
@@ -1585,18 +1592,7 @@ function PricingHeader({
                             <span className="text-[10px] font-black uppercase tracking-widest">Retry Load</span>
                         </button>
                     )}
-                    {tenantSlug === 'aums' && (
-                        <button
-                            onClick={handleBackfill}
-                            className="group relative flex items-center gap-2 px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl hover:scale-105 transition-all duration-300 shadow-xl overflow-hidden active:scale-95"
-                        >
-                            <div className="absolute inset-0 bg-gradient-to-r from-emerald-600/20 to-indigo-600/20 opacity-0 group-hover:opacity-100 transition-opacity" />
-                            <Activity size={16} className="text-emerald-400 dark:text-emerald-600" />
-                            <span className="text-[10px] font-black uppercase tracking-widest relative z-10">
-                                Backfill Missing
-                            </span>
-                        </button>
-                    )}
+
                     <div
                         className={`flex items-center gap-2 text-[10px] font-bold px-4 py-2 rounded-lg transition-all duration-300 border ${hasUnsavedChanges ? 'bg-emerald-600 text-white border-emerald-600 shadow-lg shadow-emerald-200 scale-100' : 'opacity-0 scale-95 border-transparent'}`}
                     >

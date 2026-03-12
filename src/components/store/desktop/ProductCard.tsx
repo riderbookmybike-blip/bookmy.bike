@@ -1433,7 +1433,7 @@ export const ProductCard = ({
                                                     className="text-[9px] font-black uppercase tracking-wider mb-1 italic"
                                                     style={{ color: cashLabelColor }}
                                                 >
-                                                    O'Circle Privileged
+                                                    O'Circle
                                                 </p>
 
                                                 <div className="flex flex-col items-end gap-0.5">

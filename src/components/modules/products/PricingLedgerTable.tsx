@@ -1045,38 +1045,6 @@ export default function PricingLedgerTable({
                             <span>Save</span>
                         </button>
 
-                        {isAums && (
-                            <>
-                                <div className="w-px h-3 bg-slate-100 dark:bg-slate-800 mx-0.5" />
-
-                                <button
-                                    onClick={() => applyPublishStage('PUBLISHED')}
-                                    disabled={selectedSkuIds.size === 0}
-                                    className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-black uppercase tracking-wider transition-all ${
-                                        selectedSkuIds.size > 0
-                                            ? 'text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20'
-                                            : 'text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 cursor-not-allowed'
-                                    }`}
-                                >
-                                    <Send size={12} />
-                                    <span>Publish</span>
-                                </button>
-
-                                <button
-                                    onClick={() => applyPublishStage('LIVE')}
-                                    disabled={selectedSkuIds.size === 0}
-                                    className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-black uppercase tracking-wider transition-all ${
-                                        selectedSkuIds.size > 0
-                                            ? 'text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20'
-                                            : 'text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 cursor-not-allowed'
-                                    }`}
-                                >
-                                    <Rocket size={12} />
-                                    <span>Mark Active</span>
-                                </button>
-                            </>
-                        )}
-
                         {!isAums && (
                             <>
                                 <div className="w-px h-3 bg-slate-100 dark:bg-slate-800 mx-0.5" />
@@ -2194,28 +2162,19 @@ export default function PricingLedgerTable({
                                                 {isAums ? (
                                                     <div className="inline-flex items-center gap-1.5">
                                                         <span
-                                                            className={`font-bold text-[11px] tracking-tight cursor-help ${
-                                                                hasOnRoadMismatch
-                                                                    ? 'text-rose-600 dark:text-rose-400'
-                                                                    : 'text-emerald-700 dark:text-emerald-400'
-                                                            }`}
+                                                            className="font-bold text-[11px] tracking-tight text-emerald-700 dark:text-emerald-400"
                                                             title={
                                                                 activeCategory === 'vehicles'
-                                                                    ? `On-Road = Ex-Showroom + RTO + Insurance\n₹${Number(sku.exShowroom || 0).toLocaleString('en-IN')} + ₹${Number(sku.rto || 0).toLocaleString('en-IN')} + ₹${Number(sku.insurance || 0).toLocaleString('en-IN')} = ₹${computedOnRoad.toLocaleString('en-IN')}\nStored: ₹${storedOnRoad.toLocaleString('en-IN')}\nDelta: ${onRoadDelta >= 0 ? '+' : '-'}₹${Math.abs(onRoadDelta).toLocaleString('en-IN')}`
+                                                                    ? `On-Road = Ex-Showroom + RTO + Insurance\n₹${Number(sku.exShowroom || 0).toLocaleString('en-IN')} + ₹${Number(sku.rto || 0).toLocaleString('en-IN')} + ₹${Number(sku.insurance || 0).toLocaleString('en-IN')} = ₹${computedOnRoad.toLocaleString('en-IN')}`
                                                                     : ''
                                                             }
                                                         >
                                                             {activeCategory === 'vehicles'
-                                                                ? sku.onRoad
-                                                                    ? `₹${storedOnRoad.toLocaleString()}`
+                                                                ? computedOnRoad > 0
+                                                                    ? `₹${computedOnRoad.toLocaleString()}`
                                                                     : '—'
                                                                 : `₹${Math.round(sku.exShowroom).toLocaleString()}`}
                                                         </span>
-                                                        {hasOnRoadMismatch && (
-                                                            <span className="px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest bg-rose-50 text-rose-600 border border-rose-200 dark:bg-rose-900/20 dark:text-rose-400 dark:border-rose-800">
-                                                                Mismatch
-                                                            </span>
-                                                        )}
                                                     </div>
                                                 ) : (
                                                     <div className="flex items-center justify-center gap-1">
@@ -2439,144 +2398,64 @@ export default function PricingLedgerTable({
                                                 </div>
                                             </td>
 
-                                            <td className="px-3 py-1.5 text-right w-[90px] relative">
+                                            <td className="px-3 py-1.5 text-right w-[110px] relative">
                                                 {(() => {
-                                                    const rawState = isAums
-                                                        ? sku.displayState || 'Draft'
+                                                    // 3-state: DRAFT → LIVE → INACTIVE
+                                                    const rawStage = isAums
+                                                        ? sku.publishStage || 'DRAFT'
                                                         : sku.localIsActive
-                                                          ? 'Active'
-                                                          : 'Inactive';
-                                                    const state =
-                                                        rawState === 'Live'
-                                                            ? 'Active'
-                                                            : rawState === 'In Review'
-                                                              ? 'Draft'
-                                                              : rawState;
-                                                    const displayLabel = state;
-                                                    const styleMap: Record<string, string> = {
-                                                        Published:
-                                                            'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800',
-                                                        Active: 'bg-blue-50 text-blue-600 border-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800',
-                                                        Draft: 'bg-slate-50 text-slate-500 border-slate-100 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700',
-                                                        Inactive:
-                                                            'bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-900/20 dark:text-rose-400 dark:border-rose-800',
+                                                          ? 'LIVE'
+                                                          : 'DRAFT';
+
+                                                    const stage = (
+                                                        ['DRAFT', 'LIVE', 'INACTIVE'].includes(rawStage)
+                                                            ? rawStage
+                                                            : rawStage === 'PUBLISHED'
+                                                              ? 'LIVE'
+                                                              : 'DRAFT'
+                                                    ) as 'DRAFT' | 'LIVE' | 'INACTIVE';
+
+                                                    const nextStage =
+                                                        stage === 'DRAFT'
+                                                            ? 'LIVE'
+                                                            : stage === 'LIVE'
+                                                              ? 'INACTIVE'
+                                                              : 'LIVE';
+
+                                                    const pillStyle = {
+                                                        DRAFT: 'bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700',
+                                                        LIVE: 'bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800',
+                                                        INACTIVE:
+                                                            'bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-900/20 dark:text-rose-400 dark:border-rose-800',
                                                     };
-                                                    const isOpen = openStatusDropdownId === sku.id;
-                                                    const statusOptions = isAums
-                                                        ? ['Draft', 'Active', 'Published', 'Inactive']
-                                                        : ['Active', 'Inactive'];
-                                                    const selectedOpt = isAums ? state : displayLabel;
+
+                                                    const nextLabel =
+                                                        stage === 'DRAFT'
+                                                            ? '→ Activate'
+                                                            : stage === 'LIVE'
+                                                              ? '→ Deactivate'
+                                                              : '→ Activate';
+
+                                                    const handleToggle = () => {
+                                                        if (isAums && onUpdatePublishStage) {
+                                                            onUpdatePublishStage(sku.id, nextStage);
+                                                        } else if (onUpdateLocalStatus) {
+                                                            onUpdateLocalStatus(sku.id, nextStage === 'LIVE');
+                                                        }
+                                                    };
+
                                                     return (
-                                                        <>
-                                                            <button
-                                                                onClick={e => {
-                                                                    e.stopPropagation();
-                                                                    setOpenStatusDropdownId(isOpen ? null : sku.id);
-                                                                }}
-                                                                className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all shadow-sm border cursor-pointer hover:ring-2 hover:ring-offset-1 hover:ring-emerald-400/50 ${styleMap[state] || styleMap['Draft']}`}
-                                                            >
-                                                                {displayLabel}
-                                                            </button>
-                                                            {isAums && !canPublish(sku) && (
-                                                                <span
-                                                                    className="ml-2 px-2 py-1 bg-rose-50 text-rose-600 border border-rose-200 rounded-lg text-[9px] font-black uppercase tracking-widest no-export"
-                                                                    title="Missing RTO/Insurance values. Edit ex-showroom to trigger price engine."
-                                                                >
-                                                                    Missing Calc
-                                                                </span>
-                                                            )}
-                                                            {isOpen && (
-                                                                <>
-                                                                    <div
-                                                                        className="fixed inset-0 z-40"
-                                                                        onClick={() => setOpenStatusDropdownId(null)}
-                                                                    />
-                                                                    <div className="absolute right-0 top-full mt-1 z-50 w-36 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
-                                                                        <div className="p-2 border-b border-slate-100 dark:border-slate-800">
-                                                                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                                                                                Change Status
-                                                                            </span>
-                                                                        </div>
-                                                                        <div className="p-1">
-                                                                            {statusOptions.map(opt => (
-                                                                                <button
-                                                                                    key={opt}
-                                                                                    onClick={() => {
-                                                                                        if (
-                                                                                            isAums &&
-                                                                                            onUpdatePublishStage
-                                                                                        ) {
-                                                                                            // AUMS: Update publish_stage in canonical pricing flow
-                                                                                            const stageMap: Record<
-                                                                                                string,
-                                                                                                string
-                                                                                            > = {
-                                                                                                Draft: 'DRAFT',
-                                                                                                Active: 'LIVE',
-                                                                                                Published: 'PUBLISHED',
-                                                                                                Inactive: 'INACTIVE',
-                                                                                            };
-                                                                                            if (
-                                                                                                (stageMap[opt] ===
-                                                                                                    'PUBLISHED' ||
-                                                                                                    stageMap[opt] ===
-                                                                                                        'LIVE') &&
-                                                                                                !canPublish(sku)
-                                                                                            ) {
-                                                                                                alert(
-                                                                                                    'RTO/Insurance missing. Please calculate before publish.'
-                                                                                                );
-                                                                                                return;
-                                                                                            }
-                                                                                            onUpdatePublishStage(
-                                                                                                sku.id,
-                                                                                                stageMap[opt] || 'DRAFT'
-                                                                                            );
-                                                                                        } else if (
-                                                                                            onUpdateLocalStatus
-                                                                                        ) {
-                                                                                            // Non-AUMS: Update dealer-local visibility
-                                                                                            onUpdateLocalStatus(
-                                                                                                sku.id,
-                                                                                                opt === 'Active'
-                                                                                            );
-                                                                                        } else {
-                                                                                            // Fallback: Update status in cat_skus
-                                                                                            const statusMap: Record<
-                                                                                                string,
-                                                                                                | 'ACTIVE'
-                                                                                                | 'INACTIVE'
-                                                                                                | 'DRAFT'
-                                                                                                | 'RELAUNCH'
-                                                                                            > = {
-                                                                                                Active: 'ACTIVE',
-                                                                                                Inactive: 'INACTIVE',
-                                                                                            };
-                                                                                            onUpdateStatus(
-                                                                                                sku.id,
-                                                                                                statusMap[opt] ||
-                                                                                                    'DRAFT'
-                                                                                            );
-                                                                                        }
-                                                                                        setOpenStatusDropdownId(null);
-                                                                                    }}
-                                                                                    className={`w-full text-left px-3 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wide transition-all flex items-center justify-between ${
-                                                                                        selectedOpt === opt
-                                                                                            ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600'
-                                                                                            : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
-                                                                                    }`}
-                                                                                >
-                                                                                    {opt}
-                                                                                    {selectedOpt === opt && (
-                                                                                        <CheckCircle2 size={12} />
-                                                                                    )}
-                                                                                </button>
-                                                                            ))}
-                                                                        </div>
-                                                                    </div>
-                                                                </>
-                                                            )}
-                                                        </>
+                                                        <button
+                                                            onClick={e => {
+                                                                e.stopPropagation();
+                                                                handleToggle();
+                                                            }}
+                                                            title={nextLabel}
+                                                            className={`group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border hover:ring-2 hover:ring-offset-1 hover:ring-current/30 ${pillStyle[stage]}`}
+                                                        >
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-current opacity-70" />
+                                                            {stage}
+                                                        </button>
                                                     );
                                                 })()}
                                             </td>

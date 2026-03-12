@@ -545,7 +545,7 @@ export async function getMemberFullProfile(memberId: string) {
     const { data: member, error } = await adminClient
         .from('id_members')
         .select(
-            'id, display_id, full_name, primary_phone, primary_email, pan_number, aadhaar_number, date_of_birth, member_status, work_company, work_designation, work_email, work_phone, pincode, state, rto, district, taluka, created_at, updated_at'
+            'id, display_id, full_name, primary_phone, primary_email, pan_number, aadhaar_number, date_of_birth, role, work_company, work_designation, work_email, work_phone, pincode, state, rto, district, taluka, created_at, updated_at'
         )
         .eq('id', memberId)
         .maybeSingle();
@@ -558,7 +558,7 @@ export async function getMemberFullProfile(memberId: string) {
         const { data: memberByDisplay, error: displayError } = await adminClient
             .from('id_members')
             .select(
-                'id, display_id, full_name, primary_phone, primary_email, pan_number, aadhaar_number, date_of_birth, member_status, work_company, work_designation, work_email, work_phone, pincode, state, rto, district, taluka, created_at, updated_at'
+                'id, display_id, full_name, primary_phone, primary_email, pan_number, aadhaar_number, date_of_birth, role, work_company, work_designation, work_email, work_phone, pincode, state, rto, district, taluka, created_at, updated_at'
             )
             .eq('display_id', memberId)
             .maybeSingle();
@@ -658,7 +658,7 @@ export async function getMemberFullProfile(memberId: string) {
               ...resolvedMember,
               phone: resolvedMember.primary_phone,
               email: resolvedMember.primary_email,
-              member_status: (resolvedMember as any).member_status || 'ACTIVE',
+              member_status: (resolvedMember as any).role || 'ACTIVE',
           }
         : resolvedMember;
 

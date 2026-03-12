@@ -165,3 +165,22 @@ export async function onboardDealer(formData: {
         return { success: false, error: getErrorMessage(error) || 'Check server logs' };
     }
 }
+
+/**
+ * Search existing tenants by name — used for duplicate detection in onboarding modal
+ */
+export async function searchExistingTenants(query: string): Promise<{ id: string; name: string; slug: string }[]> {
+    if (!query || query.trim().length < 2) return [];
+
+    const { data, error } = await adminClient
+        .from('id_tenants')
+        .select('id, name, slug')
+        .ilike('name', `%${query.trim()}%`)
+        .eq('type', 'DEALER')
+        .order('name')
+        .limit(6);
+
+    if (error || !data) return [];
+
+    return data.map(t => ({ id: t.id, name: t.name, slug: t.slug }));
+}

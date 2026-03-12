@@ -274,7 +274,6 @@ export async function updateMemberProfile(
         addressesJson?: any[];
     }
 ) {
-    const supabase = await createClient();
     const payload: any = {
         updated_at: new Date().toISOString(),
     };
@@ -305,14 +304,14 @@ export async function updateMemberProfile(
     if (updates.workCompany) payload.work_company = updates.workCompany;
     if (updates.workDesignation) payload.work_designation = updates.workDesignation;
     if (updates.workEmail) payload.work_email = updates.workEmail;
-    if (updates.workEmail) payload.work_email = updates.workEmail;
     if (updates.workPhone) payload.work_phone = toAppStorageFormat(updates.workPhone);
 
     if (updates.phonesJson) payload.phones_json = updates.phonesJson;
     if (updates.emailsJson) payload.emails_json = updates.emailsJson;
     if (updates.addressesJson) payload.addresses_json = updates.addressesJson;
 
-    const { error } = await supabase.from('id_members').update(payload).eq('id', memberId);
+    // Use adminClient to bypass RLS — admin dashboard can update any member's profile
+    const { error } = await adminClient.from('id_members').update(payload).eq('id', memberId);
 
     if (error) {
         console.error('updateMemberProfile Error:', error);
