@@ -889,6 +889,8 @@ export default async function Page({ params, searchParams }: Props) {
     let winningDealerId: string | null = null;
     const leadId = resolvedLeadId;
     let accessoryRules: Map<string, { offer: number; inclusion: string; isActive: boolean }> = new Map();
+    let marketOffers: Record<string, number> = {};
+    let bundleIdsForDealer: Set<string> = new Set();
 
     // Resolve dealer delta from shared SOT layer (vehicle offers + bundles + accessories)
     const currentSkuIds = allSkus.map((s: any) => s.id);

@@ -469,12 +469,13 @@ export function useSystemDealerContext({
                             : null;
 
                     if (skuIds.length > 0) {
+                        const normalizedStateCode = normalizeClientStateCode(stateCode);
                         const { data: dealerRules } = await supabase
                             .from('cat_price_dealer')
                             .select('vehicle_color_id, offer_amount, tat_days, tat_effective_hours')
                             .in('vehicle_color_id', skuIds)
                             .eq('tenant_id', overrideDealerId)
-                            .eq('state_code', stateCode || 'MH')
+                            .eq('state_code', normalizedStateCode)
                             .eq('is_active', true);
 
                         if (dealerRules && dealerRules.length > 0) {
@@ -483,7 +484,8 @@ export function useSystemDealerContext({
                                 dealer_id: overrideDealerId,
                                 dealer_name: dealerInfo?.name || 'Assigned Dealer',
                                 studio_id: dealerInfo?.studio_id || null,
-                                best_offer: Number(r.offer_amount),
+                                offer_amount: Number(r.offer_amount), // for useCandidateRpc=true
+                                best_offer: Number(r.offer_amount), // for useCandidateRpc=false
                                 distance_km: overrideDistanceKm,
                                 delivery_charge: getDeliveryChargeByDistance(overrideDistanceKm),
                                 bundle_ids: [],
@@ -576,7 +578,9 @@ export function useSystemDealerContext({
                 const winningDealerId = winningOffer.dealer_id;
                 const winningDealerName = winningOffer.dealer_name;
                 const winningOfferAmount = useCandidateRpc
-                    ? Number((winningOffer as any).offer_amount || 0)
+                    ? // Market RPC returns column as 'best_offer' (SQL alias), direct-dealer path sets 'offer_amount'
+                      // Use nullish fallback so both paths work correctly
+                      Number((winningOffer as any).offer_amount ?? (winningOffer as any).best_offer ?? 0)
                     : Number(winningOffer.best_offer || 0);
 
                 // SSPP v1.6: Merge Winner Details back into SSPP state
@@ -620,8 +624,15 @@ export function useSystemDealerContext({
                     tat_effective_hours: null,
                 });
 
-                setOtherOffers(
-                    rankedOffers.slice(1).map((offer: RankedOffer) => ({
+                // Deduplicate by dealer_id — RPC returns one row per SKU/color,
+                // so same dealer can appear N times (once per color variant).
+                // Keep only the best (lowest) offer per unique dealer, exclude winner.
+                const seenDealers = new Set<string>([winningDealerId]);
+                const dedupedOtherOffers: OtherOffer[] = [];
+                for (const offer of rankedOffers.slice(1)) {
+                    if (seenDealers.has(offer.dealer_id)) continue;
+                    seenDealers.add(offer.dealer_id);
+                    dedupedOtherOffers.push({
                         dealer_id: offer.dealer_id,
                         dealer_name: offer.dealer_name,
                         studio_id: offer.studio_id || null,
@@ -633,8 +644,9 @@ export function useSystemDealerContext({
                             ? Number(offer.delivery_tat_days)
                             : null,
                         delivery_charge: Number(offer.delivery_charge || 0),
-                    }))
-                );
+                    });
+                }
+                setOtherOffers(dedupedOtherOffers);
 
                 setDealerColors(prev =>
                     prev.map((c: any) => {
@@ -702,7 +714,16 @@ export function useSystemDealerContext({
         };
 
         hydrate();
-    }, [product.id, initialLocation?.district, selectedColor, disabled, mode, retrySignal]);
+    }, [
+        product.id,
+        initialLocation?.district,
+        initialLocation?.stateCode,
+        selectedColor,
+        overrideDealerId,
+        disabled,
+        mode,
+        retrySignal,
+    ]);
 
     return {
         dealerColors,

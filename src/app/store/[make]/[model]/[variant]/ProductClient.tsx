@@ -467,7 +467,9 @@ export default function ProductClient({
             }
         })()
     );
-    const isDealerFetchDisabled = hasResolvedDealer || (pdpGateEnabled ? !isLoggedIn || !hasResolvedLocation : false);
+    // Note: Do NOT disable when hasResolvedDealer — the hook must still run to fetch
+    // the actual offer_amount via its overrideDealerId path (no lat/lng needed).
+    const isDealerFetchDisabled = pdpGateEnabled ? !isLoggedIn || !hasResolvedLocation : false;
 
     // Unified Dealer Context Hook
     const {
@@ -500,11 +502,13 @@ export default function ProductClient({
     }, [dealerColors]);
 
     // SSPP v1: Sync serverPricing from useSystemDealerContext to local state
+    // Note: Always sync — even if dealer was pre-resolved server-side, the hook
+    // fetches the actual offer_amount which must be applied to pricing.
     useEffect(() => {
-        if (!hasResolvedDealer && serverPricing) {
+        if (serverPricing) {
             setSsppServerPricing(serverPricing);
         }
-    }, [serverPricing, hasResolvedDealer]);
+    }, [serverPricing]);
 
     useEffect(() => {
         if (dealerAccessories && dealerAccessories.length > 0) {

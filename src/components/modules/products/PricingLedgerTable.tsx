@@ -1426,7 +1426,7 @@ export default function PricingLedgerTable({
                                     const storedOnRoad = Math.round(Number(sku.onRoad || 0));
                                     const onRoadDelta = storedOnRoad - computedOnRoad;
                                     const hasOnRoadMismatch =
-                                        activeCategory === 'vehicles' && Math.abs(onRoadDelta) > 0;
+                                        activeCategory === 'vehicles' && Math.abs(onRoadDelta) > 1; // Ignore ≤₹1 rounding noise
 
                                     return (
                                         <tr
@@ -2031,7 +2031,7 @@ export default function PricingLedgerTable({
                                                                     <>
                                                                         <span
                                                                             className={`font-bold text-[11px] cursor-help border-b border-dotted ${
-                                                                                delta === 0
+                                                                                Math.abs(delta) <= 1
                                                                                     ? 'text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-700'
                                                                                     : 'text-rose-600 dark:text-rose-400 border-rose-300 dark:border-rose-700'
                                                                             }`}
@@ -2057,7 +2057,7 @@ export default function PricingLedgerTable({
                                                                             </p>
                                                                             <p
                                                                                 className={`text-[8px] font-black mt-0.5 ${
-                                                                                    delta === 0
+                                                                                    Math.abs(delta) <= 1
                                                                                         ? 'text-emerald-600'
                                                                                         : 'text-rose-600'
                                                                                 }`}
