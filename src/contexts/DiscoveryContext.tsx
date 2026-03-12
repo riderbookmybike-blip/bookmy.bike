@@ -29,10 +29,9 @@ export const DiscoveryProvider = ({ children }: { children: ReactNode }) => {
     const searchParams = useSearchParams();
     const [resultsCount, setResultsCount] = useState<number | null>(null);
 
-    // Always start with 'finance' to match SSR output, then correct from localStorage on the client.
-    // A lazy useState initializer also runs on the server where localStorage is undefined,
-    // causing a hydration mismatch when the client resolves a stored 'cash' value.
-    const [pricingMode, setPricingMode] = useState<PricingMode>('finance');
+    // Default is 'cash' — catalog shows state on-road price, not EMI, by default.
+    // SSR hydration is safe: 'cash' is the canonical default on both server and client.
+    const [pricingMode, setPricingMode] = useState<PricingMode>('cash');
     const [offerMode, setOfferMode] = useState<OfferMode>('BEST_OFFER');
 
     // On mount (client only): read saved preference and apply it

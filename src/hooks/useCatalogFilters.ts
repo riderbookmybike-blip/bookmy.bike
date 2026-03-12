@@ -176,7 +176,7 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
         else params.delete('maxEMI');
         if (showOClubOnly) params.set('oclub', '1');
         else params.delete('oclub');
-        if (pricingMode !== 'finance') params.set('mode', pricingMode);
+        if (pricingMode !== 'cash') params.set('mode', pricingMode);
         else params.delete('mode');
 
         if (offerMode !== 'BEST_OFFER') params.set('offer', offerMode);
@@ -364,7 +364,7 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
         setMaxEMI(20000);
         setDownpayment(0);
         setShowOClubOnly(false);
-        setPricingMode('finance');
+        setPricingMode('cash');
     };
 
     return {
