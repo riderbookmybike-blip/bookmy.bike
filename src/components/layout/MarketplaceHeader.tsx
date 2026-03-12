@@ -40,7 +40,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
     }, []);
 
     const navBtnClass =
-        'w-11 h-11 rounded-full transition-all duration-300 flex items-center justify-center text-white/95 hover:text-white bg-transparent border border-white/25';
+        'w-9 h-9 rounded-full transition-all duration-300 flex items-center justify-center text-white/95 hover:text-white bg-transparent border border-white hover:border-white';
 
     return (
         <>
@@ -52,7 +52,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                 className="header-transparent"
                 left={
                     <Link href="/" className="flex items-center group h-full">
-                        <Logo mode="dark" size={30} variant="full" />
+                        <Logo mode="dark" size={28} variant="full" />
                     </Link>
                 }
                 center={null}
@@ -61,13 +61,13 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                         {/* ── Desktop: nav icons + profile pill ── */}
                         <div className="hidden lg:flex items-center gap-3">
                             <Link href="/" className={navBtnClass}>
-                                <HomeIcon size={20} />
+                                <HomeIcon size={18} />
                             </Link>
                             <Link href="/store/catalog" className={navBtnClass}>
-                                <MotorcycleIcon size={22} />
+                                <MotorcycleIcon size={18} />
                             </Link>
                             <Link href="/store/compare/favorites" className={`${navBtnClass} relative`}>
-                                <Heart size={20} />
+                                <Heart size={18} />
                                 {mounted && favorites.length > 0 && (
                                     <span className="absolute -top-1 -right-1 w-5 h-5 bg-rose-500 text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-white animate-in zoom-in duration-300">
                                         {favorites.length}
@@ -81,6 +81,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                                 tone="dark"
                                 externalOpen={isSidebarOpen}
                                 onOpenChange={setIsSidebarOpen}
+                                compactTrigger
                             />
                         </div>
 

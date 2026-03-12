@@ -75,6 +75,7 @@ interface ProfileDropdownProps {
     externalOpen?: boolean;
     onOpenChange?: (open: boolean) => void;
     hideTrigger?: boolean;
+    compactTrigger?: boolean;
 }
 
 export function ProfileDropdown({
@@ -85,6 +86,7 @@ export function ProfileDropdown({
     externalOpen,
     onOpenChange,
     hideTrigger = false,
+    compactTrigger = false,
 }: ProfileDropdownProps) {
     const { isUnifiedContext } = useTenant();
     const router = useRouter();
@@ -1214,9 +1216,11 @@ ${referralUrl}`;
                     <button
                         onClick={() => setIsOpen(!isOpen)}
                         ref={dropdownRef}
-                        className={`flex h-11 w-auto pl-1 pr-4 rounded-full border transition-all duration-300 relative flex-shrink-0 items-center gap-3 group z-[101] ${triggerClass} ${hideTrigger ? 'hidden' : ''}`}
+                        className={`flex ${compactTrigger ? 'h-9' : 'h-11'} w-auto pl-1 ${compactTrigger ? 'pr-3' : 'pr-4'} rounded-full border transition-all duration-300 relative flex-shrink-0 items-center ${compactTrigger ? 'gap-2' : 'gap-3'} group z-[101] ${triggerClass} ${hideTrigger ? 'hidden' : ''}`}
                     >
-                        <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center text-slate-900 dark:text-white font-black text-xs transition-all ring-1 ring-white/10 shadow-inner">
+                        <div
+                            className={`${compactTrigger ? 'w-7 h-7' : 'w-8 h-8'} rounded-full overflow-hidden flex items-center justify-center text-slate-900 dark:text-white font-black text-xs transition-all ring-1 ring-white/10 shadow-inner`}
+                        >
                             <img
                                 src={user.user_metadata?.avatar_url || getDefaultAvatar(user.id, displayName)}
                                 alt="Profile"
@@ -1235,10 +1239,10 @@ ${referralUrl}`;
                 ) : (
                     <button
                         onClick={onLoginClick}
-                        className={`flex w-10 h-10 rounded-full border items-center justify-center transition-all duration-300 group ${triggerClass}`}
+                        className={`flex ${compactTrigger ? 'w-9 h-9' : 'w-10 h-10'} rounded-full border items-center justify-center transition-all duration-300 group ${triggerClass}`}
                         title="Sign In"
                     >
-                        <LucideUser size={20} />
+                        <LucideUser size={compactTrigger ? 18 : 20} />
                     </button>
                 ))}
 

@@ -78,7 +78,7 @@ export function DiscoveryBar({
         >
             <div className="w-full">
                 <div
-                    className="h-14 pr-2 pl-4 flex items-center rounded-[2rem] transition-all duration-500"
+                    className={`${reduceEffects ? 'h-12' : 'h-14'} pr-2 pl-4 flex items-center rounded-[2rem] transition-all duration-500`}
                     style={{
                         background: reduceEffects ? 'rgba(255,255,255,1)' : 'rgba(255,255,255,0.55)',
                         backdropFilter: reduceEffects ? 'none' : 'blur(32px) saturate(160%)',
@@ -101,7 +101,7 @@ export function DiscoveryBar({
                                         onSearchSubmit?.(searchQuery.trim());
                                     }
                                 }}
-                                className="h-10 rounded-2xl transition-all duration-300 border border-black/10"
+                                className={`${reduceEffects ? 'h-9' : 'h-10'} rounded-2xl transition-all duration-300 border border-black/10`}
                                 style={{
                                     background: reduceEffects ? 'rgba(255,255,255,1)' : 'rgba(255,255,255,0.45)',
                                     backdropFilter: reduceEffects ? 'none' : 'blur(8px)',

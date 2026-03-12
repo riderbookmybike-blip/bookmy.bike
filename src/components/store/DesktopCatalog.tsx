@@ -1581,7 +1581,12 @@ export const DesktopCatalog = ({
                                         ? allVariants[(idx + slotVersion * 3) % totalVariants]
                                         : v;
                                 return (
-                                    <div key={key} className={isAmbient ? 'ambient-card-enter' : undefined}>
+                                    <div
+                                        key={key}
+                                        className={
+                                            isAmbient ? `ambient-card-enter ambient-card-slot-${idx % 3}` : undefined
+                                        }
+                                    >
                                         <CatalogCardAdapter
                                             key={`inner-${key}`}
                                             variant={dv}

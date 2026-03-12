@@ -528,27 +528,45 @@ input[type='number'] {
 @keyframes ambient-flip-in {
     0% {
         opacity: 0;
-        transform: translateY(14px) scale(0.97);
+        transform: translate3d(var(--ambient-shift-x, 0px), 18px, 0) scale(0.965);
     }
-    40% {
-        opacity: 0.6;
+    45% {
+        opacity: 0.72;
     }
     100% {
         opacity: 1;
-        transform: translateY(0px) scale(1);
+        transform: translate3d(0, 0, 0) scale(1);
     }
 }
 .ambient-card-enter {
-    animation: ambient-flip-in 1.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+    --ambient-shift-x: 0px;
+    animation: ambient-flip-in 1.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+    transform-origin: 50% 65%;
+    will-change: transform, opacity;
+}
+.ambient-card-slot-0 {
+    --ambient-shift-x: -10px;
+}
+.ambient-card-slot-1 {
+    --ambient-shift-x: 0px;
+}
+.ambient-card-slot-2 {
+    --ambient-shift-x: 10px;
 }
 .ambient-card-enter:nth-child(1) {
     animation-delay: 0s;
 }
 .ambient-card-enter:nth-child(2) {
-    animation-delay: 0.1s;
+    animation-delay: 0.12s;
 }
 .ambient-card-enter:nth-child(3) {
-    animation-delay: 0.2s;
+    animation-delay: 0.24s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ambient-card-enter {
+        animation: none;
+    }
 }
 
 /* =============================================
