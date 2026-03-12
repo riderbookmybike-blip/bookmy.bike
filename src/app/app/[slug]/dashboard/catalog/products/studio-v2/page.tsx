@@ -328,11 +328,97 @@ export default function StudioV2Page() {
                             </h1>
                         </div>
 
-                        {/* Breadcrumb context */}
-                        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                            {brand && <span className="text-slate-600 dark:text-slate-300">{brand.name}</span>}
-                            {brand && modelData && <span>→</span>}
-                            {modelData && <span className="text-indigo-500">{modelData.name}</span>}
+                        {/* Breadcrumb context — Selection Pills */}
+                        <div className="flex items-center gap-2 flex-wrap">
+                            {/* Category Chip */}
+                            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10">
+                                <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">
+                                    Type
+                                </span>
+                                <span className="text-[10px] font-black uppercase text-slate-700 dark:text-slate-200">
+                                    {selectedCategory || '—'}
+                                </span>
+                            </div>
+
+                            {/* Brand Chip */}
+                            {brand ? (
+                                <>
+                                    <span className="text-slate-300 dark:text-white/20 text-xs">›</span>
+                                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20">
+                                        <span className="text-[9px] font-bold uppercase tracking-widest text-indigo-400">
+                                            Brand
+                                        </span>
+                                        <span className="text-[10px] font-black uppercase text-indigo-600 dark:text-indigo-300">
+                                            {brand.name}
+                                        </span>
+                                    </div>
+                                </>
+                            ) : currentStep > 0 ? (
+                                <>
+                                    <span className="text-slate-300 dark:text-white/20 text-xs">›</span>
+                                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-white/5 border border-dashed border-slate-300 dark:border-white/10">
+                                        <span className="text-[9px] font-bold uppercase tracking-widest text-slate-300">
+                                            Brand
+                                        </span>
+                                        <span className="text-[10px] font-black uppercase text-slate-300">—</span>
+                                    </div>
+                                </>
+                            ) : null}
+
+                            {/* Model Chip */}
+                            {modelData ? (
+                                <>
+                                    <span className="text-slate-300 dark:text-white/20 text-xs">›</span>
+                                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-violet-50 dark:bg-violet-500/10 border border-violet-200 dark:border-violet-500/20">
+                                        <span className="text-[9px] font-bold uppercase tracking-widest text-violet-400">
+                                            Model
+                                        </span>
+                                        <span className="text-[10px] font-black uppercase text-violet-600 dark:text-violet-300">
+                                            {modelData.name}
+                                        </span>
+                                    </div>
+                                </>
+                            ) : currentStep > 1 ? (
+                                <>
+                                    <span className="text-slate-300 dark:text-white/20 text-xs">›</span>
+                                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-white/5 border border-dashed border-slate-300 dark:border-white/10">
+                                        <span className="text-[9px] font-bold uppercase tracking-widest text-slate-300">
+                                            Model
+                                        </span>
+                                        <span className="text-[10px] font-black uppercase text-slate-300">—</span>
+                                    </div>
+                                </>
+                            ) : null}
+
+                            {/* Variants Chip */}
+                            {variants.length > 0 && currentStep >= 2 && (
+                                <>
+                                    <span className="text-slate-300 dark:text-white/20 text-xs">›</span>
+                                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20">
+                                        <span className="text-[9px] font-bold uppercase tracking-widest text-emerald-400">
+                                            Variants
+                                        </span>
+                                        <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-300">
+                                            {variants.length}
+                                        </span>
+                                    </div>
+                                </>
+                            )}
+
+                            {/* Colours Chip */}
+                            {colours.length > 0 && currentStep >= 3 && (
+                                <>
+                                    <span className="text-slate-300 dark:text-white/20 text-xs">›</span>
+                                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-pink-50 dark:bg-pink-500/10 border border-pink-200 dark:border-pink-500/20">
+                                        <span className="text-[9px] font-bold uppercase tracking-widest text-pink-400">
+                                            Colours
+                                        </span>
+                                        <span className="text-[10px] font-black text-pink-600 dark:text-pink-300">
+                                            {colours.length}
+                                        </span>
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </div>
 
@@ -458,7 +544,7 @@ export default function StudioV2Page() {
             {/* Sticky Footer Navigation */}
             <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/80 dark:bg-slate-900/90 backdrop-blur-xl border-t border-slate-100 dark:border-white/5 py-4">
                 <div className="max-w-[1600px] mx-auto flex items-center justify-between px-12">
-                    <div>
+                    <div className="flex items-center gap-4">
                         {currentStep > 0 && (
                             <button
                                 onClick={handleBack}
@@ -466,6 +552,44 @@ export default function StudioV2Page() {
                             >
                                 <ChevronLeft size={16} /> Previous Step
                             </button>
+                        )}
+
+                        {/* Footer Selection Context */}
+                        {(brand || modelData || variants.length > 0) && (
+                            <div className="hidden md:flex items-center gap-1.5 px-4 py-2.5 bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 rounded-2xl">
+                                <span className="text-[9px] font-bold uppercase tracking-widest text-slate-300 mr-1">
+                                    Selected:
+                                </span>
+                                {brand && (
+                                    <span className="text-[10px] font-black uppercase text-slate-600 dark:text-slate-300">
+                                        {brand.name}
+                                    </span>
+                                )}
+                                {modelData && (
+                                    <>
+                                        <span className="text-slate-300 dark:text-white/20">·</span>
+                                        <span className="text-[10px] font-black uppercase text-indigo-500">
+                                            {modelData.name}
+                                        </span>
+                                    </>
+                                )}
+                                {variants.length > 0 && currentStep >= 2 && (
+                                    <>
+                                        <span className="text-slate-300 dark:text-white/20">·</span>
+                                        <span className="text-[10px] font-bold text-emerald-500">
+                                            {variants.length} Variant{variants.length !== 1 ? 's' : ''}
+                                        </span>
+                                    </>
+                                )}
+                                {colours.length > 0 && currentStep >= 3 && (
+                                    <>
+                                        <span className="text-slate-300 dark:text-white/20">·</span>
+                                        <span className="text-[10px] font-bold text-pink-500">
+                                            {colours.length} Colour{colours.length !== 1 ? 's' : ''}
+                                        </span>
+                                    </>
+                                )}
+                            </div>
                         )}
                     </div>
 
