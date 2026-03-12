@@ -653,9 +653,6 @@ export async function publishPrices(skuIds: string[], stateCode: string): Promis
                             'roadside_assistance_(rsa)': 'roadside_assistance',
                             roadside_assistance: 'roadside_assistance',
                             rsa: 'roadside_assistance',
-                            key_protect: 'key_protect',
-                            tyre_protect: 'tyre_protect',
-                            pillion_cover: 'pillion_cover',
                         };
                         for (const addon of insuranceResult.json.addons || []) {
                             const rawKey = String(addon.label || addon.id || '')
@@ -667,11 +664,41 @@ export async function publishPrices(skuIds: string[], stateCode: string): Promis
                             if (isUuidLikeRawKey) continue;
                             const colKey = ADDON_COLUMN_MAP[rawKey] || rawKey;
                             if (!colKey) continue;
+
+                            // Skip deprecated addons
+                            if (
+                                [
+                                    'key_protect',
+                                    'keyprotect',
+                                    'tyre_protect',
+                                    'tyreprotect',
+                                    'pillion_cover',
+                                    'pillion',
+                                ].includes(colKey)
+                            )
+                                continue;
+
                             addonCols[`addon_${colKey}_amount`] = round2(addon.price || 0);
                             addonCols[`addon_${colKey}_gst_amount`] = round2(addon.gst || 0);
                             addonCols[`addon_${colKey}_total_amount`] = round2(addon.total || 0);
                             addonCols[`addon_${colKey}_default`] = addon.default ?? false;
                         }
+
+                        // Explicitly nullify deprecated columns to clear stale data on republish
+                        [
+                            'key_protect',
+                            'keyprotect',
+                            'tyre_protect',
+                            'tyreprotect',
+                            'pillion_cover',
+                            'pillion',
+                        ].forEach(key => {
+                            addonCols[`addon_${key}_amount`] = null;
+                            addonCols[`addon_${key}_gst_amount`] = null;
+                            addonCols[`addon_${key}_total_amount`] = null;
+                            addonCols[`addon_${key}_default`] = null;
+                        });
+
                         return addonCols;
                     })(),
                     // Status & Audit

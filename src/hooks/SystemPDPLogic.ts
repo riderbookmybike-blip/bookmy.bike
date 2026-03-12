@@ -112,15 +112,41 @@ export function useSystemPDPLogic({
         }
         return normalized;
     };
+    const DEPRECATED_ADDON_IDS = [
+        'addon_key_protect',
+        'addon_tyre_protect',
+        'addon_pillion_cover',
+        'key_protect',
+        'tyre_protect',
+        'pillion_cover',
+    ];
+    const isDeprecatedAddon = (id: string, label: string) => {
+        const normId = normalizeInsuranceAddonId(id);
+        const normLabel = String(label || '').toLowerCase();
+        return (
+            DEPRECATED_ADDON_IDS.includes(normId) ||
+            normLabel.includes('tyre protect') ||
+            normLabel.includes('key protect') ||
+            normLabel.includes('pillion cover')
+        );
+    };
+
     // SOT Phase 3: Use JSON addons with default flag; fallback to legacy insuranceRule
     const defaultInsuranceAddonIds = Array.from(
         new Set(
             (serverPricing?.insurance?.addons || [])
                 .filter(
-                    (a: { id: string; default?: boolean; inclusion_type?: string; inclusionType?: string }) =>
-                        a.default === true ||
-                        (a.inclusion_type || a.inclusionType) === 'MANDATORY' ||
-                        (a.inclusion_type || a.inclusionType) === 'BUNDLE'
+                    (a: {
+                        id: string;
+                        label: string;
+                        default?: boolean;
+                        inclusion_type?: string;
+                        inclusionType?: string;
+                    }) =>
+                        (a.default === true ||
+                            (a.inclusion_type || a.inclusionType) === 'MANDATORY' ||
+                            (a.inclusion_type || a.inclusionType) === 'BUNDLE') &&
+                        !isDeprecatedAddon(a.id, a.label)
                 )
                 .map((a: { id: string }) => normalizeInsuranceAddonId(a.id))
                 .filter(Boolean)
@@ -361,26 +387,29 @@ export function useSystemPDPLogic({
 
     // Map JSON addons to UI format (SOT-only).
     // Intentionally do NOT merge rule/hardcoded addons to avoid duplicate entries.
-    const mappedJsonAddons = jsonAddons.map(addon => {
-        const basePremium = Number(addon.price || 0);
-        const gstAmount = Number(addon.gst || 0);
-        const addonTotal = Number(addon.total ?? basePremium + gstAmount);
-        const resolvedPrice = addonTotal > 0 ? addonTotal : Math.max(0, basePremium + gstAmount);
+    // SOT: Filter out deprecated addons (Key Protect, Tyre Protect, Pillion Cover)
+    const mappedJsonAddons = jsonAddons
+        .filter(addon => !isDeprecatedAddon(addon.id, addon.label))
+        .map(addon => {
+            const basePremium = Number(addon.price || 0);
+            const gstAmount = Number(addon.gst || 0);
+            const addonTotal = Number(addon.total ?? basePremium + gstAmount);
+            const resolvedPrice = addonTotal > 0 ? addonTotal : Math.max(0, basePremium + gstAmount);
 
-        return {
-            id: normalizeInsuranceAddonId(addon.id),
-            name: addon.label,
-            price: resolvedPrice,
-            description: 'Coverage',
-            discountPrice: undefined,
-            isMandatory: Boolean(addon.default),
-            inclusionType: addon.default ? 'MANDATORY' : 'OPTIONAL',
-            breakdown: [
-                { label: 'Base Premium', amount: basePremium },
-                { label: `GST (${insuranceGstRate}%)`, amount: gstAmount },
-            ],
-        };
-    });
+            return {
+                id: normalizeInsuranceAddonId(addon.id),
+                name: addon.label,
+                price: resolvedPrice,
+                description: 'Coverage',
+                discountPrice: undefined,
+                isMandatory: Boolean(addon.default),
+                inclusionType: addon.default ? 'MANDATORY' : 'OPTIONAL',
+                breakdown: [
+                    { label: 'Base Premium', amount: basePremium },
+                    { label: `GST (${insuranceGstRate}%)`, amount: gstAmount },
+                ],
+            };
+        });
 
     const availableInsuranceAddons = (() => {
         const seen = new Set<string>();

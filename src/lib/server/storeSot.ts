@@ -326,7 +326,18 @@ const buildInsuranceAddons = (row: Record<string, any>) => {
         }
     >();
 
+    const DEPRECATED_ADDON_KEYS = new Set([
+        'key_protect',
+        'keyprotect',
+        'tyre_protect',
+        'tyreprotect',
+        'pillion_cover',
+        'pillion',
+    ]);
+
     for (const addon of parsedAddons) {
+        if (DEPRECATED_ADDON_KEYS.has(addon.canonicalBaseKey)) continue;
+
         const existing = deduped.get(addon.canonicalBaseKey);
         if (!existing) {
             deduped.set(addon.canonicalBaseKey, addon);

@@ -81,24 +81,10 @@ const CANONICAL_ADDONS = [
         roundingMode: 'CEIL' as const,
     },
     {
-        id: 'addon_key_protect',
+        id: 'addon_roadside_assistance',
         type: 'FIXED' as const,
-        label: 'Key Protect',
-        amount: 500, // ₹500 fixed
-        roundingMode: 'CEIL' as const,
-    },
-    {
-        id: 'addon_tyre_protect',
-        type: 'FIXED' as const,
-        label: 'Tyre Protect',
-        amount: 500, // ₹500 fixed
-        roundingMode: 'CEIL' as const,
-    },
-    {
-        id: 'addon_pillion_cover',
-        type: 'FIXED' as const,
-        label: 'Pillion Cover',
-        amount: 500, // ₹500 fixed (unnamed PA for pillion rider)
+        label: 'Roadside Assistance (RSA)',
+        amount: 1000, // ₹1000 fixed
         roundingMode: 'CEIL' as const,
     },
 ];
