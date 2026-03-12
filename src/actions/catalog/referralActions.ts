@@ -14,7 +14,7 @@ export async function getReferralHotPicks(
 ): Promise<{ success: boolean; data?: ProductVariant[]; error?: string }> {
     try {
         const variants = await withCache(() => fetchCatalogV2(stateCode), ['referral-hot-picks', stateCode], {
-            revalidate: 300,
+            revalidate: false, // Invalidated via revalidateTag(CACHE_TAGS.referral_hot_picks) in savePrices
             tags: [CACHE_TAGS.catalog, CACHE_TAGS.catalog_global, CACHE_TAGS.referral_hot_picks],
         });
         return { success: true, data: variants };
