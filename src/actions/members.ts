@@ -172,7 +172,7 @@ export async function createOrLinkMember(input: MemberCreateInput) {
                     pan_number: input.panNumber,
                     aadhaar_number: input.aadhaarNumber,
                     tenant_id: input.tenantId,
-                    role: 'BMB_USER',
+                    role: 'member',
                 },
                 {
                     onConflict: 'id', // Primary key conflict handler

@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
         }
 
         // 2. Check Membership
-        let userRole = 'BMB_USER';
+        let userRole = 'member';
         let isMember = false;
 
         if (tenantId) {
@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
 
             if (membership) {
                 isMember = true;
-                userRole = membership.role || 'BMB_USER';
+                userRole = membership.role || 'member';
             }
         } else {
             // Root domain

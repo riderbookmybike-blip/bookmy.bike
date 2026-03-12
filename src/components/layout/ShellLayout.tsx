@@ -41,14 +41,15 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
     // Intelligent Role Fallback (Only fallback within safe boundaries)
     const effectiveRole =
         tenantType === 'AUMS'
-            ? userRole || activeRole || (isAppRoute ? undefined : 'BMB_USER')
-            : activeRole || userRole || (isAppRoute ? undefined : 'BMB_USER');
+            ? userRole || activeRole || (isAppRoute ? undefined : 'member')
+            : activeRole || userRole || (isAppRoute ? undefined : 'member');
 
     // DETECT REGULAR USER (BMB Visitors)
     // Fix: check based on effectiveRole to avoid flicker during initial undefined state
     const isRegularUser =
         !isAppRoute &&
-        (effectiveRole === 'BMB_USER' ||
+        (effectiveRole === 'member' ||
+            effectiveRole === 'customer' ||
             ![
                 'OWNER',
                 'DEALERSHIP_ADMIN',
@@ -90,7 +91,9 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
         const nextPath = searchParams.get('next');
 
         // Logic matched with LoginSidebar for consistency
-        const target = nextPath || (effectiveRole && effectiveRole !== 'BMB_USER' ? '/app/aums/dashboard' : '/');
+        const target =
+            nextPath ||
+            (effectiveRole && !['member', 'customer'].includes(effectiveRole) ? '/app/aums/dashboard' : '/');
 
         // Safety: Only redirect if destination is different
         if (pathname !== target) {

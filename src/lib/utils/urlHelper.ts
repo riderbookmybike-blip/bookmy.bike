@@ -9,6 +9,7 @@ interface BuildUrlOptions {
     variant: string;
     color?: string;
     district?: string;
+    studio?: string;
     region?: string;
     dealer?: string;
     leadId?: string;
@@ -42,7 +43,7 @@ function slugify(text: string): string {
  * Pattern: /store/{make}/{model}/{variant}?color=...&district=...
  */
 export function buildProductUrl(options: BuildUrlOptions): UrlResult {
-    const { make, model, variant, color, district, region, dealer, leadId, basePath = '/store' } = options;
+    const { make, model, variant, color, district, studio, region, dealer, leadId, basePath = '/store' } = options;
 
     // 1. Identifiers (Path Segments)
     const makeSlug = slugify(make);
@@ -60,7 +61,11 @@ export function buildProductUrl(options: BuildUrlOptions): UrlResult {
     // 4. Construct Query Params (Context)
     const params = new URLSearchParams();
     if (color) params.set('color', slugify(color));
-    if (district) params.set('district', district);
+    if (studio) {
+        params.set('studio', studio);
+    } else if (district) {
+        params.set('district', district);
+    }
     if (region) params.set('region', slugify(region));
     if (leadId) params.set('leadId', leadId);
 
@@ -71,7 +76,7 @@ export function buildProductUrl(options: BuildUrlOptions): UrlResult {
 
     // 6. Robots Rules
     // Noindex if location, dealer context, or color (optional) is present
-    const isContextual = !!(district || region || dealer || color);
+    const isContextual = !!(district || studio || region || dealer || color);
     const robots = isContextual ? 'noindex,follow' : 'index,follow';
 
     return {

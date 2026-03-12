@@ -319,7 +319,8 @@ export default function LoginSidebar({
             }
 
             if (checkData.role) setDetectedRole(checkData.role);
-            setIsStaff((checkData.role && checkData.role !== 'BMB_USER') || !!tenantId);
+            const normalizedRole = String(checkData.role || '').toLowerCase();
+            setIsStaff((normalizedRole && normalizedRole !== 'member' && normalizedRole !== 'customer') || !!tenantId);
 
             if (checkData.isNew) {
                 // setIsNewUser(true); // Don't set yet
@@ -594,12 +595,12 @@ export default function LoginSidebar({
 
         // Session Set
         const primaryMembership = memberships && memberships.length > 0 ? memberships[0] : null;
-        const finalRole = detectedRole || primaryMembership?.role || 'BMB_USER';
+        const finalRole = detectedRole || primaryMembership?.role || 'member';
         const displayName =
             user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'User';
         localStorage.setItem('user_role', finalRole);
         localStorage.setItem('active_role', finalRole);
-        localStorage.setItem('base_role', 'BMB_USER');
+        localStorage.setItem('base_role', 'member');
         localStorage.setItem('user_name', displayName);
         setUserRole(finalRole);
         setActiveRole(finalRole);

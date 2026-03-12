@@ -68,7 +68,7 @@ export default function TenantHydrator({
             setMemberships(memberships);
         }
         if (!localStorage.getItem('base_role')) {
-            localStorage.setItem('base_role', 'BMB_USER');
+            localStorage.setItem('base_role', 'member');
         }
     }, [
         userName,

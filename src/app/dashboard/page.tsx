@@ -88,8 +88,14 @@ export default function DashboardPage() {
                     ) : (
                         /* Fallback to legacy hardcoded dashboards */
                         <>
-                            {tenantType === 'DEALER' && activeRole !== 'BMB_USER' && <DealerInstrumentCluster />}
-                            {tenantType === 'BANK' && activeRole !== 'BMB_USER' && <BankInstrumentCluster />}
+                            {tenantType === 'DEALER' &&
+                                !['member', 'customer'].includes(String(activeRole || '').toLowerCase()) && (
+                                    <DealerInstrumentCluster />
+                                )}
+                            {tenantType === 'BANK' &&
+                                !['member', 'customer'].includes(String(activeRole || '').toLowerCase()) && (
+                                    <BankInstrumentCluster />
+                                )}
                             {tenantType === 'MARKETPLACE' &&
                                 (activeRole &&
                                 ['OWNER', 'DEALERSHIP_ADMIN', 'DEALERSHIP_STAFF'].includes(activeRole) ? (

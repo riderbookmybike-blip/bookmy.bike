@@ -5,7 +5,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
-import { ChevronLeft, Share2, Heart, MapPin, Calendar, ChevronDown } from 'lucide-react';
+import { ChevronLeft, Share2, Heart, MapPin, Calendar, ChevronDown, Copy, Check } from 'lucide-react';
 import { useI18n } from '@/components/providers/I18nProvider';
 import { toDevanagariScript } from '@/lib/i18n/transliterate';
 import { computeOClubPricing } from '@/lib/oclub/coin';
@@ -157,7 +157,19 @@ export const MobilePDP = ({
     // Single-open card state (string-based so adding future cards is trivial)
     // null = all closed, string = that card is open
     const [openContentCard, setOpenContentCard] = useState<string | null>('pricing');
+    const [skuCopied, setSkuCopied] = useState(false);
     const toggleCard = (id: string) => setOpenContentCard(prev => (prev === id ? null : id));
+    const selectedSkuId = String(activeColorConfig?.skuId || activeColorConfig?.id || '').trim();
+    const trimmedSkuId =
+        selectedSkuId.length > 18 ? `${selectedSkuId.slice(0, 8)}...${selectedSkuId.slice(-6)}` : selectedSkuId;
+    const handleCopySku = async () => {
+        if (!selectedSkuId || typeof navigator === 'undefined' || !navigator.clipboard) return;
+        try {
+            await navigator.clipboard.writeText(selectedSkuId);
+            setSkuCopied(true);
+            window.setTimeout(() => setSkuCopied(false), 1200);
+        } catch {}
+    };
 
     return (
         <div className="min-h-screen bg-slate-50 text-slate-900 pb-14 font-sans selection:bg-[#F4B000]/30 selection:text-black">
@@ -336,6 +348,21 @@ export const MobilePDP = ({
                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-900 mb-3 text-center">
                         {displayColor}
                     </p>
+                    {selectedSkuId && (
+                        <div className="mb-3 flex items-center justify-center">
+                            <div className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2 py-1">
+                                <span className="text-[9px] font-mono font-bold text-slate-600">{trimmedSkuId}</span>
+                                <button
+                                    type="button"
+                                    onClick={() => void handleCopySku()}
+                                    className="inline-flex items-center text-slate-500 hover:text-slate-900 transition-colors"
+                                    title="Copy SKU ID"
+                                >
+                                    {skuCopied ? <Check size={11} /> : <Copy size={11} />}
+                                </button>
+                            </div>
+                        </div>
+                    )}
                     <div className="flex justify-center flex-wrap gap-4 py-3 px-2">
                         {colors.map((c: any) => {
                             const isColorSelected = c.id === selectedColor;

@@ -82,10 +82,8 @@ interface SKUPriceRow {
     isPopular?: boolean;
     originalIsPopular?: boolean;
     updatedByName?: string;
-    tatHoursInput?: number | null;
     tatDaysInput?: number | null;
     tatSource?: string;
-    originalTatHoursInput?: number | null;
     originalTatDaysInput?: number | null;
 }
 
@@ -327,9 +325,7 @@ export default function PricingPage() {
                 tenantSlug !== 'aums'
                     ? supabase
                           .from('cat_price_dealer')
-                          .select(
-                              'vehicle_color_id, offer_amount, inclusion_type, is_active, tat_days, tat_hours_input, tat_source'
-                          )
+                          .select('vehicle_color_id, offer_amount, inclusion_type, is_active, tat_days, tat_source')
                           .eq('state_code', activeStateCode)
                           .eq('tenant_id', tenantId as string)
                     : Promise.resolve({ data: [] as any, error: null as any }),
@@ -481,11 +477,10 @@ export default function PricingPage() {
                 activeMap.set(o.vehicle_color_id, o.is_active);
             });
 
-            const tatMap = new Map<string, { days: number | null; hours: number | null; source: string }>();
+            const tatMap = new Map<string, { days: number | null; source: string }>();
             offerData?.forEach((o: any) => {
                 tatMap.set(o.vehicle_color_id, {
                     days: o.tat_days ?? null,
-                    hours: o.tat_hours_input ?? null,
                     source: o.tat_source || 'MANUAL',
                 });
             });
@@ -618,10 +613,8 @@ export default function PricingPage() {
                     isPopular: priceRecord?.isPopular || false,
                     originalIsPopular: priceRecord?.isPopular || false,
                     updatedByName: priceRecord?.updatedByName,
-                    tatHoursInput: tatMap.get(sku.id)?.hours ?? null,
                     tatDaysInput: tatMap.get(sku.id)?.days ?? null,
                     tatSource: tatMap.get(sku.id)?.source || 'MANUAL',
-                    originalTatHoursInput: tatMap.get(sku.id)?.hours ?? null,
                     originalTatDaysInput: tatMap.get(sku.id)?.days ?? null,
                 };
             });
@@ -1125,7 +1118,6 @@ export default function PricingPage() {
                         s.inclusionType !== s.originalInclusionType ||
                         s.localIsActive !== s.originalLocalIsActive ||
                         s.isPopular !== s.originalIsPopular ||
-                        s.tatHoursInput !== s.originalTatHoursInput ||
                         s.tatDaysInput !== s.originalTatDaysInput
                 );
 
@@ -1137,7 +1129,6 @@ export default function PricingPage() {
                     inclusion_type: s.inclusionType,
                     is_active: s.localIsActive,
                     tat_days: s.tatDaysInput ?? 0,
-                    tat_hours_input: s.tatHoursInput ?? null,
                     tat_source: s.tatSource || 'MANUAL',
                 }));
 
@@ -1171,7 +1162,6 @@ export default function PricingPage() {
                             originalLocalIsActive: s.localIsActive,
                             originalIsPopular: s.isPopular,
                             originalTatDaysInput: s.tatDaysInput ?? null,
-                            originalTatHoursInput: s.tatHoursInput ?? null,
                         }))
                     );
                     setLastSavedAt(Date.now());

@@ -104,7 +104,8 @@ export function LeadCaptureModal({
 
     // Detect if current user role has been resolved and whether it's a staff role.
     const hasResolvedRole = typeof userRole === 'string' && userRole.length > 0;
-    const isStaff = forceStaffMode || (hasResolvedRole && userRole !== 'MEMBER' && userRole !== 'BMB_USER');
+    const normalizedRole = String(userRole || '').toLowerCase();
+    const isStaff = forceStaffMode || (hasResolvedRole && normalizedRole !== 'member' && normalizedRole !== 'customer');
     const effectiveTenantId = sessionDealerId || quoteTenantId || tenantId || undefined;
     const bannerTenantId = sessionDealerId || quoteTenantId || tenantId;
     const primaryMembership = memberships?.find(m => m.tenant_id === bannerTenantId);

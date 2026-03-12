@@ -3,7 +3,7 @@
 
 import React from 'react';
 import Image from 'next/image';
-import { Share2, Wallet, Zap, Package, Shield } from 'lucide-react';
+import { Share2, Wallet, Zap, Package, Shield, CalendarClock, Building2 } from 'lucide-react';
 import { OCircleLogo } from '@/components/common/OCircleLogo';
 import { Logo } from '@/components/brand/Logo';
 import { coinsNeededForPrice } from '@/lib/oclub/coin';
@@ -29,6 +29,10 @@ export interface FloatingCommandBarProps {
     insuranceTotal?: number;
     insuranceAddonsCount?: number;
     onOpenVideo?: () => void;
+    deliveryByLabel?: string | null;
+    studioIdLabel?: string | null;
+    dealerIdLabel?: string | null;
+    studioDistanceKm?: number | null;
 }
 
 const PriceMetric = ({
@@ -86,6 +90,10 @@ export default function FloatingCommandBar({
     accessoriesTotal = 0,
     insuranceTotal = 0,
     insuranceAddonsCount = 0,
+    deliveryByLabel = null,
+    studioIdLabel = null,
+    dealerIdLabel = null,
+    studioDistanceKm = null,
 }: FloatingCommandBarProps) {
     const isShareMode = isGated;
     const isServiceabilityBlocked = serviceability?.status === 'SET' && !serviceability?.isServiceable;
@@ -95,6 +103,35 @@ export default function FloatingCommandBar({
     const bCoinDiscount = coinPricing?.discount || 0;
     const onRoadBase = Math.max(0, displayOnRoad + privilegedSavings);
     const showDesktopBreakdown = !forceMobileLayout;
+    const displayStudioCode = (() => {
+        const normalize = (value?: string | null) =>
+            String(value || '')
+                .trim()
+                .toUpperCase();
+        const formatNine = (value?: string | null) => {
+            const raw = String(value || '')
+                .replace(/[^A-Z0-9]/gi, '')
+                .toUpperCase();
+            if (raw.length < 9) return null;
+            return `${raw.slice(0, 3)}-${raw.slice(3, 6)}-${raw.slice(6, 9)}`;
+        };
+
+        const studioRaw = normalize(studioIdLabel);
+        if (/^[A-Z0-9]{3}-[A-Z0-9]{3}-[A-Z0-9]{3}$/.test(studioRaw)) return studioRaw;
+        const studioFormatted = formatNine(studioRaw);
+        if (studioFormatted) return studioFormatted;
+
+        const dealerRaw = normalize(dealerIdLabel);
+        if (/^[A-Z0-9]{3}-[A-Z0-9]{3}-[A-Z0-9]{3}$/.test(dealerRaw)) return dealerRaw;
+        const dealerFormatted = formatNine(dealerRaw);
+        if (dealerFormatted) return dealerFormatted;
+
+        return studioRaw || dealerRaw || 'NA';
+    })();
+    const distanceLabel =
+        Number.isFinite(Number(studioDistanceKm)) && Number(studioDistanceKm) >= 0
+            ? `${Number(studioDistanceKm).toFixed(1)} km away`
+            : null;
 
     // Insurance addons only — show ₹0 if none selected
     const insuranceAddonAmount = insuranceAddonsCount > 0 ? insuranceTotal : 0;
@@ -248,6 +285,31 @@ export default function FloatingCommandBar({
                                             <Zap size={9} />
                                             Final Offer
                                         </p>
+                                    </div>
+
+                                    {/* Delivery + Studio Info */}
+                                    <div className="flex-[1.8] flex flex-col items-start justify-center px-3 py-2 rounded-xl border border-slate-200/70 hover:border-slate-300 hover:shadow-sm transition-all duration-200">
+                                        <p className="inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-[0.08em] text-slate-500">
+                                            <CalendarClock size={9} />
+                                            Delivery By
+                                        </p>
+                                        <p className="mt-0.5 text-[11px] font-black text-slate-900 leading-none">
+                                            {deliveryByLabel || 'TBD'}
+                                        </p>
+                                        <p className="mt-1 inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-[0.08em] text-slate-500">
+                                            <Building2 size={9} />
+                                            Studio ID
+                                        </p>
+                                        <div className="mt-0.5 flex items-center gap-1.5">
+                                            <p className="text-[10px] font-black text-slate-700 leading-none">
+                                                {displayStudioCode}
+                                            </p>
+                                            {distanceLabel && (
+                                                <p className="text-[8px] font-bold uppercase tracking-[0.08em] text-slate-500 leading-none">
+                                                    {distanceLabel}
+                                                </p>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             )}

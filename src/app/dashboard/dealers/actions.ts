@@ -100,6 +100,32 @@ export async function onboardDealer(formData: {
     // console.log('[OnboardDealer] Starting onboarding for:', formData.dealerName);
 
     try {
+        const normalizedStudioId = String(formData.studioId || '')
+            .trim()
+            .toUpperCase();
+        const normalizedPincode = String(formData.pincode || '')
+            .replace(/\D/g, '')
+            .slice(0, 6);
+
+        if (!/^[A-Z0-9]{3}-[A-Z0-9]{3}-[A-Z0-9]{3}$/.test(normalizedStudioId)) {
+            throw new Error('Dealer code required in format XXX-XXX-XXX');
+        }
+        if (!/^\d{6}$/.test(normalizedPincode)) {
+            throw new Error('Valid 6-digit pincode is required');
+        }
+
+        const { data: pinRow } = await adminClient
+            .from('loc_pincodes')
+            .select('pincode, taluka, district, state, latitude, longitude')
+            .eq('pincode', normalizedPincode)
+            .maybeSingle();
+
+        const lat = Number((pinRow as any)?.latitude);
+        const lng = Number((pinRow as any)?.longitude);
+        if (!pinRow || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+            throw new Error('Coordinates missing for pincode. Dealer onboarding blocked until location is mappable.');
+        }
+
         // 1. Use the pre-validated slug from form (already checked for availability)
         const slug = formData.slug
             .toLowerCase()
@@ -118,12 +144,12 @@ export async function onboardDealer(formData: {
             .insert({
                 name: formData.dealerName,
                 slug,
-                pincode: formData.pincode,
+                pincode: normalizedPincode,
                 type: 'DEALER',
                 status: 'ACTIVE',
-                studio_id: formData.studioId?.trim() || null,
+                studio_id: normalizedStudioId,
                 config: {},
-                location: `Pincode: ${formData.pincode}`,
+                location: `Pincode: ${normalizedPincode}`,
             })
             .select()
             .single();
@@ -135,7 +161,28 @@ export async function onboardDealer(formData: {
 
         // console.log('[OnboardDealer] Tenant created:', tenant.id);
 
-        // 3. Use the pre-verified member ID (already validated by lookupMemberByPhone)
+        // 3. Create canonical dealer location row with resolved coordinates.
+        const { error: locationError } = await adminClient.from('id_locations').insert({
+            tenant_id: tenant.id,
+            name: formData.dealerName,
+            type: 'DEALERSHIP',
+            city: (pinRow as any).taluka || null,
+            district: (pinRow as any).district || null,
+            taluka: (pinRow as any).taluka || null,
+            state: (pinRow as any).state || null,
+            pincode: normalizedPincode,
+            lat,
+            lng,
+            is_active: true,
+        });
+
+        if (locationError) {
+            // Roll back tenant so half-onboarded inactive records don't leak in admin views.
+            await adminClient.from('id_tenants').delete().eq('id', tenant.id);
+            throw locationError;
+        }
+
+        // 4. Use the pre-verified member ID (already validated by lookupMemberByPhone)
         const memberId = formData.memberId;
         // console.log('[OnboardDealer] Using verified member ID:', memberId);
 

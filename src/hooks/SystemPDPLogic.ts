@@ -193,18 +193,7 @@ export function useSystemPDPLogic({
     const baseExShowroom = pricingReady
         ? (fallbackPricing?.ex_showroom ?? colorLevelExShowroom ?? initialPrice?.exShowroom ?? product?.basePrice ?? 0)
         : 0;
-    const pricingLocationLabel =
-        pricingReady &&
-        fallbackPricing?.location?.district &&
-        String(fallbackPricing.location.district).toUpperCase() !== 'ALL'
-            ? fallbackPricing.location.district
-            : undefined;
-
-    const pricingSourceLabel = pricingLocationLabel
-        ? fallbackPricing?.dealer?.studio_id
-            ? `${pricingLocationLabel} • ${fallbackPricing.dealer.studio_id}`
-            : pricingLocationLabel
-        : fallbackPricing?.dealer?.studio_id || undefined;
+    const pricingSourceLabel = fallbackPricing?.dealer?.studio_id || undefined;
 
     // SOT Phase 3: Read RTO directly from JSON, no client-side rule engine
     // rto JSON: { STATE: number, BH: number | null, COMPANY: number | null, default: 'STATE' }

@@ -28,15 +28,37 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // Validate GPS coordinates (mandatory)
-        const lat = Number(latitude);
-        const lng = Number(longitude);
+        // Prefer direct GPS; fallback to pincode-derived coordinates for BMB user creation.
+        let lat = Number(latitude);
+        let lng = Number(longitude);
+        let resolvedState = state || null;
+        let resolvedDistrict = district || null;
+        let resolvedTaluka = taluka || null;
+        if ((!Number.isFinite(lat) || !Number.isFinite(lng)) && /^\d{6}$/.test(String(pincode || ''))) {
+            const { data: pinRow } = await adminClient
+                .from('loc_pincodes')
+                .select('latitude, longitude, state, district, taluka')
+                .eq('pincode', String(pincode))
+                .maybeSingle();
+
+            if (
+                pinRow &&
+                Number.isFinite(Number((pinRow as any).latitude)) &&
+                Number.isFinite(Number((pinRow as any).longitude))
+            ) {
+                lat = Number((pinRow as any).latitude);
+                lng = Number((pinRow as any).longitude);
+                resolvedState = resolvedState || (pinRow as any).state || null;
+                resolvedDistrict = resolvedDistrict || (pinRow as any).district || null;
+                resolvedTaluka = resolvedTaluka || (pinRow as any).taluka || null;
+            }
+        }
         if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
             return NextResponse.json(
                 {
                     success: false,
-                    message: 'GPS location is required to create an account',
-                    code: 'GPS_REQUIRED',
+                    message: 'GPS or valid pincode-based location is required to create an account',
+                    code: 'LOCATION_REQUIRED',
                 },
                 { status: 400 }
             );
@@ -83,17 +105,17 @@ export async function POST(req: NextRequest) {
         }
 
         const userId = newUser.user.id;
-        // 3. Create Profile (BMB_USER role by default)
+        // 3. Create Profile (member role by default)
         const { error: profileError } = await adminClient.from('id_members').insert({
             id: userId,
             full_name: displayName,
             phone: cleanPhone,
             primary_phone: cleanPhone,
-            role: 'BMB_USER',
+            role: 'member',
             pincode: pincode || null,
-            state: state || null,
-            district: district || null,
-            taluka: taluka || null,
+            state: resolvedState,
+            district: resolvedDistrict,
+            taluka: resolvedTaluka,
             latitude: lat,
             longitude: lng,
         });

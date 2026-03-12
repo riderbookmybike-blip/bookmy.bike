@@ -1567,10 +1567,16 @@ export const DesktopCatalog = ({
                                             showBcoinBadge={isLoggedIn || isTv}
                                             variantCount={group.variantCount}
                                             onExplore={() => {
-                                                const make = String(group.make || '').trim();
-                                                const model = String(group.model || '').trim();
-                                                if (!make || !model) return;
-                                                router.push(buildVariantExplorerUrl(make, model));
+                                                const url = buildProductUrl({
+                                                    make: group.make,
+                                                    model: group.model,
+                                                    variant: dv.variant,
+                                                    studio: dv.studioCode || undefined,
+                                                    district: dv.dealerLocation || undefined,
+                                                    leadId: leadId,
+                                                    basePath,
+                                                }).url;
+                                                router.push(url);
                                             }}
                                             onCompare={() =>
                                                 toggleCompare({

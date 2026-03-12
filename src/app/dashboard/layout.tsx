@@ -36,12 +36,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     };
 
     // Intelligent Role Fallback (Only fallback within safe boundaries)
-    const effectiveRole = activeRole || userRole || 'BMB_USER';
+    const effectiveRole = activeRole || userRole || 'member';
 
     // DETECT REGULAR USER (BMB Visitors)
     // Fix: check based on effectiveRole to avoid flicker during initial undefined state
     const isRegularUser =
-        effectiveRole === 'BMB_USER' ||
+        ['member', 'customer'].includes(String(effectiveRole || '').toLowerCase()) ||
         !['OWNER', 'DEALERSHIP_ADMIN', 'DEALERSHIP_STAFF', 'BANK_STAFF'].includes(effectiveRole);
 
     // console.log('DashboardLayout Role Debug:', { userRole, activeRole, effectiveRole, isRegularUser });

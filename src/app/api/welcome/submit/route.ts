@@ -54,6 +54,33 @@ export async function POST(req: NextRequest) {
         const pincode = String(body.pincode || '')
             .replace(/\D/g, '')
             .slice(0, 6);
+        let resolvedLocation: {
+            latitude: number | null;
+            longitude: number | null;
+            state: string | null;
+            district: string | null;
+            taluka: string | null;
+        } | null = null;
+        if (pincode.length === 6) {
+            const { data: pinRow } = await adminClient
+                .from('loc_pincodes')
+                .select('latitude, longitude, state, district, taluka')
+                .eq('pincode', pincode)
+                .maybeSingle();
+            if (pinRow) {
+                resolvedLocation = {
+                    latitude: Number.isFinite(Number((pinRow as any).latitude))
+                        ? Number((pinRow as any).latitude)
+                        : null,
+                    longitude: Number.isFinite(Number((pinRow as any).longitude))
+                        ? Number((pinRow as any).longitude)
+                        : null,
+                    state: ((pinRow as any).state as string) || null,
+                    district: ((pinRow as any).district as string) || null,
+                    taluka: ((pinRow as any).taluka as string) || null,
+                };
+            }
+        }
         const financeTenantIds = normalizeIds(body.financeTenantIds);
         const dealershipTenantIds = normalizeIds(body.dealershipTenantIds);
         const requestedScopes = normalizeIds(body.requestedScopes);
@@ -175,6 +202,11 @@ export async function POST(req: NextRequest) {
                     primary_phone: phone,
                     ...(emailInput ? { email: emailInput, primary_email: emailInput } : {}),
                     ...(pincode ? { pincode } : {}),
+                    ...(resolvedLocation?.state ? { state: resolvedLocation.state } : {}),
+                    ...(resolvedLocation?.district ? { district: resolvedLocation.district } : {}),
+                    ...(resolvedLocation?.taluka ? { taluka: resolvedLocation.taluka } : {}),
+                    ...(resolvedLocation?.latitude !== null ? { latitude: resolvedLocation.latitude } : {}),
+                    ...(resolvedLocation?.longitude !== null ? { longitude: resolvedLocation.longitude } : {}),
                 })
                 .eq('id', userId);
         } else {
@@ -183,9 +215,14 @@ export async function POST(req: NextRequest) {
                 full_name: fullName,
                 phone,
                 primary_phone: phone,
-                role: 'BMB_USER',
+                role: 'member',
                 ...(emailInput ? { email: emailInput, primary_email: emailInput } : {}),
                 ...(pincode ? { pincode } : {}),
+                ...(resolvedLocation?.state ? { state: resolvedLocation.state } : {}),
+                ...(resolvedLocation?.district ? { district: resolvedLocation.district } : {}),
+                ...(resolvedLocation?.taluka ? { taluka: resolvedLocation.taluka } : {}),
+                ...(resolvedLocation?.latitude !== null ? { latitude: resolvedLocation.latitude } : {}),
+                ...(resolvedLocation?.longitude !== null ? { longitude: resolvedLocation.longitude } : {}),
             });
             if (memberInsertError) {
                 return NextResponse.json({ success: false, message: memberInsertError.message }, { status: 500 });

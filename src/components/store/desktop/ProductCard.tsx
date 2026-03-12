@@ -85,7 +85,6 @@ export const ProductCard = ({
         studio_id?: string;
         bundleValue?: number;
         bundlePrice?: number;
-        tat_effective_hours?: number | null;
         delivery_tat_days?: number | null;
     } | null;
     onColorChange?: (colorId: string) => void;
@@ -258,7 +257,7 @@ export const ProductCard = ({
     }, [v.id, v.imageUrl, v.availableColors, v.zoomFactor, v.isFlipped, v.offsetX, v.offsetY]);
 
     const effectiveServerPricing = (v as any)?.serverPricing;
-    const bestOffer = isPdp ? rawBestOffer : null;
+    const bestOffer = rawBestOffer || null;
 
     // Uniform Offer SOT: non-PDP uses state on-road pricing only.
     const displayPrice = v.price?.onRoad || v.price?.exShowroom || 0;
@@ -291,7 +290,7 @@ export const ProductCard = ({
             .replace(/^(Best:|Base:)\s*/i, '')
             .split(',')[0]
             .trim();
-        if (!cleaned || cleaned.toUpperCase() === 'ALL') return undefined;
+        if (!cleaned || cleaned.toUpperCase() === 'ALL' || /^STATE:/i.test(cleaned)) return undefined;
         return cleaned;
     };
 
@@ -422,33 +421,20 @@ export const ProductCard = ({
     // Handle optional serviceability
     const safeServiceability = serviceability || { status: 'unset' };
     const isUnserviceable = safeServiceability.status === 'unserviceable';
-    const winnerTatHoursRaw =
-        (bestOffer as any)?.tat_effective_hours ??
-        (bestOffer as any)?.tatEffectiveHours ??
-        (bestOffer as any)?.delivery_tat_hours ??
-        null;
     const winnerTatDaysRaw =
         (bestOffer as any)?.delivery_tat_days ??
         (bestOffer as any)?.deliveryTatDays ??
         (bestOffer as any)?.tat_days ??
         null;
-    const winnerTatHours =
-        winnerTatHoursRaw !== null && winnerTatHoursRaw !== undefined ? Number(winnerTatHoursRaw) : null;
     const winnerTatDays = winnerTatDaysRaw !== null && winnerTatDaysRaw !== undefined ? Number(winnerTatDaysRaw) : null;
     const deliveryTatLabel = (() => {
-        if (!isPdp) return null;
-        if (winnerTatHours !== null && Number.isFinite(winnerTatHours) && winnerTatHours >= 0) {
-            if (winnerTatHours === 0) return 'Delivery in 4 hrs';
-            if (winnerTatHours <= 72) return `Delivery in ${winnerTatHours} hrs`;
-            const d = Math.floor(winnerTatHours / 24);
-            const h = winnerTatHours % 24;
-            return h > 0 ? `Delivery in ${d} days ${h} hrs` : `Delivery in ${d} days`;
-        }
         if (winnerTatDays !== null && Number.isFinite(winnerTatDays) && winnerTatDays >= 0) {
-            if (winnerTatDays === 0) return 'Delivery in 4 hrs';
-            if (winnerTatDays <= 3) return `Delivery in ${winnerTatDays * 24} hrs`;
+            if (winnerTatDays === 0) return 'Same day delivery';
+            if (winnerTatDays === 1) return 'Delivery in 1 day';
             return `Delivery in ${winnerTatDays} days`;
         }
+        // Only show fallback on PDP; catalog cards hide when TAT unknown
+        if (!isPdp) return null;
         return 'Delivery ETA updating';
     })();
     const priceHeaderLabel = isPdp
@@ -483,6 +469,7 @@ export const ProductCard = ({
         model: v.model,
         variant: v.variant,
         color: v.availableColors?.[0]?.name ? slugify(v.availableColors?.[0]?.name) : undefined,
+        studio: studioIdLabel || undefined,
         district: navigableDistrict,
         leadId: leadId,
         basePath,
@@ -816,6 +803,7 @@ export const ProductCard = ({
                                                 color: v.availableColors?.[0]?.name
                                                     ? slugify(v.availableColors?.[0]?.name)
                                                     : undefined,
+                                                studio: studioIdLabel || undefined,
                                                 district: navigableDistrict,
                                                 leadId: leadId,
                                                 basePath,
@@ -1498,6 +1486,7 @@ export const ProductCard = ({
                                             color: v.availableColors?.[0]?.name
                                                 ? slugify(v.availableColors?.[0]?.name)
                                                 : undefined,
+                                            studio: studioIdLabel || undefined,
                                             district: navigableDistrict,
                                             leadId: leadId,
                                             basePath,

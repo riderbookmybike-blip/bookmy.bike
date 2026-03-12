@@ -4405,6 +4405,8 @@ export type Database = {
                     district: string | null;
                     id: string;
                     is_active: boolean | null;
+                    lat: number | null;
+                    lng: number | null;
                     manager_id: string | null;
                     map_link: string | null;
                     name: string;
@@ -4425,6 +4427,8 @@ export type Database = {
                     district?: string | null;
                     id?: string;
                     is_active?: boolean | null;
+                    lat?: number | null;
+                    lng?: number | null;
                     manager_id?: string | null;
                     map_link?: string | null;
                     name: string;
@@ -4445,6 +4449,8 @@ export type Database = {
                     district?: string | null;
                     id?: string;
                     is_active?: boolean | null;
+                    lat?: number | null;
+                    lng?: number | null;
                     manager_id?: string | null;
                     map_link?: string | null;
                     name?: string;
@@ -5904,158 +5910,6 @@ export type Database = {
                 };
                 Relationships: [];
             };
-            market_winner_finance: {
-                Row: {
-                    apr: number | null;
-                    charges_json: Json | null;
-                    computed_at: string;
-                    dp_bucket: number;
-                    emi: number | null;
-                    policy: string;
-                    processing_fee: number | null;
-                    sku_id: string;
-                    state_code: string;
-                    tenure_months: number;
-                    total_cost: number | null;
-                    version_hash: string;
-                    winner_lender_id: string | null;
-                    winner_scheme_code: string | null;
-                };
-                Insert: {
-                    apr?: number | null;
-                    charges_json?: Json | null;
-                    computed_at?: string;
-                    dp_bucket: number;
-                    emi?: number | null;
-                    policy?: string;
-                    processing_fee?: number | null;
-                    sku_id: string;
-                    state_code: string;
-                    tenure_months: number;
-                    total_cost?: number | null;
-                    version_hash: string;
-                    winner_lender_id?: string | null;
-                    winner_scheme_code?: string | null;
-                };
-                Update: {
-                    apr?: number | null;
-                    charges_json?: Json | null;
-                    computed_at?: string;
-                    dp_bucket?: number;
-                    emi?: number | null;
-                    policy?: string;
-                    processing_fee?: number | null;
-                    sku_id?: string;
-                    state_code?: string;
-                    tenure_months?: number;
-                    total_cost?: number | null;
-                    version_hash?: string;
-                    winner_lender_id?: string | null;
-                    winner_scheme_code?: string | null;
-                };
-                Relationships: [];
-            };
-            market_winner_price: {
-                Row: {
-                    computed_at: string;
-                    delivery_charge: number;
-                    distance_km: number | null;
-                    final_effective_price: number | null;
-                    geo_cell: string;
-                    is_serviceable: boolean;
-                    offer_mode: string;
-                    runner_up_json: Json | null;
-                    sku_id: string;
-                    state_code: string;
-                    tat_effective_hours: number | null;
-                    version_hash: string;
-                    winner_dealer_id: string | null;
-                    winner_offer_amount: number | null;
-                    winner_studio_id: string | null;
-                };
-                Insert: {
-                    computed_at?: string;
-                    delivery_charge?: number;
-                    distance_km?: number | null;
-                    final_effective_price?: number | null;
-                    geo_cell: string;
-                    is_serviceable?: boolean;
-                    offer_mode: string;
-                    runner_up_json?: Json | null;
-                    sku_id: string;
-                    state_code: string;
-                    tat_effective_hours?: number | null;
-                    version_hash: string;
-                    winner_dealer_id?: string | null;
-                    winner_offer_amount?: number | null;
-                    winner_studio_id?: string | null;
-                };
-                Update: {
-                    computed_at?: string;
-                    delivery_charge?: number;
-                    distance_km?: number | null;
-                    final_effective_price?: number | null;
-                    geo_cell?: string;
-                    is_serviceable?: boolean;
-                    offer_mode?: string;
-                    runner_up_json?: Json | null;
-                    sku_id?: string;
-                    state_code?: string;
-                    tat_effective_hours?: number | null;
-                    version_hash?: string;
-                    winner_dealer_id?: string | null;
-                    winner_offer_amount?: number | null;
-                    winner_studio_id?: string | null;
-                };
-                Relationships: [];
-            };
-            mat_market_summary: {
-                Row: {
-                    brand_id: string | null;
-                    family_id: string | null;
-                    id: string;
-                    image_url: string | null;
-                    lowest_price: number;
-                    model_name: string;
-                    sku_count: number | null;
-                    slug: string;
-                    state_code: string;
-                    updated_at: string | null;
-                };
-                Insert: {
-                    brand_id?: string | null;
-                    family_id?: string | null;
-                    id?: string;
-                    image_url?: string | null;
-                    lowest_price: number;
-                    model_name: string;
-                    sku_count?: number | null;
-                    slug: string;
-                    state_code: string;
-                    updated_at?: string | null;
-                };
-                Update: {
-                    brand_id?: string | null;
-                    family_id?: string | null;
-                    id?: string;
-                    image_url?: string | null;
-                    lowest_price?: number;
-                    model_name?: string;
-                    sku_count?: number | null;
-                    slug?: string;
-                    state_code?: string;
-                    updated_at?: string | null;
-                };
-                Relationships: [
-                    {
-                        foreignKeyName: 'mat_market_summary_brand_id_fkey';
-                        columns: ['brand_id'];
-                        isOneToOne: false;
-                        referencedRelation: 'cat_brands';
-                        referencedColumns: ['id'];
-                    },
-                ];
-            };
             notifications: {
                 Row: {
                     created_at: string;
@@ -6487,144 +6341,6 @@ export type Database = {
                     },
                 ];
             };
-            price_snapshot_sku: {
-                Row: {
-                    computed_at: string;
-                    ex_showroom: number;
-                    insurance_json: Json;
-                    on_road_base: number;
-                    rto_json: Json;
-                    sku_id: string;
-                    state_code: string;
-                    version_hash: string;
-                };
-                Insert: {
-                    computed_at?: string;
-                    ex_showroom: number;
-                    insurance_json?: Json;
-                    on_road_base: number;
-                    rto_json?: Json;
-                    sku_id: string;
-                    state_code: string;
-                    version_hash: string;
-                };
-                Update: {
-                    computed_at?: string;
-                    ex_showroom?: number;
-                    insurance_json?: Json;
-                    on_road_base?: number;
-                    rto_json?: Json;
-                    sku_id?: string;
-                    state_code?: string;
-                    version_hash?: string;
-                };
-                Relationships: [];
-            };
-            recompute_queue: {
-                Row: {
-                    attempts: number;
-                    created_at: string;
-                    id: string;
-                    job_type: string;
-                    last_error: string | null;
-                    payload: Json;
-                    priority: number;
-                    processed_at: string | null;
-                    status: string;
-                };
-                Insert: {
-                    attempts?: number;
-                    created_at?: string;
-                    id?: string;
-                    job_type: string;
-                    last_error?: string | null;
-                    payload: Json;
-                    priority?: number;
-                    processed_at?: string | null;
-                    status?: string;
-                };
-                Update: {
-                    attempts?: number;
-                    created_at?: string;
-                    id?: string;
-                    job_type?: string;
-                    last_error?: string | null;
-                    payload?: Json;
-                    priority?: number;
-                    processed_at?: string | null;
-                    status?: string;
-                };
-                Relationships: [];
-            };
-            shadow_compare_log: {
-                Row: {
-                    compare_type: string;
-                    compared_at: string | null;
-                    delta_amount: number | null;
-                    id: string;
-                    legacy_emi: number | null;
-                    legacy_offer_amount: number | null;
-                    legacy_tat_hours: number | null;
-                    legacy_winner_dealer_id: string | null;
-                    legacy_winner_scheme: string | null;
-                    match: boolean;
-                    mismatch_reason_code: string | null;
-                    new_emi: number | null;
-                    new_offer_amount: number | null;
-                    new_tat_hours: number | null;
-                    new_winner_dealer_id: string | null;
-                    new_winner_scheme: string | null;
-                    offer_mode: string | null;
-                    run_id: string;
-                    sku_id: string;
-                    state_code: string;
-                };
-                Insert: {
-                    compare_type: string;
-                    compared_at?: string | null;
-                    delta_amount?: number | null;
-                    id?: string;
-                    legacy_emi?: number | null;
-                    legacy_offer_amount?: number | null;
-                    legacy_tat_hours?: number | null;
-                    legacy_winner_dealer_id?: string | null;
-                    legacy_winner_scheme?: string | null;
-                    match: boolean;
-                    mismatch_reason_code?: string | null;
-                    new_emi?: number | null;
-                    new_offer_amount?: number | null;
-                    new_tat_hours?: number | null;
-                    new_winner_dealer_id?: string | null;
-                    new_winner_scheme?: string | null;
-                    offer_mode?: string | null;
-                    run_id: string;
-                    sku_id: string;
-                    state_code: string;
-                };
-                Update: {
-                    compare_type?: string;
-                    compared_at?: string | null;
-                    delta_amount?: number | null;
-                    id?: string;
-                    legacy_emi?: number | null;
-                    legacy_offer_amount?: number | null;
-                    legacy_tat_hours?: number | null;
-                    legacy_winner_dealer_id?: string | null;
-                    legacy_winner_scheme?: string | null;
-                    match?: boolean;
-                    mismatch_reason_code?: string | null;
-                    new_emi?: number | null;
-                    new_offer_amount?: number | null;
-                    new_tat_hours?: number | null;
-                    new_winner_dealer_id?: string | null;
-                    new_winner_scheme?: string | null;
-                    offer_mode?: string | null;
-                    run_id?: string;
-                    sku_id?: string;
-                    state_code?: string;
-                };
-                Relationships: [];
-            };
             shadow_metrics_hourly: {
                 Row: {
                     captured_at: string | null;
@@ -6813,39 +6529,6 @@ export type Database = {
                     unified_context_strict_mode?: boolean | null;
                     unified_marketplace_context?: boolean | null;
                     updated_at?: string | null;
-                };
-                Relationships: [];
-            };
-            winner_cache_invalidation_log: {
-                Row: {
-                    cache_tag: string;
-                    created_at: string | null;
-                    dealer_id: string | null;
-                    geo_cell: string | null;
-                    id: string;
-                    job_type: string;
-                    sku_id: string | null;
-                    state_code: string | null;
-                };
-                Insert: {
-                    cache_tag: string;
-                    created_at?: string | null;
-                    dealer_id?: string | null;
-                    geo_cell?: string | null;
-                    id?: string;
-                    job_type: string;
-                    sku_id?: string | null;
-                    state_code?: string | null;
-                };
-                Update: {
-                    cache_tag?: string;
-                    created_at?: string | null;
-                    dealer_id?: string | null;
-                    geo_cell?: string | null;
-                    id?: string;
-                    job_type?: string;
-                    sku_id?: string | null;
-                    state_code?: string | null;
                 };
                 Relationships: [];
             };
@@ -7208,10 +6891,6 @@ export type Database = {
             };
             create_booking_from_quote: { Args: { quote_id: string }; Returns: string };
             encode_base33: { Args: { length: number; num: number }; Returns: string };
-            enqueue_recompute: {
-                Args: { p_job_type: string; p_payload: Json; p_priority?: number };
-                Returns: undefined;
-            };
             gen_sku_code_9: { Args: never; Returns: string };
             generate_display_id: { Args: never; Returns: string };
             get_dealer_offers: {
@@ -7241,38 +6920,84 @@ export type Database = {
                     scheme_id: string;
                 }[];
             };
-            get_market_best_offers: {
-                Args: { p_district_name: string; p_state_code: string };
-                Returns: {
-                    best_offer: number;
-                    bundle_ids: string[];
-                    bundle_price: number;
-                    bundle_value: number;
-                    dealer_id: string;
-                    dealer_name: string;
-                    delivery_tat_days: number;
-                    district: string;
-                    is_serviceable: boolean;
-                    studio_id: string;
-                    tat_effective_hours: number;
-                    vehicle_color_id: string;
-                }[];
-            };
-            get_market_candidate_offers: {
-                Args: { p_district_name: string; p_state_code: string };
-                Returns: {
-                    dealer_id: string;
-                    dealer_name: string;
-                    delivery_tat_days: number;
-                    district: string;
-                    is_serviceable: boolean;
-                    offer_amount: number;
-                    studio_id: string;
-                    tat_effective_hours: number;
-                    updated_at: string;
-                    vehicle_color_id: string;
-                }[];
-            };
+            get_market_best_offers:
+                | {
+                      Args: { p_district_name: string; p_state_code: string };
+                      Returns: {
+                          best_offer: number;
+                          bundle_ids: string[];
+                          bundle_price: number;
+                          bundle_value: number;
+                          dealer_id: string;
+                          dealer_name: string;
+                          delivery_tat_days: number;
+                          district: string;
+                          is_serviceable: boolean;
+                          studio_id: string;
+                          tat_effective_hours: number;
+                          vehicle_color_id: string;
+                      }[];
+                  }
+                | {
+                      Args: {
+                          p_radius_km?: number;
+                          p_state_code?: string;
+                          p_user_lat: number;
+                          p_user_lng: number;
+                      };
+                      Returns: {
+                          best_offer: number;
+                          bundle_ids: string[];
+                          bundle_price: number;
+                          bundle_value: number;
+                          dealer_id: string;
+                          dealer_name: string;
+                          delivery_tat_days: number;
+                          distance_km: number;
+                          district: string;
+                          is_serviceable: boolean;
+                          studio_id: string;
+                          tat_effective_hours: number;
+                          vehicle_color_id: string;
+                      }[];
+                  };
+            get_market_candidate_offers:
+                | {
+                      Args: { p_district_name: string; p_state_code: string };
+                      Returns: {
+                          dealer_id: string;
+                          dealer_name: string;
+                          delivery_tat_days: number;
+                          district: string;
+                          is_serviceable: boolean;
+                          offer_amount: number;
+                          studio_id: string;
+                          tat_effective_hours: number;
+                          updated_at: string;
+                          vehicle_color_id: string;
+                      }[];
+                  }
+                | {
+                      Args: {
+                          p_radius_km?: number;
+                          p_state_code?: string;
+                          p_user_lat: number;
+                          p_user_lng: number;
+                      };
+                      Returns: {
+                          dealer_id: string;
+                          dealer_name: string;
+                          delivery_tat_days: number;
+                          distance_km: number;
+                          district: string;
+                          is_serviceable: boolean;
+                          offer_amount: number;
+                          studio_id: string;
+                          tat_effective_hours: number;
+                          updated_at: string;
+                          vehicle_color_id: string;
+                      }[];
+                  };
             get_my_role: { Args: { lookup_tenant_id: string }; Returns: string };
             get_my_tenant_id: { Args: never; Returns: string };
             get_nearest_pincode: {
@@ -7295,32 +7020,10 @@ export type Database = {
                     state_code: string;
                 }[];
             };
-            get_production_gate_status: { Args: never; Returns: Json };
             get_session_profile: { Args: never; Returns: Json };
             get_user_memberships: { Args: { p_user_id: string }; Returns: Json };
             is_marketplace_admin: { Args: never; Returns: boolean };
             is_super_admin: { Args: never; Returns: boolean };
-            log_cache_invalidation: {
-                Args: {
-                    p_dealer_id?: string;
-                    p_geo_cell?: string;
-                    p_job_type: string;
-                    p_sku_id: string;
-                    p_state_code: string;
-                };
-                Returns: undefined;
-            };
-            log_winner_read: {
-                Args: {
-                    p_district: string;
-                    p_legacy_dealer_id: string;
-                    p_legacy_offer: number;
-                    p_legacy_tat: number;
-                    p_sku_id: string;
-                    p_state_code: string;
-                };
-                Returns: undefined;
-            };
             oclub_add_ledger: {
                 Args: {
                     p_coin_type: string;
@@ -7370,7 +7073,6 @@ export type Database = {
                 Args: { p_referral_id: string };
                 Returns: undefined;
             };
-            process_recompute_job: { Args: { p_job_id?: string }; Returns: Json };
             publish_price_with_lock: {
                 Args: {
                     p_insurance_total: number;
@@ -7382,7 +7084,6 @@ export type Database = {
                 };
                 Returns: Json;
             };
-            run_shadow_compare: { Args: never; Returns: Json };
             set_primary_dealer_for_district: {
                 Args: { p_district: string; p_state_code: string; p_tenant_id: string };
                 Returns: undefined;
@@ -7395,9 +7096,6 @@ export type Database = {
                 };
                 Returns: Json;
             };
-            update_shadow_metrics_hourly:
-                | { Args: never; Returns: undefined }
-                | { Args: { p_hour?: string }; Returns: undefined };
             upsert_cat_prices_bypass: { Args: { prices: Json }; Returns: undefined };
             upsert_dealer_offers: { Args: { offers: Json }; Returns: undefined };
         };

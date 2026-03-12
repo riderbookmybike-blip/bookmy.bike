@@ -58,7 +58,7 @@ export async function POST() {
         full_name: user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || '',
         avatar_url: user.user_metadata?.avatar_url || user.user_metadata?.picture || '',
         tenant_id: MARKETPLACE_TENANT_ID,
-        role: 'STAFF',
+        role: 'team',
     });
 
     if (error) {

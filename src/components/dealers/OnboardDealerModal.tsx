@@ -23,10 +23,13 @@ import {
 } from '@/app/dashboard/dealers/actions';
 
 const formatStudioId = (value: string) => {
-    const upper = value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-    const digits = upper.replace(/[^0-9]/g, '').slice(0, 2);
-    const letter = upper.replace(/[^A-Z]/g, '').slice(0, 1);
-    return `${digits}${letter}`;
+    const upper = value
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, '')
+        .slice(0, 9);
+    if (upper.length <= 3) return upper;
+    if (upper.length <= 6) return `${upper.slice(0, 3)}-${upper.slice(3)}`;
+    return `${upper.slice(0, 3)}-${upper.slice(3, 6)}-${upper.slice(6, 9)}`;
 };
 
 const generateSlug = (name: string) => {
@@ -180,8 +183,13 @@ export default function OnboardDealerModal({ isOpen, onClose, onSuccess }: Onboa
         }
     };
 
+    const hasValidStudioId = /^[A-Z0-9]{3}-[A-Z0-9]{3}-[A-Z0-9]{3}$/.test((formData.studioId || '').toUpperCase());
     const canSubmit =
-        verificationState === 'verified' && slugState === 'available' && formData.dealerName && formData.pincode;
+        verificationState === 'verified' &&
+        slugState === 'available' &&
+        formData.dealerName &&
+        /^\d{6}$/.test(formData.pincode) &&
+        hasValidStudioId;
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xl animate-in fade-in duration-300">
@@ -464,7 +472,7 @@ export default function OnboardDealerModal({ isOpen, onClose, onSuccess }: Onboa
                                     </div>
                                 </div>
 
-                                {/* Studio ID */}
+                                {/* Dealer Code (Studio ID) */}
                                 <div className="relative group">
                                     <Building2
                                         className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors"
@@ -472,7 +480,7 @@ export default function OnboardDealerModal({ isOpen, onClose, onSuccess }: Onboa
                                     />
                                     <input
                                         type="text"
-                                        placeholder="Studio ID (e.g., 48C) — Optional"
+                                        placeholder="Dealer Code (e.g., BAJ-SUR-VAS)"
                                         maxLength={5}
                                         className="w-full pl-12 pr-20 py-3.5 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 rounded-2xl text-sm font-bold placeholder:text-slate-400 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all"
                                         value={formData.studioId}
@@ -504,10 +512,13 @@ export default function OnboardDealerModal({ isOpen, onClose, onSuccess }: Onboa
                                         onChange={e =>
                                             setFormData(prev => ({
                                                 ...prev,
-                                                pincode: e.target.value.replace(/\D/g, ''),
+                                                pincode: e.target.value.replace(/\D/g, '').slice(0, 6),
                                             }))
                                         }
                                     />
+                                    <p className="mt-1 ml-1 text-[10px] font-semibold text-slate-500">
+                                        Mandatory. Format: <span className="font-mono">XXX-XXX-XXX</span>
+                                    </p>
                                 </div>
                             </div>
                         </div>

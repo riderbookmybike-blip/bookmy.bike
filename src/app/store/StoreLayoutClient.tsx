@@ -15,6 +15,7 @@ import { ColorProvider } from '@/contexts/ColorContext';
 import { DiscoveryProvider } from '@/contexts/DiscoveryContext';
 import { getSelfMemberLocation } from '@/actions/members';
 import { setLocationCookie } from '@/actions/locationCookie';
+import { resolveLocation } from '@/utils/locationResolver';
 import { DealershipGate } from '@/components/store/DealershipGate';
 import Script from 'next/script';
 
@@ -48,6 +49,25 @@ export default function StoreLayoutClient({ children }: StoreLayoutClientProps) 
 
                 // If user manually set location, just sync cookie for SSR
                 if (cachedData?.manuallySet && cachedData?.pincode) {
+                    // Backfill missing coordinates from pincode if legacy cache payload lacks lat/lng.
+                    if (
+                        (!Number.isFinite(Number(cachedData.lat)) || !Number.isFinite(Number(cachedData.lng))) &&
+                        /^\d{6}$/.test(String(cachedData.pincode || ''))
+                    ) {
+                        const resolved = await resolveLocation(String(cachedData.pincode));
+                        if (resolved?.lat !== undefined && resolved?.lng !== undefined) {
+                            cachedData = {
+                                ...cachedData,
+                                district: cachedData.district || resolved.district,
+                                taluka: cachedData.taluka || resolved.taluka,
+                                state: cachedData.state || resolved.state,
+                                lat: resolved.lat,
+                                lng: resolved.lng,
+                            };
+                            localStorage.setItem('bkmb_user_pincode', JSON.stringify(cachedData));
+                            window.dispatchEvent(new Event('locationChanged'));
+                        }
+                    }
                     await setLocationCookie({
                         pincode: cachedData.pincode,
                         taluka: cachedData.taluka,
@@ -105,6 +125,24 @@ export default function StoreLayoutClient({ children }: StoreLayoutClientProps) 
 
                 // Fallback: sync cookie from cache (if any) to keep SSR aligned
                 if (cachedData?.pincode) {
+                    if (
+                        (!Number.isFinite(Number(cachedData.lat)) || !Number.isFinite(Number(cachedData.lng))) &&
+                        /^\d{6}$/.test(String(cachedData.pincode || ''))
+                    ) {
+                        const resolved = await resolveLocation(String(cachedData.pincode));
+                        if (resolved?.lat !== undefined && resolved?.lng !== undefined) {
+                            cachedData = {
+                                ...cachedData,
+                                district: cachedData.district || resolved.district,
+                                taluka: cachedData.taluka || resolved.taluka,
+                                state: cachedData.state || resolved.state,
+                                lat: resolved.lat,
+                                lng: resolved.lng,
+                            };
+                            localStorage.setItem('bkmb_user_pincode', JSON.stringify(cachedData));
+                            window.dispatchEvent(new Event('locationChanged'));
+                        }
+                    }
                     await setLocationCookie({
                         pincode: cachedData.pincode,
                         taluka: cachedData.taluka,

@@ -37,6 +37,8 @@ import {
     SlidersHorizontal,
     Edit2,
     Calendar,
+    Copy,
+    Check,
 } from 'lucide-react';
 import DynamicHeader from './Personalize/DynamicHeader';
 import { formatDisplayIdForUI } from '@/lib/displayId';
@@ -324,6 +326,7 @@ export function DesktopPDP({
 
     const [cardPricingMode, setCardPricingMode] = useState<'cash' | 'finance'>('finance');
     const [isFlipping, setIsFlipping] = useState(false);
+    const [skuCopied, setSkuCopied] = useState(false);
 
     const handleFlip = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -343,6 +346,17 @@ export function DesktopPDP({
     const displayModel = scriptText(modelParam);
     const displayVariant = scriptText(variantParam);
     const displayColor = scriptText(activeColorConfig?.name);
+    const selectedSkuId = String(activeColorConfig?.skuId || activeColorConfig?.id || '').trim();
+    const trimmedSkuId =
+        selectedSkuId.length > 18 ? `${selectedSkuId.slice(0, 8)}...${selectedSkuId.slice(-6)}` : selectedSkuId;
+    const handleCopySku = async () => {
+        if (!selectedSkuId || typeof navigator === 'undefined' || !navigator.clipboard) return;
+        try {
+            await navigator.clipboard.writeText(selectedSkuId);
+            setSkuCopied(true);
+            window.setTimeout(() => setSkuCopied(false), 1200);
+        } catch {}
+    };
 
     const totalMRP =
         (product.mrp || Math.round(baseExShowroom * 1.06)) + // 6% markup if no MRP set
@@ -380,34 +394,35 @@ export function DesktopPDP({
         totalSurge > 0 ? `Total: ₹${totalSurge.toLocaleString('en-IN')}` : null,
     ].filter(Boolean) as string[];
 
-    const winnerTatHoursRaw =
-        (bestOffer as any)?.tat_effective_hours ??
-        (bestOffer as any)?.tatEffectiveHours ??
-        (bestOffer as any)?.delivery_tat_hours ??
-        null;
     const winnerTatDaysRaw =
         (bestOffer as any)?.delivery_tat_days ??
         (bestOffer as any)?.deliveryTatDays ??
         (bestOffer as any)?.tat_days ??
         null;
-    const winnerTatHours =
-        winnerTatHoursRaw !== null && winnerTatHoursRaw !== undefined ? Number(winnerTatHoursRaw) : null;
     const winnerTatDays = winnerTatDaysRaw !== null && winnerTatDaysRaw !== undefined ? Number(winnerTatDaysRaw) : null;
     const deliveryTatLabel = (() => {
-        if (winnerTatHours !== null && Number.isFinite(winnerTatHours) && winnerTatHours >= 0) {
-            if (winnerTatHours === 0) return '4 HRS';
-            if (winnerTatHours <= 72) return `${winnerTatHours} HRS`;
-            const d = Math.floor(winnerTatHours / 24);
-            const h = winnerTatHours % 24;
-            return h > 0 ? `${d} DAYS ${h} HRS` : `${d} DAYS`;
-        }
         if (winnerTatDays !== null && Number.isFinite(winnerTatDays) && winnerTatDays >= 0) {
-            if (winnerTatDays === 0) return '4 HRS';
-            if (winnerTatDays <= 3) return `${winnerTatDays * 24} HRS`;
+            if (winnerTatDays === 0) return 'SAME DAY DELIVERY';
+            if (winnerTatDays === 1) return '1 DAY';
             return `${winnerTatDays} DAYS`;
         }
         return 'ETA UPDATING';
     })();
+    const deliveryByLabel = (() => {
+        if (winnerTatDays === null || !Number.isFinite(winnerTatDays) || winnerTatDays < 0) return null;
+        const now = new Date();
+        const by = new Date(now);
+        by.setDate(by.getDate() + winnerTatDays);
+        const datePart = by.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+        return winnerTatDays === 0 ? `Today, ${datePart}` : `${datePart}`;
+    })();
+    const studioIdLabel =
+        (bestOffer as any)?.studio_id || (bestOffer as any)?.studioId || (bestOffer as any)?.studio || null;
+    const dealerIdLabel =
+        (bestOffer as any)?.dealerId || (bestOffer as any)?.dealer_id || (bestOffer as any)?.dealer?.id || null;
+    const studioDistanceKm = Number.isFinite(Number((bestOffer as any)?.distance_km))
+        ? Number((bestOffer as any)?.distance_km)
+        : null;
 
     const priceBreakupData = [
         { label: 'Ex-Showroom', value: baseExShowroom },
@@ -804,6 +819,24 @@ export function DesktopPDP({
                                                     );
                                                 }
                                             )}
+                                            {selectedSkuId && (
+                                                <div className="ml-3 inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2 py-1">
+                                                    <span className="text-[9px] font-mono font-bold text-slate-600">
+                                                        {trimmedSkuId}
+                                                    </span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={e => {
+                                                            e.stopPropagation();
+                                                            void handleCopySku();
+                                                        }}
+                                                        className="inline-flex items-center text-slate-500 hover:text-slate-900 transition-colors"
+                                                        title="Copy SKU ID"
+                                                    >
+                                                        {skuCopied ? <Check size={11} /> : <Copy size={11} />}
+                                                    </button>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
 
@@ -879,7 +912,7 @@ export function DesktopPDP({
                                                                     productImage={getProductImage()}
                                                                     pricingSource={
                                                                         [
-                                                                            initialLocation?.district,
+                                                                            studioIdLabel,
                                                                             bestOffer?.dealer?.business_name,
                                                                         ]
                                                                             .filter(Boolean)
@@ -966,7 +999,7 @@ export function DesktopPDP({
                                                 </div>
                                                 {(() => {
                                                     const src =
-                                                        [initialLocation?.district, bestOffer?.dealer?.business_name]
+                                                        [studioIdLabel, bestOffer?.dealer?.business_name]
                                                             .filter(Boolean)
                                                             .join(' • ') || data.pricingSource;
                                                     return src ? (
@@ -1230,6 +1263,10 @@ export function DesktopPDP({
                     accessoriesTotal={accessoriesPrice}
                     insuranceTotal={baseInsurance + insuranceAddonsPrice}
                     insuranceAddonsCount={selectedInsuranceAddons.length}
+                    deliveryByLabel={deliveryByLabel}
+                    studioIdLabel={studioIdLabel}
+                    dealerIdLabel={dealerIdLabel}
+                    studioDistanceKm={studioDistanceKm}
                     onOpenVideo={() => setIsVideoOpen(true)}
                 />
             </div>

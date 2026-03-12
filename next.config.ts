@@ -52,6 +52,10 @@ const nextConfig: NextConfig = {
                 protocol: 'https',
                 hostname: '**.shriramfinance.in',
             },
+            {
+                protocol: 'https',
+                hostname: 'cdn.bajajauto.com',
+            },
         ],
     },
     async headers() {

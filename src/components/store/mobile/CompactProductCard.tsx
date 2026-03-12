@@ -26,8 +26,8 @@ interface CompactProductCardProps {
     onExplodeColors?: () => void;
     isExploded?: boolean;
     bestOffer?: {
-        tat_effective_hours?: number | null;
         delivery_tat_days?: number | null;
+        studio_id?: string | null;
     } | null;
     offerMode?: 'BEST_OFFER' | 'FAST_DELIVERY';
 }
@@ -94,33 +94,19 @@ export function CompactProductCard({
     const factor = getEmiFactor(activeTenure);
     const emiValue = Math.max(0, Math.round(loanAmount * factor));
     const showEmi = loanAmount >= MIN_LOAN_AMOUNT && emiValue > 0;
-    const winnerTatHoursRaw =
-        (bestOffer as any)?.tat_effective_hours ??
-        (bestOffer as any)?.tatEffectiveHours ??
-        (bestOffer as any)?.delivery_tat_hours ??
-        null;
     const winnerTatDaysRaw =
         (bestOffer as any)?.delivery_tat_days ??
         (bestOffer as any)?.deliveryTatDays ??
         (bestOffer as any)?.tat_days ??
         null;
-    const winnerTatHours =
-        winnerTatHoursRaw !== null && winnerTatHoursRaw !== undefined ? Number(winnerTatHoursRaw) : null;
     const winnerTatDays = winnerTatDaysRaw !== null && winnerTatDaysRaw !== undefined ? Number(winnerTatDaysRaw) : null;
     const deliveryTatLabel = (() => {
-        if (winnerTatHours !== null && Number.isFinite(winnerTatHours) && winnerTatHours >= 0) {
-            if (winnerTatHours === 0) return 'Delivery in 4 hrs';
-            if (winnerTatHours <= 72) return `Delivery in ${winnerTatHours} hrs`;
-            const d = Math.floor(winnerTatHours / 24);
-            const h = winnerTatHours % 24;
-            return h > 0 ? `Delivery in ${d} days ${h} hrs` : `Delivery in ${d} days`;
-        }
         if (winnerTatDays !== null && Number.isFinite(winnerTatDays) && winnerTatDays >= 0) {
-            if (winnerTatDays === 0) return 'Delivery in 4 hrs';
-            if (winnerTatDays <= 3) return `Delivery in ${winnerTatDays * 24} hrs`;
+            if (winnerTatDays === 0) return 'Same day delivery';
+            if (winnerTatDays === 1) return 'Delivery in 1 day';
             return `Delivery in ${winnerTatDays} days`;
         }
-        return 'Delivery ETA updating';
+        return null; // Hide on catalog cards when TAT unknown
     })();
 
     const bcoinTotal = coinsNeededForPrice(baseDisplayPrice);
@@ -139,7 +125,7 @@ export function CompactProductCard({
             .replace(/^(Best:|Base:)\s*/i, '')
             .split(',')[0]
             .trim();
-        if (!cleaned || cleaned.toUpperCase() === 'ALL') return undefined;
+        if (!cleaned || cleaned.toUpperCase() === 'ALL' || /^STATE:/i.test(cleaned)) return undefined;
         return cleaned;
     };
 
@@ -154,6 +140,7 @@ export function CompactProductCard({
         make: v.make,
         model: v.model,
         variant: v.variant,
+        studio: bestOffer?.studio_id || v.studioCode || undefined,
         district: navigableDistrict,
         leadId,
         basePath,
@@ -401,15 +388,17 @@ export function CompactProductCard({
                 </div>
             </div>
 
-            {/* Delivery TAT Line — below pricing, replaces old ratings strip */}
-            <div className="mx-3 mb-2 flex items-center justify-center gap-1">
-                <Clock size={8} className="text-slate-400" />
-                <span
-                    className={`text-[7px] uppercase tracking-wider italic ${effectiveOfferMode === 'FAST_DELIVERY' ? 'font-black text-slate-600' : 'font-bold text-slate-400'}`}
-                >
-                    {deliveryTatLabel}
-                </span>
-            </div>
+            {/* Delivery TAT Line — only shown when TAT data is available */}
+            {deliveryTatLabel && (
+                <div className="mx-3 mb-2 flex items-center justify-center gap-1">
+                    <Clock size={8} className="text-slate-400" />
+                    <span
+                        className={`text-[7px] uppercase tracking-wider italic ${effectiveOfferMode === 'FAST_DELIVERY' ? 'font-black text-slate-600' : 'font-bold text-slate-400'}`}
+                    >
+                        {deliveryTatLabel}
+                    </span>
+                </div>
+            )}
 
             {/* Color Swatches (Desktop High-Fidelity) */}
             {swatches.length > 1 && (

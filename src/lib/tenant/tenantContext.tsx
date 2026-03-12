@@ -194,7 +194,7 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
         const baseRole = localStorage.getItem('base_role');
 
         if (isMarketplaceRoute) {
-            const resolvedBase = baseRole || 'BMB_USER';
+            const resolvedBase = baseRole || 'member';
             setUserRole(resolvedBase);
             setActiveRole(resolvedBase);
         } else {

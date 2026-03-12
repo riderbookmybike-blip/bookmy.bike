@@ -70,9 +70,7 @@ export default function PricingCard({
                     <p className="text-[9px] font-black uppercase text-brand-primary tracking-widest leading-none mb-1">
                         Quoting for
                     </p>
-                    <p className="text-lg font-black text-slate-900 uppercase leading-none">
-                        {leadName}
-                    </p>
+                    <p className="text-lg font-black text-slate-900 uppercase leading-none">{leadName}</p>
                 </div>
             )}
 
@@ -89,7 +87,8 @@ export default function PricingCard({
                                 <span
                                     className={`text-[11px] font-mono font-black ${item.isDeduction ? 'text-emerald-500' : item.isInfo ? 'text-brand-primary' : 'text-slate-700'}`}
                                 >
-                                    {item.isDeduction ? '-' : ''}₹
+                                    {item.isDeduction ? '-' : ''}
+                                    {item.isInfo ? '' : '₹'}
                                     {typeof item.value === 'number'
                                         ? Math.abs(item.value).toLocaleString()
                                         : item.value}
@@ -107,9 +106,7 @@ export default function PricingCard({
                                             <p className="text-[9px] font-black uppercase tracking-widest text-brand-primary mb-0.5">
                                                 {item.label}
                                             </p>
-                                            <p className="text-[9px] text-slate-500 font-medium">
-                                                Breakdown & Details
-                                            </p>
+                                            <p className="text-[9px] text-slate-500 font-medium">Breakdown & Details</p>
                                         </div>
 
                                         {/* Comparison Cards (The "Teen Card" View) */}
@@ -161,10 +158,7 @@ export default function PricingCard({
                                         {item.helpText && Array.isArray(item.helpText) && (
                                             <div className="space-y-1">
                                                 {item.helpText.map((text, hIdx) => (
-                                                    <p
-                                                        key={hIdx}
-                                                        className="text-[9px] text-slate-500 leading-relaxed"
-                                                    >
+                                                    <p key={hIdx} className="text-[9px] text-slate-500 leading-relaxed">
                                                         • {text}
                                                     </p>
                                                 ))}

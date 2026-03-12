@@ -51,57 +51,6 @@ export function useCatalogMarketplace(
                 if (data) {
                     candidatesCache.current[cacheKey] = data;
                     processCandidates(data);
-
-                    // Phase 6D: async shadow logging — fire-and-forget, never blocks UI.
-                    // Logs the candidate-RPC winner per SKU to shadow_compare_log.
-                    // Fix #3 (Phase 6D audit): Only fires when NEXT_PUBLIC_USE_CANDIDATE_RPC is NOT true,
-                    // meaning the app is in legacy-path mode and we are comparing legacy vs precomputed.
-                    // Winner is now selected via full rankCandidates() tie-breaker, not bare offer_amount ASC.
-                    if (process.env.NEXT_PUBLIC_USE_CANDIDATE_RPC !== 'true') {
-                        const logShadow = async () => {
-                            try {
-                                // Group by SKU
-                                const bySkuId: Record<string, (typeof data)[0][]> = {};
-                                data.forEach((row: any) => {
-                                    if (!row.vehicle_color_id) return;
-                                    if (!bySkuId[row.vehicle_color_id]) bySkuId[row.vehicle_color_id] = [];
-                                    bySkuId[row.vehicle_color_id].push(row);
-                                });
-
-                                // Select winner per SKU using the real rankCandidates engine (full tie-breakers)
-                                const skuWinners = Object.entries(bySkuId)
-                                    .map(([skuId, candidates]) => {
-                                        const ranked = rankCandidates(
-                                            candidates as any,
-                                            'BEST_OFFER',
-                                            0,
-                                            () => 0 // delivery charge is 0 for catalog shadow baseline
-                                        );
-                                        return { skuId, winner: ranked[0] ?? null };
-                                    })
-                                    .filter(e => e.winner !== null);
-
-                                // Log top 5 SKUs to avoid thundering herd
-                                const sample = skuWinners.slice(0, 5);
-                                await Promise.allSettled(
-                                    sample.map(({ skuId, winner }: any) =>
-                                        // @ts-ignore — log_winner_read not yet in generated types (Phase 6D M22)
-                                        supabase.rpc('log_winner_read', {
-                                            p_sku_id: skuId,
-                                            p_state_code: stateCode as string,
-                                            p_district: district as string,
-                                            p_legacy_dealer_id: winner.dealer_id ?? null,
-                                            p_legacy_offer: Number(winner.offer_amount ?? 0),
-                                            p_legacy_tat: Number(winner.tat_effective_hours ?? 0),
-                                        })
-                                    )
-                                );
-                            } catch {
-                                // Shadow logging is non-blocking — errors silently discarded
-                            }
-                        };
-                        void logShadow();
-                    }
                 }
             } catch (err) {
                 console.error('[useCatalogMarketplace] Fetch failed:', err);

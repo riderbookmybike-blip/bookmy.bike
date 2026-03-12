@@ -44,7 +44,6 @@ interface BaseVehicleCardAdapterProps {
         studio_id?: string;
         bundleValue?: number;
         bundlePrice?: number;
-        tat_effective_hours?: number | null;
         delivery_tat_days?: number | null;
     } | null;
 }
