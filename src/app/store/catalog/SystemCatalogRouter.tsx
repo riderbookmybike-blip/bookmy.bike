@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { CatalogGridSkeleton } from '@/components/store/CatalogSkeleton';
 
@@ -44,7 +44,10 @@ function SmartCatalogRouter({ initialItems, basePath = '/store' }: SystemCatalog
     const { items: clientItems, isLoading: isClientLoading } = useSystemCatalogLogic(leadId || undefined, {
         allowStateOnly: true,
     });
-    const currentItems = selectLowestVariantPerModel(clientItems.length > 0 ? clientItems : initialItems);
+    const currentItems = useMemo(
+        () => selectLowestVariantPerModel(clientItems.length > 0 ? clientItems : initialItems),
+        [clientItems, initialItems]
+    );
     const loading = isClientLoading && currentItems.length === 0;
     const filters = useCatalogFilters(currentItems);
 
@@ -68,7 +71,10 @@ function DefaultCatalogRouter({ initialItems, basePath = '/store' }: SystemCatal
         isLoading: isClientLoading,
         needsLocation,
     } = useSystemCatalogLogic(leadId || undefined, { allowStateOnly: true });
-    const currentItems = selectLowestVariantPerModel(clientItems.length > 0 ? clientItems : initialItems);
+    const currentItems = useMemo(
+        () => selectLowestVariantPerModel(clientItems.length > 0 ? clientItems : initialItems),
+        [clientItems, initialItems]
+    );
     const loading = isClientLoading && currentItems.length === 0;
     const filters = useCatalogFilters(currentItems);
 
