@@ -125,6 +125,9 @@ export function ProfileDropdown({
     >([]);
     const mappedDealersFetchKeyRef = useRef('');
     const linkedFinancersFetchKeyRef = useRef('');
+    // Collapsible section state for business mode
+    const [studiosSectionOpen, setStudiosSectionOpen] = useState(false);
+    const [financersSectionOpen, setFinancersSectionOpen] = useState(false);
 
     // O'Circle vs Business mode toggle (persisted)
     const [businessMode, setBusinessMode] = useState(() => {
@@ -962,13 +965,22 @@ ${referralUrl}`;
 
     useEffect(() => {
         if (!hasFinanceMembership) return;
-        const allowedFinanceIds = new Set(financeMemberships.map(m => m.tenant_id).filter(Boolean) as string[]);
-        if (allowedFinanceIds.size === 0) return;
-        if (!financeId || !allowedFinanceIds.has(financeId)) {
+        // Use availableFinanceOptions (merges direct memberships + dealer-linked financers)
+        // so that a dealer-linked financer selected by the user is not treated as "unknown"
+        // and doesn't get reset back to the primary direct membership (L&T bug fix)
+        const allKnownFinanceIds = new Set(availableFinanceOptions.map(f => f.id).filter(Boolean));
+        if (allKnownFinanceIds.size === 0) return;
+        if (!financeId || !allKnownFinanceIds.has(financeId)) {
             const fallbackFinanceId = primaryFinanceMembership?.tenant_id;
             if (fallbackFinanceId) setFinanceContext(fallbackFinanceId);
         }
-    }, [hasFinanceMembership, financeMemberships, financeId, primaryFinanceMembership?.tenant_id, setFinanceContext]);
+    }, [
+        hasFinanceMembership,
+        availableFinanceOptions,
+        financeId,
+        primaryFinanceMembership?.tenant_id,
+        setFinanceContext,
+    ]);
 
     useEffect(() => {
         const loadMappedDealersForFinanceTeam = async () => {
@@ -1577,252 +1589,372 @@ ${referralUrl}`;
                                                     )}
 
                                                     {/* Workspaces Section — only in Business mode */}
-                                                    {businessMode && sortedMemberships.length > 0 && (
-                                                        <div className="space-y-3">
-                                                            <div className="space-y-1.5">
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => {
-                                                                        router.push(createLeadHref);
-                                                                        setIsOpen(false);
-                                                                    }}
-                                                                    className="flex items-center gap-3 p-3 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200/70 dark:border-amber-500/20 hover:border-brand-primary/30 dark:hover:border-brand-primary/30 transition-all group"
-                                                                >
-                                                                    <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-500 group-hover:scale-110 transition-transform shadow-sm shrink-0">
-                                                                        <MessageSquare size={16} />
-                                                                    </div>
-                                                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-200">
-                                                                        Create Lead
-                                                                    </span>
-                                                                </button>
-                                                            </div>
-                                                            <div className="space-y-1.5">
-                                                                {adminMemberships.length > 0 && (
-                                                                    <div className="space-y-1.5">
-                                                                        <div className="flex items-center justify-between p-3 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200/70 dark:border-amber-500/20">
-                                                                            <div>
-                                                                                <p className="text-[9px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-300">
-                                                                                    AUMS Console
-                                                                                </p>
-                                                                                <p className="text-xs font-black text-slate-900 dark:text-white">
-                                                                                    {adminMemberships[0]?.tenants
-                                                                                        ?.name || 'AUMS'}
-                                                                                </p>
-                                                                            </div>
-                                                                            <a
-                                                                                href={getWorkspaceDashboardHref(
-                                                                                    adminMemberships[0]?.tenants?.slug
-                                                                                )}
-                                                                                onClick={() => setIsOpen(false)}
-                                                                                className="px-3 py-1.5 rounded-full bg-brand-primary text-black text-[8px] font-black uppercase tracking-wider"
-                                                                            >
-                                                                                Open
-                                                                            </a>
-                                                                        </div>
-                                                                    </div>
-                                                                )}
-                                                                <div className="space-y-1.5">
-                                                                    <div className="flex items-center justify-between p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200/70 dark:border-emerald-500/20">
-                                                                        <div>
-                                                                            <p className="text-[9px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-300">
-                                                                                Active Dealership
-                                                                            </p>
-                                                                            <p className="text-xs font-black text-slate-900 dark:text-white">
-                                                                                {
-                                                                                    (sortedMemberships.find(
-                                                                                        m =>
-                                                                                            m.tenant_id ===
-                                                                                            activeTenantId
-                                                                                    )?.tenants?.name ||
-                                                                                        mappedDealerTenants.find(
-                                                                                            d => d.id === activeTenantId
-                                                                                        )?.name ||
-                                                                                        'Not selected') as string
-                                                                                }
-                                                                            </p>
-                                                                        </div>
-                                                                        <a
-                                                                            href={
-                                                                                sortedMemberships.find(
-                                                                                    m => m.tenant_id === activeTenantId
-                                                                                )?.tenants?.slug
-                                                                                    ? getWorkspaceDashboardHref(
-                                                                                          sortedMemberships.find(
-                                                                                              m =>
-                                                                                                  m.tenant_id ===
-                                                                                                  activeTenantId
-                                                                                          )?.tenants?.slug
-                                                                                      )
-                                                                                    : '#'
-                                                                            }
-                                                                            onClick={e => {
-                                                                                if (
-                                                                                    !sortedMemberships.find(
-                                                                                        m =>
-                                                                                            m.tenant_id ===
-                                                                                            activeTenantId
-                                                                                    )?.tenants?.slug
-                                                                                ) {
-                                                                                    e.preventDefault();
-                                                                                    return;
-                                                                                }
-                                                                                setIsOpen(false);
-                                                                            }}
-                                                                            className="px-3 py-1.5 rounded-full bg-brand-primary text-black text-[8px] font-black uppercase tracking-wider"
-                                                                        >
-                                                                            Open
-                                                                        </a>
-                                                                    </div>
-                                                                    <div className="flex items-center justify-between p-3 rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200/70 dark:border-indigo-500/20">
-                                                                        <div>
-                                                                            <p className="text-[9px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-300">
-                                                                                Active Financer
-                                                                            </p>
-                                                                            <p className="text-xs font-black text-slate-900 dark:text-white">
-                                                                                {
-                                                                                    (sortedMemberships.find(
-                                                                                        m =>
-                                                                                            m.tenant_id ===
-                                                                                            effectiveActiveFinanceId
-                                                                                    )?.tenants?.name ||
-                                                                                        dealerLinkedFinancers.find(
-                                                                                            f =>
-                                                                                                f.id ===
-                                                                                                effectiveActiveFinanceId
-                                                                                        )?.name ||
-                                                                                        'Not selected') as string
-                                                                                }
-                                                                            </p>
-                                                                        </div>
-                                                                        <a
-                                                                            href={
-                                                                                sortedMemberships.find(
-                                                                                    m =>
-                                                                                        m.tenant_id ===
-                                                                                        effectiveActiveFinanceId
-                                                                                )?.tenants?.slug
-                                                                                    ? getWorkspaceDashboardHref(
-                                                                                          sortedMemberships.find(
-                                                                                              m =>
-                                                                                                  m.tenant_id ===
-                                                                                                  effectiveActiveFinanceId
-                                                                                          )?.tenants?.slug
-                                                                                      )
-                                                                                    : '#'
-                                                                            }
-                                                                            onClick={e => {
-                                                                                if (
-                                                                                    !sortedMemberships.find(
-                                                                                        m =>
-                                                                                            m.tenant_id ===
-                                                                                            effectiveActiveFinanceId
-                                                                                    )?.tenants?.slug
-                                                                                ) {
-                                                                                    e.preventDefault();
-                                                                                    return;
-                                                                                }
-                                                                                setIsOpen(false);
-                                                                            }}
-                                                                            className="px-3 py-1.5 rounded-full bg-brand-primary text-black text-[8px] font-black uppercase tracking-wider"
-                                                                        >
-                                                                            Open
-                                                                        </a>
-                                                                    </div>
-                                                                </div>
-
-                                                                {(isFinanceTeamOnly
+                                                    {businessMode &&
+                                                        sortedMemberships.length > 0 &&
+                                                        (() => {
+                                                            // Compute inactive dealers and financers
+                                                            const inactiveDealers = (
+                                                                isFinanceTeamOnly
                                                                     ? mappedDealerTenants
                                                                     : dealerMemberships
                                                                           .map(m => m.tenants)
                                                                           .filter(Boolean)
-                                                                ).length > 0 && (
-                                                                    <div className="mt-2 space-y-1.5">
-                                                                        {(isFinanceTeamOnly
-                                                                            ? mappedDealerTenants
-                                                                            : dealerMemberships
-                                                                                  .map(m => m.tenants)
-                                                                                  .filter(Boolean)
-                                                                                  .map((t: any) => ({
-                                                                                      id: t.id,
-                                                                                      name: t.name,
-                                                                                  }))
-                                                                        )
-                                                                            .filter((d: any) => d.id !== activeTenantId)
-                                                                            .map((d: any) => (
-                                                                                <div
-                                                                                    key={d.id}
-                                                                                    className="flex items-center justify-between p-3 rounded-2xl bg-white dark:bg-white/[0.03] border border-slate-100 dark:border-white/5"
-                                                                                >
-                                                                                    <p className="text-xs font-black text-slate-900 dark:text-white truncate">
-                                                                                        {d.name}
-                                                                                    </p>
-                                                                                    <div className="flex items-center gap-2">
-                                                                                        <button
-                                                                                            onClick={() =>
-                                                                                                setDealerContext(d.id)
-                                                                                            }
-                                                                                            className="px-3 py-1.5 rounded-full bg-brand-primary text-black text-[8px] font-black uppercase tracking-wider"
-                                                                                        >
-                                                                                            Activate
-                                                                                        </button>
-                                                                                        {'slug' in d && d.slug ? (
-                                                                                            <a
-                                                                                                href={getWorkspaceDashboardHref(
-                                                                                                    d.slug
-                                                                                                )}
-                                                                                                onClick={() =>
-                                                                                                    setIsOpen(false)
-                                                                                                }
-                                                                                                className="px-3 py-1.5 rounded-full bg-slate-900 text-white text-[8px] font-black uppercase tracking-wider"
-                                                                                            >
-                                                                                                Open
-                                                                                            </a>
-                                                                                        ) : null}
-                                                                                    </div>
-                                                                                </div>
-                                                                            ))}
-                                                                    </div>
-                                                                )}
+                                                                          .map((t: any) => ({
+                                                                              id: t.id,
+                                                                              name: t.name,
+                                                                              slug: t.slug || null,
+                                                                          }))
+                                                            ).filter((d: any) => d.id !== activeTenantId);
 
-                                                                {!isFinanceTeamOnly &&
-                                                                    availableFinanceOptions
-                                                                        .filter(f => f.id !== effectiveActiveFinanceId)
-                                                                        .map(f => (
-                                                                            <div
-                                                                                key={f.id}
-                                                                                className="mt-1 flex items-center justify-between p-3 rounded-2xl bg-white dark:bg-white/[0.03] border border-slate-100 dark:border-white/5"
-                                                                            >
-                                                                                <p className="text-xs font-black text-slate-900 dark:text-white truncate">
-                                                                                    {f.name}
-                                                                                </p>
-                                                                                <div className="flex items-center gap-2">
-                                                                                    <button
-                                                                                        onClick={() =>
-                                                                                            handleFinanceLogin(f.id)
-                                                                                        }
-                                                                                        className="px-3 py-1.5 rounded-full bg-brand-primary text-black text-[8px] font-black uppercase tracking-wider"
-                                                                                    >
-                                                                                        Activate
-                                                                                    </button>
-                                                                                    {f.slug ? (
-                                                                                        <a
-                                                                                            href={getWorkspaceDashboardHref(
-                                                                                                f.slug
-                                                                                            )}
-                                                                                            onClick={() =>
-                                                                                                setIsOpen(false)
-                                                                                            }
-                                                                                            className="px-3 py-1.5 rounded-full bg-slate-900 text-white text-[8px] font-black uppercase tracking-wider"
-                                                                                        >
-                                                                                            Open
-                                                                                        </a>
-                                                                                    ) : null}
+                                                            const inactiveFinancers = !isFinanceTeamOnly
+                                                                ? availableFinanceOptions.filter(
+                                                                      f => f.id !== effectiveActiveFinanceId
+                                                                  )
+                                                                : [];
+
+                                                            // Active dealership name
+                                                            const activeDealerName =
+                                                                sortedMemberships.find(
+                                                                    m => m.tenant_id === activeTenantId
+                                                                )?.tenants?.name ||
+                                                                mappedDealerTenants.find(d => d.id === activeTenantId)
+                                                                    ?.name ||
+                                                                null;
+                                                            const activeDealerSlug =
+                                                                sortedMemberships.find(
+                                                                    m => m.tenant_id === activeTenantId
+                                                                )?.tenants?.slug || null;
+                                                            // Active financer name
+                                                            const activeFinancerName =
+                                                                sortedMemberships.find(
+                                                                    m => m.tenant_id === effectiveActiveFinanceId
+                                                                )?.tenants?.name ||
+                                                                dealerLinkedFinancers.find(
+                                                                    f => f.id === effectiveActiveFinanceId
+                                                                )?.name ||
+                                                                availableFinanceOptions.find(
+                                                                    f => f.id === effectiveActiveFinanceId
+                                                                )?.name ||
+                                                                null;
+                                                            const activeFinancerSlug =
+                                                                sortedMemberships.find(
+                                                                    m => m.tenant_id === effectiveActiveFinanceId
+                                                                )?.tenants?.slug ||
+                                                                availableFinanceOptions.find(
+                                                                    f => f.id === effectiveActiveFinanceId
+                                                                )?.slug ||
+                                                                null;
+
+                                                            return (
+                                                                <div className="space-y-2">
+                                                                    {/* CREATE LEAD */}
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            router.push(createLeadHref);
+                                                                            setIsOpen(false);
+                                                                        }}
+                                                                        className="w-full flex items-center gap-3 p-3 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200/70 dark:border-amber-500/20 hover:border-brand-primary/30 dark:hover:border-brand-primary/30 transition-all group"
+                                                                    >
+                                                                        <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-500 group-hover:scale-110 transition-transform shadow-sm shrink-0">
+                                                                            <MessageSquare size={16} />
+                                                                        </div>
+                                                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-200">
+                                                                            Create Lead
+                                                                        </span>
+                                                                    </button>
+
+                                                                    {/* ─── ACTIVE GROUP ─── */}
+                                                                    <div className="rounded-2xl border border-slate-100 dark:border-white/8 overflow-hidden">
+                                                                        {/* Group Header */}
+                                                                        <div className="px-3 py-2 bg-slate-50 dark:bg-white/[0.03] border-b border-slate-100 dark:border-white/5">
+                                                                            <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
+                                                                                Active
+                                                                            </p>
+                                                                        </div>
+
+                                                                        {/* AUMS Console */}
+                                                                        {adminMemberships.length > 0 && (
+                                                                            <div className="flex items-center justify-between px-3 py-2.5 border-b border-slate-100 dark:border-white/5 bg-amber-50/60 dark:bg-amber-500/5">
+                                                                                <div className="min-w-0">
+                                                                                    <p className="text-[8px] font-black uppercase tracking-widest text-amber-500 dark:text-amber-400">
+                                                                                        AUMS Console
+                                                                                    </p>
+                                                                                    <p className="text-[11px] font-black text-slate-900 dark:text-white truncate">
+                                                                                        {adminMemberships[0]?.tenants
+                                                                                            ?.name || 'AUMS'}
+                                                                                    </p>
                                                                                 </div>
+                                                                                <a
+                                                                                    href={getWorkspaceDashboardHref(
+                                                                                        adminMemberships[0]?.tenants
+                                                                                            ?.slug
+                                                                                    )}
+                                                                                    onClick={() => setIsOpen(false)}
+                                                                                    className="ml-2 shrink-0 px-3 py-1.5 rounded-full bg-amber-500 text-white text-[8px] font-black uppercase tracking-wider hover:bg-amber-600 transition-colors"
+                                                                                >
+                                                                                    Open
+                                                                                </a>
                                                                             </div>
-                                                                        ))}
-                                                            </div>
-                                                        </div>
-                                                    )}
+                                                                        )}
+
+                                                                        {/* Active Dealership */}
+                                                                        <div className="flex items-center justify-between px-3 py-2.5 border-b border-slate-100 dark:border-white/5 bg-emerald-50/60 dark:bg-emerald-500/5">
+                                                                            <div className="min-w-0">
+                                                                                <p className="text-[8px] font-black uppercase tracking-widest text-emerald-500 dark:text-emerald-400">
+                                                                                    Active Dealership
+                                                                                </p>
+                                                                                <p className="text-[11px] font-black text-slate-900 dark:text-white truncate">
+                                                                                    {activeDealerName || (
+                                                                                        <span className="text-slate-400 font-medium italic">
+                                                                                            None selected
+                                                                                        </span>
+                                                                                    )}
+                                                                                </p>
+                                                                            </div>
+                                                                            {activeDealerSlug && (
+                                                                                <a
+                                                                                    href={getWorkspaceDashboardHref(
+                                                                                        activeDealerSlug
+                                                                                    )}
+                                                                                    onClick={() => setIsOpen(false)}
+                                                                                    className="ml-2 shrink-0 px-3 py-1.5 rounded-full bg-emerald-500 text-white text-[8px] font-black uppercase tracking-wider hover:bg-emerald-600 transition-colors"
+                                                                                >
+                                                                                    Open
+                                                                                </a>
+                                                                            )}
+                                                                        </div>
+
+                                                                        {/* Active Financer */}
+                                                                        <div className="flex items-center justify-between px-3 py-2.5 bg-indigo-50/60 dark:bg-indigo-500/5">
+                                                                            <div className="min-w-0">
+                                                                                <p className="text-[8px] font-black uppercase tracking-widest text-indigo-500 dark:text-indigo-400">
+                                                                                    Active Financer
+                                                                                </p>
+                                                                                <p className="text-[11px] font-black text-slate-900 dark:text-white truncate">
+                                                                                    {activeFinancerName || (
+                                                                                        <span className="text-slate-400 font-medium italic">
+                                                                                            None selected
+                                                                                        </span>
+                                                                                    )}
+                                                                                </p>
+                                                                            </div>
+                                                                            {activeFinancerSlug && (
+                                                                                <a
+                                                                                    href={getWorkspaceDashboardHref(
+                                                                                        activeFinancerSlug
+                                                                                    )}
+                                                                                    onClick={() => setIsOpen(false)}
+                                                                                    className="ml-2 shrink-0 px-3 py-1.5 rounded-full bg-indigo-500 text-white text-[8px] font-black uppercase tracking-wider hover:bg-indigo-600 transition-colors"
+                                                                                >
+                                                                                    Open
+                                                                                </a>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+
+                                                                    {/* ─── STUDIOS (DEALERSHIPS) GROUP ─── */}
+                                                                    {inactiveDealers.length > 0 && (
+                                                                        <div className="rounded-2xl border border-slate-100 dark:border-white/8 overflow-hidden">
+                                                                            {/* Collapsible Header */}
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() =>
+                                                                                    setStudiosSectionOpen(p => !p)
+                                                                                }
+                                                                                className="w-full flex items-center justify-between px-3 py-2.5 bg-slate-50 dark:bg-white/[0.03] hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors"
+                                                                            >
+                                                                                <div className="flex items-center gap-2">
+                                                                                    <Store
+                                                                                        size={12}
+                                                                                        className="text-slate-400"
+                                                                                    />
+                                                                                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                                                                                        Studios
+                                                                                    </p>
+                                                                                    <span className="px-1.5 py-0.5 rounded-full bg-slate-200 dark:bg-white/10 text-[8px] font-black text-slate-500 dark:text-slate-400">
+                                                                                        {inactiveDealers.length}
+                                                                                    </span>
+                                                                                </div>
+                                                                                <ChevronDown
+                                                                                    size={14}
+                                                                                    className={`text-slate-400 transition-transform duration-200 ${studiosSectionOpen ? 'rotate-180' : ''}`}
+                                                                                />
+                                                                            </button>
+
+                                                                            {/* Items */}
+                                                                            <AnimatePresence initial={false}>
+                                                                                {studiosSectionOpen && (
+                                                                                    <motion.div
+                                                                                        key="studios-list"
+                                                                                        initial={{
+                                                                                            height: 0,
+                                                                                            opacity: 0,
+                                                                                        }}
+                                                                                        animate={{
+                                                                                            height: 'auto',
+                                                                                            opacity: 1,
+                                                                                        }}
+                                                                                        exit={{ height: 0, opacity: 0 }}
+                                                                                        transition={{
+                                                                                            duration: 0.22,
+                                                                                            ease: 'easeInOut',
+                                                                                        }}
+                                                                                        className="overflow-hidden"
+                                                                                    >
+                                                                                        {inactiveDealers.map(
+                                                                                            (d: any, idx: number) => (
+                                                                                                <div
+                                                                                                    key={d.id}
+                                                                                                    className={`flex items-center justify-between px-3 py-2.5 bg-white dark:bg-white/[0.02] ${
+                                                                                                        idx <
+                                                                                                        inactiveDealers.length -
+                                                                                                            1
+                                                                                                            ? 'border-b border-slate-100 dark:border-white/5'
+                                                                                                            : ''
+                                                                                                    }`}
+                                                                                                >
+                                                                                                    <p className="text-[11px] font-black text-slate-800 dark:text-slate-200 truncate min-w-0 pr-2">
+                                                                                                        {d.name}
+                                                                                                    </p>
+                                                                                                    <div className="flex items-center gap-1.5 shrink-0">
+                                                                                                        <button
+                                                                                                            onClick={() => {
+                                                                                                                handleWorkspaceLogin(
+                                                                                                                    d.id
+                                                                                                                );
+                                                                                                            }}
+                                                                                                            className="px-2.5 py-1 rounded-full border border-slate-300 dark:border-white/15 text-slate-600 dark:text-slate-300 text-[8px] font-black uppercase tracking-wider hover:border-emerald-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-all"
+                                                                                                        >
+                                                                                                            Activate
+                                                                                                        </button>
+                                                                                                        {d.slug && (
+                                                                                                            <a
+                                                                                                                href={getWorkspaceDashboardHref(
+                                                                                                                    d.slug
+                                                                                                                )}
+                                                                                                                onClick={() =>
+                                                                                                                    setIsOpen(
+                                                                                                                        false
+                                                                                                                    )
+                                                                                                                }
+                                                                                                                className="px-2.5 py-1 rounded-full border border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400 text-[8px] font-black uppercase tracking-wider hover:text-slate-900 dark:hover:text-white transition-colors"
+                                                                                                            >
+                                                                                                                Open
+                                                                                                            </a>
+                                                                                                        )}
+                                                                                                    </div>
+                                                                                                </div>
+                                                                                            )
+                                                                                        )}
+                                                                                    </motion.div>
+                                                                                )}
+                                                                            </AnimatePresence>
+                                                                        </div>
+                                                                    )}
+
+                                                                    {/* ─── FINANCERS GROUP ─── */}
+                                                                    {inactiveFinancers.length > 0 && (
+                                                                        <div className="rounded-2xl border border-slate-100 dark:border-white/8 overflow-hidden">
+                                                                            {/* Collapsible Header */}
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() =>
+                                                                                    setFinancersSectionOpen(p => !p)
+                                                                                }
+                                                                                className="w-full flex items-center justify-between px-3 py-2.5 bg-slate-50 dark:bg-white/[0.03] hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors"
+                                                                            >
+                                                                                <div className="flex items-center gap-2">
+                                                                                    <Landmark
+                                                                                        size={12}
+                                                                                        className="text-slate-400"
+                                                                                    />
+                                                                                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
+                                                                                        Financers
+                                                                                    </p>
+                                                                                    <span className="px-1.5 py-0.5 rounded-full bg-slate-200 dark:bg-white/10 text-[8px] font-black text-slate-500 dark:text-slate-400">
+                                                                                        {inactiveFinancers.length}
+                                                                                    </span>
+                                                                                </div>
+                                                                                <ChevronDown
+                                                                                    size={14}
+                                                                                    className={`text-slate-400 transition-transform duration-200 ${financersSectionOpen ? 'rotate-180' : ''}`}
+                                                                                />
+                                                                            </button>
+
+                                                                            {/* Items */}
+                                                                            <AnimatePresence initial={false}>
+                                                                                {financersSectionOpen && (
+                                                                                    <motion.div
+                                                                                        key="financers-list"
+                                                                                        initial={{
+                                                                                            height: 0,
+                                                                                            opacity: 0,
+                                                                                        }}
+                                                                                        animate={{
+                                                                                            height: 'auto',
+                                                                                            opacity: 1,
+                                                                                        }}
+                                                                                        exit={{ height: 0, opacity: 0 }}
+                                                                                        transition={{
+                                                                                            duration: 0.22,
+                                                                                            ease: 'easeInOut',
+                                                                                        }}
+                                                                                        className="overflow-hidden"
+                                                                                    >
+                                                                                        {inactiveFinancers.map(
+                                                                                            (f, idx) => (
+                                                                                                <div
+                                                                                                    key={f.id}
+                                                                                                    className={`flex items-center justify-between px-3 py-2.5 bg-white dark:bg-white/[0.02] ${
+                                                                                                        idx <
+                                                                                                        inactiveFinancers.length -
+                                                                                                            1
+                                                                                                            ? 'border-b border-slate-100 dark:border-white/5'
+                                                                                                            : ''
+                                                                                                    }`}
+                                                                                                >
+                                                                                                    <p className="text-[11px] font-black text-slate-800 dark:text-slate-200 truncate min-w-0 pr-2">
+                                                                                                        {f.name}
+                                                                                                    </p>
+                                                                                                    <div className="flex items-center gap-1.5 shrink-0">
+                                                                                                        <button
+                                                                                                            onClick={() =>
+                                                                                                                handleFinanceLogin(
+                                                                                                                    f.id
+                                                                                                                )
+                                                                                                            }
+                                                                                                            className="px-2.5 py-1 rounded-full border border-slate-300 dark:border-white/15 text-slate-600 dark:text-slate-300 text-[8px] font-black uppercase tracking-wider hover:border-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-all"
+                                                                                                        >
+                                                                                                            Activate
+                                                                                                        </button>
+                                                                                                        {f.slug && (
+                                                                                                            <a
+                                                                                                                href={getWorkspaceDashboardHref(
+                                                                                                                    f.slug
+                                                                                                                )}
+                                                                                                                onClick={() =>
+                                                                                                                    setIsOpen(
+                                                                                                                        false
+                                                                                                                    )
+                                                                                                                }
+                                                                                                                className="px-2.5 py-1 rounded-full border border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400 text-[8px] font-black uppercase tracking-wider hover:text-slate-900 dark:hover:text-white transition-colors"
+                                                                                                            >
+                                                                                                                Open
+                                                                                                            </a>
+                                                                                                        )}
+                                                                                                    </div>
+                                                                                                </div>
+                                                                                            )
+                                                                                        )}
+                                                                                    </motion.div>
+                                                                                )}
+                                                                            </AnimatePresence>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        })()}
                                                 </div>
                                             )}
                                         </motion.div>

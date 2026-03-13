@@ -872,15 +872,30 @@ export async function getCatalogSnapshot(stateCode: string = 'MH'): Promise<Cata
     const fetchActiveCatalogSkus = async (client: any) => {
         return client.from('cat_skus').select(CATALOG_SKU_SELECT).eq('status', 'ACTIVE').order('position');
     };
-    const fetchLivePricingRows = async (client: any, skuIds: string[]) => {
-        return client
-            .from('cat_price_state_mh')
-            .select(
-                'sku_id, ex_showroom, on_road_price, rto_total_state, ins_total:ins_gross_premium, publish_stage, is_popular'
+    // Chunk SKU IDs to avoid PostgREST URL length limit (~8KB).
+    // Passing 300+ UUIDs in a single IN clause generates a >8KB URL that silently returns 0 rows.
+    const PRICING_CHUNK_SIZE = 100;
+    const fetchLivePricingRows = async (client: any, skuIds: string[]): Promise<{ data: any[] | null; error: any }> => {
+        if (skuIds.length === 0) return { data: [], error: null };
+        const chunks: string[][] = [];
+        for (let i = 0; i < skuIds.length; i += PRICING_CHUNK_SIZE) {
+            chunks.push(skuIds.slice(i, i + PRICING_CHUNK_SIZE));
+        }
+        const results = await Promise.all(
+            chunks.map(chunk =>
+                client
+                    .from('cat_price_state_mh')
+                    .select(
+                        'sku_id, ex_showroom, on_road_price, rto_total_state, ins_total:ins_gross_premium, publish_stage, is_popular'
+                    )
+                    .in('sku_id', chunk)
+                    .eq('state_code', stateCode)
+                    .in('publish_stage', ['LIVE', 'PUBLISHED'])
             )
-            .in('sku_id', skuIds)
-            .eq('state_code', stateCode)
-            .in('publish_stage', ['LIVE', 'PUBLISHED']);
+        );
+        const firstError = results.find(r => r.error)?.error || null;
+        const mergedData = results.flatMap(r => r.data || []);
+        return { data: mergedData, error: firstError };
     };
 
     try {

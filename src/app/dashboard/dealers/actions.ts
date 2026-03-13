@@ -129,10 +129,7 @@ export async function onboardDealer(formData: {
         if (!slug || slug.length < 2) {
             throw new Error('Invalid slug provided');
         }
-        const areaName = String(
-            (pinRow as any)?.area || (pinRow as any)?.taluka || (pinRow as any)?.district || ''
-        ).trim();
-        const normalizedStudioId = generateDealerStudioId(formData.dealerName, slug, areaName);
+        const normalizedStudioId = generateDealerStudioId(formData.dealerName, slug, normalizedPincode);
 
         // console.log('[OnboardDealer] Using slug:', slug);
 

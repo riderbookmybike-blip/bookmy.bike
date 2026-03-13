@@ -28,10 +28,13 @@ import { ChevronDown, Check, X as CloseIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const formatStudioId = (value: string) => {
-    const upper = value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-    const digits = upper.replace(/[^0-9]/g, '').slice(0, 2);
-    const letter = upper.replace(/[^A-Z]/g, '').slice(0, 1);
-    return `${digits}${letter}`;
+    const upper = value
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, '')
+        .slice(0, 9);
+    if (upper.length <= 3) return upper;
+    if (upper.length <= 6) return `${upper.slice(0, 3)}-${upper.slice(3)}`;
+    return `${upper.slice(0, 3)}-${upper.slice(3, 6)}-${upper.slice(6, 9)}`;
 };
 
 interface IdentitySettingsProps {

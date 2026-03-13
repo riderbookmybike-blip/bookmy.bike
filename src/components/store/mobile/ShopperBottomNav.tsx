@@ -3,19 +3,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import {
-    Home,
-    Heart,
-    Globe,
-    CreditCard,
-    Banknote,
-    X,
-    Pencil,
-    Bike,
-    Sparkles,
-    Zap as ZapIcon,
-    Search,
-} from 'lucide-react';
+import { Home, Heart, CreditCard, Banknote, X, Pencil, Bike, Sparkles, Zap as ZapIcon, Search } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MotorcycleIcon } from '@/components/icons/MotorcycleIcon';
 import { useFavorites } from '@/lib/favorites/favoritesContext';
@@ -35,7 +23,6 @@ const STATIC_TABS = [
     { key: 'search', label: 'Search', icon: Search, href: null },
     { key: 'pricing', label: 'EMI', icon: CreditCard, href: null },
     { key: 'wishlist', label: 'Favorites', icon: Heart, href: '/store/compare/favorites' },
-    { key: 'ocircle', label: "O' Circle", icon: Globe, href: '/store/ocircle' },
 ] as const;
 
 const BODY_TYPE_OPTIONS = [

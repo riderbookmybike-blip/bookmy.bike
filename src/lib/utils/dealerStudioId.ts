@@ -6,6 +6,14 @@ const cleanLetters = (value: string) =>
         .replace(/[^A-Z]/g, '');
 
 const firstThreeLetters = (value: string) => (cleanLetters(value) + 'XXX').slice(0, 3);
+const firstTwoDigits = (value: string) =>
+    String(value || '')
+        .replace(/\D/g, '')
+        .slice(0, 2);
+const thirdAndFourthDigits = (value: string) =>
+    String(value || '')
+        .replace(/\D/g, '')
+        .slice(2, 4);
 
 function resolveBrandAndDealership(dealerName: string): { brand: string; dealership: string } {
     const upper = String(dealerName || '').toUpperCase();
@@ -53,13 +61,16 @@ function normalizeDealershipFromSlug(brand: string, dealerSlug: string, dealerNa
     return dealership;
 }
 
-export function generateDealerStudioId(dealerName: string, dealerSlug: string, areaName: string): string {
+export function generateDealerStudioId(dealerName: string, dealerSlug: string, pincodeLike: string): string {
     const { brand, dealership } = resolveBrandAndDealership(dealerName);
     const dealershipFromSlug = normalizeDealershipFromSlug(brand, dealerSlug, dealership);
 
-    const b = firstThreeLetters(brand);
     const d = firstThreeLetters(dealershipFromSlug);
-    const a = firstThreeLetters(areaName);
+    const brandLetters = (cleanLetters(brand) + 'XX').slice(0, 2);
+    const pin12 = (firstTwoDigits(pincodeLike) + '00').slice(0, 2);
+    const pin34 = (thirdAndFourthDigits(pincodeLike) + '00').slice(0, 2);
 
-    return `${b[0]}${d[0]}${a[0]}-${b[1]}${d[1]}${a[1]}-${b[2]}${d[2]}${a[2]}`;
+    // Format: [Brand1 + Pin1Pin2]-[Brand2 + Dealer1Dealer2]-[Pin3Pin4 + Dealer3]
+    // Example pattern: H40-ERA-00U
+    return `${brandLetters[0]}${pin12}-${brandLetters[1]}${d[0]}${d[1]}-${pin34}${d[2]}`;
 }

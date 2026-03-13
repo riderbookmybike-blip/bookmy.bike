@@ -666,17 +666,7 @@ export async function publishPrices(skuIds: string[], stateCode: string): Promis
                             if (!colKey) continue;
 
                             // Skip deprecated addons
-                            if (
-                                [
-                                    'key_protect',
-                                    'keyprotect',
-                                    'tyre_protect',
-                                    'tyreprotect',
-                                    'pillion_cover',
-                                    'pillion',
-                                ].includes(colKey)
-                            )
-                                continue;
+                            if (['key_protect', 'tyre_protect', 'pillion_cover'].includes(colKey)) continue;
 
                             addonCols[`addon_${colKey}_amount`] = round2(addon.price || 0);
                             addonCols[`addon_${colKey}_gst_amount`] = round2(addon.gst || 0);
@@ -685,14 +675,7 @@ export async function publishPrices(skuIds: string[], stateCode: string): Promis
                         }
 
                         // Explicitly nullify deprecated columns to clear stale data on republish
-                        [
-                            'key_protect',
-                            'keyprotect',
-                            'tyre_protect',
-                            'tyreprotect',
-                            'pillion_cover',
-                            'pillion',
-                        ].forEach(key => {
+                        ['key_protect', 'tyre_protect', 'pillion_cover'].forEach(key => {
                             addonCols[`addon_${key}_amount`] = null;
                             addonCols[`addon_${key}_gst_amount`] = null;
                             addonCols[`addon_${key}_total_amount`] = null;
