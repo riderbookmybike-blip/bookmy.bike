@@ -36,7 +36,15 @@ async function main() {
     if (error) throw error;
 
     const rows = (data || []) as TenantRow[];
-    const taken = new Set<string>();
+    const taken = new Set<string>(
+        rows
+            .map(r =>
+                String(r.studio_id || '')
+                    .trim()
+                    .toUpperCase()
+            )
+            .filter(Boolean)
+    );
     let updated = 0;
     let unchanged = 0;
     let fallbackCount = 0;
@@ -53,7 +61,14 @@ async function main() {
             continue;
         }
 
-        const base = generateDealerStudioId(name, slug, pincode);
+        const currentStudioId = String(row.studio_id || '')
+            .trim()
+            .toUpperCase();
+        if (currentStudioId) {
+            taken.delete(currentStudioId);
+        }
+
+        const base = generateDealerStudioId(name, slug, pincode).toUpperCase();
         let next = base;
         let counter = 0;
 
@@ -63,9 +78,8 @@ async function main() {
             next = withFallbackSuffix(base, counter);
         }
 
-        taken.add(next);
-
         if (row.studio_id === next) {
+            taken.add(next);
             unchanged += 1;
             continue;
         }
@@ -74,6 +88,7 @@ async function main() {
         if (updateError) {
             throw new Error(`Failed updating ${row.id}: ${updateError.message}`);
         }
+        taken.add(next);
         updated += 1;
     }
 

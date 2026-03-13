@@ -988,7 +988,10 @@ export async function getCatalogSnapshot(stateCode: string = 'MH'): Promise<Cata
         const skuIds = vehicleSkus.map((s: any) => s.id);
         let pricing: any[] | null = null;
         try {
-            const { data } = await fetchLivePricingRows(adminClient as any, skuIds);
+            const { data, error } = await fetchLivePricingRows(adminClient as any, skuIds);
+            if (error) {
+                throw error;
+            }
             pricing = data || [];
         } catch {
             const fallbackUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
@@ -998,7 +1001,10 @@ export async function getCatalogSnapshot(stateCode: string = 'MH'): Promise<Cata
                     const fallbackClient = createSupabaseClient(fallbackUrl, fallbackAnonKey, {
                         auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
                     });
-                    const { data } = await fetchLivePricingRows(fallbackClient as any, skuIds);
+                    const { data, error } = await fetchLivePricingRows(fallbackClient as any, skuIds);
+                    if (error) {
+                        throw error;
+                    }
                     pricing = data || [];
                     console.warn('[StoreSot:getCatalogSnapshot] Pricing recovered using anon fallback client.');
                 } catch {

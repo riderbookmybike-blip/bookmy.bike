@@ -307,10 +307,10 @@ export default function IdentitySettings({ dealer, onUpdate }: IdentitySettingsP
                         <input
                             type="text"
                             value={formData.studio_id}
-                            maxLength={3}
+                            maxLength={11}
                             onChange={e => setFormData({ ...formData, studio_id: formatStudioId(e.target.value) })}
                             className="w-full px-5 py-3 bg-[#fcfdfe] border border-slate-200 rounded-xl text-sm font-black text-indigo-600 placeholder:text-slate-300 focus:bg-white focus:border-indigo-500/50 focus:ring-4 focus:ring-indigo-500/5 transition-all outline-none"
-                            placeholder="e.g. 48J"
+                            placeholder="e.g. ABC-DEF-123"
                         />
                     </div>
 
