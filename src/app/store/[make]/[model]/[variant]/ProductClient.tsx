@@ -517,7 +517,7 @@ export default function ProductClient({
             // Only auto-select inclusive (zero-price) items if user hasn't touched yet
             if (!hasTouchedAccessories) {
                 const defaults = dealerAccessories
-                    .filter((a: any) => a.isMandatory || Number(a.discountPrice ?? a.price ?? 0) === 0)
+                    .filter((a: any) => Number(a.discountPrice ?? a.price ?? 0) === 0)
                     .map((a: any) => a.id);
                 setSelectedAccessories(defaults);
             }

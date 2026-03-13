@@ -446,22 +446,28 @@ export function DesktopPDP({
             caption: 'Zero Dep & RSA Benefits',
         },
         {
-            label: 'Mandatory Accessories',
+            label: 'Accessories',
             value: accessoriesPrice,
-            caption: 'Dealer Standard Fitment',
+            caption: 'Custom Selection',
             breakdown: activeAccessories
-                .filter((a: any) => a.isMandatory)
-                .map((a: any) => ({ label: a.displayName || a.name, amount: a.discountPrice || a.price })),
-        },
-        {
-            label: 'Optional Accessories',
-            value: (data.accessoriesPrice || 0) + (data.accessoriesDiscount || 0) - accessoriesPrice,
-            caption: 'Consumer Selection',
+                .filter((a: any) => selectedAccessories.includes(a.id))
+                .map((a: any) => ({
+                    label: a.displayName || a.name,
+                    amount: (a.discountPrice || a.price) * (quantities[a.id] || 1),
+                })),
         },
         {
             label: 'Services',
             value: (data.servicesPrice || 0) + (data.servicesDiscount || 0),
             caption: 'RSA & Maintenance Pak',
+        },
+        {
+            label: 'Warranty',
+            value: 0,
+            caption:
+                warrantyItems?.length > 0
+                    ? `${warrantyItems.map((w: any) => `${Math.round(w.days / 365)}Y / ${w.km.toLocaleString()}K`).join(' + ')}`
+                    : 'Manufacturer Standard',
         },
         ...(otherCharges > 0 ? [{ label: 'Other Charges', value: otherCharges, caption: 'Handling & Fees' }] : []),
 
@@ -807,13 +813,13 @@ export function DesktopPDP({
                                 className={`relative my-1 rounded-[2.5rem] overflow-hidden cursor-pointer border transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] flex flex-col justify-between shrink-0 lg:shrink
                                     ${
                                         isActive
-                                            ? 'flex-[3] bg-white border-slate-200 shadow-2xl,0,0,0.5)]'
+                                            ? 'flex-[3] bg-white border-slate-200 shadow-2xl shadow-black/[0.05]'
                                             : 'flex-[0.5] bg-white/40 backdrop-blur-xl border-white/60 hover:bg-white/60 shadow-lg shadow-black/[0.03]'
                                     }`}
                             >
                                 {/* Header */}
                                 <div
-                                    className={`p-6 items-center gap-3 transition-colors duration-500 shrink-0 ${isActive ? 'bg-brand-primary/[0.03] border-b border-slate-100' : ''} ${isActive && card.id === 'GALLERY' ? 'grid grid-cols-[auto_1fr_auto]' : 'flex'}`}
+                                    className={`p-6 items-center gap-3 transition-colors duration-500 shrink-0 ${isActive ? 'bg-white border-b border-slate-100' : ''} ${isActive && card.id === 'GALLERY' ? 'grid grid-cols-[auto_1fr_auto]' : 'flex'}`}
                                 >
                                     {/* Left: Icon + Label + Color Name */}
                                     <div className="flex items-center gap-3">
@@ -1044,7 +1050,7 @@ export function DesktopPDP({
 
                                 {/* Section 3: Footer — Offer Price (PRICING only, shrink-0) */}
                                 {isActive && card.id === 'PRICING' && (
-                                    <div className="shrink-0 pl-[76px] pr-[76px] pt-3 pb-8 border-t border-slate-100 bg-brand-primary/[0.03] relative z-10 flex flex-col gap-3">
+                                    <div className="shrink-0 pl-[76px] pr-[76px] pt-3 pb-8 border-t border-slate-100 bg-white relative z-10 flex flex-col gap-3">
                                         <div className="flex justify-between items-end">
                                             <div className="flex flex-col gap-1">
                                                 <div className="flex items-center gap-1">
@@ -1124,9 +1130,12 @@ export function DesktopPDP({
                                     </div>
                                 )}
                                 {/* Bottom Fade — skip for Gallery and Pricing */}
-                                {isActive && card.id !== 'GALLERY' && card.id !== 'PRICING' && (
-                                    <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-white via-white/80 to-transparent pointer-events-none z-10" />
-                                )}
+                                {isActive &&
+                                    card.id !== 'GALLERY' &&
+                                    card.id !== 'PRICING' &&
+                                    card.id !== 'FINANCE' && (
+                                        <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-white via-white/80 to-transparent pointer-events-none z-10" />
+                                    )}
                             </motion.div>
                         );
                     })}
@@ -1215,7 +1224,7 @@ export function DesktopPDP({
                             >
                                 {/* Header / Category Label (Always visible) */}
                                 <div
-                                    className={`p-6 flex items-center gap-3 transition-colors duration-500 shrink-0 ${isActive ? 'bg-brand-primary/[0.03] border-b border-slate-100' : ''}`}
+                                    className={`p-6 flex items-center gap-3 transition-colors duration-500 shrink-0 ${isActive ? 'bg-white border-b border-slate-100' : ''}`}
                                 >
                                     <div
                                         className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-500
@@ -1269,7 +1278,7 @@ export function DesktopPDP({
                                 </div>
 
                                 {/* Unified Bottom Fade (Active state) */}
-                                {isActive && (
+                                {isActive && category.id !== 'FINANCE' && category.id !== 'PRICING' && (
                                     <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-white via-white/80 to-transparent pointer-events-none z-10" />
                                 )}
                             </motion.div>
@@ -1316,7 +1325,7 @@ export function DesktopPDP({
                     isGated={isGated}
                     accessoriesCount={selectedAccessories.length}
                     accessoriesTotal={accessoriesPrice}
-                    insuranceTotal={baseInsurance + insuranceAddonsPrice}
+                    insuranceTotal={insuranceAddonsPrice}
                     insuranceAddonsCount={selectedInsuranceAddons.length}
                     onOpenVideo={() => setIsVideoOpen(true)}
                 />

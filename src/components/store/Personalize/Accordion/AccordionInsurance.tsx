@@ -2,8 +2,47 @@
 'use client';
 
 import React from 'react';
-import { CheckCircle2, Shield } from 'lucide-react';
+import {
+    CheckCircle2,
+    Shield,
+    Lock,
+    Zap,
+    Activity,
+    Truck,
+    Wrench,
+    Percent,
+    RotateCcw,
+    Droplets,
+    ShieldAlert,
+} from 'lucide-react';
 import { TP_LABEL, TP_SUBTEXT, TP_DETAIL, OD_LABEL, OD_SUBTEXT } from '@/lib/constants/insuranceConstants';
+
+const ICON_MAP: Record<string, any> = {
+    'insurance-tp': { icon: Lock, color: 'text-indigo-500', bg: 'bg-indigo-50' },
+    'insurance-od': { icon: Shield, color: 'text-blue-500', bg: 'bg-blue-50' },
+    personal_accident_cover: { icon: Activity, color: 'text-rose-500', bg: 'bg-rose-50' },
+    zero_depreciation: { icon: Percent, color: 'text-emerald-500', bg: 'bg-emerald-50' },
+    roadside_assistance: { icon: Truck, color: 'text-amber-500', bg: 'bg-amber-50' },
+    engine_protector: { icon: Wrench, color: 'text-orange-500', bg: 'bg-orange-50' },
+    consumables_cover: { icon: Droplets, color: 'text-sky-500', bg: 'bg-sky-50' },
+    return_to_invoice: { icon: RotateCcw, color: 'text-purple-500', bg: 'bg-purple-50' },
+};
+
+const getAddonIcon = (id: string, name: string) => {
+    const key = String(id || '').toLowerCase();
+    if (ICON_MAP[key]) return ICON_MAP[key];
+
+    // Fallback based on name keywords
+    const lowerName = name.toLowerCase();
+    if (lowerName.includes('pa ') || lowerName.includes('accident')) return ICON_MAP['personal_accident_cover'];
+    if (lowerName.includes('depreciation') || lowerName.includes('zero dep')) return ICON_MAP['zero_depreciation'];
+    if (lowerName.includes('rsa') || lowerName.includes('roadside')) return ICON_MAP['roadside_assistance'];
+    if (lowerName.includes('engine')) return ICON_MAP['engine_protector'];
+    if (lowerName.includes('consumable')) return ICON_MAP['consumables_cover'];
+    if (lowerName.includes('invoice') || lowerName.includes('rti')) return ICON_MAP['return_to_invoice'];
+
+    return { icon: ShieldAlert, color: 'text-slate-400', bg: 'bg-slate-50' };
+};
 
 export interface AccordionInsuranceProps {
     insuranceRequiredItems: any[];
@@ -89,40 +128,57 @@ export default function AccordionInsurance({
                     <div
                         key={item.id}
                         onClick={() => !item.isMandatory && toggleInsuranceAddon(item.id)}
-                        className={`group flex items-center gap-3 px-4 py-3 transition-all duration-200 cursor-pointer border-l-[3px] ${
+                        className={`group flex items-center gap-3 px-4 py-2.5 transition-all duration-300 cursor-pointer border-l-[3.5px] relative ${
                             isSelected
-                                ? 'border-l-emerald-500 bg-emerald-50/50'
-                                : 'border-l-transparent hover:bg-slate-50'
-                        } ${idx > 0 ? 'border-t border-t-slate-100/80' : ''}`}
+                                ? 'border-l-brand-primary bg-slate-50 shadow-sm'
+                                : 'border-l-transparent hover:bg-slate-50/80'
+                        } ${idx > 0 ? 'border-t border-t-slate-100/60' : ''}`}
                     >
                         {/* Checkbox — same circle style as accessories */}
                         <div
-                            className={`w-[18px] h-[18px] rounded-full flex items-center justify-center transition-all shrink-0 ${
+                            className={`w-5 h-5 rounded-full flex items-center justify-center transition-all shrink-0 ${
                                 isSelected
-                                    ? 'bg-emerald-500 text-white shadow-sm shadow-emerald-200'
-                                    : 'border-2 border-slate-300 group-hover:border-emerald-400'
+                                    ? 'bg-brand-primary text-black shadow-md shadow-brand-primary/20'
+                                    : 'border-2 border-slate-200 group-hover:border-brand-primary/50'
                             }`}
                         >
-                            {isSelected && <CheckCircle2 size={12} strokeWidth={3} />}
+                            {isSelected && <CheckCircle2 size={14} strokeWidth={3} />}
                         </div>
 
-                        {/* Icon — Shield for insurance (like Package for accessories) */}
-                        <div className="w-11 h-11 rounded-xl flex items-center justify-center overflow-hidden shrink-0 bg-slate-50 border border-dashed border-slate-200">
-                            <Shield size={16} className="text-slate-300" />
-                        </div>
+                        {/* Icon — Domain specific icons based on AUMS Engine patterns */}
+                        {(() => {
+                            const config = getAddonIcon(item.id, item.name);
+                            const Icon = config.icon;
+                            return (
+                                <div
+                                    className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-all border ${
+                                        isSelected
+                                            ? `${config.bg} border-${config.color.split('-')[1]}-200/50`
+                                            : 'bg-slate-50 border-slate-200 border-dashed'
+                                    }`}
+                                >
+                                    <Icon size={16} className={isSelected ? config.color : 'text-slate-300'} />
+                                </div>
+                            );
+                        })()}
 
                         {/* Name lines — same 3-line pattern as accessories */}
                         <div className="flex-1 min-w-0">
                             <p
-                                className={`text-[12px] font-black tracking-tight leading-tight truncate ${
+                                className={`text-[11px] font-black tracking-tight leading-none ${
                                     isSelected ? 'text-slate-900' : 'text-slate-700'
                                 }`}
                             >
                                 {item.name}
+                                {!isSelected && !item.isMandatory && (
+                                    <span className="ml-1 text-[#4666f2] font-black italic">
+                                        @₹{Math.round(item.price).toLocaleString()}
+                                    </span>
+                                )}
                             </p>
                             {item.subtext && (
                                 <p
-                                    className={`text-[11px] font-medium mt-0.5 truncate leading-tight ${
+                                    className={`text-[9.5px] font-bold mt-1 truncate leading-none ${
                                         isSelected ? 'text-slate-600' : 'text-slate-500'
                                     }`}
                                 >
@@ -130,35 +186,33 @@ export default function AccordionInsurance({
                                 </p>
                             )}
                             {item.detail && (
-                                <p className="text-[10px] text-slate-400 mt-0.5 truncate leading-tight">
-                                    {item.detail}
-                                </p>
+                                <p className="text-[9px] text-slate-400 mt-1 truncate leading-none">{item.detail}</p>
                             )}
                         </div>
 
-                        {/* Price block — same style as accessories */}
+                        {/* Price block — Only show on right when selected or mandatory */}
                         <div className="flex flex-col items-end shrink-0 min-w-[72px]">
-                            <span
-                                className={`text-[13px] font-extrabold tabular-nums ${
-                                    isSelected ? 'text-emerald-600' : 'text-slate-800'
-                                }`}
-                            >
-                                {item.price === 0 && isSelected
-                                    ? 'FREE'
-                                    : `₹${Math.round(Number(item.price || 0)).toLocaleString()}`}
-                            </span>
-                            {item.originalPrice && (
-                                <div className="flex items-center gap-1.5 mt-0.5">
-                                    <span className="text-[10px] text-slate-400 line-through tabular-nums">
-                                        ₹{Math.round(item.originalPrice).toLocaleString()}
+                            {isSelected ? (
+                                <>
+                                    <span className="text-xs font-black tabular-nums tracking-tight text-slate-900">
+                                        {item.price === 0
+                                            ? 'FREE'
+                                            : `₹${Math.round(Number(item.price || 0)).toLocaleString()}`}
                                     </span>
-                                    {item.savingsPct && (
-                                        <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full leading-none">
-                                            {item.savingsPct}% off
-                                        </span>
+                                    {item.originalPrice && (
+                                        <div className="flex items-center gap-1.5 mt-0.5">
+                                            <span className="text-[10px] text-slate-400 line-through tabular-nums">
+                                                ₹{Math.round(item.originalPrice).toLocaleString()}
+                                            </span>
+                                            {item.savingsPct && (
+                                                <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full leading-none">
+                                                    {item.savingsPct}% off
+                                                </span>
+                                            )}
+                                        </div>
                                     )}
-                                </div>
-                            )}
+                                </>
+                            ) : null}
                         </div>
                     </div>
                 );

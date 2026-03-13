@@ -133,7 +133,8 @@ export default function FloatingCommandBar({
             key: 'insurance-addons',
             icon: Shield,
             label: insuranceAddonsCount > 0 ? `${insuranceAddonsCount} Ins. Addons` : 'Ins. Addons',
-            amount: `₹ ${Math.round(insuranceAddonAmount).toLocaleString('en-IN')}`,
+            amount:
+                insuranceAddonAmount > 0 ? `+ ₹ ${Math.round(insuranceAddonAmount).toLocaleString('en-IN')}` : `₹ 0`,
             amountClass: insuranceAddonAmount > 0 ? 'text-blue-600' : 'text-slate-400',
             labelClass: insuranceAddonAmount > 0 ? 'text-blue-500' : 'text-slate-400',
             containerClass:

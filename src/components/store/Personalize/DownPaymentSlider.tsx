@@ -77,7 +77,7 @@ export default function DownPaymentSlider({
 
     return (
         <div
-            className="shrink-0 pl-5 pr-5 pt-3 pb-8 border-t border-slate-100 bg-brand-primary/[0.03]"
+            className="shrink-0 pl-5 pr-5 pt-3 pb-8 border-t border-slate-100 bg-white"
             onClick={e => e.stopPropagation()}
         >
             <div className="flex items-center justify-between mb-1.5">

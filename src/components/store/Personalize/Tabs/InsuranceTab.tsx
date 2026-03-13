@@ -2,7 +2,7 @@
 'use client';
 
 import React from 'react';
-import { ShieldCheck } from 'lucide-react';
+import { Shield } from 'lucide-react';
 
 interface InsuranceTabProps {
     insuranceRequiredItems: any[];
@@ -17,7 +17,7 @@ export default function InsuranceTab({
     availableInsuranceAddons,
     selectedInsuranceAddons,
     toggleInsuranceAddon,
-    ConfigItemRow
+    ConfigItemRow,
 }: InsuranceTabProps) {
     const TabHeader = ({ icon: Icon, title, subtext }: any) => (
         <div className="flex items-center gap-6 px-4 mb-8">
@@ -41,7 +41,7 @@ export default function InsuranceTab({
 
     return (
         <div className="animate-in fade-in-from-bottom-4 duration-700">
-            <TabHeader icon={ShieldCheck} title="Insurance" subtext="Secure your journey" />
+            <TabHeader icon={Shield} title="Insurance" subtext="Secure your journey" />
 
             <div className="space-y-4 mb-10">
                 <SectionLabel text="Required Insurance" />
@@ -51,7 +51,7 @@ export default function InsuranceTab({
                             key={item.id}
                             item={item}
                             isSelected={true}
-                            onToggle={() => { }}
+                            onToggle={() => {}}
                             isMandatory={true}
                             breakdown={item.breakdown}
                         />

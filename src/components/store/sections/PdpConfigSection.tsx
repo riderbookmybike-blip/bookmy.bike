@@ -3,7 +3,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Package, ShieldCheck, ClipboardList, Wrench, Gift, ChevronDown } from 'lucide-react';
+import { Package, Shield, ClipboardList, Wrench, Gift, ChevronDown } from 'lucide-react';
 import AccordionAccessories from '../Personalize/Accordion/AccordionAccessories';
 import AccordionInsurance from '../Personalize/Accordion/AccordionInsurance';
 import AccordionRegistration from '../Personalize/Accordion/AccordionRegistration';
@@ -71,7 +71,7 @@ function getConfigCards(data: any) {
             id: 'INSURANCE',
             label: 'Insurance',
             subtext: INSURANCE_SUBTITLE,
-            icon: ShieldCheck,
+            icon: Shield,
         },
         {
             id: 'REGISTRATION',

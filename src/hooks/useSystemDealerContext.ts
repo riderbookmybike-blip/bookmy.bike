@@ -343,7 +343,31 @@ export function useSystemDealerContext({
                             ins_sum_mandatory_insurance_gst_amount,
                             ins_gross_premium,
                             ins_own_damage_premium_amount,
-                            ins_liability_only_premium_amount
+                            ins_liability_only_premium_amount,
+                            addon_zero_depreciation_amount,
+                            addon_zero_depreciation_gst_amount,
+                            addon_zero_depreciation_total_amount,
+                            addon_zero_depreciation_default,
+                            addon_engine_protector_amount,
+                            addon_engine_protector_gst_amount,
+                            addon_engine_protector_total_amount,
+                            addon_engine_protector_default,
+                            addon_return_to_invoice_amount,
+                            addon_return_to_invoice_gst_amount,
+                            addon_return_to_invoice_total_amount,
+                            addon_return_to_invoice_default,
+                            addon_consumables_cover_amount,
+                            addon_consumables_cover_gst_amount,
+                            addon_consumables_cover_total_amount,
+                            addon_consumables_cover_default,
+                            addon_roadside_assistance_amount,
+                            addon_roadside_assistance_gst_amount,
+                            addon_roadside_assistance_total_amount,
+                            addon_roadside_assistance_default,
+                            addon_personal_accident_cover_amount,
+                            addon_personal_accident_cover_gst_amount,
+                            addon_personal_accident_cover_total_amount,
+                            addon_personal_accident_cover_default
                             `
                             )
                             .eq('sku_id', activeSku)
@@ -368,7 +392,31 @@ export function useSystemDealerContext({
                             ins_sum_mandatory_insurance_gst_amount,
                             ins_gross_premium,
                             ins_own_damage_premium_amount,
-                            ins_liability_only_premium_amount
+                            ins_liability_only_premium_amount,
+                            addon_zero_depreciation_amount,
+                            addon_zero_depreciation_gst_amount,
+                            addon_zero_depreciation_total_amount,
+                            addon_zero_depreciation_default,
+                            addon_engine_protector_amount,
+                            addon_engine_protector_gst_amount,
+                            addon_engine_protector_total_amount,
+                            addon_engine_protector_default,
+                            addon_return_to_invoice_amount,
+                            addon_return_to_invoice_gst_amount,
+                            addon_return_to_invoice_total_amount,
+                            addon_return_to_invoice_default,
+                            addon_consumables_cover_amount,
+                            addon_consumables_cover_gst_amount,
+                            addon_consumables_cover_total_amount,
+                            addon_consumables_cover_default,
+                            addon_roadside_assistance_amount,
+                            addon_roadside_assistance_gst_amount,
+                            addon_roadside_assistance_total_amount,
+                            addon_roadside_assistance_default,
+                            addon_personal_accident_cover_amount,
+                            addon_personal_accident_cover_gst_amount,
+                            addon_personal_accident_cover_total_amount,
+                            addon_personal_accident_cover_default
                             `
                                 )
                                 .eq('sku_id', activeSku)
@@ -395,7 +443,62 @@ export function useSystemDealerContext({
                                     base_total:
                                         Number(priceRow.ins_sum_mandatory_insurance || 0) +
                                         Number(priceRow.ins_sum_mandatory_insurance_gst_amount || 0),
-                                    addons: [],
+                                    addons: [
+                                        {
+                                            id: 'zero_depreciation',
+                                            label: 'Zero Depreciation',
+                                            price: Number((priceRow as any).addon_zero_depreciation_amount || 0),
+                                            gst: Number((priceRow as any).addon_zero_depreciation_gst_amount || 0),
+                                            total: Number((priceRow as any).addon_zero_depreciation_total_amount || 0),
+                                            default: Boolean((priceRow as any).addon_zero_depreciation_default),
+                                        },
+                                        {
+                                            id: 'engine_protector',
+                                            label: 'Engine Protector',
+                                            price: Number((priceRow as any).addon_engine_protector_amount || 0),
+                                            gst: Number((priceRow as any).addon_engine_protector_gst_amount || 0),
+                                            total: Number((priceRow as any).addon_engine_protector_total_amount || 0),
+                                            default: Boolean((priceRow as any).addon_engine_protector_default),
+                                        },
+                                        {
+                                            id: 'return_to_invoice',
+                                            label: 'Return to Invoice',
+                                            price: Number((priceRow as any).addon_return_to_invoice_amount || 0),
+                                            gst: Number((priceRow as any).addon_return_to_invoice_gst_amount || 0),
+                                            total: Number((priceRow as any).addon_return_to_invoice_total_amount || 0),
+                                            default: Boolean((priceRow as any).addon_return_to_invoice_default),
+                                        },
+                                        {
+                                            id: 'consumables_cover',
+                                            label: 'Consumables Cover',
+                                            price: Number((priceRow as any).addon_consumables_cover_amount || 0),
+                                            gst: Number((priceRow as any).addon_consumables_cover_gst_amount || 0),
+                                            total: Number((priceRow as any).addon_consumables_cover_total_amount || 0),
+                                            default: Boolean((priceRow as any).addon_consumables_cover_default),
+                                        },
+                                        {
+                                            id: 'roadside_assistance',
+                                            label: 'Roadside Assistance',
+                                            price: Number((priceRow as any).addon_roadside_assistance_amount || 0),
+                                            gst: Number((priceRow as any).addon_roadside_assistance_gst_amount || 0),
+                                            total: Number(
+                                                (priceRow as any).addon_roadside_assistance_total_amount || 0
+                                            ),
+                                            default: Boolean((priceRow as any).addon_roadside_assistance_default),
+                                        },
+                                        {
+                                            id: 'personal_accident_cover',
+                                            label: 'Personal Accident Cover',
+                                            price: Number((priceRow as any).addon_personal_accident_cover_amount || 0),
+                                            gst: Number(
+                                                (priceRow as any).addon_personal_accident_cover_gst_amount || 0
+                                            ),
+                                            total: Number(
+                                                (priceRow as any).addon_personal_accident_cover_total_amount || 0
+                                            ),
+                                            default: Boolean((priceRow as any).addon_personal_accident_cover_default),
+                                        },
+                                    ].filter(a => a.total > 0),
                                 },
                                 dealer: {
                                     offer: 0,

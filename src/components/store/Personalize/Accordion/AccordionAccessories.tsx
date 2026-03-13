@@ -24,8 +24,8 @@ export default function AccordionAccessories({
 }: AccordionAccessoriesProps) {
     // Selected items float to top, then sort by price within each group
     const sortedAccessories = [...activeAccessories].sort((a: any, b: any) => {
-        const aSelected = a.isMandatory || selectedAccessories.includes(a.id) ? 1 : 0;
-        const bSelected = b.isMandatory || selectedAccessories.includes(b.id) ? 1 : 0;
+        const aSelected = selectedAccessories.includes(a.id) ? 1 : 0;
+        const bSelected = selectedAccessories.includes(b.id) ? 1 : 0;
         if (aSelected !== bSelected) return bSelected - aSelected;
         return (a.discountPrice ?? a.price) - (b.discountPrice ?? b.price);
     });
@@ -33,7 +33,7 @@ export default function AccordionAccessories({
     return (
         <>
             {sortedAccessories.map((acc: any, idx: number) => {
-                const isSelected = acc.isMandatory || selectedAccessories.includes(acc.id);
+                const isSelected = selectedAccessories.includes(acc.id);
                 const finalPrice = acc.discountPrice != null && acc.discountPrice >= 0 ? acc.discountPrice : acc.price;
                 const hasDiscount =
                     acc.discountPrice != null && acc.discountPrice >= 0 && acc.discountPrice < acc.price;
@@ -61,7 +61,7 @@ export default function AccordionAccessories({
                 return (
                     <div
                         key={acc.id}
-                        onClick={() => !acc.isMandatory && toggleAccessory(acc.id)}
+                        onClick={() => toggleAccessory(acc.id)}
                         className={`group flex items-center gap-3 px-4 py-3 transition-all duration-200 cursor-pointer border-l-[3px] ${
                             isSelected
                                 ? 'border-l-emerald-500 bg-emerald-50/50'

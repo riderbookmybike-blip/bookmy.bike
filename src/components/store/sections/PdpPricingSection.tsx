@@ -52,7 +52,10 @@ export function buildPriceBreakup(data: any, coinPricing: any, isReferralActive:
         servicesSurge,
         insuranceAddonsDiscount,
         insuranceAddonsSurge,
+        selectedAccessories,
+        quantities,
         activeAccessories,
+        warrantyItems,
         totalSavings: computedTotalSavings,
         totalSurge: computedTotalSurge,
     } = data;
@@ -130,22 +133,28 @@ export function buildPriceBreakup(data: any, coinPricing: any, isReferralActive:
             caption: 'Zero Dep & RSA Benefits',
         },
         {
-            label: 'Mandatory Accessories',
+            label: 'Accessories',
             value: accessoriesPrice,
-            caption: 'Dealer Standard Fitment',
+            caption: 'Custom Selection',
             breakdown: (activeAccessories || [])
-                .filter((a: any) => a.isMandatory)
-                .map((a: any) => ({ label: a.displayName || a.name, amount: a.discountPrice || a.price })),
-        },
-        {
-            label: 'Optional Accessories',
-            value: (data.accessoriesPrice || 0) + (data.accessoriesDiscount || 0) - accessoriesPrice,
-            caption: 'Consumer Selection',
+                .filter((a: any) => selectedAccessories.includes(a.id))
+                .map((a: any) => ({
+                    label: a.displayName || a.name,
+                    amount: (a.discountPrice || a.price) * (quantities[a.id] || 1),
+                })),
         },
         {
             label: 'Services',
             value: (data.servicesPrice || 0) + (data.servicesDiscount || 0),
             caption: 'RSA & Maintenance Pak',
+        },
+        {
+            label: 'Warranty',
+            value: 0,
+            caption:
+                warrantyItems?.length > 0
+                    ? `${warrantyItems.map((w: any) => `${Math.round(w.days / 365)}Y / ${w.km.toLocaleString()}K`).join(' + ')}`
+                    : 'Manufacturer Standard',
         },
         ...(otherCharges > 0 ? [{ label: 'Other Charges', value: otherCharges, caption: 'Handling & Fees' }] : []),
 

@@ -678,7 +678,7 @@ export default function NewRequisitionModal({ isOpen, onClose, onSuccess, tenant
                                     <div className="rounded-3xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/30 p-5 space-y-4">
                                         <div className="flex items-center justify-between">
                                             <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                                                Optional Accessories
+                                                Accessories
                                             </p>
                                             <span className="text-[10px] font-black text-indigo-500 uppercase tracking-wider">
                                                 {formatCurrency(selectedAccessoryAmount)}

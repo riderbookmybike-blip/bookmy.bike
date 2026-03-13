@@ -100,7 +100,7 @@ export function useSystemPDPLogic({
     const activeServices = initialServices.length > 0 ? initialServices : [];
 
     const defaultSelectedAccessoryIds = activeAccessories
-        .filter(a => a.isMandatory || Number(a.discountPrice ?? a.price ?? 0) === 0)
+        .filter(a => Number(a.discountPrice ?? a.price ?? 0) === 0)
         .map(a => a.id);
     const [selectedAccessories, setSelectedAccessories] = useState<string[]>(defaultSelectedAccessoryIds);
     const normalizeInsuranceAddonId = (value: any) => {
@@ -180,7 +180,7 @@ export function useSystemPDPLogic({
             // If we have no valid IDs or all current IDs are from a previous set, reset to mandatory defaults
             if (currentValidIds.length === 0) {
                 const defaults = initialAccessories
-                    .filter(a => a.isMandatory || Number(a.discountPrice ?? a.price ?? 0) === 0)
+                    .filter(a => Number(a.discountPrice ?? a.price ?? 0) === 0)
                     .map(a => a.id);
                 if (defaults.length > 0) {
                     setSelectedAccessories(defaults);

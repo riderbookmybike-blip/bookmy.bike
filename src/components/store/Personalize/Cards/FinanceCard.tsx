@@ -157,9 +157,7 @@ export default function FinanceCard({
                                 ${
                                     isSelected
                                         ? 'bg-brand-primary/10 border-brand-primary shadow-[0_4px_15px_rgba(255,215,0,0.1)]'
-                                        : idx % 2 === 0
-                                          ? 'bg-slate-50/80 border-transparent hover:bg-slate-100'
-                                          : 'bg-white border-transparent hover:bg-slate-50'
+                                        : 'bg-transparent border-transparent hover:bg-slate-50/50'
                                 }`}
                             >
                                 <span
