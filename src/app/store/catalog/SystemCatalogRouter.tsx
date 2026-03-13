@@ -20,13 +20,31 @@ interface SystemCatalogRouterProps {
     initialDevice?: 'phone' | 'desktop' | 'tv';
 }
 
+function getDisplayPrice(item: ProductVariant): number {
+    const onRoad = Number(item.price?.onRoad);
+    if (Number.isFinite(onRoad) && onRoad > 0) return onRoad;
+    return Number.POSITIVE_INFINITY;
+}
+
+function selectLowestVariantPerModel(items: ProductVariant[]): ProductVariant[] {
+    const byModel = new Map<string, ProductVariant>();
+    for (const item of items) {
+        const key = `${String(item.make || '').toLowerCase()}::${String(item.model || '').toLowerCase()}`;
+        const current = byModel.get(key);
+        if (!current || getDisplayPrice(item) < getDisplayPrice(current)) {
+            byModel.set(key, item);
+        }
+    }
+    return Array.from(byModel.values());
+}
+
 function SmartCatalogRouter({ initialItems, basePath = '/store' }: SystemCatalogRouterProps) {
     const searchParams = useSearchParams();
     const leadId = searchParams.get('leadId');
     const { items: clientItems, isLoading: isClientLoading } = useSystemCatalogLogic(leadId || undefined, {
         allowStateOnly: true,
     });
-    const currentItems = clientItems.length > 0 ? clientItems : initialItems;
+    const currentItems = selectLowestVariantPerModel(clientItems.length > 0 ? clientItems : initialItems);
     const loading = isClientLoading && currentItems.length === 0;
     const filters = useCatalogFilters(currentItems);
 
@@ -50,7 +68,7 @@ function DefaultCatalogRouter({ initialItems, basePath = '/store' }: SystemCatal
         isLoading: isClientLoading,
         needsLocation,
     } = useSystemCatalogLogic(leadId || undefined, { allowStateOnly: true });
-    const currentItems = clientItems.length > 0 ? clientItems : initialItems;
+    const currentItems = selectLowestVariantPerModel(clientItems.length > 0 ? clientItems : initialItems);
     const loading = isClientLoading && currentItems.length === 0;
     const filters = useCatalogFilters(currentItems);
 
