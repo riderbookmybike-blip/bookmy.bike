@@ -94,9 +94,9 @@ interface ServerPricing {
     success: boolean;
     ex_showroom: number;
     rto: {
-        STATE: number;
-        BH: number | null;
-        COMPANY: number | null;
+        STATE: any;
+        BH: any;
+        COMPANY: any;
         default: string;
     };
     insurance: {
@@ -336,8 +336,23 @@ export function useSystemDealerContext({
                             on_road_price,
                             rto_default_type,
                             rto_total_state,
+                            rto_registration_fee_state,
+                            rto_smartcard_charges_state,
+                            rto_postal_charges_state,
+                            rto_roadtax_amount_state,
+                            rto_roadtax_cess_amount_state,
                             rto_total_bh,
+                            rto_registration_fee_bh,
+                            rto_smartcard_charges_bh,
+                            rto_postal_charges_bh,
+                            rto_roadtax_amount_bh,
+                            rto_roadtax_cess_amount_bh,
                             rto_total_company,
+                            rto_registration_fee_company,
+                            rto_smartcard_charges_company,
+                            rto_postal_charges_company,
+                            rto_roadtax_amount_company,
+                            rto_roadtax_cess_amount_company,
                             ins_gst_rate,
                             ins_sum_mandatory_insurance,
                             ins_sum_mandatory_insurance_gst_amount,
@@ -385,8 +400,23 @@ export function useSystemDealerContext({
                             on_road_price,
                             rto_default_type,
                             rto_total_state,
+                            rto_registration_fee_state,
+                            rto_smartcard_charges_state,
+                            rto_postal_charges_state,
+                            rto_roadtax_amount_state,
+                            rto_roadtax_cess_amount_state,
                             rto_total_bh,
+                            rto_registration_fee_bh,
+                            rto_smartcard_charges_bh,
+                            rto_postal_charges_bh,
+                            rto_roadtax_amount_bh,
+                            rto_roadtax_cess_amount_bh,
                             rto_total_company,
+                            rto_registration_fee_company,
+                            rto_smartcard_charges_company,
+                            rto_postal_charges_company,
+                            rto_roadtax_amount_company,
+                            rto_roadtax_cess_amount_company,
                             ins_gst_rate,
                             ins_sum_mandatory_insurance,
                             ins_sum_mandatory_insurance_gst_amount,
@@ -431,9 +461,30 @@ export function useSystemDealerContext({
                                 success: true,
                                 ex_showroom: Number(priceRow.ex_showroom),
                                 rto: {
-                                    STATE: Number(priceRow.rto_total_state || 0),
-                                    BH: Number(priceRow.rto_total_bh || 0),
-                                    COMPANY: Number(priceRow.rto_total_company || 0),
+                                    STATE: {
+                                        total: Number((priceRow as any).rto_total_state || 0),
+                                        roadTax: Number((priceRow as any).rto_roadtax_amount_state || 0),
+                                        registrationFee: Number((priceRow as any).rto_registration_fee_state || 0),
+                                        smartCardCharges: Number((priceRow as any).rto_smartcard_charges_state || 0),
+                                        postalCharges: Number((priceRow as any).rto_postal_charges_state || 0),
+                                        cessAmount: Number((priceRow as any).rto_roadtax_cess_amount_state || 0),
+                                    },
+                                    BH: {
+                                        total: Number((priceRow as any).rto_total_bh || 0),
+                                        roadTax: Number((priceRow as any).rto_roadtax_amount_bh || 0),
+                                        registrationFee: Number((priceRow as any).rto_registration_fee_bh || 0),
+                                        smartCardCharges: Number((priceRow as any).rto_smartcard_charges_bh || 0),
+                                        postalCharges: Number((priceRow as any).rto_postal_charges_bh || 0),
+                                        cessAmount: Number((priceRow as any).rto_roadtax_cess_amount_bh || 0),
+                                    },
+                                    COMPANY: {
+                                        total: Number((priceRow as any).rto_total_company || 0),
+                                        roadTax: Number((priceRow as any).rto_roadtax_amount_company || 0),
+                                        registrationFee: Number((priceRow as any).rto_registration_fee_company || 0),
+                                        smartCardCharges: Number((priceRow as any).rto_smartcard_charges_company || 0),
+                                        postalCharges: Number((priceRow as any).rto_postal_charges_company || 0),
+                                        cessAmount: Number((priceRow as any).rto_roadtax_cess_amount_company || 0),
+                                    },
                                     default: priceRow.rto_default_type || 'STATE',
                                 },
                                 insurance: {
@@ -730,7 +781,9 @@ export function useSystemDealerContext({
                 // Add in final_on_road calculation
                 finalPricing.final_on_road =
                     (finalPricing.ex_showroom || 0) +
-                    (finalPricing.rto?.STATE || 0) +
+                    (typeof finalPricing.rto?.STATE === 'object'
+                        ? Number(finalPricing.rto.STATE.total || 0)
+                        : Number(finalPricing.rto?.STATE || 0)) +
                     (finalPricing.insurance?.base_total || 0) +
                     winningOfferAmount;
 
