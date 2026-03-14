@@ -1569,7 +1569,7 @@ export const DesktopCatalog = ({
                                             leadId={leadId}
                                             walletCoins={isLoggedIn ? availableCoins : null}
                                             showOClubPrompt={!isLoggedIn}
-                                            showBcoinBadge={isLoggedIn || isTv}
+                                            showBcoinBadge={true}
                                             variantCount={group.variantCount}
                                             onExplore={() => {
                                                 const url =

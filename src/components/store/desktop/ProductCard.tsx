@@ -7,7 +7,6 @@ import {
     MapPin,
     Bluetooth,
     ArrowRight,
-    Layers,
     Sparkles,
     Zap,
     CircleHelp,
@@ -51,7 +50,6 @@ export const ProductCard = ({
     isPdp = false, // Hide "Know More" on PDP
     walletCoins,
     showOClubPrompt,
-    showBcoinBadge = true,
     variantCount,
     onExplore,
     onCompare,
@@ -598,18 +596,6 @@ export const ProductCard = ({
                             </p>
                         </div>
                         <div className="flex items-center gap-2">
-                            {onExplore && (
-                                <button
-                                    onClick={e => {
-                                        e.stopPropagation();
-                                        handleExploreClick(e);
-                                    }}
-                                    className="w-12 h-12 border border-slate-200 rounded-full flex items-center justify-center transition-all shadow-sm text-slate-400 hover:text-brand-primary bg-white"
-                                    title="Show all variants of this model"
-                                >
-                                    <Layers size={18} />
-                                </button>
-                            )}
                             <button
                                 onClick={() =>
                                     toggleFavorite({
@@ -726,14 +712,12 @@ export const ProductCard = ({
                                             <p className="text-sm font-black text-slate-500 uppercase leading-none">
                                                 {emiValue !== null ? `x${activeTenure}` : 'Finance unavailable'}
                                             </p>
-                                            {showBcoinBadge && (
-                                                <div className="flex items-center gap-1">
-                                                    <Logo variant="icon" size={10} />
-                                                    <span className="text-[10px] font-black text-brand-primary italic">
-                                                        {bcoinTotal.toLocaleString('en-IN')}
-                                                    </span>
-                                                </div>
-                                            )}
+                                            <div className="flex items-center gap-1">
+                                                <Logo variant="icon" size={10} />
+                                                <span className="text-[10px] font-black text-brand-primary italic">
+                                                    {bcoinTotal.toLocaleString('en-IN')}
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -922,18 +906,6 @@ export const ProductCard = ({
                     <div
                         className={`absolute ${isTv ? 'top-2 right-2 gap-1' : 'top-4 right-4 gap-2'} z-20 flex flex-col`}
                     >
-                        {onExplore && (
-                            <button
-                                onClick={e => {
-                                    e.stopPropagation();
-                                    handleExploreClick(e);
-                                }}
-                                className={`${isTv ? 'w-5 h-5' : 'w-8 h-8'} rounded-full bg-white/80 border border-slate-200 text-slate-400 hover:text-brand-primary flex items-center justify-center shadow-[0_4px_14px_rgba(0,0,0,0.08)] transition-all hover:scale-105`}
-                                title="Show all variants of this model"
-                            >
-                                <Layers size={isTv ? 10 : 14} />
-                            </button>
-                        )}
                         {onCompare && (
                             <button
                                 onClick={e => {
@@ -1257,20 +1229,16 @@ export const ProductCard = ({
                                                 >
                                                     ₹{formatRoundedPrice(downpayment || 0)}
                                                 </span>
-                                                {showBcoinBadge && (
-                                                    <div className="flex items-center gap-1 mt-1">
-                                                        <Logo variant="icon" size={10} />
-                                                        <span
-                                                            className="text-[9px] font-bold italic uppercase tracking-wider leading-none"
-                                                            style={{ color: finSubText }}
-                                                        >
-                                                            {coinsNeededForPrice(downpayment || 0).toLocaleString(
-                                                                'en-IN'
-                                                            )}{' '}
-                                                            COINS
-                                                        </span>
-                                                    </div>
-                                                )}
+                                                <div className="flex items-center gap-1 mt-1">
+                                                    <Logo variant="icon" size={10} />
+                                                    <span
+                                                        className="text-[9px] font-bold italic uppercase tracking-wider leading-none"
+                                                        style={{ color: finSubText }}
+                                                    >
+                                                        {coinsNeededForPrice(downpayment || 0).toLocaleString('en-IN')}{' '}
+                                                        COINS
+                                                    </span>
+                                                </div>
                                             </button>
 
                                             {/* Divider */}
@@ -1439,19 +1407,17 @@ export const ProductCard = ({
                                                 </p>
 
                                                 <div className="flex flex-col items-end gap-0.5">
-                                                    {showBcoinBadge && (
-                                                        <div className="flex items-center gap-2">
-                                                            <Logo variant="icon" size={16} />
-                                                            <span
-                                                                className="text-[24px] md:text-[28px] font-black italic leading-none"
-                                                                style={{ color: cashPrimaryText }}
-                                                            >
-                                                                {coinsNeededForPrice(
-                                                                    effectiveOfferPrice
-                                                                ).toLocaleString('en-IN')}
-                                                            </span>
-                                                        </div>
-                                                    )}
+                                                    <div className="flex items-center gap-2">
+                                                        <Logo variant="icon" size={16} />
+                                                        <span
+                                                            className="text-[24px] md:text-[28px] font-black italic leading-none"
+                                                            style={{ color: cashPrimaryText }}
+                                                        >
+                                                            {coinsNeededForPrice(effectiveOfferPrice).toLocaleString(
+                                                                'en-IN'
+                                                            )}
+                                                        </span>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
