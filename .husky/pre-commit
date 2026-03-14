@@ -1,1 +1,3 @@
+scripts/verify-agent-role.sh
+scripts/verify-agent-locks.sh
 npx lint-staged

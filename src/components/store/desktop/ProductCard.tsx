@@ -59,6 +59,7 @@ export const ProductCard = ({
     onTogglePricingMode,
     offerMode: propOfferMode,
     onOfferModeChange: propOnOfferModeChange,
+    locationLabel,
     ...props
 }: {
     v: ProductVariant;
@@ -111,6 +112,8 @@ export const ProductCard = ({
     onTogglePricingMode?: () => void;
     offerMode?: 'BEST_OFFER' | 'FAST_DELIVERY';
     onOfferModeChange?: (mode: 'BEST_OFFER' | 'FAST_DELIVERY') => void;
+    /** Taluka/state label shown below on-road price. SSR default: 'Maharashtra'. After location: taluka name. */
+    locationLabel?: string;
 }) => {
     const { isFavorite, toggleFavorite } = useFavorites();
     const { trackEvent } = useAnalytics();

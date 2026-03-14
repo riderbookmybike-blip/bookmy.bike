@@ -331,6 +331,16 @@ export const DesktopCatalog = ({
     }>({ status: 'loading' });
 
     const [isLocationPickerOpen, setIsLocationPickerOpen] = useState(false);
+    const [showNotServingModal, setShowNotServingModal] = useState(false);
+    const notServingShownRef = React.useRef(false);
+
+    // Trigger non-served modal once when serviceability resolves to unserviceable
+    useEffect(() => {
+        if (serviceability.status === 'unserviceable' && !notServingShownRef.current) {
+            notServingShownRef.current = true;
+            setShowNotServingModal(true);
+        }
+    }, [serviceability.status]);
 
     useEffect(() => {
         const checkCurrentServiceability = async () => {
@@ -1182,6 +1192,56 @@ export const DesktopCatalog = ({
                         >
                             <MapPin size={16} />
                             Set Location
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Non-Served State Modal — dismissable, user can still browse */}
+            {showNotServingModal && (
+                <div className="fixed inset-0 z-[199] flex items-center justify-center">
+                    <div
+                        className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+                        onClick={() => setShowNotServingModal(false)}
+                    />
+                    <div className="relative z-10 w-full max-w-sm mx-4 rounded-3xl border border-slate-100 bg-white shadow-2xl p-8 text-center space-y-5">
+                        {/* Close */}
+                        <button
+                            onClick={() => setShowNotServingModal(false)}
+                            className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all"
+                            aria-label="Close"
+                        >
+                            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                                <path
+                                    d="M1 1l12 12M13 1L1 13"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                />
+                            </svg>
+                        </button>
+                        {/* Icon */}
+                        <div className="mx-auto w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center">
+                            <MapPin size={26} className="text-slate-400" />
+                        </div>
+                        <div className="space-y-2">
+                            <h2 className="text-lg font-black uppercase tracking-wide text-slate-900">
+                                {serviceability.location
+                                    ? `${serviceability.location} mein abhi nahi`
+                                    : 'Abhi yahan seva nahi'}
+                            </h2>
+                            <p className="text-sm text-slate-500 leading-relaxed">
+                                Hum filhaal is area mein service nahi karte.{' '}
+                                <span className="font-semibold text-slate-700">
+                                    Aap catalog explore karein aur vehicles compare karein.
+                                </span>
+                            </p>
+                        </div>
+                        <button
+                            onClick={() => setShowNotServingModal(false)}
+                            className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-900 px-6 py-3.5 text-sm font-black text-white uppercase tracking-widest hover:bg-slate-700 transition-all"
+                        >
+                            Explore Catalog
                         </button>
                     </div>
                 </div>
