@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
-import { buildProductUrl } from '@/lib/utils/urlHelper';
+import { buildProductUrl, buildVariantExplorerUrl } from '@/lib/utils/urlHelper';
 import { slugify } from '@/utils/slugs';
 import { getStableReviewCount } from '@/utils/vehicleUtils';
 import type { ProductVariant } from '@/types/productMaster';
@@ -805,18 +805,20 @@ export const ProductCard = ({
                                 ) : (
                                     <Link
                                         href={
-                                            buildProductUrl({
-                                                make: v.make,
-                                                model: v.model,
-                                                variant: v.variant,
-                                                color: v.availableColors?.[0]?.name
-                                                    ? slugify(v.availableColors?.[0]?.name)
-                                                    : undefined,
-                                                studio: studioIdLabel || undefined,
-                                                district: navigableDistrict,
-                                                leadId: leadId,
-                                                basePath,
-                                            }).url
+                                            variantCount && variantCount > 1
+                                                ? buildVariantExplorerUrl(v.make, v.model)
+                                                : buildProductUrl({
+                                                      make: v.make,
+                                                      model: v.model,
+                                                      variant: v.variant,
+                                                      color: v.availableColors?.[0]?.name
+                                                          ? slugify(v.availableColors?.[0]?.name)
+                                                          : undefined,
+                                                      studio: studioIdLabel || undefined,
+                                                      district: navigableDistrict,
+                                                      leadId: leadId,
+                                                      basePath,
+                                                  }).url
                                         }
                                         onClick={() =>
                                             trackEvent('INTENT_SIGNAL', 'catalog_vehicle_click', {
@@ -831,7 +833,9 @@ export const ProductCard = ({
                                         className="relative overflow-hidden px-10 py-4 bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-[0_0_20px_rgba(244,176,0,0.3)] hover:shadow-[0_0_30px_rgba(244,176,0,0.5)] hover:-translate-y-1 transition-all"
                                     >
                                         <div aria-hidden className="shimmer-bar" />
-                                        <span className="relative z-10">Know More</span>
+                                        <span className="relative z-10">
+                                            {variantCount && variantCount > 1 ? 'Know More' : 'Check Offer'}
+                                        </span>
                                     </Link>
                                 )}
                             </div>
@@ -1512,7 +1516,7 @@ export const ProductCard = ({
                                         transition={{ duration: 2.2, repeat: Infinity, ease: 'linear' }}
                                     />
                                     <span className="relative z-10">
-                                        {isNavigating || isPending ? 'Opening...' : 'Know More'}
+                                        {isNavigating || isPending ? 'Opening...' : 'Check Offer'}
                                     </span>
                                     <ArrowRight
                                         size={12}

@@ -1572,15 +1572,18 @@ export const DesktopCatalog = ({
                                             showBcoinBadge={isLoggedIn || isTv}
                                             variantCount={group.variantCount}
                                             onExplore={() => {
-                                                const url = buildProductUrl({
-                                                    make: group.make,
-                                                    model: group.model,
-                                                    variant: dv.variant,
-                                                    studio: dv.studioCode || undefined,
-                                                    district: dv.dealerLocation || undefined,
-                                                    leadId: leadId,
-                                                    basePath,
-                                                }).url;
+                                                const url =
+                                                    group.variantCount > 1
+                                                        ? buildVariantExplorerUrl(group.make, group.model)
+                                                        : buildProductUrl({
+                                                              make: group.make,
+                                                              model: group.model,
+                                                              variant: dv.variant,
+                                                              studio: dv.studioCode || undefined,
+                                                              district: dv.dealerLocation || undefined,
+                                                              leadId: leadId,
+                                                              basePath,
+                                                          }).url;
                                                 router.push(url);
                                             }}
                                             onCompare={() =>
