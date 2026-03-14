@@ -91,41 +91,47 @@ export default function PricingCard({
             {/* Redundant top grid removed - Info now integrated into priceBreakup items */}
 
             {/* Price Breakup — stretched to fill content area */}
-            <div className="flex-1 flex flex-col justify-evenly">
+            <div className="flex-1 flex flex-col justify-between overflow-hidden">
                 {priceBreakup
                     .filter(i => !i.isTotal)
                     .map((item, idx) =>
                         item.isSpacer ? (
-                            <div key={idx} className="h-2 border-b border-slate-100/50 my-1" />
+                            <div key={idx} className="h-px border-b border-slate-100/50 my-1" />
                         ) : (
                             <div
                                 key={idx}
-                                className="group/item relative py-1 px-1 -mx-1 rounded-xl hover:bg-slate-50/50 transition-all first:pt-0 last:pb-0"
+                                className={`group/item relative py-1 px-1 -mx-1 rounded-xl hover:bg-slate-50/50 transition-all ${
+                                    (item as any).isGrossTotal
+                                        ? 'mt-1 pt-2 border-t border-slate-200 hover:bg-amber-50/30'
+                                        : ''
+                                }`}
                             >
-                                <div className="flex justify-between items-baseline gap-4">
+                                <div className="flex justify-between items-baseline gap-3">
                                     <div className="flex flex-col gap-0.5">
-                                        <span className="text-[10px] font-black uppercase tracking-[0.1em] text-slate-500 group-hover/item:text-brand-primary transition-colors">
+                                        <span className="text-[10px] font-black uppercase tracking-[0.08em] text-slate-500 group-hover/item:text-brand-primary transition-colors leading-tight">
                                             {item.label}
                                         </span>
                                         {item.caption && (
-                                            <span className="text-[9px] font-medium text-slate-400 leading-none">
+                                            <span className="text-[8.5px] font-medium text-slate-400 leading-none">
                                                 {item.caption}
                                             </span>
                                         )}
                                     </div>
                                     <span
                                         className={`text-[11px] font-mono font-black tabular-nums transition-all ${
-                                            item.isDeduction
-                                                ? 'text-emerald-600'
-                                                : item.isInfo
-                                                  ? 'text-slate-600'
-                                                  : 'text-slate-900 group-hover/item:text-brand-primary'
+                                            (item as any).isGrossTotal
+                                                ? 'text-slate-800'
+                                                : item.isDeduction
+                                                  ? 'text-emerald-600'
+                                                  : item.isInfo
+                                                    ? 'text-slate-600'
+                                                    : 'text-slate-900 group-hover/item:text-brand-primary'
                                         }`}
                                     >
                                         {item.isDeduction ? '-' : ''}
                                         {item.isInfo ? '' : '₹'}
                                         {typeof item.value === 'number'
-                                            ? Math.abs(item.value).toLocaleString()
+                                            ? Math.abs(item.value).toLocaleString('en-IN')
                                             : item.value}
                                     </span>
                                 </div>

@@ -20,7 +20,9 @@ interface UseDealerContextProps {
     retrySignal?: number;
 }
 
-const DEALER_FETCH_TIMEOUT_MS = 3000;
+const DEALER_FETCH_TIMEOUT_MS = Number(process.env.NEXT_PUBLIC_DEALER_FETCH_TIMEOUT_MS || 8000);
+const DEALER_FETCH_MAX_RETRIES = Number(process.env.NEXT_PUBLIC_DEALER_FETCH_MAX_RETRIES || 2);
+const DEALER_FETCH_RETRY_BASE_DELAY_MS = Number(process.env.NEXT_PUBLIC_DEALER_FETCH_RETRY_DELAY_MS || 350);
 
 class DealerFetchTimeoutError extends Error {
     code = 'DEALER_FETCH_TIMEOUT';
@@ -38,6 +40,120 @@ const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T> => {
     return Promise.race([promise, timeout]).finally(() => {
         if (timer) clearTimeout(timer);
     });
+};
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+const isTransientDealerFetchError = (err: unknown): boolean => {
+    const code = String((err as any)?.code || '').toUpperCase();
+    const msg = String((err as any)?.message || '').toUpperCase();
+    return (
+        code === 'DEALER_FETCH_TIMEOUT' ||
+        msg.includes('DEALER_FETCH_TIMEOUT') ||
+        msg.includes('FETCH FAILED') ||
+        msg.includes('CONNECT TIMEOUT') ||
+        msg.includes('NETWORK')
+    );
+};
+
+const fetchMarketBestOffersWithRetry = async (
+    supabase: any,
+    params: { p_user_lat: number; p_user_lng: number; p_state_code: string; p_radius_km: number }
+): Promise<any[]> => {
+    let lastErr: unknown = null;
+
+    for (let attempt = 0; attempt <= DEALER_FETCH_MAX_RETRIES; attempt += 1) {
+        try {
+            const { data, error } = (await withTimeout(
+                supabase.rpc('get_market_best_offers', params),
+                DEALER_FETCH_TIMEOUT_MS
+            )) as { data: any[] | null; error: any };
+
+            if (error) throw error;
+            return Array.isArray(data) ? data : [];
+        } catch (err) {
+            lastErr = err;
+            if (attempt === DEALER_FETCH_MAX_RETRIES || !isTransientDealerFetchError(err)) {
+                throw err;
+            }
+            const backoffMs = DEALER_FETCH_RETRY_BASE_DELAY_MS * Math.pow(2, attempt);
+            await sleep(backoffMs);
+        }
+    }
+
+    if (lastErr) throw lastErr;
+    return [];
+};
+
+const fetchFallbackOffersFromTables = async (input: {
+    supabase: any;
+    skuIds: string[];
+    stateCode: string;
+    userLat: number;
+    userLng: number;
+    radiusKm: number;
+}): Promise<any[]> => {
+    const { supabase, skuIds, stateCode, userLat, userLng, radiusKm } = input;
+    if (!skuIds.length) return [];
+
+    const { data: rules, error: rulesError } = await supabase
+        .from('cat_price_dealer')
+        .select('tenant_id, vehicle_color_id, offer_amount, tat_days, tat_effective_hours')
+        .in('vehicle_color_id', skuIds)
+        .eq('state_code', stateCode)
+        .eq('is_active', true);
+
+    if (rulesError || !rules?.length) return [];
+
+    const dealerIds = Array.from(new Set(rules.map((r: any) => String(r.tenant_id || '')).filter(Boolean)));
+    if (!dealerIds.length) return [];
+
+    const [{ data: locations }, { data: dealers }] = await Promise.all([
+        supabase.from('id_locations').select('tenant_id, lat, lng').in('tenant_id', dealerIds).eq('is_active', true),
+        supabase.from('id_tenants').select('id, name, studio_id, location').in('id', dealerIds),
+    ]);
+
+    const locByDealer = new Map<string, { lat: number; lng: number }>();
+    (locations || []).forEach((row: any) => {
+        const lat = Number(row?.lat);
+        const lng = Number(row?.lng);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+        locByDealer.set(String(row.tenant_id), { lat, lng });
+    });
+
+    const dealerMeta = new Map<string, any>();
+    (dealers || []).forEach((d: any) => dealerMeta.set(String(d.id), d));
+
+    const offers: any[] = [];
+    for (const r of rules || []) {
+        const dealerId = String((r as any)?.tenant_id || '');
+        if (!dealerId) continue;
+        const loc = locByDealer.get(dealerId);
+        if (!loc) continue;
+        const distanceKm = calculateDistance(userLat, userLng, loc.lat, loc.lng);
+        if (!Number.isFinite(distanceKm) || distanceKm > radiusKm) continue;
+
+        const dealer = dealerMeta.get(dealerId);
+        offers.push({
+            vehicle_color_id: (r as any).vehicle_color_id,
+            dealer_id: dealerId,
+            dealer_name: dealer?.name || 'Dealer',
+            studio_id: dealer?.studio_id || null,
+            district: dealer?.location || null,
+            is_serviceable: true,
+            offer_amount: Number((r as any).offer_amount || 0),
+            best_offer: Number((r as any).offer_amount || 0),
+            bundle_ids: [],
+            bundle_value: 0,
+            bundle_price: 0,
+            tat_effective_hours: (r as any).tat_effective_hours ?? null,
+            delivery_tat_days: (r as any).tat_days ?? null,
+            distance_km: distanceKm,
+            delivery_charge: getDeliveryChargeByDistance(distanceKm),
+        });
+    }
+
+    return offers;
 };
 
 const DEFAULT_PRICING_DEALER_TENANT_ID = process.env.NEXT_PUBLIC_DEFAULT_PRICING_DEALER_TENANT_ID || '';
@@ -60,6 +176,17 @@ const normalizeClientStateCode = (value?: string | null) => {
     if (CLIENT_STATE_MAP[key]) return CLIENT_STATE_MAP[key];
     if (/^[A-Z]{2}$/.test(key)) return key;
     return 'MH';
+};
+
+const readLatLng = (value: any): { lat: number | null; lng: number | null } => {
+    const latRaw = value?.lat ?? value?.latitude;
+    const lngRaw = value?.lng ?? value?.longitude;
+    const lat = Number(latRaw);
+    const lng = Number(lngRaw);
+    return {
+        lat: Number.isFinite(lat) ? lat : null,
+        lng: Number.isFinite(lng) ? lng : null,
+    };
 };
 
 type RankedOffer = {
@@ -215,27 +342,29 @@ export function useSystemDealerContext({
             }
 
             try {
+                const supabase = createClient();
                 setDealerFetchState('READY');
                 setDealerFetchNotice(null);
                 // 1. Resolve Location (Prop > LocalStorage)
                 let district = initialLocation?.district || initialLocation?.city;
                 let stateCode = initialLocation?.stateCode;
                 let pincode = initialLocation?.pincode;
-                let userLat: number | null = null;
-                let userLng: number | null = null;
+                // Prefer coords from initialLocation (from cookie/SSR) — already resolved from GPS or profile
+                const initialCoords = readLatLng(initialLocation);
+                let userLat: number | null = initialCoords.lat;
+                let userLng: number | null = initialCoords.lng;
 
-                if (!district || !userLat) {
+                if (!district || !Number.isFinite(userLat) || !Number.isFinite(userLng)) {
                     const cached = localStorage.getItem('bkmb_user_pincode');
                     if (cached) {
                         const parsed = JSON.parse(cached);
                         district = district || parsed?.district || parsed?.taluka || parsed?.city;
                         stateCode = stateCode || parsed?.stateCode;
                         pincode = pincode || parsed?.pincode;
-                        // Read lat/lng stored by pincode lookup
-                        if (parsed?.lat && parsed?.lng) {
-                            userLat = Number(parsed.lat);
-                            userLng = Number(parsed.lng);
-                        }
+                        // Read cached coords regardless of key naming (`lat/lng` OR `latitude/longitude`).
+                        const cachedCoords = readLatLng(parsed);
+                        userLat = cachedCoords.lat ?? userLat;
+                        userLng = cachedCoords.lng ?? userLng;
                         // Fallback for State Code if missing in cache but state name exists
                         if (!stateCode && parsed?.state?.toUpperCase?.().includes('MAHARASHTRA')) {
                             stateCode = 'MH';
@@ -243,8 +372,29 @@ export function useSystemDealerContext({
                     }
                 }
 
+                // Backfill missing coords from pincode so all logged-in users hit the same dealer-resolution path.
+                const hasUserCoords = Number.isFinite(userLat) && Number.isFinite(userLng);
+                if (!hasUserCoords && pincode) {
+                    const pin = String(pincode).trim();
+                    if (/^\d{6}$/.test(pin)) {
+                        const { data: pinRow } = await supabase
+                            .from('loc_pincodes')
+                            .select('latitude, longitude, district, state_code')
+                            .eq('pincode', pin)
+                            .maybeSingle();
+                        const pinLat = Number((pinRow as any)?.latitude);
+                        const pinLng = Number((pinRow as any)?.longitude);
+                        if (Number.isFinite(pinLat) && Number.isFinite(pinLng)) {
+                            userLat = pinLat;
+                            userLng = pinLng;
+                            district = district || (pinRow as any).district || district;
+                            stateCode = stateCode || (pinRow as any).state_code || stateCode;
+                        }
+                    }
+                }
+
                 // Gate: need lat/lng to proceed
-                if (disabled || !userLat || !userLng) {
+                if (disabled || !Number.isFinite(userLat) || !Number.isFinite(userLng)) {
                     if (!overrideDealerId) {
                         setDealerFetchState('GATED');
                         // Note: We don't return here anymore, because we still need to resolve base pricing for the SKU
@@ -259,8 +409,6 @@ export function useSystemDealerContext({
                         pincode,
                     });
                 }
-
-                const supabase = createClient();
 
                 // 2. SSPP v1: Call Server-Side Pricing RPC (Single Source of Truth!)
                 // selectedColor might be color NAME (e.g. 'pearl-igneous-black') or color ID
@@ -686,18 +834,33 @@ export function useSystemDealerContext({
                     // MARKET BEST RESOLUTION — lat/lng 200km radius, best offer
                     const activeStateCode2 = normalizeClientStateCode(stateCode);
                     if (userLat && userLng) {
-                        const { data: offers } = (await withTimeout(
-                            (supabase as any).rpc('get_market_best_offers', {
+                        let offers: any[] = [];
+                        const skuIds = (product.colors || []).map((c: any) => c.skuId).filter(Boolean);
+                        try {
+                            offers = await fetchMarketBestOffersWithRetry(supabase as any, {
                                 p_user_lat: userLat,
                                 p_user_lng: userLng,
                                 p_state_code: activeStateCode2,
                                 p_radius_km: 200,
-                            }),
-                            DEALER_FETCH_TIMEOUT_MS
-                        )) as { data: any[]; error: any };
+                            });
+                        } catch (rpcErr) {
+                            offers = await fetchFallbackOffersFromTables({
+                                supabase,
+                                skuIds,
+                                stateCode: activeStateCode2,
+                                userLat,
+                                userLng,
+                                radiusKm: 200,
+                            });
+                            if (offers.length > 0) {
+                                setDealerFetchNotice('Using fallback dealer pricing.');
+                                setDealerFetchState('READY');
+                            } else {
+                                throw rpcErr;
+                            }
+                        }
 
                         if (offers && offers.length > 0) {
-                            const skuIds = (product.colors || []).map((c: any) => c.skuId).filter(Boolean);
                             relevantOffers = offers
                                 .filter((o: any) => skuIds.includes(o.vehicle_color_id))
                                 .map((o: any) => ({
@@ -928,6 +1091,11 @@ export function useSystemDealerContext({
         product.id,
         initialLocation?.district,
         initialLocation?.stateCode,
+        // Include coords so effect re-runs when GPS resolves (rounded to 3dp to avoid float churn)
+        initialLocation?.lat != null ? Math.round(Number(initialLocation.lat) * 1000) : null,
+        initialLocation?.lng != null ? Math.round(Number(initialLocation.lng) * 1000) : null,
+        initialLocation?.latitude != null ? Math.round(Number(initialLocation.latitude) * 1000) : null,
+        initialLocation?.longitude != null ? Math.round(Number(initialLocation.longitude) * 1000) : null,
         selectedColor,
         overrideDealerId,
         disabled,

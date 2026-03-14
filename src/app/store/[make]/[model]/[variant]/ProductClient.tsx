@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { useSystemPDPLogic } from '@/hooks/SystemPDPLogic';
 import { LeadCaptureModal } from '@/components/leads/LeadCaptureModal';
@@ -21,6 +21,27 @@ import { InsuranceRule } from '@/types/insurance';
 
 const SKU_UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const MIN_DWELL_TRACKING_MS = 1500;
+
+function hasResolvedLocationSignal(value: any): boolean {
+    if (!value || typeof value !== 'object') return false;
+    const lat = Number((value as any)?.lat ?? (value as any)?.latitude);
+    const lng = Number((value as any)?.lng ?? (value as any)?.longitude);
+    if (Number.isFinite(lat) && Number.isFinite(lng)) return true;
+    const pincode = String((value as any)?.pincode || '').trim();
+    return /^\d{6}$/.test(pincode);
+}
+
+function readLocationResolvedFromCache(): boolean {
+    if (typeof window === 'undefined') return false;
+    try {
+        const cached = localStorage.getItem('bkmb_user_pincode');
+        if (!cached) return false;
+        const parsed = JSON.parse(cached);
+        return hasResolvedLocationSignal(parsed);
+    } catch {
+        return false;
+    }
+}
 
 let crmActionsPromise: Promise<typeof import('@/actions/crm')> | null = null;
 function getCrmActions() {
@@ -436,6 +457,7 @@ export default function ProductClient({
     const [showEmailModal, setShowEmailModal] = useState(false);
     const [showReferralModal, setShowReferralModal] = useState(false);
     const [dealerRetryCount, setDealerRetryCount] = useState(0);
+    const [waInFlight, setWaInFlight] = useState(false);
     const shouldForcePhoneCapture = isTeamMember;
     const pdpGateEnabled = process.env.NEXT_PUBLIC_PDP_GATE_ENABLED === 'true';
     const [cachedLocationHint, setCachedLocationHint] = useState<{ district?: string; pincode?: string } | null>(null);
@@ -455,20 +477,29 @@ export default function ProductClient({
         }
     }, []);
 
-    const hasResolvedLocation = Boolean(
-        // Require lat/lng (for 200km radius RPC) OR pincode (can be geo-resolved)
-        (() => {
-            if (typeof window === 'undefined') return false;
-            try {
-                const cached = localStorage.getItem('bkmb_user_pincode');
-                if (!cached) return false;
-                const parsed = JSON.parse(cached);
-                return Boolean(parsed?.lat && parsed?.lng) || Boolean(parsed?.pincode);
-            } catch {
-                return false;
-            }
-        })()
+    const [hasResolvedLocation, setHasResolvedLocation] = useState<boolean>(
+        () => hasResolvedLocationSignal(initialLocation) || readLocationResolvedFromCache()
     );
+
+    useEffect(() => {
+        const syncLocationState = () => {
+            setHasResolvedLocation(hasResolvedLocationSignal(initialLocation) || readLocationResolvedFromCache());
+            // Also trigger dealer hook re-run so it picks up newly resolved lat/lng from localStorage.
+            // This closes the race: StoreLayoutClient bootstraps location async → fires locationChanged
+            // → hook was already done with null coords → needs to re-run with fresh cache.
+            setDealerRetryCount(c => c + 1);
+        };
+        syncLocationState();
+
+        window.addEventListener('locationChanged', syncLocationState);
+        window.addEventListener('focus', syncLocationState);
+        window.addEventListener('storage', syncLocationState);
+        return () => {
+            window.removeEventListener('locationChanged', syncLocationState);
+            window.removeEventListener('focus', syncLocationState);
+            window.removeEventListener('storage', syncLocationState);
+        };
+    }, [initialLocation]);
     // Note: Do NOT disable when hasResolvedDealer — the hook must still run to fetch
     // the actual offer_amount via its overrideDealerId path (no lat/lng needed).
     const isDealerFetchDisabled = pdpGateEnabled ? !isLoggedIn || !hasResolvedLocation : false;
@@ -998,6 +1029,89 @@ export default function ProductClient({
         }
     };
 
+    const handleWaSend = async (recipientPhone: string) => {
+        if (waInFlight) return;
+        setWaInFlight(true);
+        try {
+            const supabase = createClient();
+            const {
+                data: { user },
+            } = await supabase.auth.getUser();
+
+            if (!user) {
+                toast.error('Login required to send WhatsApp');
+                return;
+            }
+
+            // Fetch advisor profile (full_name + primary_phone)
+            const { data: member } = await supabase
+                .from('id_members')
+                .select('full_name, primary_phone, whatsapp')
+                .eq('id', user.id)
+                .maybeSingle();
+
+            const advisorName = member?.full_name?.trim() || '';
+            const advisorRawPhone = (member?.primary_phone || member?.whatsapp || '').replace(/\D/g, '').slice(-10);
+
+            if (!advisorName) {
+                toast.error('Your profile name is required to send WhatsApp');
+                return;
+            }
+            if (advisorRawPhone.length < 10) {
+                toast.error('Your profile phone is required to send WhatsApp');
+                return;
+            }
+
+            // Build referral link: current PDP URL with color + studio params
+            const u = new URL(window.location.href);
+            if (selectedColor) u.searchParams.set('color', selectedColor);
+            u.searchParams.delete('pincode');
+            u.searchParams.delete('district');
+            if (resolvedStudioIdForUrl) {
+                u.searchParams.set('studio', String(resolvedStudioIdForUrl).toUpperCase());
+            }
+            const referralLink = u.toString();
+
+            // Offer month: "March 2026" format (en-IN locale)
+            const nowDate = new Date();
+            const offerMonth = nowDate.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+
+            const res = await fetch('/api/whatsapp/welcome', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    phone: recipientPhone,
+                    advisor_name: advisorName,
+                    advisor_mobile: advisorRawPhone,
+                    offer_month: offerMonth,
+                    referral_link: referralLink,
+                }),
+            });
+
+            const result = await res.json();
+
+            if (result?.success) {
+                if (result.message?.includes('Duplicate')) {
+                    toast.info('WhatsApp already sent recently (duplicate suppressed)');
+                } else {
+                    const reqId = typeof result?.requestId === 'string' ? result.requestId : '';
+                    toast.success(reqId ? `WhatsApp queued! Req: ${reqId.slice(0, 8)}…` : 'WhatsApp welcome sent! 🚀');
+                    if (reqId) {
+                        console.info('[WA:welcome] request_id:', reqId);
+                    }
+                }
+            } else {
+                const reqId = typeof result?.requestId === 'string' ? ` (Req: ${result.requestId.slice(0, 8)}…)` : '';
+                toast.error((result?.message || 'WhatsApp send failed') + reqId);
+            }
+        } catch (err) {
+            console.error('[WA:welcome] Error:', err);
+            toast.error('WhatsApp send failed — network error');
+        } finally {
+            setWaInFlight(false);
+        }
+    };
+
     const toggleAccessory = (id: string) => {
         const accessory: any = data.activeAccessories.find((a: any) => a.id === id);
         if (accessory?.isMandatory) return;
@@ -1052,6 +1166,7 @@ export default function ProductClient({
             : leadIdFromUrl
               ? handleConfirmQuote
               : handleBookingRequest,
+        handleWaSend,
         toggleAccessory,
         toggleInsuranceAddon,
         toggleService,
@@ -1092,6 +1207,23 @@ export default function ProductClient({
                 : dealerFetchState === 'TIMEOUT'
                   ? 'DEALER_TIMEOUT'
                   : 'READY';
+    const derivedServiceability = useMemo(() => {
+        const isServiceableFromBestOffer =
+            typeof (bestOffer as any)?.isServiceable === 'boolean' ? Boolean((bestOffer as any)?.isServiceable) : null;
+        const isServiceableFromServerPricing =
+            typeof (serverPricing as any)?.dealer?.is_serviceable === 'boolean'
+                ? Boolean((serverPricing as any)?.dealer?.is_serviceable)
+                : null;
+        const isServiceable = isServiceableFromBestOffer ?? isServiceableFromServerPricing;
+        if (isServiceable === null) return undefined;
+        return {
+            isServiceable,
+            status: 'SET',
+            pincode: resolvedLocation?.pincode || initialLocation?.pincode,
+            taluka: resolvedLocation?.taluka || resolvedLocation?.district || initialLocation?.taluka,
+        };
+    }, [bestOffer, initialLocation?.pincode, initialLocation?.taluka, resolvedLocation, serverPricing]);
+
     const commonProps = {
         product,
         makeParam,
@@ -1116,6 +1248,8 @@ export default function ProductClient({
         dealerFetchState,
         dealerFetchNotice: dealerFetchNotice || undefined,
         onRetryDealerFetch: () => setDealerRetryCount(c => c + 1),
+        onWaSend: handleWaSend,
+        serviceability: derivedServiceability,
     };
     const leadDealerMismatch = Boolean(
         leadMeta?.leadDealerId && sessionDealerId && leadMeta.leadDealerId !== sessionDealerId
@@ -1176,6 +1310,7 @@ export default function ProductClient({
                 data-dealer-fetch-notice={dealerFetchNotice || ''}
                 style={{ display: 'none' }}
             />
+            {/* ── END DEBUG BANNER (removed) ── */}
             {/* Avoid transient price mismatch while wallet context is still resolving. */}
             {walletLoading ? (
                 <PDPSkeleton />

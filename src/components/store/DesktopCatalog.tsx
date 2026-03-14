@@ -387,6 +387,17 @@ export const DesktopCatalog = ({
                 return calculateDistance(lat, lng, HUB_LOCATION.lat, HUB_LOCATION.lng) <= MAX_SERVICEABLE_DISTANCE_KM;
             };
 
+            const readLatLng = (value: any): { lat: number | null; lng: number | null } => {
+                const latRaw = value?.lat ?? value?.latitude;
+                const lngRaw = value?.lng ?? value?.longitude;
+                const lat = Number(latRaw);
+                const lng = Number(lngRaw);
+                return {
+                    lat: Number.isFinite(lat) ? lat : null,
+                    lng: Number.isFinite(lng) ? lng : null,
+                };
+            };
+
             const persistPayload = async (payload: {
                 pincode?: string;
                 taluka?: string;
@@ -540,18 +551,24 @@ export const DesktopCatalog = ({
                     console.error('[Location] Profile fetch failed:', err);
                 }
                 if (member?.pincode) {
+                    const memberCoords = readLatLng(member);
                     const payload = await applyRangeStateContext({
                         pincode: member.pincode,
                         taluka: member.taluka || '',
                         state: member.state || null,
                         stateCode: null,
-                        lat: member.latitude ?? null,
-                        lng: member.longitude ?? null,
+                        lat: memberCoords.lat,
+                        lng: memberCoords.lng,
                         manuallySet: false,
                         source: 'PROFILE',
                     });
                     if (payload) {
-                        if (!member.taluka || !member.state || !member.latitude || !member.longitude) {
+                        if (
+                            !member.taluka ||
+                            !member.state ||
+                            !Number.isFinite(memberCoords.lat) ||
+                            !Number.isFinite(memberCoords.lng)
+                        ) {
                             try {
                                 await updateSelfMemberLocation({
                                     pincode: payload.pincode || null,
@@ -570,18 +587,19 @@ export const DesktopCatalog = ({
             }
 
             if (cachedData?.pincode) {
+                const cachedCoords = readLatLng(cachedData);
                 const payload = await applyRangeStateContext({
                     pincode: cachedData.pincode,
                     taluka: cachedData.taluka || cachedData.city || '',
                     state: cachedData.state || null,
                     stateCode: cachedData.stateCode || null,
-                    lat: cachedData.lat ?? null,
-                    lng: cachedData.lng ?? null,
+                    lat: cachedCoords.lat,
+                    lng: cachedCoords.lng,
                     manuallySet: Boolean(cachedData.manuallySet),
                     source: cachedData.source || 'CACHE',
                 });
                 if (payload) {
-                    if (payload.lat && payload.lng) {
+                    if (Number.isFinite(payload.lat) && Number.isFinite(payload.lng)) {
                         updateSelfMemberLocation({
                             pincode: payload.pincode || null,
                             taluka: payload.taluka || null,

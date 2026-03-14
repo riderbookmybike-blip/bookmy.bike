@@ -212,6 +212,7 @@ export interface PriceBreakupRow {
     isSpacer?: boolean;
     isDeduction?: boolean;
     isInfo?: boolean;
+    isGrossTotal?: boolean; // Subtotal row before deductions
     helpText?: string[];
     breakdown?: { label: string; amount: number }[];
     comparisonOptions?: any;
@@ -376,6 +377,24 @@ export function buildPriceBreakup(
                     : 'Manufacturer Standard',
         },
         ...(otherCharges > 0 ? [{ label: 'Other Charges', value: otherCharges, caption: 'Handling & Fees' }] : []),
+
+        // Gross Total — subtotal before any deductions
+        {
+            label: 'Gross Total',
+            value: Math.round(
+                (baseExShowroom || 0) +
+                    (rtoEstimates || 0) +
+                    (baseInsurance || 0) +
+                    (data.insuranceAddonsPrice || 0) +
+                    (data.insuranceAddonsDiscount || 0) +
+                    (accessoriesPrice || 0) +
+                    (data.servicesPrice || 0) +
+                    (data.servicesDiscount || 0) +
+                    (otherCharges || 0)
+            ),
+            caption: 'Before Member Benefits',
+            isGrossTotal: true,
+        },
 
         // Spacer → Group 2
         { label: '', value: '', isSpacer: true },
@@ -621,12 +640,12 @@ export function buildCommandBarState(input: CommandBarStateInput): CommandBarSta
     const bCoinEquivalent = coinsNeededForPrice(displayOnRoad); // canonical: OCLUB_COIN_VALUE = 1000/13
     const bCoinDiscount = coinPricing?.discount ?? 0;
     const combinedSavings = Math.max(0, totalSavings + bCoinDiscount);
-    const strikethroughPrice = Math.max(displayOnRoad, totalOnRoad + combinedSavings);
+    const strikethroughPrice = Math.max(displayOnRoad, displayOnRoad + combinedSavings);
 
     const isShareMode = isGated;
     const isServiceabilityBlocked = serviceability?.status === 'SET' && !serviceability?.isServiceable;
     const isDisabled = !isShareMode && isServiceabilityBlocked;
-    const primaryLabel = isDisabled ? 'NOT SERVICEABLE' : isShareMode ? 'SHARE QUOTE' : 'GET QUOTE';
+    const primaryLabel = isDisabled ? 'NOT SERVICEABLE' : isShareMode ? 'SAVE QUOTE' : 'GET QUOTE';
 
     return {
         displayOnRoad,

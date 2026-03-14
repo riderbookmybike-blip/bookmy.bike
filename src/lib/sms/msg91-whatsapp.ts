@@ -1,9 +1,10 @@
 /**
  * MSG91 WhatsApp Template Utility
  *
- * Sends the dossier quote template via MSG91 WhatsApp Business API.
+ * Templates supported:
+ *   1. bike_quote_summary — 16 body vars + document header (dossier quote)
+ *   2. welcome            — 4 body vars + image header (onboarding welcome)
  *
- * Template: bike_quote_summary (16 body variables + 1 document header)
  * Integrated Number: 917447403491
  * Namespace: f197f829_dfac_4dd3_8188_81021b01b37b
  *
@@ -12,6 +13,9 @@
  *   MSG91_WA_INTEGRATED_NUMBER   — WhatsApp number (default: 917447403491)
  *   MSG91_WA_TEMPLATE_NAME       — template name (default: bike_quote_summary)
  *   MSG91_WA_NAMESPACE           — template namespace (default: f197f829_dfac_4dd3_8188_81021b01b37b)
+ *
+ * welcome template ENV (optional overrides — defaults match above):
+ *   MSG91_WA_WELCOME_TEMPLATE    — welcome template name (default: welcome)
  */
 
 const WA_API_URL = 'https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/';
@@ -110,7 +114,9 @@ export async function sendQuoteDossierWhatsApp(
     }
 
     // MSG91 WhatsApp Template API payload (from curl)
-    const payload = {
+    const buildPayload = (
+        componentPayload: Record<string, { type: string; value: string; parameter_name?: string }>
+    ) => ({
         integrated_number: integratedNumber,
         content_type: 'template',
         payload: {
@@ -126,12 +132,12 @@ export async function sendQuoteDossierWhatsApp(
                 to_and_components: [
                     {
                         to: [mobile],
-                        components,
+                        components: componentPayload,
                     },
                 ],
             },
         },
-    };
+    });
 
     try {
         console.log('[WhatsApp] Sending dossier template →', {
@@ -158,7 +164,7 @@ export async function sendQuoteDossierWhatsApp(
             // non-JSON response
         }
 
-        if (res.ok && (resData?.type === 'success' || resData?.status === 'success' || res.status === 200)) {
+        if (res.ok && (resData?.type === 'success' || resData?.status === 'success')) {
             console.log(`[WhatsApp] Dossier template sent to ${mobile}`);
             return { success: true };
         }
@@ -170,6 +176,238 @@ export async function sendQuoteDossierWhatsApp(
         return { success: false, message: resData?.message || 'WhatsApp send failed' };
     } catch (error) {
         console.error('[WhatsApp] Network error:', error);
+        return { success: false, message: 'WhatsApp network error' };
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Welcome Template Sender
+// Template: `welcome`
+// Body vars (4):
+//   body_1 — advisor_name
+//   body_2 — advisor_mobile (10-digit, normalized)
+//   body_3 — offer_month  (e.g. "March 2026")
+//   body_4 — referral_link
+// Header: image (pre-configured in MSG91 template — no dynamic override)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const DEFAULT_WELCOME_TEMPLATE = 'welcome';
+const WA_WELCOME_DEDUPE_WINDOW_MS = 60_000;
+const recentWelcomeRequests = new Map<string, number>();
+
+export interface WelcomeWhatsAppData {
+    /** Recipient 10-digit phone (will be normalized to 91XXXXXXXXXX) */
+    phone: string;
+    /** Signed-in advisor full name (body_1) */
+    advisor_name: string;
+    /** Signed-in advisor phone 10-digit (body_2) */
+    advisor_mobile: string;
+    /** Current offer month in "MMMM YYYY" format, e.g. "March 2026" (body_3) */
+    offer_month: string;
+    /** PDP referral/share link for this user (body_4) */
+    referral_link: string;
+    /** Optional media URL for template image header component */
+    header_image_url?: string;
+}
+
+export interface WelcomeSendResult {
+    success: boolean;
+    message?: string;
+    requestId?: string;
+    providerStatus?: string;
+    providerMessage?: string;
+}
+
+export async function sendWelcomeTemplateWhatsApp(data: WelcomeWhatsAppData): Promise<WelcomeSendResult> {
+    const authKey = process.env.MSG91_AUTH_KEY;
+    const integratedNumber = process.env.MSG91_WA_INTEGRATED_NUMBER || DEFAULT_INTEGRATED_NUMBER;
+    const templateName = process.env.MSG91_WA_WELCOME_TEMPLATE || DEFAULT_WELCOME_TEMPLATE;
+    const namespace = process.env.MSG91_WA_NAMESPACE || DEFAULT_NAMESPACE;
+    const headerImageFromEnv = process.env.MSG91_WA_WELCOME_HEADER_IMAGE_URL;
+
+    if (!authKey) {
+        console.warn('[WhatsApp:welcome] MSG91_AUTH_KEY not configured. Skipping.');
+        return { success: false, message: 'WhatsApp service not configured' };
+    }
+
+    // Guard: required business variables
+    if (!data.advisor_name?.trim()) {
+        return { success: false, message: 'Advisor name missing — cannot send welcome' };
+    }
+    if (!data.advisor_mobile?.trim()) {
+        return { success: false, message: 'Advisor mobile missing — cannot send welcome' };
+    }
+    if (!data.offer_month?.trim()) {
+        return { success: false, message: 'Offer month missing — cannot send welcome' };
+    }
+    if (!data.referral_link?.trim()) {
+        return { success: false, message: 'Referral link missing — cannot send welcome' };
+    }
+
+    // Normalize recipient phone → 91XXXXXXXXXX
+    const digits = data.phone.replace(/\D/g, '');
+    const tenDigit = digits.slice(-10);
+    if (tenDigit.length < 10) {
+        console.warn('[WhatsApp:welcome] Invalid phone:', data.phone);
+        return { success: false, message: 'Invalid phone — must be 10 digits' };
+    }
+    const mobile = `91${tenDigit}`;
+
+    // Normalize advisor mobile: keep last 10 digits
+    const advisorDigits = data.advisor_mobile.replace(/\D/g, '');
+    const advisorMobileClean = advisorDigits.slice(-10);
+
+    // 60-second deduplicate guard per recipient
+    const dedupeKey = `wa:welcome:${mobile}`;
+    const now = Date.now();
+    for (const [key, ts] of recentWelcomeRequests) {
+        if (now - ts > WA_WELCOME_DEDUPE_WINDOW_MS * 2) recentWelcomeRequests.delete(key);
+    }
+    const lastSentAt = recentWelcomeRequests.get(dedupeKey);
+    if (lastSentAt && now - lastSentAt < WA_WELCOME_DEDUPE_WINDOW_MS) {
+        console.warn(`[WhatsApp:welcome] Duplicate suppressed for ${mobile}`);
+        return { success: true, message: 'Duplicate WhatsApp suppressed', providerStatus: 'suppressed' };
+    }
+    const components: Record<string, { type: string; value: string; parameter_name?: string }> = {
+        body_referral_link: {
+            type: 'text',
+            value: data.referral_link.trim(),
+            parameter_name: 'referral_link',
+        },
+        body_advisor_name: {
+            type: 'text',
+            value: data.advisor_name.trim(),
+            parameter_name: 'advisor_name',
+        },
+        body_advisor_mobile: {
+            type: 'text',
+            value: advisorMobileClean,
+            parameter_name: 'advisor_mobile',
+        },
+        body_offer_month: {
+            type: 'text',
+            value: data.offer_month.trim(),
+            parameter_name: 'offer_month',
+        },
+    };
+    const headerImageUrlRaw = data.header_image_url?.trim() || headerImageFromEnv?.trim() || '';
+    if (!headerImageUrlRaw) {
+        return {
+            success: false,
+            message: 'Welcome header image URL missing. Set MSG91_WA_WELCOME_HEADER_IMAGE_URL',
+        };
+    }
+    let headerImageUrl = '';
+    try {
+        const parsed = new URL(headerImageUrlRaw);
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+            throw new Error('invalid protocol');
+        }
+        headerImageUrl = parsed.toString();
+    } catch {
+        return {
+            success: false,
+            message: 'Welcome header image URL invalid. Use full http/https public URL',
+        };
+    }
+    components.header_1 = { type: 'image', value: headerImageUrl };
+
+    const payload = {
+        integrated_number: integratedNumber,
+        content_type: 'template',
+        payload: {
+            messaging_product: 'whatsapp',
+            type: 'template',
+            template: {
+                name: templateName,
+                language: {
+                    code: 'en',
+                    policy: 'deterministic',
+                },
+                namespace,
+                to_and_components: [
+                    {
+                        to: [mobile],
+                        components,
+                    },
+                ],
+            },
+        },
+    };
+
+    try {
+        console.log('[WhatsApp:welcome] Sending →', {
+            mobile,
+            template: templateName,
+            advisor: data.advisor_name,
+        });
+
+        const sendOnce = async (payloadObj: ReturnType<typeof buildPayload>) => {
+            const res = await fetch(WA_API_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    authkey: authKey,
+                },
+                body: JSON.stringify(payloadObj),
+            });
+            const text = await res.text();
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            let resData: any = null;
+            try {
+                resData = text ? JSON.parse(text) : null;
+            } catch {
+                // non-JSON response — handled by caller
+            }
+            return { res, text, resData };
+        };
+
+        let { res, text, resData } = await sendOnce(buildPayload(components));
+
+        const providerErrorText = `${resData?.errors || ''} ${resData?.message || ''}`.toLowerCase();
+        if (
+            res.ok &&
+            !(resData?.type === 'success' || resData?.status === 'success') &&
+            providerErrorText.includes('parameter name is missing or empty')
+        ) {
+            // Fallback for accounts/templates configured with positional body keys.
+            const fallbackComponents: Record<string, { type: string; value: string }> = {
+                body_1: { type: 'text', value: data.offer_month.trim() },
+                body_2: { type: 'text', value: data.advisor_name.trim() },
+                body_3: { type: 'text', value: advisorMobileClean },
+                body_4: { type: 'text', value: data.referral_link.trim() },
+                header_1: { type: 'image', value: headerImageUrl },
+            };
+            ({ res, text, resData } = await sendOnce(buildPayload(fallbackComponents)));
+        }
+
+        if (res.ok && (resData?.type === 'success' || resData?.status === 'success')) {
+            recentWelcomeRequests.set(dedupeKey, now);
+            const requestId = typeof resData?.request_id === 'string' ? resData.request_id : undefined;
+            console.log(`[WhatsApp:welcome] Sent to ${mobile}`, { requestId });
+            return {
+                success: true,
+                requestId,
+                providerStatus: String(resData?.status || resData?.type || 'success'),
+                providerMessage: typeof resData?.data === 'string' ? resData.data : undefined,
+            };
+        }
+
+        console.error('[WhatsApp:welcome] MSG91 API error:', { status: res.status, response: resData || text });
+        return {
+            success: false,
+            message: resData?.message || resData?.errors || 'WhatsApp send failed',
+            requestId: typeof resData?.request_id === 'string' ? resData.request_id : undefined,
+            providerStatus: String(resData?.status || resData?.type || 'error'),
+            providerMessage:
+                typeof resData?.errors === 'string'
+                    ? resData.errors
+                    : typeof resData?.data === 'string'
+                      ? resData.data
+                      : undefined,
+        };
+    } catch (error) {
+        console.error('[WhatsApp:welcome] Network error:', error);
         return { success: false, message: 'WhatsApp network error' };
     }
 }

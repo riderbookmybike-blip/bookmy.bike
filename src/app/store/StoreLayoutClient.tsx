@@ -24,6 +24,17 @@ interface StoreLayoutClientProps {
     initialDevice: 'phone' | 'desktop';
 }
 
+const readLatLng = (value: any): { lat: number | null; lng: number | null } => {
+    const latRaw = value?.lat ?? value?.latitude;
+    const lngRaw = value?.lng ?? value?.longitude;
+    const lat = Number(latRaw);
+    const lng = Number(lngRaw);
+    return {
+        lat: Number.isFinite(lat) ? lat : null,
+        lng: Number.isFinite(lng) ? lng : null,
+    };
+};
+
 export default function StoreLayoutClient({ children }: StoreLayoutClientProps) {
     const [isLoginOpen, setIsLoginOpen] = useState(false);
 
@@ -49,9 +60,10 @@ export default function StoreLayoutClient({ children }: StoreLayoutClientProps) 
 
                 // If user manually set location, just sync cookie for SSR
                 if (cachedData?.manuallySet && cachedData?.pincode) {
+                    const cachedCoords = readLatLng(cachedData);
                     // Backfill missing coordinates from pincode if legacy cache payload lacks lat/lng.
                     if (
-                        (!Number.isFinite(Number(cachedData.lat)) || !Number.isFinite(Number(cachedData.lng))) &&
+                        (!Number.isFinite(cachedCoords.lat) || !Number.isFinite(cachedCoords.lng)) &&
                         /^\d{6}$/.test(String(cachedData.pincode || ''))
                     ) {
                         const resolved = await resolveLocation(String(cachedData.pincode));
@@ -74,8 +86,8 @@ export default function StoreLayoutClient({ children }: StoreLayoutClientProps) 
                         district: cachedData.district,
                         state: cachedData.state,
                         stateCode: cachedData.stateCode,
-                        lat: cachedData.lat,
-                        lng: cachedData.lng,
+                        lat: readLatLng(cachedData).lat,
+                        lng: readLatLng(cachedData).lng,
                     });
                     return;
                 }
@@ -125,8 +137,9 @@ export default function StoreLayoutClient({ children }: StoreLayoutClientProps) 
 
                 // Fallback: sync cookie from cache (if any) to keep SSR aligned
                 if (cachedData?.pincode) {
+                    const cachedCoords = readLatLng(cachedData);
                     if (
-                        (!Number.isFinite(Number(cachedData.lat)) || !Number.isFinite(Number(cachedData.lng))) &&
+                        (!Number.isFinite(cachedCoords.lat) || !Number.isFinite(cachedCoords.lng)) &&
                         /^\d{6}$/.test(String(cachedData.pincode || ''))
                     ) {
                         const resolved = await resolveLocation(String(cachedData.pincode));
@@ -149,8 +162,8 @@ export default function StoreLayoutClient({ children }: StoreLayoutClientProps) 
                         district: cachedData.district,
                         state: cachedData.state,
                         stateCode: cachedData.stateCode,
-                        lat: cachedData.lat,
-                        lng: cachedData.lng,
+                        lat: readLatLng(cachedData).lat,
+                        lng: readLatLng(cachedData).lng,
                     });
                 }
             } catch (err) {

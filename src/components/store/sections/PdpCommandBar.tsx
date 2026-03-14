@@ -8,17 +8,22 @@
  *   - Desktop: FloatingCommandBar.tsx (product identity + savings + share + save + CTA)
  *   - Mobile: MobilePDP.tsx inline sticky bar (price + EMI + CTA)
  *
- * Guard behaviors preserved (G4):
- *   - isGated: switches primary CTA to "Share Quote" for team members without lead
- *   - serviceability: disables CTA when area not serviceable
+ * Guard behaviors (G4 — canonical via buildCommandBarState):
+ *   - isGated=true  → CTA = SAVE QUOTE, bar ENABLED (isDisabled=false)
+ *   - isGated=false + not-serviceable → CTA = NOT SERVICEABLE, bar DISABLED
  *   - showOClubPrompt: shows O'Club join prompt (desktop)
- *   - coinPricing: shows savings with coin discount
+ *   - coinPricing: BCoin Wallet card shown only when coinPricing.discount > 0
+ *
+ * WhatsApp mini-button (desktop only):
+ *   - Calls onWhatsAppClick() → opens phone-input popup
+ *   - Popup submits via onWaSend(phone) → POST /api/whatsapp/welcome (server-side)
  */
 
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import Image from 'next/image';
-import { Share2, Heart, ArrowRight } from 'lucide-react';
+import { Share2, Heart, ArrowRight, Wallet, Package, Shield, Zap, MessageCircle, X, Send } from 'lucide-react';
 import { Logo } from '@/components/brand/Logo';
+import { OCircleLogo } from '@/components/common/OCircleLogo';
 import { coinsNeededForPrice } from '@/lib/oclub/coin';
 import { buildCommandBarState } from '../Personalize/pdpComputations';
 
@@ -41,18 +46,347 @@ export interface PdpCommandBarProps {
     handleBookingRequest: () => void;
     serviceability?: any;
     isGated: boolean;
+    // Desktop metric card props
+    accessoriesCount?: number;
+    accessoriesTotal?: number;
+    insuranceAddonsCount?: number;
+    /** SOT: insuranceAddonsPrice + insuranceAddonsDiscount — matches buildPriceBreakup formula */
+    insuranceAddonsCost?: number;
+    // WhatsApp mini-button (desktop only)
+    onWaSend?: (phone: string) => Promise<void>;
 }
 
-const ActionIcon = ({ icon: Icon, onClick, colorClass }: { icon: any; onClick: () => void; colorClass: string }) => (
+// ── WhatsApp Phone Modal ─────────────────────────────────────────────────────
+
+interface WhatsAppPhoneModalProps {
+    onClose: () => void;
+    onSend: (phone: string) => Promise<void>;
+}
+
+function WhatsAppPhoneModal({ onClose, onSend }: WhatsAppPhoneModalProps) {
+    const [phone, setPhone] = useState('');
+    const [status, setStatus] = useState<'idle' | 'sending' | 'done' | 'error'>('idle');
+    const [errorMsg, setErrorMsg] = useState('');
+    const inputRef = useRef<HTMLInputElement>(null);
+    const normalizedPhone = (() => {
+        let digits = phone.replace(/\D/g, '');
+        if (digits.length > 10 && digits.startsWith('91')) digits = digits.slice(2);
+        digits = digits.replace(/^0+/, '');
+        return digits.slice(0, 10);
+    })();
+    const isValidIndianMobile = /^[6-9]\d{9}$/.test(normalizedPhone);
+
+    const handleSubmit = async () => {
+        if (!isValidIndianMobile) {
+            setErrorMsg('Enter a valid 10-digit mobile number (starts with 6-9)');
+            return;
+        }
+        setStatus('sending');
+        setErrorMsg('');
+        try {
+            await onSend(normalizedPhone);
+            setStatus('done');
+        } catch {
+            setStatus('error');
+            setErrorMsg('Send failed — please try again');
+        }
+    };
+
+    return (
+        /* Backdrop */
+        <div
+            className="fixed inset-0 z-[200] flex items-end md:items-center justify-center p-4"
+            onClick={e => {
+                if (e.target === e.currentTarget) onClose();
+            }}
+        >
+            {/* Blurred overlay */}
+            <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
+
+            {/* Modal panel */}
+            <div className="relative z-10 w-full max-w-sm rounded-2xl border border-white/80 bg-white/92 backdrop-blur-2xl shadow-2xl p-5">
+                {/* Header */}
+                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-[#25D366]/10 flex items-center justify-center">
+                            <MessageCircle size={16} className="text-[#25D366]" />
+                        </div>
+                        <div>
+                            <p className="text-[11px] font-black uppercase tracking-[0.14em] text-slate-900">
+                                Send on WhatsApp
+                            </p>
+                            <p className="text-[9px] text-slate-500 font-medium">Welcome offer template</p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={onClose}
+                        className="w-7 h-7 rounded-full flex items-center justify-center bg-slate-100 hover:bg-slate-200 transition-colors"
+                    >
+                        <X size={14} className="text-slate-500" />
+                    </button>
+                </div>
+
+                {status === 'done' ? (
+                    <div className="py-4 text-center">
+                        <p className="text-2xl mb-1">✅</p>
+                        <p className="text-sm font-black text-slate-900">Sent successfully!</p>
+                        <p className="text-[10px] text-slate-500 mt-1">Welcome message delivered on WhatsApp</p>
+                        <button
+                            onClick={onClose}
+                            className="mt-4 px-4 py-2 rounded-full bg-slate-900 text-white text-[10px] font-black uppercase tracking-[0.14em]"
+                        >
+                            Close
+                        </button>
+                    </div>
+                ) : (
+                    <>
+                        {/* Phone input */}
+                        <div className="mb-3">
+                            <label className="block text-[9px] font-black uppercase tracking-[0.12em] text-slate-500 mb-1.5">
+                                Recipient Mobile
+                            </label>
+                            <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 focus-within:border-[#25D366] focus-within:bg-white transition-all">
+                                <span className="text-[11px] font-bold text-slate-500 shrink-0">+91</span>
+                                <div className="w-px h-4 bg-slate-200" />
+                                <input
+                                    ref={inputRef}
+                                    type="tel"
+                                    inputMode="numeric"
+                                    maxLength={10}
+                                    value={normalizedPhone}
+                                    onChange={e => {
+                                        setPhone(e.target.value);
+                                        setErrorMsg('');
+                                    }}
+                                    onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+                                    placeholder="10-digit number"
+                                    className="flex-1 bg-transparent text-sm font-mono font-bold text-slate-900 placeholder:text-slate-300 outline-none"
+                                    autoFocus
+                                />
+                            </div>
+                            {errorMsg && <p className="mt-1 text-[9px] text-rose-500 font-medium">{errorMsg}</p>}
+                        </div>
+
+                        {/* Submit button */}
+                        <button
+                            onClick={handleSubmit}
+                            disabled={status === 'sending' || !isValidIndianMobile}
+                            className={`w-full h-10 rounded-xl flex items-center justify-center gap-2 font-black text-[10px] uppercase tracking-[0.14em] transition-all
+                                ${
+                                    status === 'sending' || !isValidIndianMobile
+                                        ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                                        : 'bg-[#25D366] text-white hover:bg-[#22c55e] hover:-translate-y-0.5 shadow-lg shadow-[#25D366]/20'
+                                }`}
+                        >
+                            {status === 'sending' ? (
+                                <>
+                                    <span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                                    Sending…
+                                </>
+                            ) : (
+                                <>
+                                    <Send size={12} />
+                                    Send WhatsApp
+                                </>
+                            )}
+                        </button>
+                    </>
+                )}
+            </div>
+        </div>
+    );
+}
+
+// ── Action Icon ──────────────────────────────────────────────────────────────
+
+const ActionIcon = ({
+    icon: Icon,
+    onClick,
+    colorClass,
+    title,
+}: {
+    icon: any;
+    onClick: () => void;
+    colorClass: string;
+    title?: string;
+}) => (
     <button
         onClick={onClick}
+        title={title}
         className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${colorClass} hover:bg-slate-100`}
     >
         <Icon size={16} />
     </button>
 );
 
-interface PriceSummaryProps {
+// ── Desktop Metric Cards ─────────────────────────────────────────────────────
+
+interface DesktopMetricCardsProps {
+    displayOnRoad: number;
+    totalSavings: number;
+    coinPricing: any;
+    bCoinEquivalent: number;
+    onRoadBase: number;
+    accessoriesCount: number;
+    accessoriesTotal: number;
+    insuranceAddonsCount: number;
+    insuranceAddonsCost: number;
+}
+
+function DesktopMetricCards({
+    displayOnRoad,
+    totalSavings,
+    coinPricing,
+    bCoinEquivalent,
+    onRoadBase,
+    accessoriesCount,
+    accessoriesTotal,
+    insuranceAddonsCount,
+    insuranceAddonsCost,
+}: DesktopMetricCardsProps) {
+    const bCoinDiscount = coinPricing?.discount || 0;
+
+    return (
+        <div className="hidden md:flex items-stretch gap-2 flex-1">
+            {/* 1. On-Road */}
+            <div
+                data-testid="cmd-bar-on-road"
+                className="flex-1 flex flex-col items-center justify-center text-center px-2.5 py-2 rounded-xl border border-slate-200/60 bg-slate-50/40 hover:border-slate-300 transition-all duration-300"
+            >
+                <p className="text-[12px] font-black font-mono tabular-nums leading-none text-slate-900">
+                    ₹ {onRoadBase.toLocaleString('en-IN')}
+                </p>
+                <p className="mt-1 inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-[0.04em] text-slate-500">
+                    <Wallet size={9} />
+                    On-Road
+                </p>
+            </div>
+
+            {/* 2. Accessories */}
+            <div
+                data-testid="cmd-bar-accessories"
+                className={`flex-1 flex flex-col items-center justify-center text-center px-2.5 py-2 rounded-xl border transition-all duration-300 ${
+                    accessoriesCount > 0
+                        ? 'border-violet-200/60 bg-violet-50/30 hover:border-violet-300'
+                        : 'border-slate-200/70 hover:border-slate-300'
+                }`}
+            >
+                <p
+                    className={`text-[12px] font-black font-mono tabular-nums leading-none ${
+                        accessoriesCount > 0 ? 'text-violet-700' : 'text-slate-400'
+                    }`}
+                >
+                    {accessoriesCount > 0 ? `+ ₹ ${accessoriesTotal.toLocaleString('en-IN')}` : '₹ 0'}
+                </p>
+                <p
+                    className={`mt-1 inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-[0.04em] ${
+                        accessoriesCount > 0 ? 'text-violet-500' : 'text-slate-400'
+                    }`}
+                >
+                    <Package size={9} />
+                    {accessoriesCount > 0 ? `${accessoriesCount} Accessories` : 'Accessories'}
+                </p>
+            </div>
+
+            {/* 3. Insurance Add-ons */}
+            <div
+                data-testid="cmd-bar-ins-addons"
+                className={`flex-1 flex flex-col items-center justify-center text-center px-2.5 py-2 rounded-xl border transition-all duration-300 ${
+                    insuranceAddonsCost > 0
+                        ? 'border-blue-200/60 bg-blue-50/30 hover:border-blue-300'
+                        : 'border-slate-200/70 hover:border-slate-300'
+                }`}
+            >
+                <p
+                    className={`text-[12px] font-black font-mono tabular-nums leading-none ${
+                        insuranceAddonsCost > 0 ? 'text-blue-600' : 'text-slate-400'
+                    }`}
+                >
+                    {insuranceAddonsCost > 0 ? `+ ₹ ${Math.round(insuranceAddonsCost).toLocaleString('en-IN')}` : '₹ 0'}
+                </p>
+                <p
+                    className={`mt-1 inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-[0.04em] ${
+                        insuranceAddonsCost > 0 ? 'text-blue-500' : 'text-slate-400'
+                    }`}
+                >
+                    <Shield size={9} />
+                    {insuranceAddonsCount > 0 ? `${insuranceAddonsCount} Ins. Addons` : 'Ins. Addons'}
+                </p>
+            </div>
+
+            {/* 4. O'Circle Privileged — always shown */}
+            <div
+                data-testid="cmd-bar-ocircle"
+                className="flex-[1.2] flex flex-col items-center justify-center text-center px-2.5 py-2 rounded-xl border border-emerald-300/60 bg-emerald-50/20 hover:border-emerald-400 hover:shadow-sm transition-all duration-300"
+            >
+                <p className="text-[12px] font-black font-mono tabular-nums leading-none text-emerald-600">
+                    − ₹ {Math.max(0, totalSavings).toLocaleString('en-IN')}
+                </p>
+                <div className="mt-1 inline-flex items-center gap-1">
+                    <OCircleLogo size={9} color="#10B981" strokeWidth={20} />
+                    <span className="text-[8px] font-black tracking-[0.04em] uppercase">
+                        <span className="text-emerald-500">O&apos;</span>
+                        <span className="text-slate-700">Circle</span>
+                    </span>
+                </div>
+            </div>
+
+            {/* 5. BCoin Wallet — always visible */}
+            <div
+                data-testid="cmd-bar-bcoin"
+                className={`flex-[1.2] flex flex-col items-center justify-center text-center px-2.5 py-2 rounded-xl border transition-all duration-300 ${
+                    bCoinDiscount > 0
+                        ? 'border-amber-300/60 bg-amber-50/20 hover:border-amber-400 hover:shadow-sm'
+                        : 'border-slate-200/70 hover:border-slate-300'
+                }`}
+            >
+                <p
+                    className={`text-[12px] font-black font-mono tabular-nums leading-none ${
+                        bCoinDiscount > 0 ? 'text-amber-600' : 'text-slate-400'
+                    }`}
+                >
+                    {bCoinDiscount > 0 ? `− ₹ ${bCoinDiscount.toLocaleString('en-IN')}` : '₹ 0'}
+                </p>
+                <div className="mt-1 inline-flex items-center gap-1">
+                    <Logo variant="icon" size={9} customColor={bCoinDiscount > 0 ? '#C99700' : '#94A3B8'} />
+                    <span
+                        className={`text-[8px] font-black leading-none uppercase tracking-[0.04em] ${
+                            bCoinDiscount > 0 ? 'text-slate-900' : 'text-slate-400'
+                        }`}
+                    >
+                        Wallet
+                    </span>
+                </div>
+            </div>
+
+            {/* 6. Final Offer — always shown */}
+            <div
+                data-testid="cmd-bar-final-offer"
+                className="flex-[2] flex flex-col items-center justify-center text-center px-4 py-2 rounded-xl border border-amber-400/50 bg-amber-50/30 hover:border-amber-500 hover:shadow-md ring-1 ring-amber-400/20 transition-all duration-300"
+            >
+                <div className="flex items-center gap-2 justify-center">
+                    <p className="text-[15px] font-black font-mono tabular-nums leading-none text-amber-700">
+                        ₹ {displayOnRoad.toLocaleString('en-IN')}
+                    </p>
+                    <div className="flex items-center gap-0.5">
+                        <Logo variant="icon" size={11} customColor="#F59E0B" />
+                        <span className="text-[14px] font-black text-amber-500 font-mono tabular-nums leading-none">
+                            {bCoinEquivalent.toLocaleString('en-IN')}
+                        </span>
+                    </div>
+                </div>
+                <p className="mt-1 inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-[0.1em] text-amber-600">
+                    <Zap size={9} className="fill-amber-600" />
+                    Final Offer
+                </p>
+            </div>
+        </div>
+    );
+}
+
+// ── Mobile Price Summary ─────────────────────────────────────────────────────
+
+interface MobilePriceSummaryProps {
     displayOnRoad: number;
     totalOnRoad: number;
     totalSavings: number;
@@ -63,71 +397,13 @@ interface PriceSummaryProps {
     showOClubPrompt: boolean;
 }
 
-function DesktopPriceSummary({
-    displayOnRoad,
-    totalOnRoad,
-    totalSavings,
-    coinPricing,
-    bCoinEquivalent,
-    footerEmi,
-    emiTenure,
-    showOClubPrompt,
-}: PriceSummaryProps) {
-    const hasSavings = totalSavings > 0 || (coinPricing && coinPricing.discount > 0);
-
-    return (
-        <div className="hidden md:flex items-center gap-4 lg:gap-5">
-            <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-white/70 border border-slate-200/80 shadow-sm">
-                <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500">On-Road</span>
-                {hasSavings && (
-                    <span className="text-[10px] text-slate-400 line-through font-mono">
-                        ₹ {(totalOnRoad + totalSavings).toLocaleString()}
-                    </span>
-                )}
-                <span className="text-lg font-black text-slate-800 font-mono tabular-nums leading-none tracking-tight">
-                    ₹ {displayOnRoad.toLocaleString()}
-                </span>
-                <span className="text-slate-300">•</span>
-                <span className="inline-flex items-center gap-1.5 text-lg font-black text-slate-800 font-mono tabular-nums leading-none tracking-tight">
-                    <Logo variant="icon" size={11} customColor="#334155" />
-                    {bCoinEquivalent.toLocaleString()}
-                </span>
-            </div>
-
-            {hasSavings && (
-                <>
-                    <div className="w-px h-6 bg-slate-200" />
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-emerald-600">
-                        ✦ O&apos; Circle Privileged Saving: ₹{' '}
-                        {(totalSavings + (coinPricing?.discount || 0)).toLocaleString()}
-                    </span>
-                </>
-            )}
-
-            {!coinPricing && showOClubPrompt && (
-                <>
-                    <div className="w-px h-6 bg-slate-200" />
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-indigo-50 border border-indigo-200 text-[9px] font-semibold uppercase tracking-[0.1em] text-indigo-600">
-                        +13 O&apos; Circle Coins
-                    </span>
-                </>
-            )}
-
-            <div className="w-px h-6 bg-slate-200" />
-            <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-700 font-mono tabular-nums">
-                EMI ₹ {footerEmi.toLocaleString()} / {emiTenure}mo
-            </span>
-        </div>
-    );
-}
-
 function MobilePriceSummary({
     displayOnRoad,
     totalOnRoad,
     totalSavings,
     coinPricing,
     bCoinEquivalent,
-}: PriceSummaryProps) {
+}: MobilePriceSummaryProps) {
     const hasSavings = totalSavings > 0 || (coinPricing && coinPricing.discount > 0);
 
     return (
@@ -158,6 +434,8 @@ function MobilePriceSummary({
     );
 }
 
+// ── Main PdpCommandBar ───────────────────────────────────────────────────────
+
 export function PdpCommandBar({
     layout,
     getProductImage,
@@ -177,9 +455,15 @@ export function PdpCommandBar({
     handleBookingRequest,
     serviceability,
     isGated,
+    accessoriesCount = 0,
+    accessoriesTotal = 0,
+    insuranceAddonsCount = 0,
+    insuranceAddonsCost = 0,
+    onWaSend,
 }: PdpCommandBarProps) {
     const isDesktop = layout === 'desktop';
-    // ── Canonical command bar compute (same fn as FloatingCommandBar — P2-C fix) ──
+
+    // ── Canonical command bar state ──
     const barState = buildCommandBarState({
         displayOnRoad,
         totalOnRoad,
@@ -192,9 +476,14 @@ export function PdpCommandBar({
     });
     const isShareMode = barState.isShareMode;
     const isDisabled = barState.isDisabled;
-    const primaryAction = isShareMode ? handleShareQuote : handleBookingRequest;
+    // isShareMode (gated) → SAVE QUOTE → handleSaveQuote (quote generation path)
+    const primaryAction = isShareMode ? handleSaveQuote : handleBookingRequest;
     const primaryLabel = barState.primaryLabel;
     const bCoinEquivalent = coinsNeededForPrice(displayOnRoad);
+    const onRoadBase = barState.strikethroughPrice;
+
+    // ── WhatsApp popup state (desktop only) ──
+    const [showWaModal, setShowWaModal] = useState(false);
 
     return (
         <div
@@ -255,15 +544,16 @@ export function PdpCommandBar({
 
                             {/* Price Summary */}
                             {isDesktop ? (
-                                <DesktopPriceSummary
+                                <DesktopMetricCards
                                     displayOnRoad={displayOnRoad}
-                                    totalOnRoad={totalOnRoad}
                                     totalSavings={totalSavings}
                                     coinPricing={coinPricing}
                                     bCoinEquivalent={bCoinEquivalent}
-                                    footerEmi={footerEmi}
-                                    emiTenure={emiTenure}
-                                    showOClubPrompt={showOClubPrompt}
+                                    onRoadBase={onRoadBase}
+                                    accessoriesCount={accessoriesCount}
+                                    accessoriesTotal={accessoriesTotal}
+                                    insuranceAddonsCount={insuranceAddonsCount}
+                                    insuranceAddonsCost={insuranceAddonsCost}
                                 />
                             ) : (
                                 <MobilePriceSummary
@@ -281,18 +571,28 @@ export function PdpCommandBar({
 
                         {/* Right: Actions + CTA */}
                         <div className="flex items-center gap-3 md:gap-4">
-                            {/* Share/Save icons — Desktop only */}
+                            {/* Desktop action icons: Share + WhatsApp (if onWaSend provided) + Heart */}
                             {isDesktop && (
                                 <div className="hidden md:flex items-center gap-1">
                                     <ActionIcon
                                         icon={Share2}
                                         onClick={handleShareQuote}
                                         colorClass="text-slate-500 hover:text-slate-900"
+                                        title="Share quote link"
                                     />
+                                    {onWaSend && (
+                                        <ActionIcon
+                                            icon={MessageCircle}
+                                            onClick={() => setShowWaModal(true)}
+                                            colorClass="text-[#25D366] hover:text-[#22c55e]"
+                                            title="Send on WhatsApp"
+                                        />
+                                    )}
                                     <ActionIcon
                                         icon={Heart}
                                         onClick={handleSaveQuote}
                                         colorClass="text-slate-400 hover:text-rose-500"
+                                        title="Save to wishlist"
                                     />
                                 </div>
                             )}
@@ -342,6 +642,17 @@ export function PdpCommandBar({
                     </div>
                 )}
             </div>
+
+            {/* WhatsApp Phone Modal — rendered at fixed z-[200] */}
+            {isDesktop && showWaModal && onWaSend && (
+                <WhatsAppPhoneModal
+                    onClose={() => setShowWaModal(false)}
+                    onSend={async phone => {
+                        await onWaSend(phone);
+                        setShowWaModal(false);
+                    }}
+                />
+            )}
         </div>
     );
 }

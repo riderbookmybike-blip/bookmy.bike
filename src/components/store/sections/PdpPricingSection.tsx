@@ -171,6 +171,7 @@ export function PdpPricingSection({
                         if (item.isSpacer) return false; // spacers handled by layout
                         if (item.isDeduction) return false; // handled separately below
                         if (item.isInfo) return false; // handled in info block below
+                        if (item.isGrossTotal) return false; // mobile already shows its own grossTotal summary
                         // ── Fix 1 core: required keys always render even at ₹0 ──
                         if (REQUIRED_LABELS.has(item.label)) return true;
                         // Non-required rows: still filter zero values (e.g. optional charges)

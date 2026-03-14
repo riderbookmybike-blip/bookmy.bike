@@ -118,6 +118,7 @@ interface DesktopPDPProps {
                 | 'TECH_SPECS'
         ) => void;
         setUserDownPayment: (amount: number) => void;
+        handleWaSend?: (phone: string) => Promise<void>;
     };
     initialLocation?: any;
     bestOffer?: any;
@@ -130,6 +131,8 @@ interface DesktopPDPProps {
     dealerFetchState?: 'IDLE' | 'GATED' | 'READY' | 'TIMEOUT' | 'ERROR';
     dealerFetchNotice?: string;
     onRetryDealerFetch?: () => void;
+    /** WhatsApp mini-button handler — provided by ProductClient, undefined for non-team-member views */
+    onWaSend?: (phone: string) => Promise<void>;
     serviceability?: {
         isServiceable: boolean;
         status: string;
@@ -179,6 +182,7 @@ export function DesktopPDP({
     dealerFetchState = 'IDLE',
     dealerFetchNotice,
     onRetryDealerFetch,
+    onWaSend,
     serviceability,
 }: DesktopPDPProps) {
     const params = useSearchParams();
@@ -1175,6 +1179,11 @@ export function DesktopPDP({
                 handleBookingRequest={handleBookingRequest}
                 serviceability={serviceability}
                 isGated={isGated ?? false}
+                accessoriesCount={selectedAccessories?.length ?? 0}
+                accessoriesTotal={accessoriesPrice ?? 0}
+                insuranceAddonsCount={selectedInsuranceAddons?.length ?? 0}
+                insuranceAddonsCost={(insuranceAddonsPrice ?? 0) + (insuranceAddonsDiscount ?? 0)}
+                onWaSend={onWaSend ?? handlers.handleWaSend}
             />
         </div>
     );
