@@ -334,9 +334,11 @@ export const DesktopCatalog = ({
         status: 'loading' | 'serviceable' | 'unserviceable' | 'unset';
         location?: string;
         stateCode?: string;
+        pincode?: string; // captured pincode — pre-filled in Change Pincode flow
     }>({ status: 'loading' });
 
     const [isLocationPickerOpen, setIsLocationPickerOpen] = useState(false);
+    const [locationPickerInitialPin, setLocationPickerInitialPin] = useState('');
     const [showNotServingModal, setShowNotServingModal] = useState(false);
     const notServingShownRef = React.useRef(false);
 
@@ -461,6 +463,7 @@ export const DesktopCatalog = ({
                     status: serviceable ? 'serviceable' : 'unserviceable',
                     location: stateLabel,
                     stateCode,
+                    pincode: pincode || undefined,
                 });
 
                 const payload = {
@@ -1274,13 +1277,13 @@ export const DesktopCatalog = ({
                         <div className="space-y-2">
                             <h2 className="text-lg font-black uppercase tracking-wide text-slate-900">
                                 {serviceability.location
-                                    ? `${serviceability.location} mein abhi nahi`
-                                    : 'Abhi yahan seva nahi'}
+                                    ? `Not Available in ${serviceability.location}`
+                                    : 'Not Serviceable in Your Area'}
                             </h2>
                             <p className="text-sm text-slate-500 leading-relaxed">
-                                Hum filhaal is area mein service nahi karte.{' '}
+                                Selected location is outside active service range.{' '}
                                 <span className="font-semibold text-slate-700">
-                                    Aap catalog explore karein aur vehicles compare karein.
+                                    Range-based serviceability is active for state-locked pricing.
                                 </span>
                             </p>
                         </div>
@@ -1420,16 +1423,25 @@ export const DesktopCatalog = ({
                 {/* Not Serviceable Banner */}
                 {serviceability.status === 'unserviceable' && (
                     <div className="mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-200">
-                        <div className="flex items-start gap-3">
+                        <div className="flex items-center gap-3">
                             <span className="text-2xl">📍</span>
-                            <div className="flex-1">
+                            <div className="flex-1 min-w-0">
                                 <p className="font-bold text-amber-900">
                                     Selected location is outside active service range.
                                 </p>
-                                <p className="mt-1 text-sm text-amber-800">
+                                <p className="mt-0.5 text-sm text-amber-800">
                                     Range-based serviceability is active for state-locked pricing.
                                 </p>
                             </div>
+                            <button
+                                onClick={() => {
+                                    setLocationPickerInitialPin(serviceability.pincode || '');
+                                    setIsLocationPickerOpen(true);
+                                }}
+                                className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-900 text-white text-[10px] font-black uppercase tracking-[0.12em] hover:bg-amber-800 transition-colors"
+                            >
+                                Change Pincode
+                            </button>
                         </div>
                     </div>
                 )}
@@ -1742,7 +1754,11 @@ export const DesktopCatalog = ({
 
             <LocationPicker
                 isOpen={isLocationPickerOpen}
-                onClose={() => setIsLocationPickerOpen(false)}
+                initialPincode={locationPickerInitialPin}
+                onClose={() => {
+                    setIsLocationPickerOpen(false);
+                    setLocationPickerInitialPin('');
+                }}
                 onLocationSet={async (pincode, taluka, lat, lng) => {
                     const result = await checkServiceability(pincode);
                     const stateCode = String(result.stateCode || 'MH')

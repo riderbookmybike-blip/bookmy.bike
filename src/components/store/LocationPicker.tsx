@@ -10,10 +10,12 @@ interface LocationPickerProps {
     isOpen: boolean;
     onClose: () => void;
     onLocationSet: (pincode: string, taluka: string, lat?: number, lng?: number) => void;
+    /** Pre-fill the pincode input with a captured value (e.g. from GPS resolve) */
+    initialPincode?: string;
 }
 
-export function LocationPicker({ isOpen, onClose, onLocationSet }: LocationPickerProps) {
-    const [pincode, setPincode] = useState('');
+export function LocationPicker({ isOpen, onClose, onLocationSet, initialPincode = '' }: LocationPickerProps) {
+    const [pincode, setPincode] = useState(initialPincode);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 

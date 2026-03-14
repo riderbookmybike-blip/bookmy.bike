@@ -643,9 +643,11 @@ export function buildCommandBarState(input: CommandBarStateInput): CommandBarSta
     const strikethroughPrice = Math.max(displayOnRoad, displayOnRoad + combinedSavings);
 
     const isShareMode = isGated;
-    const isServiceabilityBlocked = serviceability?.status === 'SET' && !serviceability?.isServiceable;
+    // Locked serviceability matrix: status === 'unserviceable' → blocked
+    // (Previous check used 'SET' which was a legacy enum value — never matched)
+    const isServiceabilityBlocked = serviceability?.status === 'unserviceable';
     const isDisabled = !isShareMode && isServiceabilityBlocked;
-    const primaryLabel = isDisabled ? 'NOT SERVICEABLE' : isShareMode ? 'SAVE QUOTE' : 'GET QUOTE';
+    const primaryLabel = isDisabled ? 'NON-SERVICEABLE' : isShareMode ? 'SAVE QUOTE' : 'GET QUOTE';
 
     return {
         displayOnRoad,

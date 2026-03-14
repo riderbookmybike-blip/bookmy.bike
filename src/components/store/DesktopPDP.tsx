@@ -536,6 +536,21 @@ export function DesktopPDP({
 
     return (
         <div className="relative min-h-screen bg-white transition-colors duration-500 font-sans pt-[104px] pb-20">
+            {/* Pincode chip — sticky just below site header */}
+            {gateReason !== 'LOCATION_REQUIRED' && cachedPincode && (
+                <div className="sticky top-[64px] z-[90] bg-white/80 backdrop-blur-sm border-b border-slate-100">
+                    <div className="page-container py-2">
+                        <PincodeGateChip
+                            cachedPincode={cachedPincode}
+                            onResolved={(_confidence, _pincode) => {
+                                onRetryLocation?.();
+                            }}
+                            showBCoinNudge={false}
+                            compact={false}
+                        />
+                    </div>
+                </div>
+            )}
             {/* Parity Snapshot — hidden DOM element for Playwright parity tests */}
             <ParitySnapshot data={data} product={product} commonState={commonState} />
             {/* Parity section anchors — shared components mounted hidden so markers are always live.
@@ -618,28 +633,6 @@ export function DesktopPDP({
                 />
             </div>
             <div className="store-page-shell tv-pdp-shell pb-24 md:pb-28 space-y-8 relative z-10">
-                {/* Unlocked state: show cached pincode pill with Change option */}
-                {gateReason !== 'LOCATION_REQUIRED' && cachedPincode && (
-                    <PincodeGateChip
-                        cachedPincode={cachedPincode}
-                        onResolved={(_confidence, _pincode) => {
-                            onRetryLocation?.();
-                        }}
-                        showBCoinNudge={false}
-                        compact={false}
-                    />
-                )}
-
-                {/* bCoin nudge (shown only when offer IS unlocked but user not logged in) */}
-                {gateReason !== 'LOCATION_REQUIRED' && showOClubPrompt && (
-                    <div className="flex items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 w-fit">
-                        <span className="text-sm">🪙</span>
-                        <span className="text-[10px] font-black uppercase tracking-[0.14em] text-amber-800">
-                            Sign in for {13} bCoins · ₹1,000 value
-                        </span>
-                    </div>
-                )}
-
                 {dealerFetchState === 'TIMEOUT' && gateReason === 'READY' && (
                     <div className="rounded-3xl border border-rose-200 bg-rose-50 px-4 py-3 md:px-5 md:py-4">
                         <p className="text-[10px] font-black uppercase tracking-[0.16em] text-rose-800">

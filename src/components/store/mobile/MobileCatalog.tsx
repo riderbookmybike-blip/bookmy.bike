@@ -472,13 +472,13 @@ export const MobileCatalog = ({
                         <div className="space-y-2">
                             <h2 className="text-lg font-black uppercase tracking-wide text-slate-900">
                                 {serviceability.location
-                                    ? `${serviceability.location} mein abhi nahi`
-                                    : 'Abhi yahan seva nahi'}
+                                    ? `Not Available in ${serviceability.location}`
+                                    : 'Not Serviceable in Your Area'}
                             </h2>
                             <p className="text-sm text-slate-500 leading-relaxed">
-                                Hum filhaal is area mein service nahi karte.{' '}
+                                We currently do not offer services in this location.{' '}
                                 <span className="font-semibold text-slate-700">
-                                    Aap catalog explore karein aur vehicles compare karein.
+                                    You can still explore our catalog and compare vehicles.
                                 </span>
                             </p>
                         </div>
