@@ -657,8 +657,8 @@ export const DesktopCatalog = ({
                                 },
                                 {
                                     enableHighAccuracy: false,
-                                    timeout: 30000,
-                                    maximumAge: 0,
+                                    timeout: 15000,
+                                    maximumAge: 300000, // Accept cached on retry too
                                 }
                             );
                             return;
@@ -670,9 +670,11 @@ export const DesktopCatalog = ({
                         }
                     },
                     {
-                        enableHighAccuracy: true,
-                        timeout: 30000,
-                        maximumAge: 300000,
+                        // Low accuracy = network/wifi positioning (fast, no GPS chip wake)
+                        // For pincode resolution we don't need GPS-level precision.
+                        enableHighAccuracy: false,
+                        timeout: 10000,
+                        maximumAge: 300000, // Accept up to 5min cached position
                     }
                 );
             } else {
