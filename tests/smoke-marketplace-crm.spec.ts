@@ -9,7 +9,7 @@ function buildPhone(seed: string, salt: string) {
 }
 
 async function openMarketplaceLeadModal(page: Page) {
-    await page.goto('/store/tvs/jupiter/drum?district=Palghar', { waitUntil: 'domcontentloaded' });
+    await page.goto('/store/tvs/jupiter/drum', { waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(1200);
 
     const cta = page.getByRole('button', { name: /GET QUOTE|Save Quote/i }).first();

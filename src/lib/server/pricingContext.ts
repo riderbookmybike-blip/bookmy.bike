@@ -5,7 +5,6 @@ export type PricingSource = 'NONE';
 export interface PricingContext {
     dealerId: null;
     tenantName: null;
-    district: null;
     stateCode: string;
     source: PricingSource;
 }
@@ -36,13 +35,12 @@ export const normalizeStateCode = (state?: string | null, stateCode?: string | n
 
 /**
  * Resolve state code only (for RTO/pricing).
- * No dealer, no district, no primary dealer.
+ * No dealer and no primary dealer.
  * Client-side RPC handles best-offer resolution (200km radius).
  */
 export async function resolvePricingContext(_input?: {
     leadId?: string | null;
     dealerId?: string | null;
-    district?: string | null;
     state?: string | null;
     studio?: string | null;
     mode?: string;
@@ -65,7 +63,6 @@ export async function resolvePricingContext(_input?: {
     return {
         dealerId: null,
         tenantName: null,
-        district: null,
         stateCode,
         source: 'NONE',
     };

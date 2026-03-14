@@ -293,54 +293,15 @@ export const ProductCard = ({
             : cleanedPriceSourceLocation
         : undefined;
 
-    const normalizeDistrictForUrl = (value?: string | null) => {
-        if (!value) return undefined;
-        const cleaned = String(value)
-            .replace(/^(Best:|Base:)\s*/i, '')
-            .split(',')[0]
-            .trim();
-        if (!cleaned || cleaned.toUpperCase() === 'ALL' || /^STATE:/i.test(cleaned)) return undefined;
-        return cleaned;
-    };
-
-    const districtLabel = (() => {
-        if (!cleanedPriceSourceLocation) return null;
-        const STATE_NAMES = [
-            'MAHARASHTRA',
-            'KARNATAKA',
-            'GUJARAT',
-            'RAJASTHAN',
-            'DELHI',
-            'KERALA',
-            'GOA',
-            'PUNJAB',
-            'HARYANA',
-            'BIHAR',
-            'INDIA',
-            'ALL',
-        ];
-        if (STATE_NAMES.includes(cleanedPriceSourceLocation.toUpperCase())) return null;
-        return cleanedPriceSourceLocation.split(',')[0]?.trim();
-    })();
-
     const winnerDealerName =
         (bestOffer as any)?.dealer || (bestOffer as any)?.dealer_name || (bestOffer as any)?.dealerName || null;
     const dealerLabel = (winnerDealerName || v.studioName || '').trim();
     const dealerLabelDisplay = dealerLabel || 'UNASSIGNED';
-    const districtLabelDisplay = districtLabel || null;
     const studioDisplayLabel = bestOffer?.studio_id || v.studioCode || null;
     const studioIdLabel = studioDisplayLabel || bestOffer?.studio_id || null;
 
-    // Combine District and Studio Code
-    const combinedLocationLabel = districtLabelDisplay
-        ? studioDisplayLabel
-            ? `${districtLabelDisplay}, ${studioDisplayLabel}`
-            : districtLabelDisplay
-        : studioDisplayLabel || null;
-
-    const navigableDistrict = normalizeDistrictForUrl(
-        serviceability?.district || serviceability?.location || v.dealerLocation || cleanedPriceSourceLocation
-    );
+    // State-locked context: location label uses studio/state only, never district.
+    const combinedLocationLabel = studioDisplayLabel || null;
 
     const priceSourceDisplay = combinedLocationLabel || priceSourceLabel || '—';
     const isTrulyOnRoad = effectiveServerPricing
@@ -478,7 +439,6 @@ export const ProductCard = ({
         model: v.model,
         variant: v.variant,
         studio: studioIdLabel || undefined,
-        district: navigableDistrict,
         leadId: leadId,
         basePath,
     }).url;
@@ -532,7 +492,6 @@ export const ProductCard = ({
                 data-product-id={v.id}
                 data-dealer-id={v.dealerId || bestOffer?.dealerId || ''}
                 data-offer-delta={offerDeltaForParity}
-                data-district={districtLabelDisplay || ''}
                 className="group bg-white border border-slate-200 rounded-[2.5rem] overflow-hidden flex shadow-sm hover:shadow-2xl transition-all duration-500 min-h-[22rem]"
             >
                 {/* Image Section - Wider */}
@@ -747,7 +706,7 @@ export const ProductCard = ({
                                     </div>
                                 )}
                             </div>
-                            {districtLabelDisplay && (
+                            {combinedLocationLabel && (
                                 <div className="mt-2">
                                     <div className="relative group/location inline-flex">
                                         <span
@@ -757,7 +716,7 @@ export const ProductCard = ({
                                             <MapPin size={14} />
                                             {combinedLocationLabel}
                                         </span>
-                                        {(dealerLabel || districtLabel) && (
+                                        {dealerLabel && (
                                             <div className="absolute bottom-full left-0 mb-2 w-52 rounded-xl border border-slate-200 bg-white text-[10px] text-slate-700 shadow-xl opacity-0 invisible group-hover/location:opacity-100 group-hover/location:visible transition-all duration-200 pointer-events-none">
                                                 <div className="px-3 py-2 space-y-1">
                                                     <p className="font-bold uppercase tracking-widest text-slate-500">
@@ -767,8 +726,8 @@ export const ProductCard = ({
                                                         </span>
                                                     </p>
                                                     <p className="font-bold uppercase tracking-widest text-slate-500">
-                                                        District:{' '}
-                                                        <span className="text-slate-900">{districtLabelDisplay}</span>
+                                                        Dealer:{' '}
+                                                        <span className="text-slate-900">{dealerLabelDisplay}</span>
                                                     </p>
                                                 </div>
                                                 <div className="absolute bottom-0 left-6 translate-y-1/2 rotate-45 w-2.5 h-2.5 bg-white border-b border-r border-slate-200" />
@@ -797,7 +756,6 @@ export const ProductCard = ({
                                                       model: v.model,
                                                       variant: v.variant,
                                                       studio: studioIdLabel || undefined,
-                                                      district: navigableDistrict,
                                                       leadId: leadId,
                                                       basePath,
                                                   }).url
@@ -845,7 +803,6 @@ export const ProductCard = ({
                 data-product-id={v.id}
                 data-dealer-id={v.dealerId || bestOffer?.dealerId || ''}
                 data-offer-delta={offerDeltaForParity}
-                data-district={districtLabelDisplay || ''}
                 onClick={handleCardClick}
                 onMouseMove={isTv ? undefined : handleMouseMove}
                 onMouseEnter={isTv ? undefined : handleMouseEnter}
@@ -1462,7 +1419,6 @@ export const ProductCard = ({
                                             model: v.model,
                                             variant: v.variant,
                                             studio: studioIdLabel || undefined,
-                                            district: navigableDistrict,
                                             leadId: leadId,
                                             basePath,
                                         }).url

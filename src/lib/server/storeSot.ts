@@ -671,7 +671,6 @@ export function resolveColorMeta(sku: any): {
 export async function resolveStoreContext(input: {
     leadId?: string | null;
     dealerId?: string | null;
-    district?: string | null;
     state?: string | null;
     studio?: string | null;
 }): Promise<StoreContext> {
@@ -973,7 +972,8 @@ export async function getCatalogSnapshot(stateCode: string = 'MH'): Promise<Cata
         }
 
         // Filter to VEHICLE-type products only — exclude accessories & services from catalog
-        const vehicleSkus = skus.filter((s: any) => {
+        const safeSkus = skus || [];
+        const vehicleSkus = safeSkus.filter((s: any) => {
             const productType = String(s.model?.product_type || '').toUpperCase();
             const skuType = String(s.sku_type || '').toUpperCase();
 

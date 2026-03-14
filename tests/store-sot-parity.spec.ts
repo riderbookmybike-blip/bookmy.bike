@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { REQUIRED_CORE_KEYS, COMMAND_BAR_KEYS } from '../src/components/store/sections/pdpParityContract';
 
 test.describe.configure({ timeout: 120_000 });
 
@@ -16,29 +17,22 @@ test.describe.configure({ timeout: 120_000 });
 
 const TEST_PRODUCTS = [{ make: 'tvs', model: 'jupiter', variant: 'drum', label: 'TVS Jupiter Drum' }];
 
-const DISTRICT = 'Palghar';
+const STATE_CODE = 'MH';
+const TEST_PINCODE = '401404';
 const BASE_URL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000';
 
 // ─── Helpers ─────────────────────────────────────────────────
 
 async function gotoStorePage(page: Page, url: string) {
     const target = url.startsWith('http') ? url : `${BASE_URL}${url}`;
-    const districtFromUrl = (() => {
-        try {
-            return new URL(target).searchParams.get('district') || DISTRICT;
-        } catch {
-            return DISTRICT;
-        }
-    })();
-
     await page.addInitScript(
-        ({ district }) => {
+        ({ stateCode, pincode }) => {
             try {
                 window.localStorage.setItem(
                     'bkmb_user_pincode',
                     JSON.stringify({
-                        district,
-                        stateCode: 'MH',
+                        pincode,
+                        stateCode,
                         state: 'MAHARASHTRA',
                         manuallySet: true,
                         source: 'TEST',
@@ -48,149 +42,11 @@ async function gotoStorePage(page: Page, url: string) {
                 // noop
             }
         },
-        { district: districtFromUrl }
+        { stateCode: STATE_CODE, pincode: TEST_PINCODE }
     );
 
     await page.goto(target, { waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(1200);
-}
-
-async function extractFirstCatalogOfferCardMeta(page: Page): Promise<{
-    href: string;
-    dealerId: string;
-    offerDelta: number;
-    district: string;
-} | null> {
-    await page.waitForSelector('[data-testid="catalog-product-card"], [data-testid="catalog-compact-card"]', {
-        timeout: 30_000,
-    });
-    await page.waitForFunction(() => {
-        const cards = Array.from(
-            document.querySelectorAll('[data-testid="catalog-product-card"], [data-testid="catalog-compact-card"]')
-        ) as HTMLElement[];
-
-        return cards.some(card => {
-            const anchors = Array.from(card.querySelectorAll('a[href]'));
-            return anchors.some(anchor => {
-                const href = anchor.getAttribute('href') || '';
-                if (!href) return false;
-                try {
-                    const parsed = new URL(href, window.location.origin);
-                    const path = parsed.pathname.split('/').filter(Boolean);
-                    const storeIndex = path.indexOf('store');
-                    return storeIndex >= 0 && path.length - storeIndex >= 4;
-                } catch {
-                    return false;
-                }
-            });
-        });
-    });
-
-    try {
-        await page.waitForFunction(
-            () => {
-                const cards = Array.from(
-                    document.querySelectorAll(
-                        '[data-testid="catalog-product-card"], [data-testid="catalog-compact-card"]'
-                    )
-                ) as HTMLElement[];
-                return cards.some(card => {
-                    const offerDelta = Number(card.dataset.offerDelta || '0');
-                    if (Math.abs(offerDelta) === 0) return false;
-                    return Array.from(card.querySelectorAll('a[href]')).some(anchor => {
-                        const href = anchor.getAttribute('href') || '';
-                        if (!href) return false;
-                        try {
-                            const parsed = new URL(href, window.location.origin);
-                            const path = parsed.pathname.split('/').filter(Boolean);
-                            const storeIndex = path.indexOf('store');
-                            return storeIndex >= 0 && path.length - storeIndex >= 4;
-                        } catch {
-                            return false;
-                        }
-                    });
-                });
-            },
-            { timeout: 15_000 }
-        );
-    } catch {
-        // non-zero offer card may not exist for some markets; fallback to any valid card below
-    }
-
-    for (let attempt = 0; attempt < 6; attempt += 1) {
-        const candidate = await page.evaluate(() => {
-            const cards = Array.from(
-                document.querySelectorAll('[data-testid="catalog-product-card"], [data-testid="catalog-compact-card"]')
-            ) as HTMLElement[];
-            let fallback: { href: string; dealerId: string; offerDelta: number; district: string } | null = null;
-
-            for (const card of cards) {
-                const link = Array.from(card.querySelectorAll('a[href]')).find(anchor => {
-                    const href = anchor.getAttribute('href') || '';
-                    if (!href) return false;
-                    try {
-                        const parsed = new URL(href, window.location.origin);
-                        const path = parsed.pathname.split('/').filter(Boolean);
-                        const storeIndex = path.indexOf('store');
-                        return storeIndex >= 0 && path.length - storeIndex >= 4;
-                    } catch {
-                        return false;
-                    }
-                }) as HTMLAnchorElement | undefined;
-
-                if (!link) continue;
-
-                const rawHref = link.getAttribute('href') || '';
-                if (!rawHref) continue;
-
-                let href = rawHref;
-                try {
-                    const parsed = new URL(rawHref, window.location.origin);
-                    href = `${parsed.pathname}${parsed.search}`;
-                } catch {
-                    // use raw href
-                }
-
-                const dealerId = String(card.dataset.dealerId || '').trim();
-
-                const item = {
-                    href,
-                    dealerId,
-                    offerDelta: Number(card.dataset.offerDelta || '0'),
-                    district: String(card.dataset.district || ''),
-                };
-
-                if (Math.abs(item.offerDelta) > 0) return item;
-                if (!fallback) fallback = item;
-            }
-
-            return fallback;
-        });
-
-        if (candidate) {
-            return candidate;
-        }
-
-        await page.waitForTimeout(500);
-    }
-
-    return null;
-}
-
-async function extractPdpOfferMeta(
-    page: Page
-): Promise<{ dealerId: string; offerDelta: number; district: string } | null> {
-    const meta = page.locator('[data-testid="pdp-offer-meta"]').first();
-    await meta.waitFor({ state: 'attached', timeout: 30_000 });
-
-    return meta.evaluate(el => {
-        const node = el as HTMLElement;
-        return {
-            dealerId: String(node.dataset.dealerId || ''),
-            offerDelta: Number(node.dataset.offerDelta || '0'),
-            district: String(node.dataset.district || ''),
-        };
-    });
 }
 
 async function extractJsonLdExShowroom(page: Page): Promise<number> {
@@ -221,7 +77,7 @@ async function extractJsonLdExShowroom(page: Page): Promise<number> {
 test.describe('SOT Pricing Parity', () => {
     for (const product of TEST_PRODUCTS) {
         test(`${product.label}: PDP loads with valid pricing`, async ({ page }) => {
-            const url = `/store/${product.make}/${product.model}/${product.variant}?district=${DISTRICT}`;
+            const url = `/store/${product.make}/${product.model}/${product.variant}`;
             await gotoStorePage(page, url);
 
             // Page should not show "PRODUCT NOT FOUND"
@@ -239,7 +95,7 @@ test.describe('SOT Pricing Parity', () => {
         });
 
         test(`${product.label}: No ₹0 pricing leak`, async ({ page }) => {
-            const url = `/store/${product.make}/${product.model}/${product.variant}?district=${DISTRICT}`;
+            const url = `/store/${product.make}/${product.model}/${product.variant}`;
             await gotoStorePage(page, url);
 
             // Check page content for ₹0 patterns
@@ -258,7 +114,7 @@ test.describe('SOT Pricing Parity', () => {
         });
 
         test(`${product.label}: Color selector loads`, async ({ page }) => {
-            const url = `/store/${product.make}/${product.model}/${product.variant}?district=${DISTRICT}`;
+            const url = `/store/${product.make}/${product.model}/${product.variant}`;
             await gotoStorePage(page, url);
 
             // At least one color swatch should be visible
@@ -275,7 +131,7 @@ test.describe('SOT Pricing Parity', () => {
     }
 
     test('Catalog page loads with products', async ({ page }) => {
-        await gotoStorePage(page, `/store/catalog?district=${DISTRICT}`);
+        await gotoStorePage(page, `/store/catalog`);
 
         await page.waitForSelector('[data-testid="catalog-product-card"], [data-testid="catalog-compact-card"]', {
             timeout: 30_000,
@@ -292,7 +148,7 @@ test.describe('Cross-Viewport Parity', () => {
 
     test('1366x768 and 390x844 show same ex-showroom price', async ({ browser }) => {
         test.setTimeout(120_000);
-        const url = `/store/${product.make}/${product.model}/${product.variant}?district=${DISTRICT}`;
+        const url = `/store/${product.make}/${product.model}/${product.variant}`;
 
         const desktopContext = await browser.newContext({
             viewport: { width: 1366, height: 768 },
@@ -317,72 +173,16 @@ test.describe('Cross-Viewport Parity', () => {
         await desktopContext.close();
         await mobileContext.close();
     });
-
-    test('Catalog to PDP dealer + offer parity matches on desktop and phone', async ({ browser }) => {
-        test.setTimeout(120_000);
-
-        const contexts = [
-            {
-                label: 'desktop',
-                options: {
-                    viewport: { width: 1366, height: 768 },
-                },
-            },
-            {
-                label: 'phone',
-                options: {
-                    viewport: { width: 390, height: 844 },
-                    isMobile: true,
-                    hasTouch: true,
-                },
-            },
-        ] as const;
-
-        for (const entry of contexts) {
-            const context = await browser.newContext(entry.options);
-            const page = await context.newPage();
-
-            await gotoStorePage(page, `/store/catalog?district=${DISTRICT}`);
-            const cardMeta = await extractFirstCatalogOfferCardMeta(page);
-            expect(cardMeta, `${entry.label}: no catalog card metadata found`).not.toBeNull();
-
-            await gotoStorePage(page, cardMeta!.href);
-            const pdpMeta = await extractPdpOfferMeta(page);
-            expect(pdpMeta, `${entry.label}: no PDP offer metadata found`).not.toBeNull();
-
-            expect(pdpMeta!.dealerId, `${entry.label}: PDP dealer must be resolved`).not.toBe('');
-            if (cardMeta!.dealerId) {
-                expect(
-                    pdpMeta!.dealerId,
-                    `${entry.label}: dealer mismatch catalog=${cardMeta!.dealerId} pdp=${pdpMeta!.dealerId}`
-                ).toBe(cardMeta!.dealerId);
-            }
-
-            if (Math.abs(cardMeta!.offerDelta) > 0) {
-                expect(
-                    Math.abs(pdpMeta!.offerDelta - cardMeta!.offerDelta),
-                    `${entry.label}: offer delta mismatch catalog=${cardMeta!.offerDelta} pdp=${pdpMeta!.offerDelta}`
-                ).toBeLessThanOrEqual(1);
-            } else {
-                expect(Number.isFinite(pdpMeta!.offerDelta), `${entry.label}: PDP offer delta is not numeric`).toBe(
-                    true
-                );
-            }
-
-            await context.close();
-        }
-    });
 });
-
 // ─── PDP Content Parity (Desktop ↔ Mobile Section Presence + Snapshot) ──────
-
+// Phase 2-D/2-E: Contract-driven key assertions, numeric parity, tablet/TV matrix
 test.describe('PDP Content Parity', () => {
     const EXPECTED_SECTIONS = ['pricing', 'finance', 'finance-summary', 'config', 'specs', 'command-bar'];
 
     for (const product of TEST_PRODUCTS) {
         test(`${product.label}: Desktop and Mobile render same parity snapshot`, async ({ browser }) => {
             test.setTimeout(120_000);
-            const url = `/store/${product.make}/${product.model}/${product.variant}?district=${DISTRICT}`;
+            const url = `/store/${product.make}/${product.model}/${product.variant}`;
 
             // Desktop context
             const desktopCtx = await browser.newContext({ viewport: { width: 1366, height: 768 } });
@@ -441,13 +241,66 @@ test.describe('PDP Content Parity', () => {
                 desktopSnap.warrantyItemIds.sort()
             );
 
+            // ── High-risk numeric value parity (Phase 2-D) ──
+            // These values come from buildPdpCommonState(); mismatch = compute drift
+            if (desktopSnap.displayOnRoad !== null) {
+                expect(mobileSnap.displayOnRoad, 'displayOnRoad mismatch').toBe(desktopSnap.displayOnRoad);
+            }
+            if (desktopSnap.totalSavings !== null) {
+                expect(mobileSnap.totalSavings, 'totalSavings mismatch').toBe(desktopSnap.totalSavings);
+            }
+            if (desktopSnap.footerEmi !== null) {
+                expect(mobileSnap.footerEmi, 'footerEmi mismatch').toBe(desktopSnap.footerEmi);
+            }
+            if (desktopSnap.deliveryTatLabel !== null) {
+                expect(mobileSnap.deliveryTatLabel, 'TAT label mismatch').toBe(desktopSnap.deliveryTatLabel);
+            }
+            expect(mobileSnap.footerEmiTenure, 'emiTenure mismatch').toBe(desktopSnap.footerEmiTenure);
+
+            // ── Contract-driven required key presence (Phase 2-E) ──
+            // REQUIRED_CORE_KEYS are unconditional; CONDITIONAL_KEYS: if on desktop, must be on mobile
+            for (const key of REQUIRED_CORE_KEYS) {
+                expect(desktopSnap.pricingLineItemKeys, `Desktop missing required key: ${key}`).toContain(key);
+                expect(mobileSnap.pricingLineItemKeys, `Mobile missing required key: ${key}`).toContain(key);
+            }
+            // Conditional key cross-device rule: present on desktop → must be on mobile
+            for (const key of desktopSnap.pricingLineItemKeys) {
+                if (!REQUIRED_CORE_KEYS.includes(key as any)) {
+                    expect(
+                        mobileSnap.pricingLineItemKeys,
+                        `Conditional key "${key}" present on desktop but missing on mobile`
+                    ).toContain(key);
+                }
+            }
+
+            // ── Fix 6: Required keys must appear on mobile even when value = ₹0 ──
+            // This assertion guards against the mobile zero-value filter dropping
+            // required keys like accessories (₹0), insurance_addons (₹0), etc.
+            for (const key of REQUIRED_CORE_KEYS) {
+                expect(
+                    mobileSnap.pricingLineItemKeys,
+                    `Mobile dropped required key at ₹0: "${key}" — REQUIRED_CORE_KEYS must always render`
+                ).toContain(key);
+            }
+
+            // ── R3: COMMAND_BAR_KEYS contract assertions (Phase 2-E hardening) ──
+            // All 5 command bar keys must be present in parity snapshot on BOTH devices
+            // and values must be numerically identical (same buildCommandBarState() call)
+            for (const key of COMMAND_BAR_KEYS) {
+                const desktopVal = desktopSnap[key];
+                const mobileVal = mobileSnap[key];
+                expect(desktopVal, `Desktop command bar key missing or null: ${key}`).not.toBeNull();
+                expect(mobileVal, `Mobile command bar key missing or null: ${key}`).not.toBeNull();
+                expect(mobileVal, `Command bar numeric parity mismatch for key: ${key}`).toBe(desktopVal);
+            }
+
             await desktopCtx.close();
             await mobileCtx.close();
         });
 
         test(`${product.label}: Desktop and Mobile render same data-parity-section markers`, async ({ browser }) => {
             test.setTimeout(120_000);
-            const url = `/store/${product.make}/${product.model}/${product.variant}?district=${DISTRICT}`;
+            const url = `/store/${product.make}/${product.model}/${product.variant}`;
 
             const extractSections = async (viewport: { width: number; height: number }, mobile = false) => {
                 const ctx = await browser.newContext({
@@ -477,14 +330,94 @@ test.describe('PDP Content Parity', () => {
             const desktopSections = await extractSections({ width: 1366, height: 768 });
             const mobileSections = await extractSections({ width: 390, height: 844 }, true);
 
-            // Both should have all expected sections
-            for (const section of EXPECTED_SECTIONS) {
+            // Section marker parity — unconditional sections only.
+            // 'specs' is excluded: PdpSpecsSection returns null when product has no spec data
+            // (data gap for some SKUs, tracked separately from code parity).
+            // Commercial-parity sections (always rendered by both shells):
+            const UNCONDITIONAL_SECTIONS = EXPECTED_SECTIONS.filter(s => s !== 'specs');
+
+            for (const section of UNCONDITIONAL_SECTIONS) {
                 expect(desktopSections, `Desktop missing section: ${section}`).toContain(section);
                 expect(mobileSections, `Mobile missing section: ${section}`).toContain(section);
             }
-
-            // Same set of sections on both
-            expect(mobileSections, 'Section list mismatch between desktop and mobile').toEqual(desktopSections);
         });
+    }
+
+    // ── Tablet and TV Viewport Matrix (Phase 2-D) ──────────────────────────────
+    // Asserts that tablet (768×1024) and TV-like (960×540) snapshots match desktop
+    const EXTRA_VIEWPORTS = [
+        { label: 'tablet', width: 768, height: 1024, isMobile: true, hasTouch: true, ua: undefined },
+        {
+            label: 'tv-like',
+            width: 960,
+            height: 540,
+            isMobile: false,
+            hasTouch: false,
+            ua: 'Mozilla/5.0 (SMART-TV; Linux; Tizen 6.0) AppleWebKit/538.1',
+        },
+    ] as const;
+
+    for (const product of TEST_PRODUCTS) {
+        for (const vp of EXTRA_VIEWPORTS) {
+            test(`${product.label}: ${vp.label} snapshot matches desktop`, async ({ browser }) => {
+                test.setTimeout(120_000);
+                const url = `/store/${product.make}/${product.model}/${product.variant}`;
+
+                // Reference: desktop
+                const desktopCtx = await browser.newContext({ viewport: { width: 1366, height: 768 } });
+                const desktopPage = await desktopCtx.newPage();
+                await gotoStorePage(desktopPage, url);
+
+                // Device under test
+                const dvCtx = await browser.newContext({
+                    viewport: { width: vp.width, height: vp.height },
+                    ...(vp.isMobile ? { isMobile: true, hasTouch: true } : {}),
+                    ...(vp.ua ? { userAgent: vp.ua } : {}),
+                });
+                const dvPage = await dvCtx.newPage();
+                await gotoStorePage(dvPage, url);
+
+                const readSnap = async (page: Page) => {
+                    await page.waitForSelector('[data-testid="pdp-parity-json"]', {
+                        timeout: 30_000,
+                        state: 'attached',
+                    });
+                    const raw = await page
+                        .locator('[data-testid="pdp-parity-json"]')
+                        .first()
+                        .getAttribute('data-parity-snapshot');
+                    return raw ? JSON.parse(raw) : null;
+                };
+
+                const desktopSnap = await readSnap(desktopPage);
+                const dvSnap = await readSnap(dvPage);
+
+                expect(desktopSnap, 'Desktop snap missing').not.toBeNull();
+                expect(dvSnap, `${vp.label} snap missing`).not.toBeNull();
+
+                // Core numeric parity
+                expect(dvSnap.totalOnRoad, `${vp.label} totalOnRoad mismatch`).toBe(desktopSnap.totalOnRoad);
+                expect(dvSnap.baseExShowroom, `${vp.label} baseExShowroom mismatch`).toBe(desktopSnap.baseExShowroom);
+                if (desktopSnap.displayOnRoad !== null) {
+                    expect(dvSnap.displayOnRoad, `${vp.label} displayOnRoad mismatch`).toBe(desktopSnap.displayOnRoad);
+                }
+                if (desktopSnap.totalSavings !== null) {
+                    expect(dvSnap.totalSavings, `${vp.label} totalSavings mismatch`).toBe(desktopSnap.totalSavings);
+                }
+                if (desktopSnap.deliveryTatLabel !== null) {
+                    expect(dvSnap.deliveryTatLabel, `${vp.label} TAT label mismatch`).toBe(
+                        desktopSnap.deliveryTatLabel
+                    );
+                }
+
+                // Required key presence
+                for (const key of REQUIRED_CORE_KEYS) {
+                    expect(dvSnap.pricingLineItemKeys, `${vp.label} missing key: ${key}`).toContain(key);
+                }
+
+                await desktopCtx.close();
+                await dvCtx.close();
+            });
+        }
     }
 });

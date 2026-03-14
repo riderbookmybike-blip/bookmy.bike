@@ -201,37 +201,37 @@ export const ModernFooter = () => {
             links: [
                 {
                     label: 'Mumbai',
-                    href: '/store/catalog?district=MUMBAI',
+                    href: '/store/catalog',
                     icon: <MapPin size={12} className="text-emerald-500/60" />,
                 },
                 {
                     label: 'Pune',
-                    href: '/store/catalog?district=PUNE',
+                    href: '/store/catalog',
                     icon: <MapPin size={12} className="text-emerald-500/60" />,
                 },
                 {
                     label: 'Thane',
-                    href: '/store/catalog?district=THANE',
+                    href: '/store/catalog',
                     icon: <MapPin size={12} className="text-emerald-500/60" />,
                 },
                 {
                     label: 'Kalyan',
-                    href: '/store/catalog?district=THANE',
+                    href: '/store/catalog',
                     icon: <MapPin size={12} className="text-emerald-500/60" />,
                 },
                 {
                     label: 'Palghar',
-                    href: '/store/catalog?district=PALGHAR',
+                    href: '/store/catalog',
                     icon: <MapPin size={12} className="text-emerald-500/60" />,
                 },
                 {
                     label: 'Navi Mumbai',
-                    href: '/store/catalog?district=RAIGAD',
+                    href: '/store/catalog',
                     icon: <MapPin size={12} className="text-emerald-500/60" />,
                 },
                 {
                     label: 'Panvel',
-                    href: '/store/catalog?district=RAIGAD',
+                    href: '/store/catalog',
                     icon: <MapPin size={12} className="text-emerald-500/60" />,
                 },
             ],

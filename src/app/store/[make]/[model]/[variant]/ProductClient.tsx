@@ -15,7 +15,7 @@ import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { useAnalytics } from '@/components/analytics/AnalyticsProvider';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { isHandheldPhoneUserAgent, isTvUserAgent } from '@/lib/utils/deviceUserAgent';
-import { useDiscovery } from '@/contexts/DiscoveryContext';
+import { useDiscoveryOptional } from '@/contexts/DiscoveryContext';
 
 import { InsuranceRule } from '@/types/insurance';
 
@@ -137,13 +137,15 @@ export default function ProductClient({
     const leadIdFromUrl = searchParams.get('lead') || searchParams.get('leadId');
     const [leadContext, setLeadContext] = useState<{ id: string; name: string } | null>(null);
     const [isTeamMember, setIsTeamMember] = useState(false);
-    const { availableCoins, isLoggedIn } = useOClubWallet();
+    const { availableCoins, isLoggedIn, loading: walletLoading } = useOClubWallet();
     const { dealerId: sessionDealerId, financeId: sessionFinanceId } = useDealerSession();
     const { device } = useBreakpoint(initialDevice);
     const { memberships } = useTenant();
     const [forceMobileLayout, setForceMobileLayout] = useState(false);
     const { trackEvent } = useAnalytics();
-    const { offerMode } = useDiscovery();
+    const discoveryCtx = useDiscoveryOptional();
+    const offerMode = discoveryCtx?.offerMode ?? 'BEST_OFFER';
+
     const activeSkuRef = useRef<string | null>(null);
     const activeSkuStartedAtRef = useRef<number | null>(null);
     const lastImmediateDwellFlushRef = useRef<number>(0);
@@ -1080,9 +1082,6 @@ export default function ProductClient({
             bestOffer?.price ??
             Number(data.colorSurge || 0) - Number(data.colorDiscount || 0)
     );
-    const pdpDistrictForParity = String(
-        ssppServerPricing?.location?.district || resolvedLocation?.district || initialLocation?.district || ''
-    );
     const pdpGateReason: 'LEGACY_MODE' | 'LOGIN_REQUIRED' | 'LOCATION_REQUIRED' | 'DEALER_TIMEOUT' | 'READY' =
         !pdpGateEnabled
             ? 'LEGACY_MODE'
@@ -1109,8 +1108,8 @@ export default function ProductClient({
         bestOffer, // Passing bestOffer to children
         otherOffers,
         serverPricing, // SSPP v1: Server-calculated pricing breakdown
-        walletCoins: isLoggedIn ? availableCoins : null,
-        showOClubPrompt: !isLoggedIn,
+        walletCoins: !walletLoading && isLoggedIn ? availableCoins : null,
+        showOClubPrompt: !walletLoading && !isLoggedIn,
         isGated,
         forceMobileLayout,
         gateReason: pdpGateReason,
@@ -1171,15 +1170,20 @@ export default function ProductClient({
                 data-testid="pdp-offer-meta"
                 data-dealer-id={pdpDealerIdForParity}
                 data-offer-delta={pdpOfferDeltaForParity}
-                data-district={pdpDistrictForParity}
                 data-sku-id={colorSkuId || ''}
                 data-gate-reason={pdpGateReason}
                 data-dealer-fetch-state={dealerFetchState}
                 data-dealer-fetch-notice={dealerFetchNotice || ''}
                 style={{ display: 'none' }}
             />
-            {/* Condition on forceMobileLayout to trigger MobilePDP */}
-            {forceMobileLayout ? <MobilePDP {...commonProps} /> : <DesktopPDP {...commonProps} />}
+            {/* Avoid transient price mismatch while wallet context is still resolving. */}
+            {walletLoading ? (
+                <PDPSkeleton />
+            ) : forceMobileLayout ? (
+                <MobilePDP {...commonProps} />
+            ) : (
+                <DesktopPDP {...commonProps} />
+            )}
 
             <LeadCaptureModal
                 isOpen={showQuoteSuccess}

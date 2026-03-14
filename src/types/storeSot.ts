@@ -166,7 +166,6 @@ export interface PdpSnapshot {
 export interface StoreContext {
     dealerId: string | null;
     tenantName: string | null;
-    district: string | null;
     stateCode: string;
     source: string;
 }

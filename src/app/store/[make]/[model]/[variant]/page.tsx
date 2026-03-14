@@ -1,7 +1,7 @@
 import React from 'react';
 import { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import { resolveLocationByDistrict } from '@/utils/locationResolver';
+import { resolveLocation } from '@/utils/locationResolver';
 import { adminClient } from '@/lib/supabase/admin';
 import { slugify } from '@/utils/slugs';
 import ProductClient from './ProductClient';
@@ -34,8 +34,8 @@ type Props = {
     }>;
     searchParams: Promise<{
         color?: string;
-        district?: string;
         state?: string;
+        pincode?: string;
         dealer?: string;
         studio?: string;
         leadId?: string;
@@ -234,7 +234,7 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
     const { make, model, variant } = await params;
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { color, district, dealer, state, studio } = await searchParams;
+    const { color, dealer, state, studio } = await searchParams;
 
     // Canonical is always the clean variant path
     const canonical = `/store/${make}/${model}/${variant}`;
@@ -259,7 +259,7 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
             canonical: canonical,
         },
         robots: {
-            index: !district && !dealer && !state && !studio && !color, // Noindex if contextual (location/dealer/color)
+            index: !dealer && !state && !studio && !color, // Noindex if contextual (location/dealer/color)
             follow: true,
         },
         openGraph: {
@@ -293,19 +293,6 @@ export default async function Page({ params, searchParams }: Props) {
     const cookieStore = await cookies(); // Access cookies
     const isMobile = await isMobileDevice(); // resolve device on server
 
-    // 0. Redirect if pincode is present (Standardizing on district parameter)
-    if ((resolvedSearchParams as any).pincode) {
-        const newParams = new URLSearchParams();
-        Object.entries(resolvedSearchParams).forEach(([key, val]) => {
-            if (key === 'pincode') {
-                newParams.set('district', val as string);
-            } else {
-                newParams.set(key, val as string);
-            }
-        });
-        redirect(`?${newParams.toString()}`);
-    }
-
     const leadRef = resolvedSearchParams.lead || resolvedSearchParams.leadId || null;
     const leadMeta = await resolveLeadReference(leadRef);
     const resolvedLeadId = leadMeta?.id || null;
@@ -314,16 +301,42 @@ export default async function Page({ params, searchParams }: Props) {
     const pricingContext = await resolveStoreContext({
         leadId: resolvedLeadId,
         dealerId: resolvedSearchParams.dealer,
-        district: resolvedSearchParams.district,
         state: resolvedSearchParams.state,
         studio: resolvedSearchParams.studio,
     });
 
     const stateCode = pricingContext.stateCode || 'MH';
-    const resolvedDistrict = pricingContext.district || '';
-    let location = null;
-    if (resolvedDistrict) {
-        location = await resolveLocationByDistrict(resolvedDistrict, stateCode);
+    let location: any = {
+        state: resolvedSearchParams.state || 'MAHARASHTRA',
+        stateCode,
+    };
+    const pincodeFromQuery = resolvedSearchParams.pincode;
+    const locationCookie = cookieStore.get('bkmb_user_pincode')?.value;
+    let pincodeForLookup = String(pincodeFromQuery || '').trim();
+    if (!pincodeForLookup && locationCookie) {
+        try {
+            const parsed = JSON.parse(locationCookie);
+            pincodeForLookup = String(parsed?.pincode || '').trim();
+            if (!location?.state && parsed?.state) {
+                location.state = String(parsed.state);
+            }
+            if (!location?.stateCode && parsed?.stateCode) {
+                location.stateCode = String(parsed.stateCode);
+            }
+        } catch {
+            // ignore malformed cookie
+        }
+    }
+    if (/^\d{6}$/.test(pincodeForLookup)) {
+        const resolvedByPincode = await resolveLocation(pincodeForLookup);
+        if (resolvedByPincode) {
+            location = resolvedByPincode;
+        } else {
+            location = {
+                ...location,
+                pincode: pincodeForLookup,
+            };
+        }
     }
 
     // 2. Fetch Variant + SKUs from V2 catalog tables (via shared SOT layer)
@@ -698,7 +711,7 @@ export default async function Page({ params, searchParams }: Props) {
         }
     });
 
-    const { data: servicesData } = await supabase.from('cat_services').select('*').eq('status', 'ACTIVE');
+    const { data: servicesData } = await (supabase as any).from('cat_services').select('*').eq('status', 'ACTIVE');
 
     // Fallback/Mock Rule if missing
     const effectiveRule: any = ruleData?.[0] || {
@@ -844,7 +857,6 @@ export default async function Page({ params, searchParams }: Props) {
                 asNumber(rec.on_road_price) ||
                 asNumber(rec.ex_showroom_price) + resolvedRtoTotal + resolvedInsuranceTotal,
             location: {
-                district: rec.district,
                 state_code: rec.state_code,
             },
             meta: {
@@ -917,15 +929,15 @@ export default async function Page({ params, searchParams }: Props) {
 
     // 4.6 Enrich Server Pricing with Winning Dealer Info
     if (winningDealerId && serverPricing) {
-        // Fetch Dealer Info for Metadata (Safe Multi-fetch)
-        const [tenantRes, locationRes] = await Promise.all([
-            supabase.from('id_tenants').select('name, studio_id').eq('id', winningDealerId).single(),
-            supabase.from('id_locations').select('district').eq('tenant_id', winningDealerId).limit(1).maybeSingle(),
-        ]);
+        // Fetch Dealer Info for Metadata
+        const tenantRes = await supabase
+            .from('id_tenants')
+            .select('name, studio_id')
+            .eq('id', winningDealerId)
+            .single();
 
         const dealerName = tenantRes.data?.name || 'Assigned Dealer';
         const dealerStudioId = (tenantRes.data as any)?.studio_id || null;
-        const dealerDistrict = locationRes.data?.district;
 
         const winningOffer = Number(marketOffers[firstSkuId] || 0);
 
@@ -936,15 +948,6 @@ export default async function Page({ params, searchParams }: Props) {
             offer: winningOffer,
             is_serviceable: true,
         };
-
-        // If a specific dealer is resolved, we enrich the location context with the dealer's physical district
-        // to show accurate "Studio Location" labels in the UI.
-        if (dealerDistrict) {
-            serverPricing.location = {
-                ...serverPricing.location,
-                district: dealerDistrict,
-            };
-        }
 
         // Sync snapshot top-level totals
         initialPricingSnapshot.total = serverPricing.final_on_road + winningOffer;

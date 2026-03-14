@@ -57,6 +57,10 @@ export function CompactProductCard({
         const match = v.availableColors?.find(c => c.imageUrl === v.imageUrl) || v.availableColors?.[0];
         return match?.hexCode || null;
     });
+    const [selectedSkuId, setSelectedSkuId] = useState<string | null>(() => {
+        const match = v.availableColors?.find(c => c.imageUrl === v.imageUrl) || v.availableColors?.[0];
+        return match?.id || null;
+    });
     const [selectedImage, setSelectedImage] = useState<string | null>(v.imageUrl || null);
 
     useEffect(() => {
@@ -66,10 +70,13 @@ export function CompactProductCard({
             v.availableColors?.[0];
         setSelectedImage(primaryColor?.imageUrl || v.imageUrl || null);
         setSelectedHex(primaryColor?.hexCode || null);
+        setSelectedSkuId(primaryColor?.id || null);
     }, [v.id, v.imageUrl, v.availableColors]);
 
-    // B-Coin Logic
-    const baseDisplayPrice = v.price?.offerPrice || v.price?.onRoad || v.price?.exShowroom || 0;
+    // Keep mobile card pricing source aligned with desktop: active color price first.
+    const activeColorPrice = v.availableColors?.find(c => c.id === selectedSkuId)?.price;
+    const baseDisplayPrice =
+        activeColorPrice?.onRoad || activeColorPrice?.exShowroom || v.price?.onRoad || v.price?.exShowroom || 0;
 
     // B-Coin dynamic adjustment
     const hasCoinsToUse = (walletCoins || 0) > 0;
@@ -118,20 +125,10 @@ export function CompactProductCard({
 
     const handleColorTap = (color: (typeof swatches)[0]) => {
         setSelectedHex(color.hexCode || null);
+        setSelectedSkuId(color.id || null);
         if (color.imageUrl) setSelectedImage(color.imageUrl);
     };
 
-    const normalizeDistrictForUrl = (value?: string | null) => {
-        if (!value) return undefined;
-        const cleaned = String(value)
-            .replace(/^(Best:|Base:)\s*/i, '')
-            .split(',')[0]
-            .trim();
-        if (!cleaned || cleaned.toUpperCase() === 'ALL' || /^STATE:/i.test(cleaned)) return undefined;
-        return cleaned;
-    };
-
-    const navigableDistrict = normalizeDistrictForUrl(v.dealerLocation || v.price?.pricingSource);
     const discountBasedDelta = typeof v.price?.discount === 'number' ? -Number(v.price.discount || 0) : 0;
     const offerDeltaForParity =
         typeof v.price?.offerPrice === 'number' && typeof v.price?.onRoad === 'number'
@@ -149,7 +146,6 @@ export function CompactProductCard({
               model: v.model,
               variant: v.variant,
               studio: bestOffer?.studio_id || v.studioCode || undefined,
-              district: navigableDistrict,
               leadId,
               basePath,
           }).url;
@@ -177,7 +173,6 @@ export function CompactProductCard({
             data-product-id={v.id}
             data-dealer-id={v.dealerId || ''}
             data-offer-delta={offerDeltaForParity}
-            data-district={navigableDistrict || ''}
             className="group relative flex flex-col bg-white border border-slate-100 rounded-2xl overflow-hidden hover:overflow-visible transition-all duration-300 active:scale-[0.98] shadow-sm hover:shadow-md hover:border-slate-200 hover:z-[50]"
         >
             {/* Favorite Button */}
@@ -277,7 +272,7 @@ export function CompactProductCard({
                         </div>
                         <div className="flex items-center gap-2" onClick={handleFlip}>
                             <p className="text-[18px] font-black text-slate-900 leading-none cursor-pointer hover:scale-105 active:scale-95 transition-all">
-                                ₹{formatRoundedPrice(v.price?.onRoad || v.price?.exShowroom || 0)}
+                                ₹{formatRoundedPrice(baseDisplayPrice)}
                             </p>
                             <div className="flex items-center gap-1 bg-[#F4B000]/10 px-1.5 py-0.5 rounded border border-[#F4B000]/20 relative group/bcoin">
                                 <Logo variant="icon" size={8} />

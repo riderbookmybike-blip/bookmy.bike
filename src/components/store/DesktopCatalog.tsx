@@ -327,10 +327,7 @@ export const DesktopCatalog = ({
     const [serviceability, setServiceability] = useState<{
         status: 'loading' | 'serviceable' | 'unserviceable' | 'unset';
         location?: string;
-        district?: string;
         stateCode?: string;
-        userDistrict?: string; // User's actual district
-        fallbackDistrict?: string; // Nearest serviceable district if user's is not serviceable
     }>({ status: 'loading' });
 
     const [isLocationPickerOpen, setIsLocationPickerOpen] = useState(false);
@@ -338,45 +335,184 @@ export const DesktopCatalog = ({
     useEffect(() => {
         const checkCurrentServiceability = async () => {
             if (typeof window === 'undefined') return;
-            const supabase = createClient();
+            const normalizeStateCode = (value?: string | null) => {
+                const upper = String(value || '')
+                    .trim()
+                    .toUpperCase();
+                if (!upper) return 'MH';
+                if (/^[A-Z]{2}$/.test(upper)) return upper;
+                const map: Record<string, string> = {
+                    MAHARASHTRA: 'MH',
+                    KARNATAKA: 'KA',
+                    GUJARAT: 'GJ',
+                    RAJASTHAN: 'RJ',
+                    DELHI: 'DL',
+                    KERALA: 'KL',
+                    GOA: 'GA',
+                    PUNJAB: 'PB',
+                    HARYANA: 'HR',
+                };
+                return map[upper] || upper.slice(0, 2);
+            };
+
+            const stateLabelFromCode = (stateCode?: string | null) => {
+                const code = normalizeStateCode(stateCode);
+                const map: Record<string, string> = {
+                    MH: 'MAHARASHTRA',
+                    KA: 'KARNATAKA',
+                    GJ: 'GUJARAT',
+                    RJ: 'RAJASTHAN',
+                    DL: 'DELHI',
+                    KL: 'KERALA',
+                    GA: 'GOA',
+                    PB: 'PUNJAB',
+                    HR: 'HARYANA',
+                };
+                return map[code] || code;
+            };
+
+            const isServiceableByRange = (stateCode: string, lat?: number | null, lng?: number | null) => {
+                if (normalizeStateCode(stateCode) !== 'MH') return false;
+                if (lat == null || lng == null) return true;
+                return calculateDistance(lat, lng, HUB_LOCATION.lat, HUB_LOCATION.lng) <= MAX_SERVICEABLE_DISTANCE_KM;
+            };
+
+            const persistPayload = async (payload: {
+                pincode?: string;
+                taluka?: string;
+                state?: string;
+                stateCode?: string;
+                lat?: number | null;
+                lng?: number | null;
+                manuallySet?: boolean;
+                source?: string;
+            }) => {
+                localStorage.setItem('bkmb_user_pincode', JSON.stringify(payload));
+                try {
+                    await setLocationCookie({
+                        pincode: payload.pincode,
+                        taluka: payload.taluka,
+                        state: payload.state,
+                        stateCode: payload.stateCode,
+                        lat: payload.lat,
+                        lng: payload.lng,
+                    });
+                } catch (err) {
+                    console.error('[Location] Cookie set failed:', err);
+                }
+                window.dispatchEvent(new Event('locationChanged'));
+            };
+
+            const applyRangeStateContext = async (input: {
+                pincode: string;
+                taluka?: string | null;
+                state?: string | null;
+                stateCode?: string | null;
+                lat?: number | null;
+                lng?: number | null;
+                manuallySet?: boolean;
+                source?: string;
+            }) => {
+                const pincode = String(input.pincode || '').trim();
+                if (!/^\d{6}$/.test(pincode)) return null;
+
+                const [resolved, serviceResult] = await Promise.all([
+                    resolveLocation(pincode).catch(() => null),
+                    checkServiceability(pincode),
+                ]);
+
+                const stateCode = normalizeStateCode(serviceResult?.stateCode || input.stateCode || resolved?.state);
+                const stateLabel =
+                    String(serviceResult?.state || input.state || resolved?.state || stateLabelFromCode(stateCode))
+                        .trim()
+                        .toUpperCase() || stateLabelFromCode(stateCode);
+                const lat = input.lat ?? resolved?.lat ?? null;
+                const lng = input.lng ?? resolved?.lng ?? null;
+                const serviceable = isServiceableByRange(stateCode, lat, lng);
+
+                setServiceability({
+                    status: serviceable ? 'serviceable' : 'unserviceable',
+                    location: stateLabel,
+                    stateCode,
+                });
+
+                const payload = {
+                    pincode,
+                    taluka: input.taluka || resolved?.taluka || serviceResult?.taluka || serviceResult?.location || '',
+                    state: stateLabel,
+                    stateCode,
+                    lat,
+                    lng,
+                    manuallySet: Boolean(input.manuallySet),
+                    source: input.source || 'AUTO',
+                };
+
+                await persistPayload(payload);
+                return payload;
+            };
+
             const applyIpFallback = async () => {
                 try {
                     const ipLocation = await resolveIpLocation();
-                    if (ipLocation.stateCode) {
-                        const payload = {
-                            stateCode: ipLocation.stateCode,
-                            district: ipLocation.district || 'ALL',
-                            manuallySet: false,
-                            source: 'IP',
-                        };
-                        setServiceability({
-                            status: 'serviceable',
-                            location: payload.district,
-                            district: payload.district,
-                            stateCode: payload.stateCode,
-                        });
-                        localStorage.setItem('bkmb_user_pincode', JSON.stringify(payload));
-                        try {
-                            await setLocationCookie(payload);
-                        } catch (err) {
-                            console.error('[Location] Cookie set failed:', err);
-                        }
-                        window.dispatchEvent(new Event('locationChanged'));
-                        return true;
-                    }
+                    if (!ipLocation.stateCode) return false;
+                    const stateCode = normalizeStateCode(ipLocation.stateCode);
+                    const stateLabel = stateLabelFromCode(stateCode);
+                    const serviceable = stateCode === 'MH';
+                    setServiceability({
+                        status: serviceable ? 'serviceable' : 'unserviceable',
+                        location: stateLabel,
+                        stateCode,
+                    });
+                    await persistPayload({
+                        state: stateLabel,
+                        stateCode,
+                        manuallySet: false,
+                        source: 'IP',
+                    });
+                    return true;
                 } catch (err) {
                     console.error('[Location] IP fallback failed:', err);
+                    return false;
                 }
-                return false;
             };
 
-            // Tier 1: Logic Removed (Legacy Aadhaar Pincode causing 404s)
+            const applyGeoCoords = async (latitude: number, longitude: number) => {
+                try {
+                    const supabaseClient = createClient();
+                    const { data: nearestData } = await supabaseClient.rpc('get_nearest_pincode', {
+                        p_lat: latitude,
+                        p_lon: longitude,
+                    });
+                    if (!nearestData || nearestData.length === 0) return false;
+                    const nearest = nearestData[0];
+                    const payload = await applyRangeStateContext({
+                        pincode: nearest.pincode,
+                        taluka: nearest.taluka || '',
+                        stateCode: nearest.rto_code?.substring(0, 2) || 'MH',
+                        lat: latitude,
+                        lng: longitude,
+                        manuallySet: false,
+                        source: 'GEO',
+                    });
+                    if (!payload) return false;
 
-            // ... (rest of serviceability check logic which is usually constant) ...
+                    updateSelfMemberLocation({
+                        pincode: payload.pincode || null,
+                        taluka: payload.taluka || null,
+                        state: payload.state || null,
+                        latitude,
+                        longitude,
+                    }).catch(err => console.error('[Location] Profile update failed:', err));
+
+                    return true;
+                } catch (err) {
+                    console.error('[Location] DB lookup error:', err);
+                    return false;
+                }
+            };
 
             let cachedData: any = null;
             const cached = localStorage.getItem('bkmb_user_pincode');
-            // console.log('[Location] Cached data:', cached);
             if (cached) {
                 try {
                     cachedData = JSON.parse(cached);
@@ -386,7 +522,6 @@ export const DesktopCatalog = ({
                 }
             }
 
-            // Tier 1.5: Logged-in Profile (skip if user explicitly set location)
             if (!cachedData?.manuallySet) {
                 let member: any = null;
                 try {
@@ -395,277 +530,66 @@ export const DesktopCatalog = ({
                     console.error('[Location] Profile fetch failed:', err);
                 }
                 if (member?.pincode) {
-                    // console.log('[Location] Using profile pincode:', member.pincode);
-
-                    const resolved = await resolveLocation(member.pincode);
-                    const result = await checkServiceability(member.pincode);
-
-                    const payload = {
+                    const payload = await applyRangeStateContext({
                         pincode: member.pincode,
-                        taluka: resolved?.taluka || member.taluka || result.taluka || result.location || '',
-                        district: resolved?.district || member.district || result.district || undefined,
-                        state: resolved?.state || member.state || result.state || undefined,
-                        stateCode: result.stateCode || undefined,
-                        lat: resolved?.lat ?? member.latitude ?? null,
-                        lng: resolved?.lng ?? member.longitude ?? null,
+                        taluka: member.taluka || '',
+                        state: member.state || null,
+                        stateCode: null,
+                        lat: member.latitude ?? null,
+                        lng: member.longitude ?? null,
                         manuallySet: false,
                         source: 'PROFILE',
-                    };
-
-                    // Optimistic Update: Unblock UI immediately using profile data
-                    setServiceability(prev => ({
-                        ...prev,
-                        status: 'serviceable',
-                        location: payload.district || payload.pincode || '',
-                        district: payload.district || undefined,
-                        stateCode: payload.stateCode || 'MH',
-                    }));
-
-                    const displayLoc = result.district || result.location || payload.pincode;
-                    setServiceability({
-                        status: result.isServiceable ? 'serviceable' : 'unserviceable',
-                        location: displayLoc,
-                        district: result.district || payload.district || undefined,
-                        stateCode: result.stateCode,
                     });
-
-                    localStorage.setItem('bkmb_user_pincode', JSON.stringify(payload));
-                    try {
-                        await setLocationCookie({
-                            pincode: payload.pincode,
-                            taluka: payload.taluka,
-                            district: payload.district,
-                            state: payload.state,
-                            stateCode: payload.stateCode,
-                            lat: payload.lat,
-                            lng: payload.lng,
-                        });
-                    } catch (err) {
-                        console.error('[Location] Cookie set failed:', err);
-                    }
-                    window.dispatchEvent(new Event('locationChanged'));
-
-                    // Persist back to profile if missing data
-                    if (!member.district || !member.taluka || !member.state || !member.latitude || !member.longitude) {
-                        try {
-                            await updateSelfMemberLocation({
-                                pincode: payload.pincode,
-                                district: payload.district || null,
-                                taluka: payload.taluka || null,
-                                state: payload.state || null,
-                                latitude: payload.lat,
-                                longitude: payload.lng,
-                            });
-                        } catch (err) {
-                            console.error('[Location] Profile update failed:', err);
+                    if (payload) {
+                        if (!member.taluka || !member.state || !member.latitude || !member.longitude) {
+                            try {
+                                await updateSelfMemberLocation({
+                                    pincode: payload.pincode || null,
+                                    taluka: payload.taluka || null,
+                                    state: payload.state || null,
+                                    latitude: payload.lat ?? null,
+                                    longitude: payload.lng ?? null,
+                                });
+                            } catch (err) {
+                                console.error('[Location] Profile update failed:', err);
+                            }
                         }
+                        return;
                     }
-
-                    return; // STOP HERE - don't ask for geolocation
                 }
             }
 
-            // Tier 2: Local Storage
             if (cachedData?.pincode) {
-                // console.log('[Location] Using cached pincode:', cachedData.pincode);
-
-                // Optimistic Update: Unblock UI immediately using cached data
-                setServiceability(prev => ({
-                    ...prev,
-                    status: 'serviceable',
-                    location: cachedData.district || cachedData.pincode || '',
-                    district: cachedData.district || undefined,
-                    stateCode: cachedData.stateCode || 'MH',
-                }));
-
-                const result = await checkServiceability(cachedData.pincode);
-                // Construct display location: District ONLY
-                const displayLoc = result.district || result.location || cachedData.pincode;
-                setServiceability({
-                    status: result.isServiceable ? 'serviceable' : 'unserviceable',
-                    location: displayLoc,
-                    district: result.district || undefined,
-                    stateCode: result.stateCode,
-                });
-                // Allow silent update of details (District/State)
-                const updated = {
+                const payload = await applyRangeStateContext({
                     pincode: cachedData.pincode,
-                    taluka: result.location || cachedData.taluka || cachedData.city,
-                    district: result.district,
-                    state: result.state,
-                    stateCode: result.stateCode,
+                    taluka: cachedData.taluka || cachedData.city || '',
+                    state: cachedData.state || null,
+                    stateCode: cachedData.stateCode || null,
+                    lat: cachedData.lat ?? null,
+                    lng: cachedData.lng ?? null,
                     manuallySet: Boolean(cachedData.manuallySet),
-                };
-                localStorage.setItem('bkmb_user_pincode', JSON.stringify(updated));
-                try {
-                    await setLocationCookie({
-                        pincode: updated.pincode,
-                        taluka: updated.taluka,
-                        district: updated.district,
-                        state: updated.state,
-                        stateCode: updated.stateCode,
-                        lat: cachedData.lat,
-                        lng: cachedData.lng,
-                    });
-                } catch (err) {
-                    console.error('[Location] Cookie set failed:', err);
+                    source: cachedData.source || 'CACHE',
+                });
+                if (payload) {
+                    if (payload.lat && payload.lng) {
+                        updateSelfMemberLocation({
+                            pincode: payload.pincode || null,
+                            taluka: payload.taluka || null,
+                            state: payload.state || null,
+                            latitude: payload.lat,
+                            longitude: payload.lng,
+                        }).catch(err => console.error('[Location] Profile update failed:', err));
+                    }
+                    return;
                 }
-                window.dispatchEvent(new Event('locationChanged'));
-                // Save lat/lng to profile (fire-and-forget)
-                if (cachedData.lat && cachedData.lng) {
-                    updateSelfMemberLocation({
-                        pincode: updated.pincode,
-                        district: updated.district || null,
-                        taluka: updated.taluka || null,
-                        state: updated.state || null,
-                        latitude: cachedData.lat,
-                        longitude: cachedData.lng,
-                    }).catch(err => console.error('[Location] Profile update failed:', err));
-                }
-                return; // STOP HERE - don't ask for geolocation
             }
-            // Tier 3: Browser Geolocation
+
             if (navigator.geolocation) {
-                // console.log('[Location] Requesting geolocation...');
                 let hasRetriedAfterTimeout = false;
                 navigator.geolocation.getCurrentPosition(
                     async position => {
-                        const { latitude, longitude } = position.coords;
-                        // console.log('[Location] Geolocation success:', { latitude, longitude });
-
-                        try {
-                            // Use our own database to find nearest pincode - no external APIs!
-                            const supabaseClient = createClient();
-                            const { data: nearestData, error: nearestError } = await supabaseClient.rpc(
-                                'get_nearest_pincode',
-                                { p_lat: latitude, p_lon: longitude }
-                            );
-
-                            // console.log('[Location] Nearest pincode from DB:', nearestData, nearestError);
-
-                            if (nearestData && nearestData.length > 0) {
-                                const nearest = nearestData[0];
-                                const pincode = nearest.pincode;
-                                const stateCode = nearest.rto_code?.substring(0, 2) || 'MH';
-
-                                // Use checkServiceability to verify and get full details
-                                const result = await checkServiceability(pincode);
-                                // console.log('[Location] Serviceability result:', result);
-
-                                const displayLoc = result.district || nearest.district || nearest.taluka || pincode;
-                                const userDist = result.district || nearest.district;
-
-                                if (result.isServiceable) {
-                                    // User is in serviceable district
-                                    setServiceability({
-                                        status: 'serviceable',
-                                        location: displayLoc,
-                                        district: userDist,
-                                        stateCode: result.stateCode || stateCode,
-                                        userDistrict: userDist,
-                                    });
-                                    const payload = {
-                                        pincode,
-                                        taluka: nearest.taluka || '',
-                                        district: userDist,
-                                        state: result.state || null,
-                                        stateCode: result.stateCode || stateCode,
-                                        lat: latitude,
-                                        lng: longitude,
-                                        manuallySet: false,
-                                    };
-                                    localStorage.setItem('bkmb_user_pincode', JSON.stringify(payload));
-                                    try {
-                                        await setLocationCookie(payload);
-                                    } catch (err) {
-                                        console.error('[Location] Cookie set failed:', err);
-                                    }
-                                    window.dispatchEvent(new Event('locationChanged'));
-                                    try {
-                                        await updateSelfMemberLocation({
-                                            pincode,
-                                            district: userDist || null,
-                                            taluka: nearest.taluka || null,
-                                            state: result.state || null,
-                                            latitude,
-                                            longitude,
-                                        });
-                                    } catch (err) {
-                                        console.error('[Location] Profile update failed:', err);
-                                    }
-                                } else {
-                                    // User in non-serviceable district - find nearest serviceable
-                                    // console.log('[Location] District not serviceable, finding nearest...');
-                                    const { data: nearestServiceable } = await supabaseClient.rpc(
-                                        'get_nearest_serviceable_district',
-                                        { p_lat: latitude, p_lon: longitude }
-                                    );
-
-                                    if (nearestServiceable && nearestServiceable.length > 0) {
-                                        const fallback = nearestServiceable[0];
-                                        // console.log('[Location] Fallback district:', fallback);
-                                        setServiceability({
-                                            status: 'unserviceable',
-                                            location: fallback.district,
-                                            district: fallback.district,
-                                            stateCode: fallback.state_code?.substring(0, 2) || 'MH',
-                                            userDistrict: userDist,
-                                            fallbackDistrict: fallback.district,
-                                        });
-                                        const payload = {
-                                            pincode,
-                                            taluka: nearest.taluka || '',
-                                            district: userDist,
-                                            state: result.state || null,
-                                            stateCode: result.stateCode || stateCode,
-                                            lat: latitude,
-                                            lng: longitude,
-                                            manuallySet: false,
-                                        };
-                                        localStorage.setItem('bkmb_user_pincode', JSON.stringify(payload));
-                                        try {
-                                            await setLocationCookie(payload);
-                                        } catch (err) {
-                                            console.error('[Location] Cookie set failed:', err);
-                                        }
-                                        window.dispatchEvent(new Event('locationChanged'));
-                                        try {
-                                            await updateSelfMemberLocation({
-                                                pincode,
-                                                district: userDist || null,
-                                                taluka: nearest.taluka || null,
-                                                state: result.state || null,
-                                                latitude,
-                                                longitude,
-                                            });
-                                        } catch (err) {
-                                            console.error('[Location] Profile update failed:', err);
-                                        }
-                                    } else {
-                                        // No serviceable district found - use Maharashtra fallback
-                                        setServiceability({
-                                            status: 'unserviceable',
-                                            location: 'MAHARASHTRA',
-                                            district: 'ALL',
-                                            stateCode: 'MH',
-                                            userDistrict: userDist,
-                                            fallbackDistrict: 'Maharashtra',
-                                        });
-                                    }
-                                }
-                                return;
-                            }
-
-                            // Fallback if RPC fails - use state-level
-                            // console.log('[Location] RPC failed, using Maharashtra fallback');
-                            setServiceability({
-                                status: 'serviceable',
-                                location: 'MAHARASHTRA',
-                                district: 'ALL',
-                                stateCode: 'MH',
-                            });
-                        } catch (err) {
-                            console.error('[Location] DB lookup error:', err);
+                        const ok = await applyGeoCoords(position.coords.latitude, position.coords.longitude);
+                        if (!ok) {
                             const resolvedByIp = await applyIpFallback();
                             if (!resolvedByIp) {
                                 setServiceability({ status: 'unset' });
@@ -675,74 +599,20 @@ export const DesktopCatalog = ({
                     },
                     async err => {
                         console.error('[Location] Geolocation error:', err.code, err.message);
-                        // TIMEOUT can happen while permission prompt is open in incognito.
-                        // Retry once with a longer timeout before falling back to IP location.
                         if (err.code === 3 && !hasRetriedAfterTimeout) {
                             hasRetriedAfterTimeout = true;
                             navigator.geolocation.getCurrentPosition(
                                 async position => {
-                                    const { latitude, longitude } = position.coords;
-                                    try {
-                                        const supabaseClient = createClient();
-                                        const { data: nearestData } = await supabaseClient.rpc('get_nearest_pincode', {
-                                            p_lat: latitude,
-                                            p_lon: longitude,
-                                        });
-                                        if (nearestData && nearestData.length > 0) {
-                                            const nearest = nearestData[0];
-                                            const pincode = nearest.pincode;
-                                            const stateCode = nearest.rto_code?.substring(0, 2) || 'MH';
-                                            const result = await checkServiceability(pincode);
-                                            const displayLoc =
-                                                result.district || nearest.district || nearest.taluka || pincode;
-                                            const userDist = result.district || nearest.district;
-                                            setServiceability({
-                                                status: result.isServiceable ? 'serviceable' : 'unserviceable',
-                                                location: displayLoc,
-                                                district: result.isServiceable ? userDist : result.district || userDist,
-                                                stateCode: result.stateCode || stateCode,
-                                                userDistrict: userDist,
-                                                fallbackDistrict: result.isServiceable
-                                                    ? undefined
-                                                    : result.district || undefined,
-                                            });
-                                            const payload = {
-                                                pincode,
-                                                taluka: nearest.taluka || '',
-                                                district: userDist,
-                                                state: result.state || null,
-                                                stateCode: result.stateCode || stateCode,
-                                                lat: latitude,
-                                                lng: longitude,
-                                                manuallySet: false,
-                                            };
-                                            localStorage.setItem('bkmb_user_pincode', JSON.stringify(payload));
-                                            try {
-                                                await setLocationCookie(payload);
-                                            } catch (cookieErr) {
-                                                console.error('[Location] Cookie set failed:', cookieErr);
-                                            }
-                                            window.dispatchEvent(new Event('locationChanged'));
-                                            // Save lat/lng to profile (fire-and-forget)
-                                            updateSelfMemberLocation({
-                                                pincode,
-                                                district: userDist || null,
-                                                taluka: nearest.taluka || null,
-                                                state: result.state || null,
-                                                latitude,
-                                                longitude,
-                                            }).catch(err =>
-                                                console.error('[Location] Profile update (retry) failed:', err)
-                                            );
-                                            return;
+                                    const ok = await applyGeoCoords(
+                                        position.coords.latitude,
+                                        position.coords.longitude
+                                    );
+                                    if (!ok) {
+                                        const resolvedByIp = await applyIpFallback();
+                                        if (!resolvedByIp) {
+                                            setServiceability({ status: 'unset' });
+                                            setIsLocationPickerOpen(true);
                                         }
-                                    } catch (retryErr) {
-                                        console.error('[Location] Geolocation retry failed:', retryErr);
-                                    }
-                                    const resolvedByIp = await applyIpFallback();
-                                    if (!resolvedByIp) {
-                                        setServiceability({ status: 'unset' });
-                                        setIsLocationPickerOpen(true);
                                     }
                                 },
                                 async retryErr => {
@@ -773,12 +643,11 @@ export const DesktopCatalog = ({
                     },
                     {
                         enableHighAccuracy: true,
-                        timeout: 30000, // allow user time to act on permission prompt
-                        maximumAge: 300000, // Use cached location if less than 5 min old
+                        timeout: 30000,
+                        maximumAge: 300000,
                     }
                 );
             } else {
-                // console.log('[Location] Geolocation not available, trying IP fallback');
                 const resolvedByIp = await applyIpFallback();
                 if (!resolvedByIp) {
                     setServiceability({ status: 'unset' });
@@ -1442,22 +1311,16 @@ export const DesktopCatalog = ({
                 </AnimatePresence>
 
                 {/* Not Serviceable Banner */}
-                {serviceability.status === 'unserviceable' && serviceability.fallbackDistrict && (
+                {serviceability.status === 'unserviceable' && (
                     <div className="mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-200">
                         <div className="flex items-start gap-3">
                             <span className="text-2xl">📍</span>
                             <div className="flex-1">
                                 <p className="font-bold text-amber-900">
-                                    Your area ({serviceability.userDistrict}) is not in our delivery zone yet.
+                                    Selected location is outside active service range.
                                 </p>
                                 <p className="mt-1 text-sm text-amber-800">
-                                    Showing prices for{' '}
-                                    <span className="font-bold">{serviceability.fallbackDistrict}</span> • You can still
-                                    browse & book
-                                </p>
-                                <p className="mt-1 text-sm text-amber-700 flex items-center gap-1">
-                                    → Pickup from our{' '}
-                                    <span className="font-bold">{serviceability.fallbackDistrict}</span> hub available!
+                                    Range-based serviceability is active for state-locked pricing.
                                 </p>
                             </div>
                         </div>
@@ -1580,7 +1443,6 @@ export const DesktopCatalog = ({
                                                               model: group.model,
                                                               variant: dv.variant,
                                                               studio: dv.studioCode || undefined,
-                                                              district: dv.dealerLocation || undefined,
                                                               leadId: leadId,
                                                               basePath,
                                                           }).url;
@@ -1750,21 +1612,27 @@ export const DesktopCatalog = ({
                 onClose={() => setIsLocationPickerOpen(false)}
                 onLocationSet={async (pincode, taluka, lat, lng) => {
                     const result = await checkServiceability(pincode);
+                    const stateCode = String(result.stateCode || 'MH')
+                        .trim()
+                        .toUpperCase()
+                        .slice(0, 2);
+                    const stateLabel = String(result.state || (stateCode === 'MH' ? 'MAHARASHTRA' : stateCode))
+                        .trim()
+                        .toUpperCase();
 
                     let dist: number | undefined;
-                    const isServiceable = result.isServiceable;
+                    const isStateLocked = stateCode === 'MH';
+                    let isServiceable = isStateLocked;
 
                     if (lat && lng) {
                         dist = calculateDistance(lat, lng, HUB_LOCATION.lat, HUB_LOCATION.lng);
-                        // Optional: can keep both distance and database check, but DB is source of truth now
-                        // isServiceable = isServiceable || dist <= MAX_SERVICEABLE_DISTANCE_KM;
+                        isServiceable = isStateLocked && dist <= MAX_SERVICEABLE_DISTANCE_KM;
                     }
 
                     setServiceability({
                         status: isServiceable ? 'serviceable' : 'unserviceable',
-                        location: result.district || result.location || taluka || '',
-                        district: result.district || undefined,
-                        stateCode: result.stateCode || undefined,
+                        location: stateLabel,
+                        stateCode,
                     });
 
                     localStorage.setItem(
@@ -1772,9 +1640,8 @@ export const DesktopCatalog = ({
                         JSON.stringify({
                             pincode,
                             taluka: result.location || taluka,
-                            district: result.district || undefined,
-                            state: result.state || undefined,
-                            stateCode: result.stateCode || undefined,
+                            state: stateLabel,
+                            stateCode,
                             lat,
                             lng,
                             manuallySet: true,
@@ -1784,9 +1651,8 @@ export const DesktopCatalog = ({
                         await setLocationCookie({
                             pincode,
                             taluka: result.location || taluka,
-                            district: result.district || undefined,
-                            state: result.state || undefined,
-                            stateCode: result.stateCode || undefined,
+                            state: stateLabel,
+                            stateCode,
                             lat,
                             lng,
                         });
@@ -1797,9 +1663,8 @@ export const DesktopCatalog = ({
                     try {
                         await updateSelfMemberLocation({
                             pincode,
-                            district: result.district || null,
                             taluka: result.location || taluka,
-                            state: result.state || null,
+                            state: stateLabel,
                             latitude: lat ?? null,
                             longitude: lng ?? null,
                         });
@@ -1807,9 +1672,7 @@ export const DesktopCatalog = ({
                         console.error('[Location] Profile update failed:', err);
                     }
 
-                    toast.success(
-                        `Prices updated for ${result.location || taluka}${dist ? ` (${Math.round(dist)}km)` : ''}`
-                    );
+                    toast.success(`Prices updated for ${stateLabel}${dist ? ` (${Math.round(dist)}km)` : ''}`);
                 }}
             />
 
