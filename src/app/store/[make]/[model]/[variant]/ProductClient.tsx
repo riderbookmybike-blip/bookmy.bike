@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import { useSystemPDPLogic } from '@/hooks/SystemPDPLogic';
 import { LeadCaptureModal } from '@/components/leads/LeadCaptureModal';
 import { EmailUpdateModal } from '@/components/auth/EmailUpdateModal';
+import { PincodeGateModal } from '@/components/store/Personalize/PincodeGateModal';
 import { createClient } from '@/lib/supabase/client';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -1328,6 +1329,19 @@ export default function ProductClient({
             ) : (
                 <DesktopPDP {...commonProps} />
             )}
+
+            {/* Mandatory pincode gate modal — auto-opens when no location resolved.
+                Non-dismissable: no X, no backdrop click. Blocks interaction. */}
+            <PincodeGateModal
+                isOpen={pdpGateReason === 'LOCATION_REQUIRED'}
+                onResolved={(_confidence, _pincode) => {
+                    // Modal persists + fires locationChanged itself (via persistAndFire).
+                    // locationChanged event causes DesktopCatalog/hook to re-run,
+                    // which resolves hasResolvedLocation → pdpGateReason becomes READY.
+                    // Trigger explicit re-check via retrySignal bump:
+                    setDealerRetryCount(c => c + 1);
+                }}
+            />
 
             <LeadCaptureModal
                 isOpen={showQuoteSuccess}

@@ -257,13 +257,13 @@ export const MobilePDP = ({
                 <p className="text-[12px] font-bold text-[#F4B000] uppercase tracking-wider mb-2">{displayVariant}</p>
             </div>
 
-            {/* Pincode Gate Chip */}
-            {gateReason === 'LOCATION_REQUIRED' && (
+            {/* Unlocked state: show cached pincode pill with Change option */}
+            {gateReason !== 'LOCATION_REQUIRED' && cachedPincode && (
                 <div className="px-5 mb-4">
                     <PincodeGateChip
                         cachedPincode={cachedPincode}
                         onResolved={() => onRetryLocation?.()}
-                        showBCoinNudge={showOClubPrompt}
+                        showBCoinNudge={false}
                         compact
                     />
                 </div>

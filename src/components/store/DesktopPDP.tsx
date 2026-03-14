@@ -618,16 +618,14 @@ export function DesktopPDP({
                 />
             </div>
             <div className="store-page-shell tv-pdp-shell pb-24 md:pb-28 space-y-8 relative z-10">
-                {/* Pincode Gate Chip — replaces old amber "Offer Locked" banner */}
-                {gateReason === 'LOCATION_REQUIRED' && (
+                {/* Unlocked state: show cached pincode pill with Change option */}
+                {gateReason !== 'LOCATION_REQUIRED' && cachedPincode && (
                     <PincodeGateChip
                         cachedPincode={cachedPincode}
                         onResolved={(_confidence, _pincode) => {
-                            // locationChanged event fired inside chip;
-                            // onRetryLocation triggers dealer re-fetch
                             onRetryLocation?.();
                         }}
-                        showBCoinNudge={showOClubPrompt}
+                        showBCoinNudge={false}
                         compact={false}
                     />
                 )}
