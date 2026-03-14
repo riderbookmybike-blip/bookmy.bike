@@ -12,6 +12,7 @@ import { computeOClubPricing } from '@/lib/oclub/coin';
 import { Logo } from '@/components/brand/Logo';
 import { buildPdpCommonState, buildCommandBarState } from '../Personalize/pdpComputations';
 import AmortizationPanel from '../Personalize/AmortizationPanel';
+import { PincodeGateChip } from '../Personalize/PincodeGateChip';
 
 // Shared responsive section components
 import {
@@ -57,10 +58,13 @@ export interface MobilePDPProps {
     showOClubPrompt?: boolean;
     isGated?: boolean;
     forceMobileLayout?: boolean;
-    gateReason?: 'LEGACY_MODE' | 'LOGIN_REQUIRED' | 'LOCATION_REQUIRED' | 'DEALER_TIMEOUT' | 'READY';
+    // Pincode-first: LOGIN_REQUIRED removed.
+    gateReason?: 'LEGACY_MODE' | 'LOCATION_REQUIRED' | 'DEALER_TIMEOUT' | 'READY';
     dealerFetchState?: 'IDLE' | 'GATED' | 'READY' | 'TIMEOUT' | 'ERROR';
     dealerFetchNotice?: string;
     onRetryDealerFetch?: () => void;
+    onRetryLocation?: () => void;
+    cachedPincode?: string;
     serviceability?: {
         isServiceable: boolean;
         status: string;
@@ -90,6 +94,8 @@ export const MobilePDP = ({
     dealerFetchState = 'IDLE',
     dealerFetchNotice,
     onRetryDealerFetch,
+    onRetryLocation,
+    cachedPincode,
     serviceability,
 }: MobilePDPProps) => {
     const { language } = useI18n();
@@ -251,19 +257,26 @@ export const MobilePDP = ({
                 <p className="text-[12px] font-bold text-[#F4B000] uppercase tracking-wider mb-2">{displayVariant}</p>
             </div>
 
-            {gateReason !== 'LEGACY_MODE' && gateReason !== 'READY' && (
+            {/* Pincode Gate Chip */}
+            {gateReason === 'LOCATION_REQUIRED' && (
                 <div className="px-5 mb-4">
-                    <div className="rounded-2xl border border-amber-300/70 bg-amber-50 px-3 py-2.5">
-                        <p className="text-[9px] font-black uppercase tracking-[0.16em] text-amber-900">
-                            Personalized Offer Locked
-                        </p>
-                        <p className="mt-1 text-[11px] text-amber-900/90">
-                            {gateReason === 'LOGIN_REQUIRED'
-                                ? 'Login to see dealer price + finance offer.'
-                                : gateReason === 'LOCATION_REQUIRED'
-                                  ? 'Add location (GPS or pincode) to unlock best price.'
-                                  : dealerFetchNotice || 'Dealer price unavailable. Try again.'}
-                        </p>
+                    <PincodeGateChip
+                        cachedPincode={cachedPincode}
+                        onResolved={() => onRetryLocation?.()}
+                        showBCoinNudge={showOClubPrompt}
+                        compact
+                    />
+                </div>
+            )}
+
+            {/* bCoin nudge when offer IS unlocked */}
+            {gateReason !== 'LOCATION_REQUIRED' && showOClubPrompt && (
+                <div className="px-5 mb-3">
+                    <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 w-fit">
+                        <span className="text-xs">🪙</span>
+                        <span className="text-[9px] font-black uppercase tracking-[0.12em] text-amber-800">
+                            Sign in for 13 bCoins · ₹1,000 value
+                        </span>
                     </div>
                 </div>
             )}

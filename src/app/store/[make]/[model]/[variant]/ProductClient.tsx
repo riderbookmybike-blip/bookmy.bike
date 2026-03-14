@@ -16,6 +16,7 @@ import { useAnalytics } from '@/components/analytics/AnalyticsProvider';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { isHandheldPhoneUserAgent, isTvUserAgent } from '@/lib/utils/deviceUserAgent';
 import { useDiscoveryOptional } from '@/contexts/DiscoveryContext';
+import { OCLUB_SIGNUP_BONUS } from '@/lib/oclub/coin';
 
 import { InsuranceRule } from '@/types/insurance';
 
@@ -502,7 +503,9 @@ export default function ProductClient({
     }, [initialLocation]);
     // Note: Do NOT disable when hasResolvedDealer — the hook must still run to fetch
     // the actual offer_amount via its overrideDealerId path (no lat/lng needed).
-    const isDealerFetchDisabled = pdpGateEnabled ? !isLoggedIn || !hasResolvedLocation : false;
+    // Pincode-first gate: login is NOT required to unlock personalized offer.
+    // Only a resolved location (pincode or GPS coords) is needed.
+    const isDealerFetchDisabled = pdpGateEnabled ? !hasResolvedLocation : false;
 
     // Unified Dealer Context Hook
     const {
@@ -853,12 +856,8 @@ export default function ProductClient({
 
     const handleConfirmQuote = async () => {
         if (!leadContext) return;
-        if (pdpGateEnabled && !isLoggedIn) {
-            toast.error('Login required to see dealer price + finance offer.');
-            return;
-        }
         if (pdpGateEnabled && !hasResolvedLocation) {
-            toast.error('Add location (GPS or pincode) to unlock best price.');
+            toast.error('Add pincode to unlock best price.');
             return;
         }
         if (!quoteTenantId) {
@@ -910,12 +909,8 @@ export default function ProductClient({
     };
 
     const handleBookingRequest = async () => {
-        if (pdpGateEnabled && !isLoggedIn) {
-            toast.error('Login required to see dealer price + finance offer.');
-            return;
-        }
         if (pdpGateEnabled && !hasResolvedLocation) {
-            toast.error('Add location (GPS or pincode) to unlock best price.');
+            toast.error('Add pincode to unlock best price.');
             return;
         }
         if (!quoteTenantId) {
@@ -1197,16 +1192,15 @@ export default function ProductClient({
             bestOffer?.price ??
             Number(data.colorSurge || 0) - Number(data.colorDiscount || 0)
     );
-    const pdpGateReason: 'LEGACY_MODE' | 'LOGIN_REQUIRED' | 'LOCATION_REQUIRED' | 'DEALER_TIMEOUT' | 'READY' =
-        !pdpGateEnabled
-            ? 'LEGACY_MODE'
-            : !isLoggedIn
-              ? 'LOGIN_REQUIRED'
-              : !hasResolvedLocation
-                ? 'LOCATION_REQUIRED'
-                : dealerFetchState === 'TIMEOUT'
-                  ? 'DEALER_TIMEOUT'
-                  : 'READY';
+    // Pincode-first: LOGIN_REQUIRED removed from gate chain.
+    // Login is only an incentive (bCoin nudge), not a blocker.
+    const pdpGateReason: 'LEGACY_MODE' | 'LOCATION_REQUIRED' | 'DEALER_TIMEOUT' | 'READY' = !pdpGateEnabled
+        ? 'LEGACY_MODE'
+        : !hasResolvedLocation
+          ? 'LOCATION_REQUIRED'
+          : dealerFetchState === 'TIMEOUT'
+            ? 'DEALER_TIMEOUT'
+            : 'READY';
     const derivedServiceability = useMemo(() => {
         const isServiceableFromBestOffer =
             typeof (bestOffer as any)?.isServiceable === 'boolean' ? Boolean((bestOffer as any)?.isServiceable) : null;
@@ -1240,7 +1234,7 @@ export default function ProductClient({
         bestOffer, // Passing bestOffer to children
         otherOffers,
         serverPricing, // SSPP v1: Server-calculated pricing breakdown
-        walletCoins: !walletLoading && isLoggedIn ? availableCoins : null,
+        walletCoins: !walletLoading ? (isLoggedIn ? availableCoins : OCLUB_SIGNUP_BONUS) : null,
         showOClubPrompt: !walletLoading && !isLoggedIn,
         isGated,
         forceMobileLayout,
@@ -1248,7 +1242,9 @@ export default function ProductClient({
         dealerFetchState,
         dealerFetchNotice: dealerFetchNotice || undefined,
         onRetryDealerFetch: () => setDealerRetryCount(c => c + 1),
+        onRetryLocation: () => setDealerRetryCount(c => c + 1),
         onWaSend: handleWaSend,
+        cachedPincode: cachedLocationHint?.pincode || undefined,
         serviceability: derivedServiceability,
     };
     const leadDealerMismatch = Boolean(

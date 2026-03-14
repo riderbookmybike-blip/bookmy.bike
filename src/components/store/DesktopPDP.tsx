@@ -81,6 +81,7 @@ const WarrantyTab = dynamic(() => import('./Personalize/Tabs/WarrantyTab'), {
 import PricingCard from './Personalize/Cards/PricingCard';
 import FinanceCard from './Personalize/Cards/FinanceCard';
 import TechSpecsSection from './Personalize/TechSpecsSection';
+import { PincodeGateChip } from './Personalize/PincodeGateChip';
 import { ParitySnapshot, PdpSpecsSection, PdpCommandBar } from './sections';
 // PdpPricingSection / PdpFinanceSection / PdpFinanceSummarySection — hidden mounts below
 import { PdpPricingSection, PdpFinanceSection, PdpFinanceSummarySection } from './sections';
@@ -127,10 +128,13 @@ interface DesktopPDPProps {
     showOClubPrompt?: boolean;
     isGated?: boolean;
     forceMobileLayout?: boolean;
-    gateReason?: 'LEGACY_MODE' | 'LOGIN_REQUIRED' | 'LOCATION_REQUIRED' | 'DEALER_TIMEOUT' | 'READY';
+    // Pincode-first: LOGIN_REQUIRED removed; gate is LOCATION_REQUIRED only.
+    gateReason?: 'LEGACY_MODE' | 'LOCATION_REQUIRED' | 'DEALER_TIMEOUT' | 'READY';
     dealerFetchState?: 'IDLE' | 'GATED' | 'READY' | 'TIMEOUT' | 'ERROR';
     dealerFetchNotice?: string;
     onRetryDealerFetch?: () => void;
+    onRetryLocation?: () => void;
+    cachedPincode?: string;
     /** WhatsApp mini-button handler — provided by ProductClient, undefined for non-team-member views */
     onWaSend?: (phone: string) => Promise<void>;
     serviceability?: {
@@ -182,6 +186,8 @@ export function DesktopPDP({
     dealerFetchState = 'IDLE',
     dealerFetchNotice,
     onRetryDealerFetch,
+    onRetryLocation,
+    cachedPincode,
     onWaSend,
     serviceability,
 }: DesktopPDPProps) {
@@ -612,21 +618,27 @@ export function DesktopPDP({
                 />
             </div>
             <div className="store-page-shell tv-pdp-shell pb-24 md:pb-28 space-y-8 relative z-10">
-                {gateReason !== 'LEGACY_MODE' && gateReason !== 'READY' && (
-                    <div className="rounded-3xl border border-amber-300/70 bg-amber-50 px-4 py-3 md:px-5 md:py-4">
-                        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-amber-900">
-                            Personalized Offer Locked
-                        </p>
-                        <p className="mt-1 text-sm text-amber-900/90">
-                            {gateReason === 'LOGIN_REQUIRED'
-                                ? 'Login to see dealer price + finance offer.'
-                                : gateReason === 'LOCATION_REQUIRED'
-                                  ? 'Add location (GPS or pincode) to unlock best price.'
-                                  : dealerFetchNotice || 'Dealer price unavailable. Try again.'}
-                        </p>
-                        <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-amber-800/80">
-                            Fallback: State SOT shown below
-                        </p>
+                {/* Pincode Gate Chip — replaces old amber "Offer Locked" banner */}
+                {gateReason === 'LOCATION_REQUIRED' && (
+                    <PincodeGateChip
+                        cachedPincode={cachedPincode}
+                        onResolved={(_confidence, _pincode) => {
+                            // locationChanged event fired inside chip;
+                            // onRetryLocation triggers dealer re-fetch
+                            onRetryLocation?.();
+                        }}
+                        showBCoinNudge={showOClubPrompt}
+                        compact={false}
+                    />
+                )}
+
+                {/* bCoin nudge (shown only when offer IS unlocked but user not logged in) */}
+                {gateReason !== 'LOCATION_REQUIRED' && showOClubPrompt && (
+                    <div className="flex items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 w-fit">
+                        <span className="text-sm">🪙</span>
+                        <span className="text-[10px] font-black uppercase tracking-[0.14em] text-amber-800">
+                            Sign in for {13} bCoins · ₹1,000 value
+                        </span>
                     </div>
                 )}
 
