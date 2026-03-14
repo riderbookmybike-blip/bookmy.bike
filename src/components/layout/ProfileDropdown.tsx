@@ -1690,6 +1690,8 @@ ${referralUrl}`;
                                                                                         adminMemberships[0]?.tenants
                                                                                             ?.slug
                                                                                     )}
+                                                                                    target="_blank"
+                                                                                    rel="noopener noreferrer"
                                                                                     onClick={() => setIsOpen(false)}
                                                                                     className="ml-2 shrink-0 px-3 py-1.5 rounded-full bg-amber-500 text-white text-[8px] font-black uppercase tracking-wider hover:bg-amber-600 transition-colors"
                                                                                 >
@@ -1717,6 +1719,8 @@ ${referralUrl}`;
                                                                                     href={getWorkspaceDashboardHref(
                                                                                         activeDealerSlug
                                                                                     )}
+                                                                                    target="_blank"
+                                                                                    rel="noopener noreferrer"
                                                                                     onClick={() => setIsOpen(false)}
                                                                                     className="ml-2 shrink-0 px-3 py-1.5 rounded-full bg-emerald-500 text-white text-[8px] font-black uppercase tracking-wider hover:bg-emerald-600 transition-colors"
                                                                                 >
@@ -1744,6 +1748,8 @@ ${referralUrl}`;
                                                                                     href={getWorkspaceDashboardHref(
                                                                                         activeFinancerSlug
                                                                                     )}
+                                                                                    target="_blank"
+                                                                                    rel="noopener noreferrer"
                                                                                     onClick={() => setIsOpen(false)}
                                                                                     className="ml-2 shrink-0 px-3 py-1.5 rounded-full bg-indigo-500 text-white text-[8px] font-black uppercase tracking-wider hover:bg-indigo-600 transition-colors"
                                                                                 >
@@ -1833,6 +1839,8 @@ ${referralUrl}`;
                                                                                                                 href={getWorkspaceDashboardHref(
                                                                                                                     d.slug
                                                                                                                 )}
+                                                                                                                target="_blank"
+                                                                                                                rel="noopener noreferrer"
                                                                                                                 onClick={() =>
                                                                                                                     setIsOpen(
                                                                                                                         false
@@ -1933,6 +1941,8 @@ ${referralUrl}`;
                                                                                                                 href={getWorkspaceDashboardHref(
                                                                                                                     f.slug
                                                                                                                 )}
+                                                                                                                target="_blank"
+                                                                                                                rel="noopener noreferrer"
                                                                                                                 onClick={() =>
                                                                                                                     setIsOpen(
                                                                                                                         false
