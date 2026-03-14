@@ -538,7 +538,7 @@ export function DesktopPDP({
         <div className="relative min-h-screen bg-white transition-colors duration-500 font-sans pt-[104px] pb-20">
             {/* Pincode chip — sticky just below site header */}
             {gateReason !== 'LOCATION_REQUIRED' && cachedPincode && (
-                <div className="sticky top-[64px] z-[90] bg-white/80 backdrop-blur-sm border-b border-slate-100">
+                <div className="sticky top-[104px] z-[90] bg-white/80 backdrop-blur-sm border-b border-slate-100">
                     <div className="page-container py-2">
                         <PincodeGateChip
                             cachedPincode={cachedPincode}
