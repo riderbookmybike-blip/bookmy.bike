@@ -477,7 +477,6 @@ export const ProductCard = ({
         make: v.make,
         model: v.model,
         variant: v.variant,
-        color: v.availableColors?.[0]?.name ? slugify(v.availableColors?.[0]?.name) : undefined,
         studio: studioIdLabel || undefined,
         district: navigableDistrict,
         leadId: leadId,
@@ -797,9 +796,6 @@ export const ProductCard = ({
                                                       make: v.make,
                                                       model: v.model,
                                                       variant: v.variant,
-                                                      color: v.availableColors?.[0]?.name
-                                                          ? slugify(v.availableColors?.[0]?.name)
-                                                          : undefined,
                                                       studio: studioIdLabel || undefined,
                                                       district: navigableDistrict,
                                                       leadId: leadId,
@@ -1465,9 +1461,6 @@ export const ProductCard = ({
                                             make: v.make,
                                             model: v.model,
                                             variant: v.variant,
-                                            color: v.availableColors?.[0]?.name
-                                                ? slugify(v.availableColors?.[0]?.name)
-                                                : undefined,
                                             studio: studioIdLabel || undefined,
                                             district: navigableDistrict,
                                             leadId: leadId,
