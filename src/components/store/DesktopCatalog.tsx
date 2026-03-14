@@ -35,6 +35,8 @@ import { createClient } from '@/lib/supabase/client';
 import { resolveLocation } from '@/utils/locationResolver';
 import { useFavorites } from '@/lib/favorites/favoritesContext';
 import { LocationPicker } from './LocationPicker';
+import { PincodeGateModal } from './Personalize/PincodeGateModal';
+import { isCatalogCTABlocked, resolveBlockReason } from '@/lib/store/isLocationResolved';
 import { calculateDistance, HUB_LOCATION, MAX_SERVICEABLE_DISTANCE_KM } from '@/utils/geoUtils';
 import { setLocationCookie } from '@/actions/locationCookie';
 import { CatalogCardAdapter } from './cards/VehicleCardAdapters';
@@ -50,6 +52,7 @@ import { getEmiFactor } from '@/lib/constants/pricingConstants';
 import { useDiscovery } from '@/contexts/DiscoveryContext';
 import { StoreSearchBar } from '@/components/store/ui/StoreSearchBar';
 import { buildVariantExplorerUrl } from '@/lib/utils/urlHelper';
+import { useAnalytics } from '@/components/analytics/AnalyticsProvider';
 import {
     VEHICLE_MODE_CONFIG,
     compareLimitMessage,
@@ -100,7 +103,10 @@ export const DesktopCatalog = ({
     const router = useRouter();
     const { device } = useBreakpoint();
     const { setResultsCount, setLocationLabel, setShowDiscoveryBar } = useDiscovery();
+    const { trackEvent } = useAnalytics();
     const isPhone = device === 'phone';
+    // Debounce ref for catalog_cta_blocked analytics (1 event per 5s per session to prevent spam)
+    const ctaBlockedLastFiredRef = useRef<number>(0);
     const [tvViewport, setTvViewport] = useState(false);
     const isTv = tvViewport;
     const [viewportDebug, setViewportDebug] = useState({
@@ -621,8 +627,15 @@ export const DesktopCatalog = ({
                             const resolvedByIp = await applyIpFallback();
                             if (!resolvedByIp) {
                                 setServiceability({ status: 'unset' });
-                                setIsLocationPickerOpen(true);
+                                // GPS resolved coords but RPC/servicability failed — show gate
+                                trackEvent('INTENT_SIGNAL', 'catalog_gps_auto_fail', {
+                                    reason: 'rpc_error',
+                                });
                             }
+                        } else {
+                            trackEvent('INTENT_SIGNAL', 'catalog_gps_auto_success', {
+                                source: 'DesktopCatalog',
+                            });
                         }
                     },
                     async err => {
@@ -639,8 +652,11 @@ export const DesktopCatalog = ({
                                         const resolvedByIp = await applyIpFallback();
                                         if (!resolvedByIp) {
                                             setServiceability({ status: 'unset' });
-                                            setIsLocationPickerOpen(true);
                                         }
+                                    } else {
+                                        trackEvent('INTENT_SIGNAL', 'catalog_gps_auto_success', {
+                                            source: 'DesktopCatalog_retry',
+                                        });
                                     }
                                 },
                                 async retryErr => {
@@ -649,10 +665,21 @@ export const DesktopCatalog = ({
                                         retryErr.code,
                                         retryErr.message
                                     );
+                                    trackEvent('INTENT_SIGNAL', 'catalog_gps_auto_fail', {
+                                        reason:
+                                            retryErr.code === 1
+                                                ? 'permission_denied'
+                                                : retryErr.code === 3
+                                                  ? 'gps_timeout'
+                                                  : 'gps_unavailable',
+                                        error_code: retryErr.code,
+                                    });
                                     const resolvedByIp = await applyIpFallback();
                                     if (!resolvedByIp) {
                                         setServiceability({ status: 'unset' });
-                                        setIsLocationPickerOpen(true);
+                                        trackEvent('INTENT_SIGNAL', 'catalog_location_gate_shown', {
+                                            trigger: 'gps_fail',
+                                        });
                                     }
                                 },
                                 {
@@ -663,10 +690,22 @@ export const DesktopCatalog = ({
                             );
                             return;
                         }
+                        // code 1 = permission denied, code 2 = unavailable
+                        trackEvent('INTENT_SIGNAL', 'catalog_gps_auto_fail', {
+                            reason:
+                                err.code === 1
+                                    ? 'permission_denied'
+                                    : err.code === 3
+                                      ? 'gps_timeout'
+                                      : 'gps_unavailable',
+                            error_code: err.code,
+                        });
                         const resolvedByIp = await applyIpFallback();
                         if (!resolvedByIp) {
                             setServiceability({ status: 'unset' });
-                            setIsLocationPickerOpen(true);
+                            trackEvent('INTENT_SIGNAL', 'catalog_location_gate_shown', {
+                                trigger: err.code === 1 ? 'gps_denied' : 'gps_fail',
+                            });
                         }
                     },
                     {
@@ -1190,31 +1229,19 @@ export const DesktopCatalog = ({
                     : undefined
             }
         >
-            {/* Location Gate — SEO-safe: catalog HTML stays in DOM, overlay blocks interaction */}
+            {/* Location Gate — non-dismissable PincodeGateModal replaces old button overlay */}
             {showLocationGate && (
-                <div className="fixed inset-0 z-[200] flex items-center justify-center">
-                    {/* Backdrop blur */}
-                    <div className="absolute inset-0 bg-black/40 backdrop-blur-md" />
-                    {/* Modal */}
-                    <div className="relative z-10 w-full max-w-md mx-4 rounded-3xl border border-white/20 bg-white shadow-2xl p-8 text-center space-y-5">
-                        <div className="mx-auto w-14 h-14 rounded-full bg-[#F4B000]/15 flex items-center justify-center">
-                            <MapPin size={28} className="text-[#F4B000]" />
-                        </div>
-                        <h2 className="text-xl font-black uppercase tracking-wide text-slate-900">Location Required</h2>
-                        <p className="text-sm text-slate-600 leading-relaxed">
-                            Nearest dealership aur accurate pricing ke liye aapki location zaroori hai.
-                            <br />
-                            <span className="text-xs text-slate-400">GPS allow karein ya pincode enter karein.</span>
-                        </p>
-                        <button
-                            onClick={() => setIsLocationPickerOpen(true)}
-                            className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-[#F4B000] px-6 py-3.5 text-sm font-black text-black uppercase tracking-widest shadow-lg shadow-[#F4B000]/20 hover:scale-[1.02] transition-all"
-                        >
-                            <MapPin size={16} />
-                            Set Location
-                        </button>
-                    </div>
-                </div>
+                <PincodeGateModal
+                    isOpen={showLocationGate}
+                    onResolved={() => {
+                        // PincodeGateModal.persistAndFire already wrote localStorage + cookie
+                        // + fired window.dispatchEvent(new Event('locationChanged')).
+                        // The checkCurrentServiceability useEffect listens to locationChanged
+                        // and will re-run automatically — no manual call needed here.
+                        // Extra dispatch ensures catalog re-evaluates if event was missed:
+                        window.dispatchEvent(new Event('locationChanged'));
+                    }}
+                />
             )}
 
             {/* Non-Served State Modal — dismissable, user can still browse */}
@@ -1514,28 +1541,54 @@ export const DesktopCatalog = ({
                                             showOClubPrompt={!isLoggedIn}
                                             showBcoinBadge={true}
                                             variantCount={group.variantCount}
-                                            onExplore={() => {
-                                                const url =
-                                                    group.variantCount > 1
-                                                        ? buildVariantExplorerUrl(group.make, group.model)
-                                                        : buildProductUrl({
+                                            onExplore={(() => {
+                                                const blocked = isCatalogCTABlocked(
+                                                    showLocationGate,
+                                                    serviceability.status
+                                                );
+                                                return blocked
+                                                    ? () => {
+                                                          // Debounce: fire catalog_cta_blocked at most once per 5s
+                                                          const now = Date.now();
+                                                          if (now - ctaBlockedLastFiredRef.current > 5000) {
+                                                              ctaBlockedLastFiredRef.current = now;
+                                                              const blockReason = resolveBlockReason(
+                                                                  serviceability.status,
+                                                                  serviceability.stateCode
+                                                              );
+                                                              trackEvent('INTENT_SIGNAL', 'catalog_cta_blocked', {
+                                                                  block_reason: blockReason,
+                                                                  state_code: serviceability.stateCode || null,
+                                                                  pincode: null,
+                                                              });
+                                                          }
+                                                      }
+                                                    : () => {
+                                                          const url =
+                                                              group.variantCount > 1
+                                                                  ? buildVariantExplorerUrl(group.make, group.model)
+                                                                  : buildProductUrl({
+                                                                        make: group.make,
+                                                                        model: group.model,
+                                                                        variant: dv.variant,
+                                                                        studio: dv.studioCode || undefined,
+                                                                        leadId: leadId,
+                                                                        basePath,
+                                                                    }).url;
+                                                          router.push(url);
+                                                      };
+                                            })()}
+                                            onCompare={
+                                                isCatalogCTABlocked(showLocationGate, serviceability.status)
+                                                    ? () => {}
+                                                    : () =>
+                                                          toggleCompare({
+                                                              id: v.id,
                                                               make: group.make,
                                                               model: group.model,
-                                                              variant: dv.variant,
-                                                              studio: dv.studioCode || undefined,
-                                                              leadId: leadId,
-                                                              basePath,
-                                                          }).url;
-                                                router.push(url);
-                                            }}
-                                            onCompare={() =>
-                                                toggleCompare({
-                                                    id: v.id,
-                                                    make: group.make,
-                                                    model: group.model,
-                                                    modelSlug: group.modelSlug,
-                                                    imageUrl: v.imageUrl || '/images/templates/t3_night.webp',
-                                                })
+                                                              modelSlug: group.modelSlug,
+                                                              imageUrl: v.imageUrl || '/images/templates/t3_night.webp',
+                                                          })
                                             }
                                             isInCompare={compareIds.has(v.id)}
                                             onEditDownpayment={openDpEdit}
