@@ -492,6 +492,8 @@ export const ProductCard = ({
                 data-product-id={v.id}
                 data-dealer-id={v.dealerId || bestOffer?.dealerId || ''}
                 data-offer-delta={offerDeltaForParity}
+                data-on-road={baseOnRoadPrice || 0}
+                data-ex-showroom={v.price?.exShowroom || 0}
                 className="group bg-white border border-slate-200 rounded-[2.5rem] overflow-hidden flex shadow-sm hover:shadow-2xl transition-all duration-500 min-h-[22rem]"
             >
                 {/* Image Section - Wider */}
@@ -803,6 +805,8 @@ export const ProductCard = ({
                 data-product-id={v.id}
                 data-dealer-id={v.dealerId || bestOffer?.dealerId || ''}
                 data-offer-delta={offerDeltaForParity}
+                data-on-road={baseOnRoadPrice || 0}
+                data-ex-showroom={v.price?.exShowroom || 0}
                 onClick={handleCardClick}
                 onMouseMove={isTv ? undefined : handleMouseMove}
                 onMouseEnter={isTv ? undefined : handleMouseEnter}

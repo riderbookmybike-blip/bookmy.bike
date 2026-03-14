@@ -94,22 +94,25 @@ test.describe('SOT Pricing Parity', () => {
             }
         });
 
-        test(`${product.label}: No ₹0 pricing leak`, async ({ page }) => {
+        // ── Step 2: Hardened ₹0 leak → REQUIRED_CORE_KEYS fail-fast check ──
+        test(`${product.label}: No ₹0 pricing leak — REQUIRED_CORE_KEYS non-zero`, async ({ page }) => {
             const url = `/store/${product.make}/${product.model}/${product.variant}`;
             await gotoStorePage(page, url);
 
-            // Check page content for ₹0 patterns
-            const bodyText = await page.locator('body').textContent();
-            const hasZeroPrice = bodyText?.includes('₹0') || bodyText?.includes('₹ 0');
+            await page.waitForSelector('[data-testid="pdp-parity-json"]', { timeout: 30_000, state: 'attached' });
+            const raw = await page
+                .locator('[data-testid="pdp-parity-json"]')
+                .first()
+                .getAttribute('data-parity-snapshot');
+            const snap = raw ? JSON.parse(raw) : null;
+            expect(snap, 'pdp-parity-json missing').not.toBeNull();
 
-            // ₹0 should never appear in a valid PDP
-            if (hasZeroPrice) {
-                // Allow ₹0 only in specific contexts (discounts, savings)
-                const zeroInDiscount = await page.locator('[data-testid="discount"], [data-testid="savings"]').count();
-                if (zeroInDiscount === 0) {
-                    // This is a genuine ₹0 leak
-                    console.warn(`⚠️ ₹0 found on PDP for ${product.label}`);
-                }
+            // Every REQUIRED_CORE_KEYS key that maps to a numeric pricing field must be > 0;
+            // zero means the pipeline failed to compute price (genuine ₹0 leak).
+            const ZERO_FORBIDDEN: string[] = ['baseExShowroom', 'totalOnRoad'];
+            for (const field of ZERO_FORBIDDEN) {
+                const val = snap[field];
+                expect(typeof val === 'number' && val > 0, `${product.label}: ₹0 leak — ${field} = ${val}`).toBe(true);
             }
         });
 
@@ -141,6 +144,98 @@ test.describe('SOT Pricing Parity', () => {
             .count();
         expect(productCards).toBeGreaterThan(0);
     });
+});
+
+// ─── Step 1: Catalog → cat_price_state on-road parity ────────────────────────
+// Catalog card data-on-road must equal PDP pdp-parity-json totalOnRoad
+// (both come from cat_price_state_mh.on_road_price for state=MH, no dealer delta)
+test.describe('Catalog on-road = cat_price_state (SOT parity)', () => {
+    const VIEWPORTS = [
+        { label: 'desktop', width: 1366, height: 768, isMobile: false, hasTouch: false },
+        { label: 'mobile', width: 390, height: 844, isMobile: true, hasTouch: true },
+    ] as const;
+
+    for (const vp of VIEWPORTS) {
+        test(`Catalog card on-road matches PDP totalOnRoad [${vp.label}]`, async ({ browser }) => {
+            test.setTimeout(120_000);
+
+            const ctx = await browser.newContext({
+                viewport: { width: vp.width, height: vp.height },
+                isMobile: vp.isMobile,
+                hasTouch: vp.hasTouch,
+            });
+            const page = await ctx.newPage();
+
+            try {
+                await gotoStorePage(page, '/store/catalog');
+                await page.waitForLoadState('networkidle', { timeout: 20_000 }).catch(() => {});
+
+                // Grab first catalog card that has a valid on-road price + PDP href
+                const CARD_SEL = '[data-testid="catalog-product-card"], [data-testid="catalog-compact-card"]';
+                await page.waitForSelector(CARD_SEL, { timeout: 30_000 });
+
+                const cardData = await page.evaluate(sel => {
+                    const cards = Array.from(document.querySelectorAll(sel)) as HTMLElement[];
+                    for (const card of cards) {
+                        const onRoad = Number(card.dataset.onRoad || '0');
+                        if (onRoad <= 0) continue;
+                        // Find PDP anchor: /store/<make>/<model>/<variant>
+                        const link = Array.from(card.querySelectorAll('a[href]')).find(a => {
+                            const href = a.getAttribute('href') || '';
+                            const parts = href.split('/').filter(Boolean);
+                            const idx = parts.indexOf('store');
+                            return idx >= 0 && parts.length - idx >= 4;
+                        }) as HTMLAnchorElement | undefined;
+                        if (!link) continue;
+                        return {
+                            onRoad,
+                            exShowroom: Number(card.dataset.exShowroom || '0'),
+                            href: link.getAttribute('href') || '',
+                        };
+                    }
+                    return null;
+                }, CARD_SEL);
+
+                if (!cardData) {
+                    test.skip();
+                    return;
+                }
+
+                // Navigate to PDP
+                const pdpUrl = cardData.href.startsWith('http') ? cardData.href : `${BASE_URL}${cardData.href}`;
+                await page.goto(pdpUrl, { waitUntil: 'domcontentloaded', timeout: 45_000 });
+                await page.waitForLoadState('networkidle', { timeout: 20_000 }).catch(() => {});
+
+                // Read parity snapshot — totalOnRoad = cat_price_state_mh.on_road_price (no dealer delta)
+                await page.waitForSelector('[data-testid="pdp-parity-json"]', { timeout: 30_000, state: 'attached' });
+                const raw = await page
+                    .locator('[data-testid="pdp-parity-json"]')
+                    .first()
+                    .getAttribute('data-parity-snapshot');
+                const snap = raw ? JSON.parse(raw) : null;
+                expect(snap, `${vp.label}: pdp-parity-json missing`).not.toBeNull();
+
+                const pdpTotalOnRoad: number = snap.totalOnRoad;
+                expect(pdpTotalOnRoad, `${vp.label}: PDP totalOnRoad must be > 0`).toBeGreaterThan(0);
+
+                // Core assertion: catalog card on-road == PDP state on-road (±1 tolerance for rounding)
+                expect(
+                    Math.abs(cardData.onRoad - pdpTotalOnRoad),
+                    `${vp.label}: catalog card data-on-road=${cardData.onRoad} ≠ PDP totalOnRoad=${pdpTotalOnRoad}`
+                ).toBeLessThanOrEqual(1);
+
+                // Bonus: ex_showroom sanity — must be < on_road (taxes add to it)
+                if (cardData.exShowroom > 0) {
+                    expect(
+                        cardData.exShowroom,
+                        `${vp.label}: ex_showroom (${cardData.exShowroom}) should be ≤ on_road (${cardData.onRoad})`
+                    ).toBeLessThanOrEqual(cardData.onRoad);
+                }
+            } finally {
+                await ctx.close();
+            }
+        });
+    }
 });
 
 test.describe('Cross-Viewport Parity', () => {

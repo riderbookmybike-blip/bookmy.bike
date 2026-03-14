@@ -173,6 +173,8 @@ export function CompactProductCard({
             data-product-id={v.id}
             data-dealer-id={v.dealerId || ''}
             data-offer-delta={offerDeltaForParity}
+            data-on-road={baseDisplayPrice || 0}
+            data-ex-showroom={v.price?.exShowroom || 0}
             className="group relative flex flex-col bg-white border border-slate-100 rounded-2xl overflow-hidden hover:overflow-visible transition-all duration-300 active:scale-[0.98] shadow-sm hover:shadow-md hover:border-slate-200 hover:z-[50]"
         >
             {/* Favorite Button */}
