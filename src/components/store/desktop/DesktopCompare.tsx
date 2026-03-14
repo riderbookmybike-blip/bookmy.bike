@@ -1012,42 +1012,6 @@ export default function DesktopCompare({ isWishlist = false }: { isWishlist?: bo
                                                 })}
                                             </div>
 
-                                            {/* EMI / Cash Offer Row */}
-                                            <div
-                                                onMouseEnter={() => setHoveredRow('primary-price')}
-                                                onMouseLeave={() => setHoveredRow(null)}
-                                                className={`grid gap-x-6 transition-colors duration-200 ${hoveredRow === 'primary-price' ? 'bg-[#F4B000]/5' : ''}`}
-                                                style={{
-                                                    gridTemplateColumns: `140px repeat(${activeVariants.length}, 1fr)`,
-                                                }}
-                                            >
-                                                <div
-                                                    className={`sticky left-0 z-40 px-3 py-1 flex items-center gap-2 bg-white border border-black/[0.04] rounded-xl transition-all duration-300 ${isXScrolled ? 'shadow-[8px_0_12px_-4px_rgba(0,0,0,0.06)] border-r-black/[0.08]' : 'shadow-[0_1px_3px_rgba(0,0,0,0.02)]'}`}
-                                                >
-                                                    <IndianRupee size={12} className="text-[#F4B000]/70 shrink-0" />
-                                                    <span className="text-[10px] font-black text-slate-500 group-hover/list:text-slate-700 transition-colors leading-none">
-                                                        {pricingMode === 'finance' ? 'Monthly EMI' : 'Cash Offer'}
-                                                    </span>
-                                                </div>
-                                                {activeVariants.map((v, vIdx) => {
-                                                    const cashPrice = getEffectiveCashPrice(v);
-                                                    const emi = getEffectiveEmi(v);
-                                                    return (
-                                                        <div
-                                                            key={vIdx}
-                                                            className="px-2 py-1 flex items-center justify-center text-center bg-white border border-black/[0.04] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.02)] min-h-[36px]"
-                                                        >
-                                                            <span className="text-[10px] font-black text-[#F4B000]">
-                                                                ₹
-                                                                {pricingMode === 'cash'
-                                                                    ? cashPrice.toLocaleString('en-IN')
-                                                                    : emi.toLocaleString('en-IN')}
-                                                            </span>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-
                                             {pricingMode === 'finance' && (
                                                 <>
                                                     {/* Downpayment Row */}

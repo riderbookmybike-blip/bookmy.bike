@@ -7,6 +7,7 @@ import { Share2, Wallet, Zap, Package, Shield } from 'lucide-react';
 import { OCircleLogo } from '@/components/common/OCircleLogo';
 import { Logo } from '@/components/brand/Logo';
 import { coinsNeededForPrice } from '@/lib/oclub/coin';
+import { buildCommandBarState } from './pdpComputations';
 
 export interface FloatingCommandBarProps {
     getProductImage: () => string;
@@ -87,13 +88,23 @@ export default function FloatingCommandBar({
     insuranceTotal = 0,
     insuranceAddonsCount = 0,
 }: FloatingCommandBarProps) {
-    const isShareMode = isGated;
-    const isServiceabilityBlocked = serviceability?.status === 'SET' && !serviceability?.isServiceable;
-    const isDisabled = !isShareMode && isServiceabilityBlocked;
+    // ── Canonical command bar compute (same fn as PdpCommandBar — P2-C fix) ──
+    const barState = buildCommandBarState({
+        displayOnRoad,
+        totalOnRoad,
+        totalSavings,
+        coinPricing,
+        footerEmi: 0, // FloatingCommandBar doesn't show EMI row; unused value
+        emiTenure: 0,
+        isGated,
+        serviceability,
+    });
+    const isShareMode = barState.isShareMode;
+    const isDisabled = barState.isDisabled;
     const primaryAction = isShareMode ? handleShareQuote : handleBookingRequest;
     const privilegedSavings = Math.max(0, totalSavings + (coinPricing?.discount || 0));
     const bCoinDiscount = coinPricing?.discount || 0;
-    const onRoadBase = Math.max(0, displayOnRoad + privilegedSavings);
+    const onRoadBase = barState.strikethroughPrice;
     const showDesktopBreakdown = !forceMobileLayout;
     // Insurance addons only — show ₹0 if none selected
     const insuranceAddonAmount = insuranceAddonsCount > 0 ? insuranceTotal : 0;

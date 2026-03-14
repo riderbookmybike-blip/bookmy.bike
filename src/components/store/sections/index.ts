@@ -1,6 +1,7 @@
-// Barrel export for shared PDP section components
-export { PdpPricingSection, buildPriceBreakup } from './PdpPricingSection';
+export { PdpPricingSection } from './PdpPricingSection';
 export type { PdpPricingSectionProps } from './PdpPricingSection';
+// buildPriceBreakup promoted to pdpComputations — import from there directly
+export { buildPriceBreakup } from '../Personalize/pdpComputations';
 
 export { PdpFinanceSection } from './PdpFinanceSection';
 export type { PdpFinanceSectionProps } from './PdpFinanceSection';

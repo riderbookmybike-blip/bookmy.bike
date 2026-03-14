@@ -83,7 +83,7 @@ export const LABEL_OVERRIDES: Record<string, string> = {
     // ── Brakes ──────────────────────────────────────────────────────
     'brakes.front': 'Front Brake',
     'brakes.rear': 'Rear Brake',
-    'brakes.abs': 'ABS System',
+    'brakes.abs': 'Braking System',
     'brakes.type': 'Brake Type',
     'brakes.cbs': 'CBS Braking',
 
@@ -316,6 +316,14 @@ export function formatSpecValue(val: string | null, label?: string): string {
     };
 
     let display = val.trim();
+    const BRAKING_LABELS: Record<string, string> = {
+        ABS: 'Single Channel',
+        DUAL_ABS: 'Dual Channel',
+        CBS: 'Combined (CBS)',
+        SBT: 'Standard',
+    };
+    if (BRAKING_LABELS[display.toUpperCase()]) return BRAKING_LABELS[display.toUpperCase()];
+
     if (VALUE_OVERRIDES[display]) return VALUE_OVERRIDES[display];
     return display;
 }

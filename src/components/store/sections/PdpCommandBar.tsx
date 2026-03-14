@@ -20,6 +20,7 @@ import Image from 'next/image';
 import { Share2, Heart, ArrowRight } from 'lucide-react';
 import { Logo } from '@/components/brand/Logo';
 import { coinsNeededForPrice } from '@/lib/oclub/coin';
+import { buildCommandBarState } from '../Personalize/pdpComputations';
 
 export interface PdpCommandBarProps {
     layout: 'desktop' | 'mobile';
@@ -178,11 +179,21 @@ export function PdpCommandBar({
     isGated,
 }: PdpCommandBarProps) {
     const isDesktop = layout === 'desktop';
-    const isShareMode = isGated;
-    const isServiceabilityBlocked = serviceability?.status === 'SET' && !serviceability?.isServiceable;
-    const isDisabled = !isShareMode && isServiceabilityBlocked;
+    // ── Canonical command bar compute (same fn as FloatingCommandBar — P2-C fix) ──
+    const barState = buildCommandBarState({
+        displayOnRoad,
+        totalOnRoad,
+        totalSavings,
+        coinPricing,
+        footerEmi,
+        emiTenure,
+        isGated,
+        serviceability,
+    });
+    const isShareMode = barState.isShareMode;
+    const isDisabled = barState.isDisabled;
     const primaryAction = isShareMode ? handleShareQuote : handleBookingRequest;
-    const primaryLabel = isDisabled ? 'NOT SERVICEABLE' : isShareMode ? 'SHARE QUOTE' : 'GET QUOTE';
+    const primaryLabel = barState.primaryLabel;
     const bCoinEquivalent = coinsNeededForPrice(displayOnRoad);
 
     return (

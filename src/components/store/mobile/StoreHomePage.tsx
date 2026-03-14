@@ -39,7 +39,7 @@ import { useOClubWallet } from '@/hooks/useOClubWallet';
 import { ProductCard } from '../desktop/ProductCard';
 import { CompactProductCard } from './CompactProductCard';
 import { useCatalogMarketplace } from '@/hooks/useCatalogMarketplace';
-import { useDiscovery } from '@/contexts/DiscoveryContext';
+import { useDiscoveryOptional } from '@/contexts/DiscoveryContext';
 
 /* ────────── Palette ────────── */
 const GOLD = '#FFD700';
@@ -213,7 +213,8 @@ export function StoreHomePage({
         return Math.round(emi);
     };
 
-    const { offerMode } = useDiscovery();
+    const discovery = useDiscoveryOptional();
+    const offerMode = discovery?.offerMode || 'BEST_OFFER';
     const { winnersMap } = useCatalogMarketplace(parsedLocation?.district, parsedLocation?.stateCode, offerMode);
 
     return (

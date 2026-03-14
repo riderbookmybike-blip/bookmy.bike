@@ -5,12 +5,12 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
-import { ChevronLeft, Share2, Heart, MapPin, Calendar, ChevronDown, Copy, Check } from 'lucide-react';
+import { ChevronLeft, Share2, Heart, MapPin, Calendar, ChevronDown } from 'lucide-react';
 import { useI18n } from '@/components/providers/I18nProvider';
 import { toDevanagariScript } from '@/lib/i18n/transliterate';
 import { computeOClubPricing } from '@/lib/oclub/coin';
 import { Logo } from '@/components/brand/Logo';
-import { computeFinanceMetrics } from '../Personalize/pdpComputations';
+import { buildPdpCommonState, buildCommandBarState } from '../Personalize/pdpComputations';
 import AmortizationPanel from '../Personalize/AmortizationPanel';
 
 // Shared responsive section components
@@ -81,6 +81,7 @@ export const MobilePDP = ({
     handlers,
     leadContext,
     initialLocation,
+    bestOffer,
     otherOffers = [],
     walletCoins = null,
     showOClubPrompt = false,
@@ -126,50 +127,30 @@ export const MobilePDP = ({
         return '/images/hero-bike.webp';
     };
 
-    const walletCoinsValue = Number(walletCoins);
-    const coinPricing =
-        Number.isFinite(walletCoinsValue) && walletCoinsValue > 0
-            ? computeOClubPricing(totalOnRoad, walletCoinsValue)
-            : null;
-    const displayOnRoad = coinPricing?.effectivePrice ?? totalOnRoad;
-
-    // Shared finance computation
-    const financeMetrics = computeFinanceMetrics({
-        scheme: data.initialFinance?.scheme,
-        displayOnRoad,
-        userDownPayment: data.userDownPayment || 0,
-        loanAmount: data.loanAmount,
-        totalOnRoad,
-        emiTenure,
+    // ── Canonical shared compute (single call, no per-shell drift) ──
+    const commonState = buildPdpCommonState({
+        data,
+        bestOffer,
+        walletCoins,
     });
-    const footerEmi = financeMetrics.monthlyEmi;
+    const { coinPricing, displayOnRoad, totalSavings, footerEmi } = commonState;
 
-    // Compute total savings for command bar
-    const REFERRAL_BONUS = 5000;
-    const totalSavingsBase =
-        data.totalSavings ??
-        (data.colorDiscount || 0) +
-            (data.offersDiscount < 0 ? Math.abs(data.offersDiscount) : 0) +
-            (data.accessoriesDiscount || 0) +
-            (data.servicesDiscount || 0) +
-            (data.insuranceAddonsDiscount || 0);
-    const totalSavings = totalSavingsBase + (isReferralActive ? REFERRAL_BONUS : 0);
+    // ── Command bar compute (shared with FloatingCommandBar via same fn) ──
+    const commandBarState = buildCommandBarState({
+        displayOnRoad,
+        totalOnRoad: data.totalOnRoad ?? 0,
+        totalSavings,
+        coinPricing,
+        footerEmi,
+        emiTenure,
+        isGated: isGated ?? false,
+        serviceability,
+    });
+
     // Single-open card state (string-based so adding future cards is trivial)
     // null = all closed, string = that card is open
     const [openContentCard, setOpenContentCard] = useState<string | null>('pricing');
-    const [skuCopied, setSkuCopied] = useState(false);
     const toggleCard = (id: string) => setOpenContentCard(prev => (prev === id ? null : id));
-    const selectedSkuId = String(activeColorConfig?.skuId || activeColorConfig?.id || '').trim();
-    const trimmedSkuId =
-        selectedSkuId.length > 18 ? `${selectedSkuId.slice(0, 8)}...${selectedSkuId.slice(-6)}` : selectedSkuId;
-    const handleCopySku = async () => {
-        if (!selectedSkuId || typeof navigator === 'undefined' || !navigator.clipboard) return;
-        try {
-            await navigator.clipboard.writeText(selectedSkuId);
-            setSkuCopied(true);
-            window.setTimeout(() => setSkuCopied(false), 1200);
-        } catch {}
-    };
 
     return (
         <div className="min-h-screen bg-slate-50 text-slate-900 pb-14 font-sans selection:bg-[#F4B000]/30 selection:text-black">
@@ -189,7 +170,7 @@ export const MobilePDP = ({
             </div>
 
             {/* Parity Snapshot — hidden DOM element for Playwright parity tests */}
-            <ParitySnapshot data={data} product={product} />
+            <ParitySnapshot data={data} product={product} commonState={commonState} />
 
             {/* 1. Mobile Header (Transparent, floats over image) */}
             <div className="fixed top-0 inset-x-0 z-50 flex items-center justify-between px-5 py-4 bg-gradient-to-b from-white/95 to-transparent pointer-events-none">
@@ -348,21 +329,6 @@ export const MobilePDP = ({
                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-900 mb-3 text-center">
                         {displayColor}
                     </p>
-                    {selectedSkuId && (
-                        <div className="mb-3 flex items-center justify-center">
-                            <div className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2 py-1">
-                                <span className="text-[9px] font-mono font-bold text-slate-600">{trimmedSkuId}</span>
-                                <button
-                                    type="button"
-                                    onClick={() => void handleCopySku()}
-                                    className="inline-flex items-center text-slate-500 hover:text-slate-900 transition-colors"
-                                    title="Copy SKU ID"
-                                >
-                                    {skuCopied ? <Check size={11} /> : <Copy size={11} />}
-                                </button>
-                            </div>
-                        </div>
-                    )}
                     <div className="flex justify-center flex-wrap gap-4 py-3 px-2">
                         {colors.map((c: any) => {
                             const isColorSelected = c.id === selectedColor;
@@ -405,6 +371,9 @@ export const MobilePDP = ({
                     activeColorConfig={activeColorConfig}
                     productImage={getProductImage()}
                     walletCoins={walletCoins}
+                    coinPricing={coinPricing}
+                    displayOnRoad={displayOnRoad}
+                    bestOffer={bestOffer}
                     showOClubPrompt={showOClubPrompt}
                     isGated={isGated}
                     leadName={leadContext?.name}
@@ -503,18 +472,18 @@ export const MobilePDP = ({
                 displayVariant={displayVariant}
                 displayColor={displayColor}
                 activeColorConfig={activeColorConfig || { hex: '#000' }}
-                displayOnRoad={displayOnRoad}
-                totalOnRoad={totalOnRoad}
-                totalSavings={totalSavings}
+                displayOnRoad={commandBarState.displayOnRoad}
+                totalOnRoad={data.totalOnRoad ?? 0}
+                totalSavings={commandBarState.totalSavings}
                 coinPricing={coinPricing}
-                showOClubPrompt={showOClubPrompt}
-                footerEmi={footerEmi}
+                showOClubPrompt={showOClubPrompt ?? false}
+                footerEmi={commandBarState.footerEmi}
                 emiTenure={emiTenure}
                 handleShareQuote={handleShareQuote}
                 handleSaveQuote={handleSaveQuote}
                 handleBookingRequest={handleBookingRequest}
                 serviceability={serviceability}
-                isGated={isGated}
+                isGated={isGated ?? false}
             />
         </div>
     );

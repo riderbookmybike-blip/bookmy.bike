@@ -346,17 +346,43 @@ Present the findings in **table format** using the following structure. Use `not
 
 ---
 
+### ⛔ UUID Safety Rules (MANDATORY — read before writing any SQL)
+
+> **NEVER hardcode or manually construct UUIDs.** The PDP's `skuUuidRegex` enforces RFC 4122 v1–5 format. Fake UUIDs like `c3d4e5f6-a7b8-9012-...` fail this check → `hasValidColorSku = false` → "COLOR SKU UNAVAILABLE" error on PDP.
+
+**Always use `gen_random_uuid()` in SQL:**
+```sql
+-- ✅ CORRECT — let Postgres generate it
+INSERT INTO cat_skus (id, ...) VALUES (gen_random_uuid(), ...);
+
+-- ✅ Also OK — generate first, store in a variable
+DO $$ DECLARE new_id uuid := gen_random_uuid(); BEGIN ...; END $$;
+
+-- ❌ WRONG — manually constructed, will fail UUID regex on PDP
+INSERT INTO cat_skus (id, ...) VALUES ('c3d4e5f6-a7b8-9012-cdef-123456789012', ...);
+```
+
+**When you need to reference a new ID across multiple tables** (e.g., SKU id → price table), generate all IDs first in a single SELECT, capture them, then use in the INSERT statements:
+```sql
+-- Step 1: generate and note the IDs
+SELECT gen_random_uuid() as sku1, gen_random_uuid() as sku2, ...;
+-- Step 2: use those exact IDs in subsequent INSERTs
+```
+
+---
+
 ### Step 4: Seed (Only After Approval)
 
 Execute in this exact dependency order:
 ```
 1. Verify cat_brands entry exists
-2. Create cat_models entry
-3. Create cat_colours entries (model-level pool)
-4. Create cat_variants_vehicle entries (one per trim)
-5. Create cat_skus entries (variant × colour matrix)
+2. Create cat_models entry          → id = gen_random_uuid()
+3. Create cat_colours entries       → id = gen_random_uuid() each
+4. Create cat_variants_vehicle entries → id = gen_random_uuid() each
+5. Create cat_skus entries (variant × colour matrix) → id = gen_random_uuid() each
 6. Upsert cat_price_state_mh entries (one per SKU × state_code='MH')
-7. Download images → upload to Supabase Storage → update cat_skus.primary_image
+7. Update cat_skus.primary_image with LOCAL path: /media/{brand}/{model-slug}/{variant-slug}/{colour-slug}/360/image1.webp
+   (NOT cat_assets — that table is LEGACY and NOT read by PDP)
 ```
 
 ---
@@ -364,13 +390,29 @@ Execute in this exact dependency order:
 ### Step 5: Post-Seed Verification
 After seeding, verify by running:
 ```sql
-SELECT m.name as model, v.name as variant, s.name as sku, s.color_name, p.ex_showroom, p.on_road_price
+-- 1. Full data check
+SELECT m.name as model, v.name as variant, s.name as sku, s.color_name,
+       s.primary_image, p.ex_showroom, p.publish_stage
 FROM cat_skus s
-JOIN cat_models m ON s.model_id = m.id
-JOIN cat_variants_vehicle v ON s.vehicle_variant_id = v.id
+JOIN cat_models m ON m.id = s.model_id
+JOIN cat_variants_vehicle v ON v.id = s.vehicle_variant_id
 LEFT JOIN cat_price_state_mh p ON p.sku_id = s.id
 WHERE m.name = '[MODEL_NAME]'
 ORDER BY v.position, s.position;
+
+-- 2. UUID validity check — ALL must return TRUE or PDP will break
+-- The PDP skuUuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+SELECT id, name,
+  id ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$' AS uuid_valid
+FROM cat_skus s
+JOIN cat_models m ON m.id = s.model_id
+WHERE m.name = '[MODEL_NAME]';
+
+-- 3. primary_image populated on cat_skus (NOT cat_assets)
+SELECT id, name, primary_image IS NOT NULL AS has_image
+FROM cat_skus s
+JOIN cat_models m ON m.id = s.model_id
+WHERE m.name = '[MODEL_NAME]';
 ```
 
 ---

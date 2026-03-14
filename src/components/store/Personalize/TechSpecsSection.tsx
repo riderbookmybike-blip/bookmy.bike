@@ -97,7 +97,7 @@ const SPEC_LABELS: Record<string, string> = {
     front_brake: 'Front Brake',
     rear_brake_type: 'Rear Brake',
     rear_brake: 'Rear Brake',
-    abs_type: 'ABS',
+    abs_type: 'Braking System',
     braking_system: 'Braking System',
     engine_kill_switch: 'Kill Switch',
     killswitch: 'Kill Switch',
@@ -388,10 +388,22 @@ const EXCLUDED_KEYS = new Set([
     'finish',
 ]);
 
+const BRAKING_SYSTEM_LABELS: Record<string, string> = {
+    ABS: 'Single Channel',
+    DUAL_ABS: 'Dual Channel',
+    CBS: 'Not Available',
+    SBT: 'Not Available',
+};
+
 function formatValue(key: string, value: any): string {
     if (value === null || value === undefined || value === '') return '—';
     if (typeof value === 'boolean') return value ? 'Yes' : 'No';
     if (typeof value === 'object') return JSON.stringify(value);
+
+    // ABS System: map enum to human-readable
+    if (key === 'braking_system' || key === 'abs_type') {
+        return BRAKING_SYSTEM_LABELS[String(value).toUpperCase()] ?? String(value);
+    }
 
     const str = String(value);
     const unit = SPEC_UNITS[key];

@@ -101,3 +101,5 @@ export const useDiscovery = () => {
     }
     return context;
 };
+
+export const useDiscoveryOptional = () => useContext(DiscoveryContext);

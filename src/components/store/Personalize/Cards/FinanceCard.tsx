@@ -122,22 +122,24 @@ export default function FinanceCard({
         <div className="md:bg-transparent md:backdrop-blur-none md:border-0 md:shadow-none rounded-[2.5rem] md:rounded-none overflow-hidden flex flex-col h-full group/fcard relative">
             <div className="flex-1 flex flex-col">
                 {/* Column headers */}
-                <div className="w-full grid grid-cols-5 px-5 pb-2 mb-2 border-b border-slate-100 shrink-0">
-                    <span className="text-[7px] font-bold uppercase tracking-[0.15em] text-slate-400 text-center">
-                        EMI
-                    </span>
-                    <span className="text-[7px] font-bold uppercase tracking-[0.15em] text-slate-400 text-center">
-                        Tenure
-                    </span>
-                    <span className="text-[7px] font-bold uppercase tracking-[0.15em] text-slate-400 text-center">
-                        Loan
-                    </span>
-                    <span className="text-[7px] font-bold uppercase tracking-[0.15em] text-slate-400 text-center">
-                        Interest
-                    </span>
-                    <span className="text-[7px] font-bold uppercase tracking-[0.15em] text-slate-400 text-center">
-                        Total
-                    </span>
+                <div className="w-full px-4 pb-2 mb-2 border-b border-slate-100 shrink-0">
+                    <div className="w-full max-w-[760px] mr-auto grid grid-cols-[1.45fr_1fr_1.15fr_1.1fr_1.45fr] items-center gap-3">
+                        <span className="text-[7px] font-bold uppercase tracking-[0.15em] text-slate-400 text-left pl-2">
+                            EMI
+                        </span>
+                        <span className="text-[7px] font-bold uppercase tracking-[0.15em] text-slate-400 text-center">
+                            Tenure
+                        </span>
+                        <span className="text-[7px] font-bold uppercase tracking-[0.15em] text-slate-400 text-center">
+                            Loan
+                        </span>
+                        <span className="text-[7px] font-bold uppercase tracking-[0.15em] text-slate-400 text-center">
+                            Interest
+                        </span>
+                        <span className="text-[7px] font-bold uppercase tracking-[0.15em] text-slate-400 text-right pr-2">
+                            Total
+                        </span>
+                    </div>
                 </div>
                 {/* Pill rows */}
                 <div className="w-full flex-1 flex flex-col justify-evenly gap-0.5">
@@ -153,7 +155,7 @@ export default function FinanceCard({
                                 onClick={() => {
                                     setEmiTenure && setEmiTenure(t);
                                 }}
-                                className={`grid grid-cols-5 items-center py-2 px-5 rounded-lg border transition-all duration-300
+                                className={`w-full max-w-[760px] mr-auto grid grid-cols-[1.45fr_1fr_1.15fr_1.1fr_1.45fr] items-center py-2 px-4 rounded-lg border transition-all duration-300 gap-3
                                 ${
                                     isSelected
                                         ? 'bg-brand-primary/10 border-brand-primary shadow-[0_4px_15px_rgba(255,215,0,0.1)]'
@@ -161,7 +163,7 @@ export default function FinanceCard({
                                 }`}
                             >
                                 <span
-                                    className={`text-[10px] font-black font-mono tracking-tight text-center ${isSelected ? 'text-brand-primary' : 'text-slate-700'}`}
+                                    className={`text-[10px] font-black font-mono tracking-tight text-left pl-2 ${isSelected ? 'text-brand-primary' : 'text-slate-700'}`}
                                 >
                                     ₹{calculatedEmiForT.toLocaleString('en-IN')}
                                 </span>
@@ -181,7 +183,7 @@ export default function FinanceCard({
                                     +₹{Math.max(0, totalInterest).toLocaleString('en-IN')}
                                 </span>
                                 <span
-                                    className={`text-[10px] font-black font-mono tracking-tight text-center ${isSelected ? 'text-brand-primary' : 'text-slate-500'}`}
+                                    className={`text-[10px] font-black font-mono tracking-tight text-right pr-2 ${isSelected ? 'text-brand-primary' : 'text-slate-500'}`}
                                 >
                                     ₹{totalCost.toLocaleString('en-IN')}
                                 </span>
