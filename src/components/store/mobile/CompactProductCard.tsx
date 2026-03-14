@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Heart, Pencil, CircleHelp, ArrowRight, Zap, Palette, Clock, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
-import { buildProductUrl } from '@/lib/utils/urlHelper';
+import { buildProductUrl, buildVariantExplorerUrl } from '@/lib/utils/urlHelper';
 import type { ProductVariant } from '@/types/productMaster';
 import { useFavorites } from '@/lib/favorites/favoritesContext';
 import { coinsNeededForPrice, computeOClubPricing, discountForCoins } from '@/lib/oclub/coin';
@@ -30,6 +30,7 @@ interface CompactProductCardProps {
         studio_id?: string | null;
     } | null;
     offerMode?: 'BEST_OFFER' | 'FAST_DELIVERY';
+    variantCount?: number;
 }
 
 export function CompactProductCard({
@@ -45,6 +46,7 @@ export function CompactProductCard({
     isExploded = false,
     bestOffer,
     offerMode: propOfferMode,
+    variantCount = 1,
 }: CompactProductCardProps) {
     const { isFavorite, toggleFavorite } = useFavorites();
     const { trackEvent } = useAnalytics();
@@ -136,15 +138,21 @@ export function CompactProductCard({
             ? Number(v.price.offerPrice) - Number(v.price.onRoad)
             : discountBasedDelta;
 
-    const href = buildProductUrl({
-        make: v.make,
-        model: v.model,
-        variant: v.variant,
-        studio: bestOffer?.studio_id || v.studioCode || undefined,
-        district: navigableDistrict,
-        leadId,
-        basePath,
-    }).url;
+    const hasMultipleVariants = variantCount > 1;
+    const currentMonth = new Intl.DateTimeFormat('en-US', { month: 'long' }).format(new Date());
+    const offerCtaText = `Check ${currentMonth} Offers`;
+    const ctaLabel = hasMultipleVariants ? 'Know More' : offerCtaText;
+    const href = hasMultipleVariants
+        ? buildVariantExplorerUrl(v.make || '', v.model || '')
+        : buildProductUrl({
+              make: v.make,
+              model: v.model,
+              variant: v.variant,
+              studio: bestOffer?.studio_id || v.studioCode || undefined,
+              district: navigableDistrict,
+              leadId,
+              basePath,
+          }).url;
     const trackCatalogClick = () => {
         trackEvent('INTENT_SIGNAL', 'catalog_vehicle_click', {
             lead_id: leadId || undefined,
@@ -431,6 +439,20 @@ export function CompactProductCard({
                     ))}
                 </div>
             )}
+
+            <div className="px-3 pb-3">
+                <Link
+                    href={href}
+                    onClick={trackCatalogClick}
+                    className="group/cta relative overflow-hidden w-full h-10 bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-xl font-black uppercase tracking-[0.16em] text-[10px] flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(244,176,0,0.26)] hover:shadow-[0_6px_20px_rgba(244,176,0,0.36)] transition-all"
+                >
+                    <span className="relative z-10">{ctaLabel}</span>
+                    <ChevronRight
+                        size={12}
+                        className="relative z-10 opacity-0 group-hover/cta:opacity-100 -translate-x-1 group-hover/cta:translate-x-0 transition-all"
+                    />
+                </Link>
+            </div>
         </div>
     );
 }

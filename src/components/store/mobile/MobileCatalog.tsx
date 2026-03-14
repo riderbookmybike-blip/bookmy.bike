@@ -285,6 +285,20 @@ export const MobileCatalog = ({
         });
     }, [results, searchQuery, items]);
 
+    const modelVariantCount = useMemo(() => {
+        const countMap = new Map<string, number>();
+        for (const vehicle of finalResults) {
+            const key = `${String(vehicle.make || '').toLowerCase()}::${String(vehicle.model || '').toLowerCase()}`;
+            countMap.set(key, (countMap.get(key) || 0) + 1);
+        }
+        return countMap;
+    }, [finalResults]);
+
+    const getVariantCount = (v: ProductVariant) => {
+        const key = `${String(v.make || '').toLowerCase()}::${String(v.model || '').toLowerCase()}`;
+        return modelVariantCount.get(key) || 1;
+    };
+
     // Quick Filter Chips Logic: Strictly Bikes, Scooters, Mopeds
     const quickFilters = bodyOptions.map(bt => ({
         label: bt === 'MOTORCYCLE' ? 'Bikes' : bt === 'SCOOTER' ? 'Scooters' : 'Mopeds',
@@ -351,6 +365,7 @@ export const MobileCatalog = ({
                                 <CompactProductCard
                                     key={v.id}
                                     v={v}
+                                    variantCount={getVariantCount(v)}
                                     downpayment={downpayment}
                                     tenure={tenure}
                                     walletCoins={isLoggedIn ? availableCoins : null}
@@ -368,6 +383,7 @@ export const MobileCatalog = ({
                                 <CompactProductCard
                                     key={v.id}
                                     v={v}
+                                    variantCount={getVariantCount(v)}
                                     downpayment={downpayment}
                                     tenure={tenure}
                                     walletCoins={isLoggedIn ? availableCoins : null}

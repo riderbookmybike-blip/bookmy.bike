@@ -161,6 +161,8 @@ export const ProductCard = ({
     const [isNavigating, setIsNavigating] = useState(false);
     const [isPending, startTransition] = useTransition();
     const pathname = usePathname();
+    const currentMonth = new Intl.DateTimeFormat('en-US', { month: 'long' }).format(new Date());
+    const offerCtaText = `Check ${currentMonth} Offers`;
 
     // 3D tilt effect
     const cardRef = useRef<HTMLDivElement>(null);
@@ -818,7 +820,7 @@ export const ProductCard = ({
                                     >
                                         <div aria-hidden className="shimmer-bar" />
                                         <span className="relative z-10">
-                                            {variantCount && variantCount > 1 ? 'Know More' : 'Check Offer'}
+                                            {variantCount && variantCount > 1 ? 'Know More' : offerCtaText}
                                         </span>
                                     </Link>
                                 )}
@@ -1482,7 +1484,7 @@ export const ProductCard = ({
                                         transition={{ duration: 2.2, repeat: Infinity, ease: 'linear' }}
                                     />
                                     <span className="relative z-10">
-                                        {isNavigating || isPending ? 'Opening...' : 'Check Offer'}
+                                        {isNavigating || isPending ? 'Opening...' : offerCtaText}
                                     </span>
                                     <ArrowRight
                                         size={12}
