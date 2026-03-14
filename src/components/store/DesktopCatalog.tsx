@@ -1202,7 +1202,12 @@ export const DesktopCatalog = ({
             if (currentMin === undefined || price < currentMin) {
                 modelMinPrice.set(modelKey, price);
             }
-            modelVariantCount.set(modelKey, (modelVariantCount.get(modelKey) || 0) + 1);
+            const explicitModelCount = Number((vehicle as any).modelVariantCount);
+            if (Number.isFinite(explicitModelCount) && explicitModelCount > 0) {
+                modelVariantCount.set(modelKey, Math.max(modelVariantCount.get(modelKey) || 0, explicitModelCount));
+            } else {
+                modelVariantCount.set(modelKey, (modelVariantCount.get(modelKey) || 0) + 1);
+            }
         }
 
         const sorted = [...displayResults].sort((a, b) => {

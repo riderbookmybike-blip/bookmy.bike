@@ -28,14 +28,19 @@ function getDisplayPrice(item: ProductVariant): number {
 
 function selectLowestVariantPerModel(items: ProductVariant[]): ProductVariant[] {
     const byModel = new Map<string, ProductVariant>();
+    const modelCounts = new Map<string, number>();
     for (const item of items) {
         const key = `${String(item.make || '').toLowerCase()}::${String(item.model || '').toLowerCase()}`;
+        modelCounts.set(key, (modelCounts.get(key) || 0) + 1);
         const current = byModel.get(key);
         if (!current || getDisplayPrice(item) < getDisplayPrice(current)) {
             byModel.set(key, item);
         }
     }
-    return Array.from(byModel.values());
+    return Array.from(byModel.entries()).map(([key, item]) => ({
+        ...item,
+        modelVariantCount: modelCounts.get(key) || 1,
+    }));
 }
 
 function SmartCatalogRouter({ initialItems, basePath = '/store' }: SystemCatalogRouterProps) {

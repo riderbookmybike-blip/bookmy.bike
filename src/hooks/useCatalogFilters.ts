@@ -106,17 +106,24 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
         if (brandParam) return;
 
         setSelectedMakes(prev => {
-            if (prev.length === 0) return availableMakes;
+            const newMakes = availableMakes;
+
+            if (prev.length === 0) return newMakes;
 
             const prevSet = new Set(prev.map(m => m.toUpperCase()));
-            const defaultSet = new Set(brands.map(m => m.toUpperCase()));
 
-            // If prev matches default brands or is identical to currently available makes, update it
+            // If prev matches default brands or currently available makes, we'd want to sync
             const isDefault =
                 (prev.length === brands.length && brands.every(m => prevSet.has(m.toUpperCase()))) ||
-                (prev.length === availableMakes.length && availableMakes.every(m => prevSet.has(m.toUpperCase())));
+                (prev.length === newMakes.length && newMakes.every(m => prevSet.has(m.toUpperCase())));
 
-            return isDefault ? availableMakes : prev;
+            if (!isDefault) return prev;
+
+            // Stable identity check: if content is identical, return same `prev` reference
+            // so React bails out and doesn't trigger downstream URL sync effect → router.replace loop
+            const prevSorted = [...prev].sort().join('|');
+            const nextSorted = [...newMakes].sort().join('|');
+            return prevSorted === nextSorted ? prev : newMakes;
         });
     }, [availableMakes, searchParams]);
 
