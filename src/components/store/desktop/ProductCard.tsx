@@ -1396,57 +1396,71 @@ export const ProductCard = ({
                             className={`${isTv ? 'mt-2 space-y-1.5 pb-3' : 'mt-1.5 md:mt-4 space-y-1.5 md:space-y-2'} relative z-20 w-full`}
                         >
                             {isUnserviceable ? (
-                                <button
-                                    onClick={handleGetQuoteClick}
-                                    title={`We are not serviceable in ${safeServiceability.location || 'your area'} yet. We will notify you when we launch there.`}
-                                    className={`w-full ${isTv ? 'h-8 text-[9px]' : 'h-11 text-[10px]'} bg-slate-100 text-slate-400 rounded-xl font-black uppercase tracking-[0.2em] cursor-not-allowed flex items-center justify-center`}
+                                /* Non-serviceable label — no CTA, exact copy per locked rule */
+                                <div
+                                    title={`We are not serviceable in ${safeServiceability.location || 'your area'} yet.`}
+                                    className={`w-full ${isTv ? 'h-8 text-[9px]' : 'h-10 md:h-11 text-[10px]'} bg-slate-100 text-slate-400 rounded-xl font-black uppercase tracking-[0.2em] cursor-default flex items-center justify-center select-none`}
                                 >
-                                    Not Serviceable
-                                </button>
+                                    Non-serviceable
+                                </div>
                             ) : variantCount && variantCount > 1 && onExplore ? (
-                                <button
-                                    onClick={handleExploreClick}
-                                    disabled={isNavigating || isPending}
-                                    className={`group/btn relative overflow-hidden w-full ${isTv ? 'h-8 text-[9px]' : 'h-10 md:h-11 text-[10px]'} bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-xl font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(244,176,0,0.3)] hover:shadow-[0_6px_20px_rgba(244,176,0,0.4)] hover:-translate-y-0.5 active:scale-[0.99] transition-all disabled:opacity-70 disabled:pointer-events-none`}
-                                >
-                                    <div aria-hidden className="shimmer-bar" />
-                                    <span className="relative z-10">
-                                        {isNavigating || isPending ? 'Opening...' : 'Know More'}
-                                    </span>
-                                    <ArrowRight
-                                        size={12}
-                                        className="relative z-10 opacity-0 group-hover/btn:opacity-100 -translate-x-2 group-hover/btn:translate-x-0 transition-all"
-                                    />
-                                </button>
+                                <>
+                                    <button
+                                        onClick={handleExploreClick}
+                                        disabled={isNavigating || isPending}
+                                        className={`group/btn relative overflow-hidden w-full ${isTv ? 'h-8 text-[9px]' : 'h-10 md:h-11 text-[10px]'} bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-xl font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(244,176,0,0.3)] hover:shadow-[0_6px_20px_rgba(244,176,0,0.4)] hover:-translate-y-0.5 active:scale-[0.99] transition-all disabled:opacity-70 disabled:pointer-events-none`}
+                                    >
+                                        <div aria-hidden className="shimmer-bar" />
+                                        <span className="relative z-10">
+                                            {isNavigating || isPending ? 'Opening...' : 'Know More'}
+                                        </span>
+                                        <ArrowRight
+                                            size={12}
+                                            className="relative z-10 opacity-0 group-hover/btn:opacity-100 -translate-x-2 group-hover/btn:translate-x-0 transition-all"
+                                        />
+                                    </button>
+                                    {!isTv && (
+                                        <p className="text-center text-[8px] font-semibold text-slate-400 tracking-wide mt-1">
+                                            *Price shown for Maharashtra state
+                                        </p>
+                                    )}
+                                </>
                             ) : (
-                                <Link
-                                    href={
-                                        buildProductUrl({
-                                            make: v.make,
-                                            model: v.model,
-                                            variant: v.variant,
-                                            studio: studioIdLabel || undefined,
-                                            leadId: leadId,
-                                            basePath,
-                                        }).url
-                                    }
-                                    onClick={() => setIsNavigating(true)}
-                                    className={`group/btn relative overflow-hidden w-full ${isTv ? 'h-8 text-[9px]' : 'h-10 md:h-11 text-[10px]'} bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-xl font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(244,176,0,0.3)] hover:shadow-[0_6px_20px_rgba(244,176,0,0.4)] hover:-translate-y-0.5 active:scale-[0.99] transition-all`}
-                                >
-                                    <motion.div
-                                        aria-hidden
-                                        className="absolute inset-y-0 -left-1/3 w-1/3 bg-gradient-to-r from-transparent via-white/45 to-transparent skew-x-12"
-                                        animate={{ x: ['-120%', '420%'] }}
-                                        transition={{ duration: 2.2, repeat: Infinity, ease: 'linear' }}
-                                    />
-                                    <span className="relative z-10">
-                                        {isNavigating || isPending ? 'Opening...' : offerCtaText}
-                                    </span>
-                                    <ArrowRight
-                                        size={12}
-                                        className="relative z-10 opacity-0 group-hover/btn:opacity-100 -translate-x-2 group-hover/btn:translate-x-0 transition-all"
-                                    />
-                                </Link>
+                                <>
+                                    <Link
+                                        href={
+                                            buildProductUrl({
+                                                make: v.make,
+                                                model: v.model,
+                                                variant: v.variant,
+                                                studio: studioIdLabel || undefined,
+                                                leadId: leadId,
+                                                basePath,
+                                            }).url
+                                        }
+                                        onClick={() => setIsNavigating(true)}
+                                        className={`group/btn relative overflow-hidden w-full ${isTv ? 'h-8 text-[9px]' : 'h-10 md:h-11 text-[10px]'} bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-xl font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(244,176,0,0.3)] hover:shadow-[0_6px_20px_rgba(244,176,0,0.4)] hover:-translate-y-0.5 active:scale-[0.99] transition-all`}
+                                    >
+                                        <motion.div
+                                            aria-hidden
+                                            className="absolute inset-y-0 -left-1/3 w-1/3 bg-gradient-to-r from-transparent via-white/45 to-transparent skew-x-12"
+                                            animate={{ x: ['-120%', '420%'] }}
+                                            transition={{ duration: 2.2, repeat: Infinity, ease: 'linear' }}
+                                        />
+                                        <span className="relative z-10">
+                                            {isNavigating || isPending ? 'Opening...' : offerCtaText}
+                                        </span>
+                                        <ArrowRight
+                                            size={12}
+                                            className="relative z-10 opacity-0 group-hover/btn:opacity-100 -translate-x-2 group-hover/btn:translate-x-0 transition-all"
+                                        />
+                                    </Link>
+                                    {!isTv && (
+                                        <p className="text-center text-[8px] font-semibold text-slate-400 tracking-wide mt-1">
+                                            *Price shown for Maharashtra state
+                                        </p>
+                                    )}
+                                </>
                             )}
                         </div>
                     )}
