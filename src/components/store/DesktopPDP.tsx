@@ -37,8 +37,6 @@ import {
     SlidersHorizontal,
     Edit2,
     Calendar,
-    Copy,
-    Check,
 } from 'lucide-react';
 import DynamicHeader from './Personalize/DynamicHeader';
 import { formatDisplayIdForUI } from '@/lib/displayId';
@@ -83,7 +81,9 @@ const WarrantyTab = dynamic(() => import('./Personalize/Tabs/WarrantyTab'), {
 import PricingCard from './Personalize/Cards/PricingCard';
 import FinanceCard from './Personalize/Cards/FinanceCard';
 import TechSpecsSection from './Personalize/TechSpecsSection';
-import { ParitySnapshot } from './sections';
+import { ParitySnapshot, PdpSpecsSection, PdpCommandBar } from './sections';
+// PdpPricingSection / PdpFinanceSection / PdpFinanceSummarySection — hidden mounts below
+import { PdpPricingSection, PdpFinanceSection, PdpFinanceSummarySection } from './sections';
 
 interface DesktopPDPProps {
     product: any;
@@ -154,6 +154,9 @@ import {
     resolveProductImage,
     buildSavingsHelpLines,
     buildSurgeHelpLines,
+    buildPdpCommonState,
+    buildCommandBarState,
+    buildPriceBreakup,
 } from './Personalize/pdpComputations';
 
 export function DesktopPDP({
@@ -237,24 +240,25 @@ export function DesktopPDP({
         initialFinance,
     } = data;
 
-    const walletCoinsValue = Number(walletCoins);
-    const coinPricing =
-        Number.isFinite(walletCoinsValue) && walletCoinsValue > 0
-            ? computeOClubPricing(totalOnRoad, walletCoinsValue)
-            : null;
-    const displayOnRoad = coinPricing?.effectivePrice ?? totalOnRoad;
-    const bCoinEquivalent = coinsNeededForPrice(displayOnRoad);
-
-    // Compute EMI using shared finance computation (Phase 7)
-    const financeMetrics = computeFinanceMetrics({
-        scheme: initialFinance?.scheme,
-        displayOnRoad,
-        userDownPayment: userDownPayment || 0,
-        loanAmount,
-        totalOnRoad,
-        emiTenure,
+    // ── Canonical shared compute (single call, no per-shell drift) ──
+    const commonState = buildPdpCommonState({
+        data,
+        bestOffer,
+        walletCoins,
     });
-    const footerEmi = financeMetrics.monthlyEmi;
+    const { coinPricing, displayOnRoad, bCoinEquivalent, totalSavings, footerEmi, financeMetrics } = commonState;
+
+    // ── Command bar compute (shared with PdpCommandBar via same fn) ──
+    const commandBarState = buildCommandBarState({
+        displayOnRoad,
+        totalOnRoad,
+        totalSavings,
+        coinPricing,
+        footerEmi,
+        emiTenure,
+        isGated: isGated ?? false,
+        serviceability,
+    });
 
     const {
         handleColorChange,
@@ -326,7 +330,6 @@ export function DesktopPDP({
 
     const [cardPricingMode, setCardPricingMode] = useState<'cash' | 'finance'>('finance');
     const [isFlipping, setIsFlipping] = useState(false);
-    const [skuCopied, setSkuCopied] = useState(false);
 
     const handleFlip = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -346,17 +349,6 @@ export function DesktopPDP({
     const displayModel = scriptText(modelParam);
     const displayVariant = scriptText(variantParam);
     const displayColor = scriptText(activeColorConfig?.name);
-    const selectedSkuId = String(activeColorConfig?.skuId || activeColorConfig?.id || '').trim();
-    const trimmedSkuId =
-        selectedSkuId.length > 18 ? `${selectedSkuId.slice(0, 8)}...${selectedSkuId.slice(-6)}` : selectedSkuId;
-    const handleCopySku = async () => {
-        if (!selectedSkuId || typeof navigator === 'undefined' || !navigator.clipboard) return;
-        try {
-            await navigator.clipboard.writeText(selectedSkuId);
-            setSkuCopied(true);
-            window.setTimeout(() => setSkuCopied(false), 1200);
-        } catch {}
-    };
 
     const totalMRP =
         (product.mrp || Math.round(baseExShowroom * 1.06)) + // 6% markup if no MRP set
@@ -366,169 +358,27 @@ export function DesktopPDP({
         servicesPrice +
         otherCharges;
 
-    const totalSavingsBase =
-        computedTotalSavings ??
-        colorDiscount +
-            (offersDiscount < 0 ? Math.abs(offersDiscount) : 0) +
-            accessoriesDiscount +
-            servicesDiscount +
-            insuranceAddonsDiscount;
-    const totalSavings = totalSavingsBase + (isReferralActive ? REFERRAL_BONUS : 0);
-    const totalSurge = computedTotalSurge ?? 0;
-    const savingsHelpLines = [
-        colorDiscount > 0 ? `Vehicle Offer: ₹${colorDiscount.toLocaleString('en-IN')}` : null,
-        offersDiscount < 0 ? `Offers/Plans: ₹${Math.abs(offersDiscount).toLocaleString('en-IN')}` : null,
-        accessoriesDiscount > 0 ? `Accessories: ₹${accessoriesDiscount.toLocaleString('en-IN')}` : null,
-        servicesDiscount > 0 ? `Services: ₹${servicesDiscount.toLocaleString('en-IN')}` : null,
-        insuranceAddonsDiscount > 0 ? `Insurance Add-ons: ₹${insuranceAddonsDiscount.toLocaleString('en-IN')}` : null,
-        isReferralActive ? `Member Invite: ₹${REFERRAL_BONUS.toLocaleString('en-IN')}` : null,
-        `Total: ₹${totalSavings.toLocaleString('en-IN')}`,
-    ].filter(Boolean) as string[];
+    // Aliases from commonState (removes duplicate inline compute)
+    const {
+        totalSurge,
+        savingsHelpLines,
+        surgeHelpLines,
+        deliveryTatLabel,
+        deliveryByLabel,
+        studioIdLabel,
+        dealerIdLabel,
+        studioDistanceKm,
+        winnerTatDays,
+    } = commonState;
 
-    const surgeHelpLines = [
-        colorSurge > 0 ? `Dealer Surge: ₹${colorSurge.toLocaleString('en-IN')}` : null,
-        offersDiscount > 0 ? `Offers/Plans: ₹${offersDiscount.toLocaleString('en-IN')}` : null,
-        accessoriesSurge > 0 ? `Accessories: ₹${accessoriesSurge.toLocaleString('en-IN')}` : null,
-        servicesSurge > 0 ? `Services: ₹${servicesSurge.toLocaleString('en-IN')}` : null,
-        insuranceAddonsSurge > 0 ? `Insurance Add-ons: ₹${insuranceAddonsSurge.toLocaleString('en-IN')}` : null,
-        totalSurge > 0 ? `Total: ₹${totalSurge.toLocaleString('en-IN')}` : null,
-    ].filter(Boolean) as string[];
-
-    const winnerTatDaysRaw =
-        (bestOffer as any)?.delivery_tat_days ??
-        (bestOffer as any)?.deliveryTatDays ??
-        (bestOffer as any)?.tat_days ??
-        null;
-    const winnerTatDays = winnerTatDaysRaw !== null && winnerTatDaysRaw !== undefined ? Number(winnerTatDaysRaw) : null;
-    const deliveryTatLabel = (() => {
-        if (winnerTatDays !== null && Number.isFinite(winnerTatDays) && winnerTatDays >= 0) {
-            if (winnerTatDays === 0) return 'SAME DAY DELIVERY';
-            if (winnerTatDays === 1) return '1 DAY';
-            return `${winnerTatDays} DAYS`;
-        }
-        return 'ETA UPDATING';
-    })();
-    const deliveryByLabel = (() => {
-        if (winnerTatDays === null || !Number.isFinite(winnerTatDays) || winnerTatDays < 0) return null;
-        const now = new Date();
-        const by = new Date(now);
-        by.setDate(by.getDate() + winnerTatDays);
-        const datePart = by.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
-        return winnerTatDays === 0 ? `Today, ${datePart}` : `${datePart}`;
-    })();
-    const studioIdLabel =
-        (bestOffer as any)?.studio_id || (bestOffer as any)?.studioId || (bestOffer as any)?.studio || null;
-    const dealerIdLabel =
-        (bestOffer as any)?.dealerId || (bestOffer as any)?.dealer_id || (bestOffer as any)?.dealer?.id || null;
-    const studioDistanceKm = Number.isFinite(Number((bestOffer as any)?.distance_km))
-        ? Number((bestOffer as any)?.distance_km)
-        : null;
-
-    const priceBreakupData = [
-        // Group 1: Charges
-        { label: 'Ex-Showroom', value: baseExShowroom, caption: 'Factory List Price' },
-        {
-            label: `Registration`,
-            value: rtoEstimates,
-            caption: `${(initialLocation?.state || initialLocation?.district || 'STATE').toUpperCase()} • Road Tax & Fees ${regType === 'COMPANY' ? 'Company' : regType === 'BH' ? 'Bharat Series' : 'Individual'}`,
-            breakdown: rtoBreakdown,
-            comparisonOptions: data?.rtoOptions,
-        },
-        {
-            label: 'Insurance',
-            value: baseInsurance,
-            caption: 'Comprehensive (1+5 Years)',
-            breakdown: insuranceBreakdown,
-        },
-        {
-            label: 'Insurance Add-ons',
-            value: Math.round((data.insuranceAddonsPrice || 0) + (data.insuranceAddonsDiscount || 0)),
-            caption: 'Zero Dep & RSA Benefits',
-        },
-        {
-            label: 'Accessories',
-            value: accessoriesPrice,
-            caption: 'Custom Selection',
-            breakdown: activeAccessories
-                .filter((a: any) => selectedAccessories.includes(a.id))
-                .map((a: any) => ({
-                    label: a.displayName || a.name,
-                    amount: (a.discountPrice || a.price) * (quantities[a.id] || 1),
-                })),
-        },
-        {
-            label: 'Services',
-            value: (data.servicesPrice || 0) + (data.servicesDiscount || 0),
-            caption: 'RSA & Maintenance Pak',
-        },
-        {
-            label: 'Warranty',
-            value: 0,
-            caption:
-                warrantyItems?.length > 0
-                    ? `${warrantyItems.map((w: any) => `${Math.round(w.days / 365)}Y / ${w.km.toLocaleString()}K`).join(' + ')}`
-                    : 'Manufacturer Standard',
-        },
-        ...(otherCharges > 0 ? [{ label: 'Other Charges', value: otherCharges, caption: 'Handling & Fees' }] : []),
-
-        // Spacer to Group 2
-        { label: '', value: '', isSpacer: true },
-
-        // Group 2: Discounts / Surge
-        ...(totalSavings > 0
-            ? [
-                  {
-                      label: "O' Circle Privileged",
-                      value: totalSavings,
-                      caption: 'Exclusive Member Benefit',
-                      isDeduction: true,
-                      helpText: savingsHelpLines,
-                  },
-              ]
-            : []),
-        ...(coinPricing && coinPricing.discount > 0
-            ? [
-                  {
-                      label: `Bcoin Used - ${coinPricing.coinsUsed}`,
-                      value: coinPricing.discount,
-                      caption: 'Loyalty Points Applied',
-                      isDeduction: true,
-                  },
-              ]
-            : []),
-        ...(totalSurge > 0
-            ? [{ label: 'Surge Charges', value: totalSurge, caption: 'Demand Adjustments', helpText: surgeHelpLines }]
-            : []),
-
-        // Spacer to Group 3
-        { label: '', value: '', isSpacer: true },
-
-        // Group 3: Delivery Info
-        { label: 'TAT', value: deliveryTatLabel, caption: 'Operational Timeline', isInfo: true },
-        ...(deliveryByLabel
-            ? [{ label: 'Delivery By', value: deliveryByLabel, caption: 'Est. Handover', isInfo: true }]
-            : []),
-        ...(studioIdLabel
-            ? [
-                  {
-                      label: 'Studio ID',
-                      value: String(studioIdLabel).toUpperCase(),
-                      caption: 'Dispatch Node',
-                      isInfo: true,
-                  },
-              ]
-            : []),
-        ...(Number.isFinite(Number(studioDistanceKm)) && Number(studioDistanceKm) >= 0
-            ? [
-                  {
-                      label: 'Distance',
-                      value: `${Number(studioDistanceKm).toFixed(1)} km away`,
-                      caption: 'Logistics Proximity',
-                      isInfo: true,
-                  },
-              ]
-            : []),
-    ];
+    // R2: Canonical price breakup — single source, no drift risk
+    const { breakup: priceBreakupData } = buildPriceBreakup(
+        data,
+        coinPricing,
+        isReferralActive,
+        initialLocation,
+        bestOffer
+    );
 
     const getProductImage = () => {
         if (activeColorConfig?.image) return activeColorConfig.image;
@@ -677,12 +527,45 @@ export function DesktopPDP({
     return (
         <div className="relative min-h-screen bg-white transition-colors duration-500 font-sans pt-[104px] pb-20">
             {/* Parity Snapshot — hidden DOM element for Playwright parity tests */}
-            <ParitySnapshot data={data} product={product} />
-            {/* Always-mounted parity markers — these must exist regardless of active hero tab */}
-            <div data-parity-section="pricing" style={{ display: 'none' }} aria-hidden="true" />
-            <div data-parity-section="finance" style={{ display: 'none' }} aria-hidden="true" />
-            <div data-parity-section="finance-summary" style={{ display: 'none' }} aria-hidden="true" />
-            <div data-parity-section="amortization" style={{ display: 'none' }} aria-hidden="true" />
+            <ParitySnapshot data={data} product={product} commonState={commonState} />
+            {/* Parity section anchors — shared components mounted hidden so markers are always live.
+                 Desktop pricing/finance UI is inside PersonalizeLayout; these hidden mounts keep the
+                 parity contract alive and ensure any future section logic auto-applies to desktop too. */}
+            <div style={{ display: 'none' }} aria-hidden="true">
+                <PdpPricingSection
+                    layout="desktop"
+                    product={product}
+                    data={data}
+                    variantParam={variantParam}
+                    activeColorConfig={activeColorConfig}
+                    productImage={getProductImage()}
+                    walletCoins={walletCoins}
+                    coinPricing={coinPricing}
+                    displayOnRoad={displayOnRoad}
+                    showOClubPrompt={showOClubPrompt}
+                    isGated={isGated}
+                    leadName={leadContext?.name}
+                    initialLocation={initialLocation}
+                    bestOffer={bestOffer}
+                    serviceability={serviceability}
+                />
+                <PdpFinanceSection
+                    layout="desktop"
+                    data={data}
+                    handlers={{ setEmiTenure: handlers.setEmiTenure, setUserDownPayment: handlers.setUserDownPayment }}
+                    displayOnRoad={displayOnRoad}
+                    footerEmi={footerEmi}
+                />
+                <PdpFinanceSummarySection
+                    layout="desktop"
+                    data={data}
+                    displayOnRoad={displayOnRoad}
+                    totalOnRoad={totalOnRoad}
+                    totalSavings={totalSavings}
+                    coinPricing={coinPricing}
+                    footerEmi={footerEmi}
+                />
+            </div>
 
             {/* Cinematic Mesh Background */}
             <div className="fixed inset-0 pointer-events-none z-0">
@@ -875,24 +758,6 @@ export function DesktopPDP({
                                                         </button>
                                                     );
                                                 }
-                                            )}
-                                            {selectedSkuId && (
-                                                <div className="ml-3 inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2 py-1">
-                                                    <span className="text-[9px] font-mono font-bold text-slate-600">
-                                                        {trimmedSkuId}
-                                                    </span>
-                                                    <button
-                                                        type="button"
-                                                        onClick={e => {
-                                                            e.stopPropagation();
-                                                            void handleCopySku();
-                                                        }}
-                                                        className="inline-flex items-center text-slate-500 hover:text-slate-900 transition-colors"
-                                                        title="Copy SKU ID"
-                                                    >
-                                                        {skuCopied ? <Check size={11} /> : <Copy size={11} />}
-                                                    </button>
-                                                </div>
                                             )}
                                         </div>
                                     )}
@@ -1286,50 +1151,31 @@ export function DesktopPDP({
                     })}
                 </div>
 
-                {/* 5. Technical Specifications Section */}
-                {product.specs && Object.keys(product.specs).length > 0 && (
-                    <motion.div
-                        data-parity-section="specs"
-                        initial={{ opacity: 0, y: 30 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.8, duration: 0.6 }}
-                    >
-                        <div className="relative">
-                            <TechSpecsSection
-                                specs={product.specs}
-                                modelName={displayModel}
-                                variantName={displayVariant}
-                            />
-                        </div>
-                    </motion.div>
-                )}
+                {/* 5. Technical Specifications Section — shared PdpSpecsSection */}
+                <PdpSpecsSection layout="desktop" product={product} data={data} />
             </div>
 
-            {/* Floating Bottom Command Bar (All Viewports) */}
-            <div data-parity-section="command-bar">
-                <FloatingCommandBar
-                    getProductImage={getProductImage}
-                    displayModel={displayModel}
-                    displayVariant={displayVariant}
-                    displayColor={displayColor}
-                    activeColorConfig={activeColorConfig}
-                    displayOnRoad={displayOnRoad}
-                    totalOnRoad={totalOnRoad}
-                    totalSavings={totalSavings}
-                    coinPricing={coinPricing}
-                    forceMobileLayout={forceMobileLayout}
-                    handleShareQuote={handleShareQuote}
-                    handleSaveQuote={handleSaveQuote}
-                    handleBookingRequest={handleBookingRequest}
-                    serviceability={serviceability}
-                    isGated={isGated}
-                    accessoriesCount={selectedAccessories.length}
-                    accessoriesTotal={accessoriesPrice}
-                    insuranceTotal={insuranceAddonsPrice}
-                    insuranceAddonsCount={selectedInsuranceAddons.length}
-                    onOpenVideo={() => setIsVideoOpen(true)}
-                />
-            </div>
+            {/* Floating Bottom Command Bar — shared PdpCommandBar */}
+            <PdpCommandBar
+                layout="desktop"
+                getProductImage={getProductImage}
+                displayModel={displayModel}
+                displayVariant={displayVariant}
+                displayColor={displayColor}
+                activeColorConfig={activeColorConfig}
+                displayOnRoad={commandBarState.displayOnRoad}
+                totalOnRoad={totalOnRoad}
+                totalSavings={commandBarState.totalSavings}
+                coinPricing={coinPricing}
+                showOClubPrompt={showOClubPrompt}
+                footerEmi={footerEmi}
+                emiTenure={emiTenure}
+                handleShareQuote={handleShareQuote}
+                handleSaveQuote={handleSaveQuote}
+                handleBookingRequest={handleBookingRequest}
+                serviceability={serviceability}
+                isGated={isGated ?? false}
+            />
         </div>
     );
 }
