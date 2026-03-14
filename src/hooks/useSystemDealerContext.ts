@@ -18,6 +18,9 @@ interface UseDealerContextProps {
     prefetchedLocation?: any;
     offerMode?: OfferMode;
     retrySignal?: number;
+    /** Observability callbacks — fired on dealer fetch failure (called from ProductClient via trackEvent) */
+    onDealerFetchTimeout?: (payload: { product_id: string; retry_count: number; timeout_ms: number }) => void;
+    onDealerFetchError?: (payload: { product_id: string; error: string }) => void;
 }
 
 const DEALER_FETCH_TIMEOUT_MS = Number(process.env.NEXT_PUBLIC_DEALER_FETCH_TIMEOUT_MS || 8000);
@@ -273,6 +276,8 @@ export function useSystemDealerContext({
     prefetchedLocation,
     offerMode,
     retrySignal = 0,
+    onDealerFetchTimeout,
+    onDealerFetchError,
 }: UseDealerContextProps) {
     // These states hold the "Hydrated" versions of data implies Dealer-specific overrides
     const [dealerColors, setDealerColors] = useState<any[]>(product.colors || []);
@@ -1077,10 +1082,21 @@ export function useSystemDealerContext({
                     setDealerFetchNotice('Dealer price unavailable. Try again.');
                     setOtherOffers([]);
                     setIsHydrating(false);
+                    // Observability: fire timeout callback (trackEvent called in ProductClient)
+                    onDealerFetchTimeout?.({
+                        product_id: product?.id || '',
+                        retry_count: retrySignal,
+                        timeout_ms: DEALER_FETCH_TIMEOUT_MS,
+                    });
                     return;
                 }
                 setDealerFetchState('ERROR');
                 console.error('Failed to hydrate dealer context:', err);
+                // Observability: fire error callback
+                onDealerFetchError?.({
+                    product_id: product?.id || '',
+                    error: String((err as any)?.message || 'unknown'),
+                });
             } finally {
                 setIsHydrating(false);
             }

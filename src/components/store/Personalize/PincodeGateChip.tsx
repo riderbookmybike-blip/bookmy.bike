@@ -9,14 +9,22 @@
  * - Source confidence: USER_EXACT | GEO_RESOLVED
  * - On resolve: writes localStorage + cookie + fires locationChanged event.
  * - Data writes: id_members + loc_pincodes (via syncMemberLocation server action for logged-in users).
+ *
+ * Observability events (all INTENT_SIGNAL type):
+ * - pincode_gate_shown      : chip mounted with no cached pincode (gate is active)
+ * - pincode_gate_gps_prompt : user clicked GPS button
+ * - gps_resolve_success     : GPS + get_nearest_pincode succeeded
+ * - gps_resolve_fail        : GPS or RPC failed
+ * - pincode_resolved        : manual/GPS pincode successfully applied
  */
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { MapPin, Loader2, Navigation, X, Check, Pencil } from 'lucide-react';
 import { resolveLocation } from '@/utils/locationResolver';
 import { setLocationCookie } from '@/actions/locationCookie';
 import { updateSelfMemberLocation } from '@/actions/members';
 import { createClient } from '@/lib/supabase/client';
+import { useAnalytics } from '@/components/analytics/AnalyticsProvider';
 
 export type PincodeSourceConfidence = 'USER_EXACT' | 'GEO_RESOLVED';
 
@@ -42,11 +50,23 @@ export function PincodeGateChip({
     showBCoinNudge = false,
     onLoginNudge,
 }: PincodeGateChipProps) {
+    const { trackEvent } = useAnalytics();
     const [isEditing, setIsEditing] = useState(!cachedPincode);
     const [pincode, setPincode] = useState('');
     const [status, setStatus] = useState<'IDLE' | 'LOADING' | 'GPS_LOADING' | 'ERROR'>('IDLE');
     const [errorMsg, setErrorMsg] = useState('');
     const inputRef = useRef<HTMLInputElement>(null);
+
+    // Observability: fire gate_shown once when chip mounts with no cached pincode (gate is active)
+    useEffect(() => {
+        if (!cachedPincode) {
+            trackEvent('INTENT_SIGNAL', 'pincode_gate_shown', {
+                compact,
+                source: 'PincodeGateChip',
+            });
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const persistAndFire = async (
         resolved: {
@@ -140,6 +160,11 @@ export function PincodeGateChip({
                 },
                 'USER_EXACT'
             );
+            trackEvent('INTENT_SIGNAL', 'pincode_resolved', {
+                pincode: resolved.pincode || clean,
+                source_confidence: 'USER_EXACT',
+                district: resolved.district || null,
+            });
             setIsEditing(false);
             setStatus('IDLE');
         } catch {
@@ -155,6 +180,12 @@ export function PincodeGateChip({
         }
         setStatus('GPS_LOADING');
         setErrorMsg('');
+
+        // Observability: GPS button clicked
+        trackEvent('INTENT_SIGNAL', 'pincode_gate_gps_prompt', {
+            source: 'PincodeGateChip',
+            compact,
+        });
 
         navigator.geolocation.getCurrentPosition(
             async position => {
@@ -192,15 +223,38 @@ export function PincodeGateChip({
                         },
                         'GEO_RESOLVED'
                     );
+                    // Observability: GPS resolve success
+                    trackEvent('INTENT_SIGNAL', 'gps_resolve_success', {
+                        pincode: nearest.pincode,
+                        source_confidence: 'GEO_RESOLVED',
+                        distance_km: nearest.distance_km,
+                        district: nearest.district || null,
+                    });
+                    trackEvent('INTENT_SIGNAL', 'pincode_resolved', {
+                        pincode: nearest.pincode,
+                        source_confidence: 'GEO_RESOLVED',
+                        district: nearest.district || null,
+                    });
                     setIsEditing(false);
                     setStatus('IDLE');
                 } catch {
+                    // Observability: GPS resolve failed (RPC error)
+                    trackEvent('INTENT_SIGNAL', 'gps_resolve_fail', {
+                        reason: 'rpc_error',
+                        source: 'PincodeGateChip',
+                    });
                     setErrorMsg('GPS se resolve fail. Manually enter karo.');
                     setStatus('ERROR');
                 }
             },
             err => {
                 console.warn('[PincodeGateChip] GPS error:', err.code);
+                // Observability: GPS permission denied or timeout
+                trackEvent('INTENT_SIGNAL', 'gps_resolve_fail', {
+                    reason: err.code === 1 ? 'permission_denied' : err.code === 3 ? 'gps_timeout' : 'gps_unavailable',
+                    error_code: err.code,
+                    source: 'PincodeGateChip',
+                });
                 setErrorMsg('GPS permission denied. Enter pincode manually.');
                 setStatus('ERROR');
             },

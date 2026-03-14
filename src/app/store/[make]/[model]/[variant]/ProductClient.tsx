@@ -528,6 +528,19 @@ export default function ProductClient({
         prefetchedLocation: initialLocation,
         offerMode,
         retrySignal: dealerRetryCount,
+        // Observability: dealer fetch failures
+        onDealerFetchTimeout: payload =>
+            trackEvent('INTENT_SIGNAL', 'dealer_fetch_timeout', {
+                ...payload,
+                source_confidence: (() => {
+                    try {
+                        return JSON.parse(localStorage.getItem('bkmb_user_pincode') || '{}')?.source_confidence || null;
+                    } catch {
+                        return null;
+                    }
+                })(),
+            }),
+        onDealerFetchError: payload => trackEvent('INTENT_SIGNAL', 'dealer_fetch_error', payload),
     });
 
     // Update client state when hook returns new data
