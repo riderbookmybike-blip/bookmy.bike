@@ -21,7 +21,7 @@
 
 import React, { useState, useRef } from 'react';
 import Image from 'next/image';
-import { Share2, Heart, ArrowRight, Wallet, Package, Shield, Zap, MessageCircle, X, Send } from 'lucide-react';
+import { ArrowRight, Wallet, Package, Shield, Zap, MessageCircle, X, Send, MapPin, Pencil } from 'lucide-react';
 import { Logo } from '@/components/brand/Logo';
 import { OCircleLogo } from '@/components/common/OCircleLogo';
 import { coinsNeededForPrice } from '@/lib/oclub/coin';
@@ -54,6 +54,13 @@ export interface PdpCommandBarProps {
     insuranceAddonsCost?: number;
     // WhatsApp mini-button (desktop only)
     onWaSend?: (phone: string) => Promise<void>;
+    locationInfo?: {
+        pincode?: string;
+        area?: string;
+        taluka?: string;
+        district?: string;
+    };
+    onEditLocation?: () => void;
 }
 
 // ── WhatsApp Phone Modal ─────────────────────────────────────────────────────
@@ -109,7 +116,16 @@ function WhatsAppPhoneModal({ onClose, onSend }: WhatsAppPhoneModalProps) {
                 <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
                         <div className="w-8 h-8 rounded-full bg-[#25D366]/10 flex items-center justify-center">
-                            <MessageCircle size={16} className="text-[#25D366]" />
+                            {/* WhatsApp Business official icon (Simple Icons) */}
+                            <svg
+                                viewBox="0 0 24 24"
+                                width="18"
+                                height="18"
+                                fill="#25D366"
+                                xmlns="http://www.w3.org/2000/svg"
+                            >
+                                <path d="M12 0C5.374 0 0 5.374 0 12c0 2.13.558 4.122 1.528 5.847L0 24l6.336-1.524A11.939 11.939 0 0012 24c6.626 0 12-5.374 12-12 0-6.627-5.374-12-12-12zm0 21.818a9.818 9.818 0 01-5.007-1.374l-.36-.213-3.724.896.939-3.619-.234-.372A9.817 9.817 0 012.182 12C2.182 6.585 6.585 2.182 12 2.182c5.415 0 9.818 4.403 9.818 9.818 0 5.416-4.403 9.818-9.818 9.818zM9 7h3.5c1.38 0 2.5 1.175 2.5 2.625 0 .98-.527 1.82-1.307 2.25C14.611 12.3 15.5 13.35 15.5 14.625c0 1.6-1.232 2.875-2.875 2.875H9V7zm1.5 1.5v2.25h1.875c.62 0 1.125-.56 1.125-1.125C13.5 9.06 12.995 8.5 12.375 8.5H10.5zm0 3.75V14.5h2c.69 0 1.25-.56 1.25-1.25 0-.69-.56-1-1.25-1H10.5z" />
+                            </svg>
                         </div>
                         <div>
                             <p className="text-[11px] font-black uppercase tracking-[0.14em] text-slate-900">
@@ -196,28 +212,6 @@ function WhatsAppPhoneModal({ onClose, onSend }: WhatsAppPhoneModalProps) {
         </div>
     );
 }
-
-// ── Action Icon ──────────────────────────────────────────────────────────────
-
-const ActionIcon = ({
-    icon: Icon,
-    onClick,
-    colorClass,
-    title,
-}: {
-    icon: any;
-    onClick: () => void;
-    colorClass: string;
-    title?: string;
-}) => (
-    <button
-        onClick={onClick}
-        title={title}
-        className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${colorClass} hover:bg-slate-100`}
-    >
-        <Icon size={16} />
-    </button>
-);
 
 // ── Desktop Metric Cards ─────────────────────────────────────────────────────
 
@@ -452,7 +446,6 @@ export function PdpCommandBar({
     emiTenure,
     handleShareQuote,
     handleSaveQuote,
-    handleBookingRequest,
     serviceability,
     isGated,
     accessoriesCount = 0,
@@ -460,6 +453,8 @@ export function PdpCommandBar({
     insuranceAddonsCount = 0,
     insuranceAddonsCost = 0,
     onWaSend,
+    locationInfo,
+    onEditLocation,
 }: PdpCommandBarProps) {
     const isDesktop = layout === 'desktop';
 
@@ -474,13 +469,16 @@ export function PdpCommandBar({
         isGated,
         serviceability,
     });
-    const isShareMode = barState.isShareMode;
     const isDisabled = barState.isDisabled;
-    // isShareMode (gated) → SAVE QUOTE → handleSaveQuote (quote generation path)
-    const primaryAction = isShareMode ? handleSaveQuote : handleBookingRequest;
-    const primaryLabel = barState.primaryLabel;
+    const isTeamView = Boolean(onWaSend);
+    const primaryAction = isTeamView ? handleShareQuote : handleSaveQuote;
+    const primaryLabel = isDisabled ? barState.primaryLabel : isTeamView ? 'SHARE QUOTE' : 'SAVE QUOTE';
     const bCoinEquivalent = coinsNeededForPrice(displayOnRoad);
     const onRoadBase = barState.strikethroughPrice;
+    const locationHeadline = locationInfo?.area || locationInfo?.taluka || locationInfo?.district || 'Set location';
+    const locationSubline = [locationInfo?.taluka, locationInfo?.district, locationInfo?.pincode]
+        .filter(Boolean)
+        .join(' • ');
 
     // ── WhatsApp popup state (desktop only) ──
     const [showWaModal, setShowWaModal] = useState(false);
@@ -491,11 +489,11 @@ export function PdpCommandBar({
             className={`fixed inset-x-0 z-[95] ${isDesktop ? 'bottom-0' : 'bottom-[60px]'}`}
             style={{ paddingBottom: isDesktop ? 'env(safe-area-inset-bottom, 0px)' : undefined }}
         >
-            <div className={`${isDesktop ? 'page-container mb-2 md:mb-4' : 'px-4 mb-3'}`}>
+            <div className={`${isDesktop ? '' : 'px-4 mb-3'}`}>
                 <div
                     className={`relative overflow-hidden border ${
                         isDesktop
-                            ? 'rounded-2xl md:rounded-full border-white/80 bg-white/58 backdrop-blur-3xl shadow-[0_10px_34px_rgba(15,23,42,0.12)]'
+                            ? 'rounded-none border-x-0 border-b-0 border-t-white/70 bg-white/42 backdrop-blur-2xl shadow-[0_-8px_24px_rgba(15,23,42,0.10)]'
                             : 'rounded-full border-white/[0.08] bg-[#0b0d10]/80 backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.35),0_0_0_1px_rgba(255,255,255,0.05)_inset]'
                     }`}
                 >
@@ -504,7 +502,7 @@ export function PdpCommandBar({
                     />
                     <div
                         className={`relative z-10 flex items-center justify-between ${
-                            isDesktop ? 'p-3 md:px-8 md:py-3 gap-3 md:gap-6' : 'px-5 py-2.5 gap-3'
+                            isDesktop ? 'px-4 py-3.5 md:px-8 md:py-4 gap-3 md:gap-6' : 'px-5 py-3.5 gap-3'
                         }`}
                     >
                         {/* Left: Product Identity + Price */}
@@ -537,8 +535,30 @@ export function PdpCommandBar({
                                                 {displayColor}
                                             </span>
                                         </div>
+                                        <span className="mt-1 text-[8px] font-semibold tracking-[0.04em] text-slate-500 leading-none">
+                                            *Price shown for Maharashtra state
+                                        </span>
                                     </div>
                                     <div className="w-px h-8 bg-slate-200 ml-2" />
+                                    {!!locationInfo?.pincode && (
+                                        <button
+                                            type="button"
+                                            onClick={() => onEditLocation?.()}
+                                            className="ml-1 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white/80 px-3 py-2 text-left"
+                                            title="Change location"
+                                        >
+                                            <MapPin size={12} className="text-slate-500 shrink-0" />
+                                            <span className="flex flex-col min-w-0">
+                                                <span className="text-[9px] font-black uppercase tracking-[0.08em] text-slate-700 truncate">
+                                                    {locationHeadline}
+                                                </span>
+                                                <span className="text-[8px] font-semibold text-slate-500 truncate">
+                                                    {locationSubline}
+                                                </span>
+                                            </span>
+                                            <Pencil size={10} className="text-slate-500 shrink-0" />
+                                        </button>
+                                    )}
                                 </div>
                             )}
 
@@ -571,42 +591,6 @@ export function PdpCommandBar({
 
                         {/* Right: Actions + CTA */}
                         <div className="flex items-center gap-3 md:gap-4">
-                            {/* Desktop action icons: Share + WhatsApp (if onWaSend provided) + Heart */}
-                            {isDesktop && (
-                                <div className="hidden md:flex items-center gap-1">
-                                    <ActionIcon
-                                        icon={Share2}
-                                        onClick={handleShareQuote}
-                                        colorClass="text-slate-500 hover:text-slate-900"
-                                        title="Share quote link"
-                                    />
-                                    {onWaSend && (
-                                        <ActionIcon
-                                            icon={MessageCircle}
-                                            onClick={() => setShowWaModal(true)}
-                                            colorClass="text-[#25D366] hover:text-[#22c55e]"
-                                            title="Send on WhatsApp"
-                                        />
-                                    )}
-                                    <ActionIcon
-                                        icon={Heart}
-                                        onClick={handleSaveQuote}
-                                        colorClass="text-slate-400 hover:text-rose-500"
-                                        title="Save to wishlist"
-                                    />
-                                </div>
-                            )}
-
-                            {/* Save Quote icon — Mobile only */}
-                            {!isDesktop && (
-                                <button
-                                    onClick={handleSaveQuote}
-                                    className="w-9 h-9 rounded-full flex items-center justify-center bg-white/10 border border-white/10 text-white/60 active:text-rose-400 transition-colors"
-                                >
-                                    <Heart size={16} />
-                                </button>
-                            )}
-
                             {/* CTA Button — both layouts */}
                             <button
                                 onClick={primaryAction}
@@ -626,21 +610,6 @@ export function PdpCommandBar({
                         </div>
                     </div>
                 </div>
-
-                {/* Share pill — Mobile only, below the bar */}
-                {!isDesktop && (
-                    <div className="flex justify-center mt-1.5">
-                        <button
-                            onClick={handleShareQuote}
-                            className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-white/80 backdrop-blur-md border border-slate-200/60 shadow-sm active:scale-95 transition-all"
-                        >
-                            <Share2 size={12} className="text-slate-500" />
-                            <span className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-600">
-                                Share
-                            </span>
-                        </button>
-                    </div>
-                )}
             </div>
 
             {/* WhatsApp Phone Modal — rendered at fixed z-[200] */}

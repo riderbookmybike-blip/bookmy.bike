@@ -1178,7 +1178,6 @@ export function DesktopPDP({
                 accessoriesTotal={accessoriesPrice ?? 0}
                 insuranceAddonsCount={selectedInsuranceAddons?.length ?? 0}
                 insuranceAddonsCost={(insuranceAddonsPrice ?? 0) + (insuranceAddonsDiscount ?? 0)}
-                onWaSend={onWaSend ?? handlers.handleWaSend}
             />
         </div>
     );

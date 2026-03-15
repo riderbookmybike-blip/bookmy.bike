@@ -153,7 +153,7 @@ export async function sendQuoteDossierWhatsApp(
                 'Content-Type': 'application/json',
                 authkey: authKey,
             },
-            body: JSON.stringify(payload),
+            body: JSON.stringify(buildPayload(components)),
         });
 
         const text = await res.text();
@@ -182,32 +182,37 @@ export async function sendQuoteDossierWhatsApp(
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Welcome Template Sender
-// Template: `welcome`
-// Body vars (4):
-//   body_1 — advisor_name
-//   body_2 — advisor_mobile (10-digit, normalized)
-//   body_3 — offer_month  (e.g. "March 2026")
-//   body_4 — referral_link
-// Header: image (pre-configured in MSG91 template — no dynamic override)
+// Templates: `welcome_en` | `welcome_hi` | `welcome_mr`
+//
+// Components (same structure across all languages):
+//   body_name   — advisor name
+//   body_phone  — advisor mobile (10-digit, normalized)
+//   button_1    — referral link (url button variable)
+//
+// Language drives both template name suffix and language.code in the payload.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const DEFAULT_WELCOME_TEMPLATE = 'welcome';
 const WA_WELCOME_DEDUPE_WINDOW_MS = 60_000;
 const recentWelcomeRequests = new Map<string, number>();
+
+export type WelcomeLanguage = 'en' | 'hi' | 'mr';
+const WELCOME_LANGUAGES: readonly WelcomeLanguage[] = ['en', 'hi', 'mr'];
 
 export interface WelcomeWhatsAppData {
     /** Recipient 10-digit phone (will be normalized to 91XXXXXXXXXX) */
     phone: string;
-    /** Signed-in advisor full name (body_1) */
+    /** Signed-in advisor full name */
     advisor_name: string;
-    /** Signed-in advisor phone 10-digit (body_2) */
+    /** Signed-in advisor phone (10-digit) */
     advisor_mobile: string;
-    /** Current offer month in "MMMM YYYY" format, e.g. "March 2026" (body_3) */
-    offer_month: string;
-    /** PDP referral/share link for this user (body_4) */
-    referral_link: string;
-    /** Optional media URL for template image header component */
-    header_image_url?: string;
+    /**
+     * Referral code only (e.g. '8UH-Q2M-9JY') — goes into button_1 (url button variable).
+     * The base URL https://www.bookmy.bike/store?ref={{1}} is already set in the MSG91 template.
+     * App only needs to send the variable value, NOT the full URL.
+     */
+    referral_code: string;
+    /** Language selection: en | hi | mr — determines template name + language code */
+    language: WelcomeLanguage;
 }
 
 export interface WelcomeSendResult {
@@ -221,13 +226,16 @@ export interface WelcomeSendResult {
 export async function sendWelcomeTemplateWhatsApp(data: WelcomeWhatsAppData): Promise<WelcomeSendResult> {
     const authKey = process.env.MSG91_AUTH_KEY;
     const integratedNumber = process.env.MSG91_WA_INTEGRATED_NUMBER || DEFAULT_INTEGRATED_NUMBER;
-    const templateName = process.env.MSG91_WA_WELCOME_TEMPLATE || DEFAULT_WELCOME_TEMPLATE;
     const namespace = process.env.MSG91_WA_NAMESPACE || DEFAULT_NAMESPACE;
-    const headerImageFromEnv = process.env.MSG91_WA_WELCOME_HEADER_IMAGE_URL;
 
     if (!authKey) {
         console.warn('[WhatsApp:welcome] MSG91_AUTH_KEY not configured. Skipping.');
         return { success: false, message: 'WhatsApp service not configured' };
+    }
+
+    // Validate language
+    if (!WELCOME_LANGUAGES.includes(data.language)) {
+        return { success: false, message: `Invalid language "${data.language}" — must be en, hi, or mr` };
     }
 
     // Guard: required business variables
@@ -237,12 +245,13 @@ export async function sendWelcomeTemplateWhatsApp(data: WelcomeWhatsAppData): Pr
     if (!data.advisor_mobile?.trim()) {
         return { success: false, message: 'Advisor mobile missing — cannot send welcome' };
     }
-    if (!data.offer_month?.trim()) {
-        return { success: false, message: 'Offer month missing — cannot send welcome' };
+    if (!data.referral_code?.trim()) {
+        return { success: false, message: 'Referral code missing — cannot send welcome' };
     }
-    if (!data.referral_link?.trim()) {
-        return { success: false, message: 'Referral link missing — cannot send welcome' };
-    }
+
+    // Derive template name and language code from language selection
+    const templateName = `welcome_${data.language}`;
+    const languageCode = data.language;
 
     // Normalize recipient phone → 91XXXXXXXXXX
     const digits = data.phone.replace(/\D/g, '');
@@ -268,49 +277,27 @@ export async function sendWelcomeTemplateWhatsApp(data: WelcomeWhatsAppData): Pr
         console.warn(`[WhatsApp:welcome] Duplicate suppressed for ${mobile}`);
         return { success: true, message: 'Duplicate WhatsApp suppressed', providerStatus: 'suppressed' };
     }
-    const components: Record<string, { type: string; value: string; parameter_name?: string }> = {
-        body_referral_link: {
-            type: 'text',
-            value: data.referral_link.trim(),
-            parameter_name: 'referral_link',
-        },
-        body_advisor_name: {
+
+    // Components per confirmed MSG91 curl structure
+    // button_1: URL button variable — template URL is https://www.bookmy.bike/store?ref={{1}}
+    // Only the referral code is sent as the variable, NOT the full URL.
+    const components: Record<string, { type: string; value: string; parameter_name?: string; subtype?: string }> = {
+        body_name: {
             type: 'text',
             value: data.advisor_name.trim(),
-            parameter_name: 'advisor_name',
+            parameter_name: 'name',
         },
-        body_advisor_mobile: {
+        body_phone: {
             type: 'text',
             value: advisorMobileClean,
-            parameter_name: 'advisor_mobile',
+            parameter_name: 'phone',
         },
-        body_offer_month: {
+        button_1: {
+            subtype: 'url',
             type: 'text',
-            value: data.offer_month.trim(),
-            parameter_name: 'offer_month',
+            value: data.referral_code.trim(),
         },
     };
-    const headerImageUrlRaw = data.header_image_url?.trim() || headerImageFromEnv?.trim() || '';
-    if (!headerImageUrlRaw) {
-        return {
-            success: false,
-            message: 'Welcome header image URL missing. Set MSG91_WA_WELCOME_HEADER_IMAGE_URL',
-        };
-    }
-    let headerImageUrl = '';
-    try {
-        const parsed = new URL(headerImageUrlRaw);
-        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-            throw new Error('invalid protocol');
-        }
-        headerImageUrl = parsed.toString();
-    } catch {
-        return {
-            success: false,
-            message: 'Welcome header image URL invalid. Use full http/https public URL',
-        };
-    }
-    components.header_1 = { type: 'image', value: headerImageUrl };
 
     const payload = {
         integrated_number: integratedNumber,
@@ -321,7 +308,7 @@ export async function sendWelcomeTemplateWhatsApp(data: WelcomeWhatsAppData): Pr
             template: {
                 name: templateName,
                 language: {
-                    code: 'en',
+                    code: languageCode,
                     policy: 'deterministic',
                 },
                 namespace,
@@ -339,52 +326,32 @@ export async function sendWelcomeTemplateWhatsApp(data: WelcomeWhatsAppData): Pr
         console.log('[WhatsApp:welcome] Sending →', {
             mobile,
             template: templateName,
+            language: languageCode,
             advisor: data.advisor_name,
         });
 
-        const sendOnce = async (payloadObj: ReturnType<typeof buildPayload>) => {
-            const res = await fetch(WA_API_URL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    authkey: authKey,
-                },
-                body: JSON.stringify(payloadObj),
-            });
-            const text = await res.text();
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            let resData: any = null;
-            try {
-                resData = text ? JSON.parse(text) : null;
-            } catch {
-                // non-JSON response — handled by caller
-            }
-            return { res, text, resData };
-        };
+        const res = await fetch(WA_API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                authkey: authKey,
+            },
+            body: JSON.stringify(payload),
+        });
 
-        let { res, text, resData } = await sendOnce(buildPayload(components));
-
-        const providerErrorText = `${resData?.errors || ''} ${resData?.message || ''}`.toLowerCase();
-        if (
-            res.ok &&
-            !(resData?.type === 'success' || resData?.status === 'success') &&
-            providerErrorText.includes('parameter name is missing or empty')
-        ) {
-            // Fallback for accounts/templates configured with positional body keys.
-            const fallbackComponents: Record<string, { type: string; value: string }> = {
-                body_1: { type: 'text', value: data.offer_month.trim() },
-                body_2: { type: 'text', value: data.advisor_name.trim() },
-                body_3: { type: 'text', value: advisorMobileClean },
-                body_4: { type: 'text', value: data.referral_link.trim() },
-                header_1: { type: 'image', value: headerImageUrl },
-            };
-            ({ res, text, resData } = await sendOnce(buildPayload(fallbackComponents)));
+        const text = await res.text();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let resData: any = null;
+        try {
+            resData = text ? JSON.parse(text) : null;
+        } catch {
+            // non-JSON response — handled below
         }
 
         if (res.ok && (resData?.type === 'success' || resData?.status === 'success')) {
             recentWelcomeRequests.set(dedupeKey, now);
             const requestId = typeof resData?.request_id === 'string' ? resData.request_id : undefined;
-            console.log(`[WhatsApp:welcome] Sent to ${mobile}`, { requestId });
+            console.log(`[WhatsApp:welcome] Sent to ${mobile}`, { requestId, template: templateName });
             return {
                 success: true,
                 requestId,

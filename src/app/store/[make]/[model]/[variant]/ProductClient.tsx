@@ -1065,7 +1065,7 @@ export default function ProductClient({
         }
     };
 
-    const handleWaSend = async (recipientPhone: string) => {
+    const handleWaSend = async (recipientPhone: string, language: 'en' | 'hi' | 'mr' = 'en') => {
         if (waInFlight) return;
         setWaInFlight(true);
         try {
@@ -1079,15 +1079,16 @@ export default function ProductClient({
                 return;
             }
 
-            // Fetch advisor profile (full_name + primary_phone)
+            // Fetch advisor profile (full_name + primary_phone + referral_code)
             const { data: member } = await supabase
                 .from('id_members')
-                .select('full_name, primary_phone, whatsapp')
+                .select('full_name, primary_phone, whatsapp, referral_code')
                 .eq('id', user.id)
                 .maybeSingle();
 
             const advisorName = member?.full_name?.trim() || '';
             const advisorRawPhone = (member?.primary_phone || member?.whatsapp || '').replace(/\D/g, '').slice(-10);
+            const referralCode = (member?.referral_code || '').trim().toUpperCase();
 
             if (!advisorName) {
                 toast.error('Your profile name is required to send WhatsApp');
@@ -1097,21 +1098,13 @@ export default function ProductClient({
                 toast.error('Your profile phone is required to send WhatsApp');
                 return;
             }
-
-            // Build referral link: current PDP URL with color + studio params
-            const u = new URL(window.location.href);
-            if (selectedColor) u.searchParams.set('color', selectedColor);
-            u.searchParams.delete('pincode');
-            u.searchParams.delete('district');
-            if (resolvedStudioIdForUrl) {
-                u.searchParams.set('studio', String(resolvedStudioIdForUrl).toUpperCase());
+            if (!referralCode) {
+                toast.error('Your referral code is missing. Please contact support.');
+                return;
             }
-            const referralLink = u.toString();
 
-            // Offer month: "March 2026" format (en-IN locale)
-            const nowDate = new Date();
-            const offerMonth = nowDate.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
-
+            // Send only the referral code — MSG91 template URL is:
+            // https://www.bookmy.bike/store?ref={{1}}
             const res = await fetch('/api/whatsapp/welcome', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1119,8 +1112,8 @@ export default function ProductClient({
                     phone: recipientPhone,
                     advisor_name: advisorName,
                     advisor_mobile: advisorRawPhone,
-                    offer_month: offerMonth,
-                    referral_link: referralLink,
+                    referral_code: referralCode,
+                    language,
                 }),
             });
 

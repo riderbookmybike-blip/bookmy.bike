@@ -101,6 +101,11 @@ export function ProfileDropdown({
     const [memberCode, setMemberCode] = useState<string>('');
     const [walletData, setWalletData] = useState<WalletData | null>(null);
     const [referralCopied, setReferralCopied] = useState(false);
+    // WA Quick Welcome state
+    const [waPhone, setWaPhone] = useState('');
+    const [waLang, setWaLang] = useState<'en' | 'hi' | 'mr' | ''>('');
+    const [waStatus, setWaStatus] = useState<'idle' | 'sending' | 'done' | 'error'>('idle');
+    const [waError, setWaError] = useState('');
 
     const isOpen = externalOpen !== undefined ? externalOpen : internalOpen;
     const setIsOpen = (open: boolean) => {
@@ -274,6 +279,62 @@ ${referralUrl}`;
         ],
         [encodedReferralText, encodedReferralUrl]
     );
+
+    const sendWelcomeWa = async () => {
+        if (!user) return;
+        const digits = waPhone.replace(/\D/g, '').slice(-10);
+        if (!/^[6-9]\d{9}$/.test(digits)) {
+            setWaError('Enter a valid 10-digit mobile number (starts with 6-9)');
+            return;
+        }
+        if (!waLang) {
+            setWaError('Please select a language');
+            return;
+        }
+        setWaStatus('sending');
+        setWaError('');
+        try {
+            const supabase = createClient();
+            const { data: member } = await supabase
+                .from('id_members')
+                .select('full_name, primary_phone, whatsapp')
+                .eq('id', user.id)
+                .maybeSingle();
+            const advisorName = (member?.full_name || user.user_metadata?.full_name || '').trim();
+            const advisorPhone = (member?.primary_phone || member?.whatsapp || '').replace(/\D/g, '').slice(-10);
+            if (!advisorName || advisorPhone.length < 10) {
+                setWaError('Your profile name/phone is incomplete. Update your profile first.');
+                setWaStatus('idle');
+                return;
+            }
+            const res = await fetch('/api/whatsapp/welcome', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    phone: digits,
+                    advisor_name: advisorName,
+                    advisor_mobile: advisorPhone,
+                    referral_code: referralCode,
+                    language: waLang,
+                }),
+            });
+            const result = await res.json();
+            if (result?.success) {
+                setWaStatus('done');
+                setTimeout(() => {
+                    setWaPhone('');
+                    setWaLang('');
+                    setWaStatus('idle');
+                }, 1800);
+            } else {
+                setWaError(result?.message || 'Send failed — please try again');
+                setWaStatus('error');
+            }
+        } catch {
+            setWaError('Network error — please try again');
+            setWaStatus('error');
+        }
+    };
 
     const handleCopyReferralUrl = async () => {
         if (!referralUrl) return;
@@ -1495,8 +1556,8 @@ ${referralUrl}`;
                                                         </p>
                                                     </div>
 
-                                                    {/* Social icons — real brand colors */}
                                                     <div className="flex items-center gap-1.5 flex-1 justify-end">
+                                                        {/* Native device WhatsApp share — opens user's WA app */}
                                                         {socialShareLinks.map(item => (
                                                             <a
                                                                 key={item.key}
@@ -1647,22 +1708,140 @@ ${referralUrl}`;
 
                                                             return (
                                                                 <div className="space-y-2">
-                                                                    {/* CREATE LEAD */}
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => {
-                                                                            router.push(createLeadHref);
-                                                                            setIsOpen(false);
-                                                                        }}
-                                                                        className="w-full flex items-center gap-3 p-3 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200/70 dark:border-amber-500/20 hover:border-brand-primary/30 dark:hover:border-brand-primary/30 transition-all group"
-                                                                    >
-                                                                        <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-500 group-hover:scale-110 transition-transform shadow-sm shrink-0">
-                                                                            <MessageSquare size={16} />
+                                                                    {/* WA Quick Welcome — MSG91 API with language selection */}
+                                                                    <div className="rounded-2xl border border-[#25D366]/30 bg-[#25D366]/5 dark:bg-[#25D366]/[0.04] p-3 space-y-3">
+                                                                        {/* Title */}
+                                                                        <div className="flex items-center gap-2">
+                                                                            <div className="w-6 h-6 rounded-lg bg-[#25D366]/15 flex items-center justify-center shrink-0">
+                                                                                {/* WhatsApp Business icon */}
+                                                                                <svg
+                                                                                    viewBox="0 0 24 24"
+                                                                                    width="14"
+                                                                                    height="14"
+                                                                                    fill="#25D366"
+                                                                                    xmlns="http://www.w3.org/2000/svg"
+                                                                                >
+                                                                                    <path d="M12 0C5.374 0 0 5.374 0 12c0 2.13.558 4.122 1.528 5.847L0 24l6.336-1.524A11.939 11.939 0 0012 24c6.626 0 12-5.374 12-12 0-6.627-5.374-12-12-12zm0 21.818a9.818 9.818 0 01-5.007-1.374l-.36-.213-3.724.896.939-3.619-.234-.372A9.817 9.817 0 012.182 12C2.182 6.585 6.585 2.182 12 2.182c5.415 0 9.818 4.403 9.818 9.818 0 5.416-4.403 9.818-9.818 9.818zM9 7h3.5c1.38 0 2.5 1.175 2.5 2.625 0 .98-.527 1.82-1.307 2.25C14.611 12.3 15.5 13.35 15.5 14.625c0 1.6-1.232 2.875-2.875 2.875H9V7zm1.5 1.5v2.25h1.875c.62 0 1.125-.56 1.125-1.125C13.5 9.06 12.995 8.5 12.375 8.5H10.5zm0 3.75V14.5h2c.69 0 1.25-.56 1.25-1.25 0-.69-.56-1-1.25-1H10.5z" />
+                                                                                </svg>
+                                                                            </div>
+                                                                            <p className="text-[9px] font-black uppercase tracking-[0.14em] text-[#25D366]">
+                                                                                Quick Welcome
+                                                                            </p>
                                                                         </div>
-                                                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-200">
-                                                                            Create Lead
-                                                                        </span>
-                                                                    </button>
+
+                                                                        {waStatus === 'done' ? (
+                                                                            <div className="flex items-center justify-center gap-2 py-3">
+                                                                                <Check
+                                                                                    size={16}
+                                                                                    className="text-[#25D366]"
+                                                                                />
+                                                                                <span className="text-[10px] font-black text-[#25D366] uppercase tracking-wide">
+                                                                                    Sent!
+                                                                                </span>
+                                                                            </div>
+                                                                        ) : (
+                                                                            <>
+                                                                                {/* Phone input */}
+                                                                                <div className="flex items-center gap-2 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] px-3 py-2 focus-within:border-[#25D366] transition-all">
+                                                                                    <span className="text-[10px] font-bold text-slate-400 shrink-0">
+                                                                                        +91
+                                                                                    </span>
+                                                                                    <div className="w-px h-3.5 bg-slate-200 dark:bg-white/10" />
+                                                                                    <input
+                                                                                        type="tel"
+                                                                                        inputMode="numeric"
+                                                                                        maxLength={10}
+                                                                                        value={waPhone
+                                                                                            .replace(/\D/g, '')
+                                                                                            .slice(-10)}
+                                                                                        onChange={e => {
+                                                                                            setWaPhone(e.target.value);
+                                                                                            setWaError('');
+                                                                                        }}
+                                                                                        onKeyDown={e =>
+                                                                                            e.key === 'Enter' &&
+                                                                                            sendWelcomeWa()
+                                                                                        }
+                                                                                        placeholder="Recipient 10-digit number"
+                                                                                        className="flex-1 bg-transparent text-[11px] font-mono font-bold text-slate-900 dark:text-white placeholder:text-slate-300 outline-none"
+                                                                                    />
+                                                                                </div>
+
+                                                                                {/* Language buttons */}
+                                                                                <div className="flex gap-1.5">
+                                                                                    {(['en', 'hi', 'mr'] as const).map(
+                                                                                        lang => {
+                                                                                            const labels: Record<
+                                                                                                string,
+                                                                                                string
+                                                                                            > = {
+                                                                                                en: 'EN',
+                                                                                                hi: 'हि',
+                                                                                                mr: 'मर',
+                                                                                            };
+                                                                                            const full: Record<
+                                                                                                string,
+                                                                                                string
+                                                                                            > = {
+                                                                                                en: 'English',
+                                                                                                hi: 'Hindi',
+                                                                                                mr: 'Marathi',
+                                                                                            };
+                                                                                            return (
+                                                                                                <button
+                                                                                                    key={lang}
+                                                                                                    type="button"
+                                                                                                    onClick={() => {
+                                                                                                        setWaLang(lang);
+                                                                                                        setWaError('');
+                                                                                                    }}
+                                                                                                    className={`flex-1 flex flex-col items-center py-1.5 rounded-xl border transition-all ${
+                                                                                                        waLang === lang
+                                                                                                            ? 'border-[#25D366] bg-[#25D366]/10 ring-1 ring-[#25D366]/30'
+                                                                                                            : 'border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.03] hover:border-[#25D366]/40'
+                                                                                                    }`}
+                                                                                                >
+                                                                                                    <span
+                                                                                                        className={`text-[12px] font-black ${waLang === lang ? 'text-[#25D366]' : 'text-slate-500 dark:text-slate-400'}`}
+                                                                                                    >
+                                                                                                        {labels[lang]}
+                                                                                                    </span>
+                                                                                                    <span
+                                                                                                        className={`text-[7px] font-semibold ${waLang === lang ? 'text-[#25D366]' : 'text-slate-400'}`}
+                                                                                                    >
+                                                                                                        {full[lang]}
+                                                                                                    </span>
+                                                                                                </button>
+                                                                                            );
+                                                                                        }
+                                                                                    )}
+                                                                                </div>
+
+                                                                                {waError && (
+                                                                                    <p className="text-[8px] text-rose-500 font-semibold">
+                                                                                        {waError}
+                                                                                    </p>
+                                                                                )}
+
+                                                                                {/* Send button */}
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={sendWelcomeWa}
+                                                                                    disabled={waStatus === 'sending'}
+                                                                                    className={`w-full h-8 rounded-xl flex items-center justify-center gap-1.5 text-[9px] font-black uppercase tracking-[0.14em] transition-all ${
+                                                                                        waStatus === 'sending'
+                                                                                            ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                                                                                            : 'bg-[#25D366] text-white hover:bg-[#22c55e]'
+                                                                                    }`}
+                                                                                >
+                                                                                    <Send size={11} />
+                                                                                    {waStatus === 'sending'
+                                                                                        ? 'Sending…'
+                                                                                        : 'Send Welcome'}
+                                                                                </button>
+                                                                            </>
+                                                                        )}
+                                                                    </div>
 
                                                                     {/* ─── ACTIVE GROUP ─── */}
                                                                     <div className="rounded-2xl border border-slate-100 dark:border-white/8 overflow-hidden">

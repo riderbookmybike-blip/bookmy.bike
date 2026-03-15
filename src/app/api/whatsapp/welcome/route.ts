@@ -1,7 +1,7 @@
 /**
  * POST /api/whatsapp/welcome
  *
- * Secure server-side route for sending the MSG91 `welcome` WhatsApp template.
+ * Secure server-side route for sending the MSG91 `welcome_en|hi|mr` WhatsApp template.
  *
  * Auth: requires a valid Supabase session (JWT via cookie).
  *       Returns 401 if user is not authenticated.
@@ -9,10 +9,11 @@
  * Body (JSON):
  *   {
  *     phone: string;          // recipient 10-digit phone
- *     advisor_name: string;   // signed-in user full name (body_1)
- *     advisor_mobile: string; // signed-in user phone (body_2)
- *     offer_month: string;    // e.g. "March 2026" (body_3)
- *     referral_link: string;  // PDP share link (body_4)
+ *     advisor_name: string;   // signed-in user full name (body_name)
+ *     advisor_mobile: string; // signed-in user phone (body_phone)
+ *     referral_code: string;  // referral code only e.g. '8UH-Q2M-9JY' (button_1 url variable)
+ *                             // Template URL https://www.bookmy.bike/store?ref={{1}} is set in MSG91
+ *     language: 'en'|'hi'|'mr'; // determines template name + language code
  *   }
  *
  * Returns: { success: boolean; message?: string; requestId?: string; providerStatus?: string; providerMessage?: string }
@@ -21,12 +22,13 @@
  *   MSG91_AUTH_KEY
  *   MSG91_WA_INTEGRATED_NUMBER  (default: 917447403491)
  *   MSG91_WA_NAMESPACE           (default: f197f829_dfac_4dd3_8188_81021b01b37b)
- *   MSG91_WA_WELCOME_TEMPLATE    (default: welcome)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { sendWelcomeTemplateWhatsApp } from '@/lib/sms/msg91-whatsapp';
+import { sendWelcomeTemplateWhatsApp, type WelcomeLanguage } from '@/lib/sms/msg91-whatsapp';
+
+const VALID_LANGUAGES: readonly WelcomeLanguage[] = ['en', 'hi', 'mr'];
 
 export async function POST(req: NextRequest) {
     // ── Auth guard: require valid Supabase session ──
@@ -44,8 +46,8 @@ export async function POST(req: NextRequest) {
         phone?: string;
         advisor_name?: string;
         advisor_mobile?: string;
-        offer_month?: string;
-        referral_link?: string;
+        referral_code?: string;
+        language?: string;
     };
     try {
         body = await req.json();
@@ -53,7 +55,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: false, message: 'Invalid JSON body' }, { status: 400 });
     }
 
-    const { phone, advisor_name, advisor_mobile, offer_month, referral_link } = body;
+    const { phone, advisor_name, advisor_mobile, referral_code, language } = body;
 
     // ── Validate required fields ──
     if (!phone?.trim()) {
@@ -65,11 +67,20 @@ export async function POST(req: NextRequest) {
     if (!advisor_mobile?.trim()) {
         return NextResponse.json({ success: false, message: 'advisor_mobile is required' }, { status: 400 });
     }
-    if (!offer_month?.trim()) {
-        return NextResponse.json({ success: false, message: 'offer_month is required' }, { status: 400 });
+    if (!referral_code?.trim()) {
+        return NextResponse.json({ success: false, message: 'referral_code is required' }, { status: 400 });
     }
-    if (!referral_link?.trim()) {
-        return NextResponse.json({ success: false, message: 'referral_link is required' }, { status: 400 });
+    if (!/^[A-Z0-9-]+$/.test(referral_code.trim())) {
+        return NextResponse.json(
+            { success: false, message: 'referral_code must be uppercase alphanumeric with hyphens (e.g. 8UH-Q2M-9JY)' },
+            { status: 400 }
+        );
+    }
+    if (!language || !VALID_LANGUAGES.includes(language as WelcomeLanguage)) {
+        return NextResponse.json(
+            { success: false, message: `language must be one of: ${VALID_LANGUAGES.join(', ')}` },
+            { status: 400 }
+        );
     }
 
     // ── Forward to server-side MSG91 utility ──
@@ -77,8 +88,8 @@ export async function POST(req: NextRequest) {
         phone: phone.trim(),
         advisor_name: advisor_name.trim(),
         advisor_mobile: advisor_mobile.trim(),
-        offer_month: offer_month.trim(),
-        referral_link: referral_link.trim(),
+        referral_code: referral_code.trim(),
+        language: language as WelcomeLanguage,
     });
 
     if (!result.success) {
