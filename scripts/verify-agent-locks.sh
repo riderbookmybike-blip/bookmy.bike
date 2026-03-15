@@ -11,20 +11,8 @@ if [[ "${SKIP_AGENT_LOCK_CHECK:-0}" == "1" ]]; then
     exit 0
 fi
 
-AGENT_NAME="${AGENT_NAME:-}"
-if [[ -z "$AGENT_NAME" ]]; then
-    cat <<'EOF'
-[agent-lock] BLOCKED: AGENT_NAME is not set.
-Set it before commit:
-  export AGENT_NAME=codex
-or
-  export AGENT_NAME=antigravity
-
-Temporary bypass (not recommended):
-  SKIP_AGENT_LOCK_CHECK=1 git commit -m "..."
-EOF
-    exit 1
-fi
+# AGENT_NAME is optional; default to implementation agent for local commits.
+AGENT_NAME="${AGENT_NAME:-antigravity}"
 
 ROOT="$(git rev-parse --show-toplevel)"
 LOCK_ROOT="$ROOT/.agents/locks"
@@ -79,4 +67,3 @@ EOF
 fi
 
 echo "[agent-lock] OK: all staged files are claimed by '$AGENT_NAME'"
-

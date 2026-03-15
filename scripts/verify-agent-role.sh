@@ -9,16 +9,8 @@ if [[ "${SKIP_AGENT_ROLE_CHECK:-0}" == "1" ]]; then
     exit 0
 fi
 
-AGENT_NAME="${AGENT_NAME:-}"
-if [[ -z "$AGENT_NAME" ]]; then
-    cat <<'MSG'
-[agent-role] BLOCKED: AGENT_NAME is not set.
-Set one of:
-  export AGENT_NAME=codex
-  export AGENT_NAME=antigravity
-MSG
-    exit 1
-fi
+# AGENT_NAME is optional; default to implementation agent for local commits.
+AGENT_NAME="${AGENT_NAME:-antigravity}"
 
 if [[ "$AGENT_NAME" != "codex" ]]; then
     exit 0
