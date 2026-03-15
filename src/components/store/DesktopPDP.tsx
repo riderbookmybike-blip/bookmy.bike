@@ -81,7 +81,6 @@ const WarrantyTab = dynamic(() => import('./Personalize/Tabs/WarrantyTab'), {
 import PricingCard from './Personalize/Cards/PricingCard';
 import FinanceCard from './Personalize/Cards/FinanceCard';
 import TechSpecsSection from './Personalize/TechSpecsSection';
-import { PincodeGateChip } from './Personalize/PincodeGateChip';
 import { ParitySnapshot, PdpSpecsSection, PdpCommandBar } from './sections';
 // PdpPricingSection / PdpFinanceSection / PdpFinanceSummarySection — hidden mounts below
 import { PdpPricingSection, PdpFinanceSection, PdpFinanceSummarySection } from './sections';
@@ -536,21 +535,7 @@ export function DesktopPDP({
 
     return (
         <div className="relative min-h-screen bg-white transition-colors duration-500 font-sans pt-[104px] pb-20">
-            {/* Pincode chip — sticky just below site header */}
-            {gateReason !== 'LOCATION_REQUIRED' && cachedPincode && (
-                <div className="sticky top-[104px] z-[90] bg-white/80 backdrop-blur-sm border-b border-slate-100">
-                    <div className="page-container py-2">
-                        <PincodeGateChip
-                            cachedPincode={cachedPincode}
-                            onResolved={(_confidence, _pincode) => {
-                                onRetryLocation?.();
-                            }}
-                            showBCoinNudge={false}
-                            compact={false}
-                        />
-                    </div>
-                </div>
-            )}
+            {/* Location control moved into bottom command bar */}
             {/* Parity Snapshot — hidden DOM element for Playwright parity tests */}
             <ParitySnapshot data={data} product={product} commonState={commonState} />
             {/* Parity section anchors — shared components mounted hidden so markers are always live.
@@ -1182,6 +1167,13 @@ export function DesktopPDP({
                 handleBookingRequest={handleBookingRequest}
                 serviceability={serviceability}
                 isGated={isGated ?? false}
+                locationInfo={{
+                    pincode: cachedPincode || serviceability?.pincode || initialLocation?.pincode,
+                    area: (initialLocation as any)?.area || (initialLocation as any)?.locality,
+                    taluka: serviceability?.taluka || initialLocation?.taluka,
+                    district: initialLocation?.district,
+                }}
+                onEditLocation={onRetryLocation}
                 accessoriesCount={selectedAccessories?.length ?? 0}
                 accessoriesTotal={accessoriesPrice ?? 0}
                 insuranceAddonsCount={selectedInsuranceAddons?.length ?? 0}

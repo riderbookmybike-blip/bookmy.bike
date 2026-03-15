@@ -12,7 +12,6 @@ import { computeOClubPricing } from '@/lib/oclub/coin';
 import { Logo } from '@/components/brand/Logo';
 import { buildPdpCommonState, buildCommandBarState } from '../Personalize/pdpComputations';
 import AmortizationPanel from '../Personalize/AmortizationPanel';
-import { PincodeGateChip } from '../Personalize/PincodeGateChip';
 
 // Shared responsive section components
 import {
@@ -255,19 +254,10 @@ export const MobilePDP = ({
                     {displayModel}
                 </h1>
                 <p className="text-[12px] font-bold text-[#F4B000] uppercase tracking-wider mb-2">{displayVariant}</p>
+                <p className="text-[10px] font-semibold text-slate-500">*Price shown for Maharashtra state</p>
             </div>
 
-            {/* Unlocked state: show cached pincode pill with Change option */}
-            {gateReason !== 'LOCATION_REQUIRED' && cachedPincode && (
-                <div className="px-5 mb-4">
-                    <PincodeGateChip
-                        cachedPincode={cachedPincode}
-                        onResolved={() => onRetryLocation?.()}
-                        showBCoinNudge={false}
-                        compact
-                    />
-                </div>
-            )}
+            {/* Location control moved into bottom command bar */}
 
             {/* bCoin nudge when offer IS unlocked */}
             {gateReason !== 'LOCATION_REQUIRED' && showOClubPrompt && (
@@ -497,6 +487,13 @@ export const MobilePDP = ({
                 handleBookingRequest={handleBookingRequest}
                 serviceability={serviceability}
                 isGated={isGated ?? false}
+                locationInfo={{
+                    pincode: cachedPincode || serviceability?.pincode || initialLocation?.pincode,
+                    area: (initialLocation as any)?.area || (initialLocation as any)?.locality,
+                    taluka: serviceability?.taluka || initialLocation?.taluka,
+                    district: initialLocation?.district,
+                }}
+                onEditLocation={onRetryLocation}
             />
         </div>
     );
