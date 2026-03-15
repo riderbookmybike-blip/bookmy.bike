@@ -61,6 +61,9 @@ export interface PdpCommandBarProps {
         district?: string;
     };
     onEditLocation?: () => void;
+    deliveryTatLabel?: string | null;
+    deliveryByLabel?: string | null;
+    studioIdLabel?: string | null;
 }
 
 // ── WhatsApp Phone Modal ─────────────────────────────────────────────────────
@@ -455,6 +458,9 @@ export function PdpCommandBar({
     onWaSend,
     locationInfo,
     onEditLocation,
+    deliveryTatLabel,
+    deliveryByLabel,
+    studioIdLabel,
 }: PdpCommandBarProps) {
     const isDesktop = layout === 'desktop';
 
@@ -502,7 +508,7 @@ export function PdpCommandBar({
                     />
                     <div
                         className={`relative z-10 flex items-center justify-between ${
-                            isDesktop ? 'px-4 py-3.5 md:px-8 md:py-4 gap-3 md:gap-6' : 'px-5 py-3.5 gap-3'
+                            isDesktop ? 'px-4 py-4.5 md:px-8 md:py-5 gap-3 md:gap-6' : 'px-5 py-4.5 gap-3'
                         }`}
                     >
                         {/* Left: Product Identity + Price */}
@@ -559,6 +565,40 @@ export function PdpCommandBar({
                                             <Pencil size={10} className="text-slate-500 shrink-0" />
                                         </button>
                                     )}
+                                    {(deliveryTatLabel || deliveryByLabel || studioIdLabel) && (
+                                        <div className="ml-2 inline-flex items-center gap-1.5">
+                                            {deliveryTatLabel && (
+                                                <div className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white/85 px-2.5 py-2">
+                                                    <span className="text-[8px] font-black uppercase tracking-[0.12em] text-slate-500">
+                                                        TAT
+                                                    </span>
+                                                    <span className="text-[10px] font-black uppercase tracking-[0.06em] text-slate-900">
+                                                        {deliveryTatLabel}
+                                                    </span>
+                                                </div>
+                                            )}
+                                            {deliveryByLabel && (
+                                                <div className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white/85 px-2.5 py-2">
+                                                    <span className="text-[8px] font-black uppercase tracking-[0.12em] text-slate-500">
+                                                        BY
+                                                    </span>
+                                                    <span className="text-[10px] font-black uppercase tracking-[0.06em] text-slate-900">
+                                                        {deliveryByLabel}
+                                                    </span>
+                                                </div>
+                                            )}
+                                            {studioIdLabel && (
+                                                <div className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white/85 px-2.5 py-2">
+                                                    <span className="text-[8px] font-black uppercase tracking-[0.12em] text-slate-500">
+                                                        STUDIO
+                                                    </span>
+                                                    <span className="text-[10px] font-black uppercase tracking-[0.06em] text-slate-900">
+                                                        {String(studioIdLabel).toUpperCase()}
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
@@ -576,16 +616,37 @@ export function PdpCommandBar({
                                     insuranceAddonsCost={insuranceAddonsCost}
                                 />
                             ) : (
-                                <MobilePriceSummary
-                                    displayOnRoad={displayOnRoad}
-                                    totalOnRoad={totalOnRoad}
-                                    totalSavings={totalSavings}
-                                    coinPricing={coinPricing}
-                                    bCoinEquivalent={bCoinEquivalent}
-                                    footerEmi={footerEmi}
-                                    emiTenure={emiTenure}
-                                    showOClubPrompt={showOClubPrompt}
-                                />
+                                <div className="flex flex-col gap-1.5">
+                                    <MobilePriceSummary
+                                        displayOnRoad={displayOnRoad}
+                                        totalOnRoad={totalOnRoad}
+                                        totalSavings={totalSavings}
+                                        coinPricing={coinPricing}
+                                        bCoinEquivalent={bCoinEquivalent}
+                                        footerEmi={footerEmi}
+                                        emiTenure={emiTenure}
+                                        showOClubPrompt={showOClubPrompt}
+                                    />
+                                    {(deliveryTatLabel || deliveryByLabel || studioIdLabel) && (
+                                        <div className="flex items-center gap-1.5 text-[9px] leading-none">
+                                            {deliveryTatLabel && (
+                                                <span className="rounded-full border border-white/20 bg-white/10 px-2 py-1 font-black uppercase tracking-[0.12em] text-white">
+                                                    TAT {deliveryTatLabel}
+                                                </span>
+                                            )}
+                                            {deliveryByLabel && (
+                                                <span className="rounded-full border border-white/20 bg-white/10 px-2 py-1 font-semibold text-white/90">
+                                                    By {deliveryByLabel}
+                                                </span>
+                                            )}
+                                            {studioIdLabel && (
+                                                <span className="rounded-full border border-white/20 bg-white/10 px-2 py-1 font-semibold text-white/90">
+                                                    {String(studioIdLabel).toUpperCase()}
+                                                </span>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
                             )}
                         </div>
 
@@ -595,7 +656,7 @@ export function PdpCommandBar({
                             <button
                                 onClick={primaryAction}
                                 disabled={isDisabled}
-                                className={`${isDesktop ? 'h-11 px-6' : 'h-9 px-4'} font-black text-[11px] uppercase tracking-[0.12em] rounded-full shadow-xl flex items-center gap-2 transition-all group
+                                className={`${isDesktop ? 'h-12 px-7' : 'h-10 px-4.5'} font-black text-[11px] uppercase tracking-[0.12em] rounded-full shadow-xl flex items-center gap-2 transition-all group
                                     ${
                                         isDisabled
                                             ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'

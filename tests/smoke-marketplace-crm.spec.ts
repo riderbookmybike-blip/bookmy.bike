@@ -9,14 +9,74 @@ function buildPhone(seed: string, salt: string) {
 }
 
 async function openMarketplaceLeadModal(page: Page) {
+    await page.addInitScript(() => {
+        try {
+            window.localStorage.setItem(
+                'bkmb_user_pincode',
+                JSON.stringify({
+                    pincode: '401203',
+                    stateCode: 'MH',
+                    state: 'MAHARASHTRA',
+                    district: 'Palghar',
+                    manuallySet: true,
+                    source: 'SMOKE',
+                })
+            );
+        } catch {
+            // noop
+        }
+    });
     await page.goto('/store/tvs/jupiter/drum', { waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(1200);
 
-    const cta = page.getByRole('button', { name: /GET QUOTE|Save Quote/i }).first();
-    await expect(cta).toBeVisible({ timeout: 20_000 });
-    await cta.click();
+    await clickQuoteCtaWithRetry(page);
 
     await expect(page.getByPlaceholder('00000 00000')).toBeVisible({ timeout: 20_000 });
+}
+
+async function clickQuoteCtaWithRetry(page: Page) {
+    const cta = page.getByRole('button', { name: /GET QUOTE|Save Quote/i }).first();
+    await expect(cta).toBeVisible({ timeout: 20_000 });
+
+    for (let attempt = 1; attempt <= 5; attempt += 1) {
+        try {
+            await cta.click({ timeout: 5000 });
+        } catch {
+            // Fallback for rapid React remounts where locator detaches during click.
+            const clicked = await page.evaluate(() => {
+                const buttons = Array.from(document.querySelectorAll('button'));
+                const target = buttons.find(btn => {
+                    const text = (btn.textContent || '').toUpperCase();
+                    if (!/GET QUOTE|SAVE QUOTE/.test(text)) return false;
+                    const rect = btn.getBoundingClientRect();
+                    const style = window.getComputedStyle(btn);
+                    const visible =
+                        rect.width > 0 &&
+                        rect.height > 0 &&
+                        style.display !== 'none' &&
+                        style.visibility !== 'hidden' &&
+                        style.opacity !== '0';
+                    return visible && !(btn as HTMLButtonElement).disabled;
+                });
+                if (!target) return false;
+                (target as HTMLButtonElement).click();
+                return true;
+            });
+            if (!clicked) {
+                await page.waitForTimeout(250 * attempt);
+                continue;
+            }
+        }
+
+        const opened = await page
+            .getByPlaceholder('00000 00000')
+            .isVisible()
+            .catch(() => false);
+        if (opened) return;
+        await page.waitForTimeout(250 * attempt);
+    }
+
+    throw new Error('Failed to open marketplace lead modal after CTA retries');
 }
 
 async function loginToAums(page: Page) {

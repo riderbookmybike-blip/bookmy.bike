@@ -494,6 +494,9 @@ export const MobilePDP = ({
                     district: initialLocation?.district,
                 }}
                 onEditLocation={onRetryLocation}
+                deliveryTatLabel={deliveryTatLabel}
+                deliveryByLabel={deliveryByLabel}
+                studioIdLabel={studioIdLabel}
             />
         </div>
     );

@@ -379,6 +379,8 @@ export function DesktopPDP({
         studioDistanceKm,
         winnerTatDays,
     } = commonState;
+    const winningDealerName =
+        (bestOffer as any)?.dealer?.business_name || (bestOffer as any)?.dealer || (bestOffer as any)?.dealer_name;
 
     // R2: Canonical price breakup — single source, no drift risk
     const { breakup: priceBreakupData } = buildPriceBreakup(
@@ -825,10 +827,7 @@ export function DesktopPDP({
                                                                     priceBreakup={priceBreakupData}
                                                                     productImage={getProductImage()}
                                                                     pricingSource={
-                                                                        [
-                                                                            studioIdLabel,
-                                                                            bestOffer?.dealer?.business_name,
-                                                                        ]
+                                                                        [studioIdLabel, winningDealerName]
                                                                             .filter(Boolean)
                                                                             .join(' • ') || data.pricingSource
                                                                     }
@@ -917,7 +916,7 @@ export function DesktopPDP({
                                                 </div>
                                                 {(() => {
                                                     const src =
-                                                        [studioIdLabel, bestOffer?.dealer?.business_name]
+                                                        [studioIdLabel, winningDealerName]
                                                             .filter(Boolean)
                                                             .join(' • ') || data.pricingSource;
                                                     return src ? (
@@ -1178,6 +1177,9 @@ export function DesktopPDP({
                 accessoriesTotal={accessoriesPrice ?? 0}
                 insuranceAddonsCount={selectedInsuranceAddons?.length ?? 0}
                 insuranceAddonsCost={(insuranceAddonsPrice ?? 0) + (insuranceAddonsDiscount ?? 0)}
+                deliveryTatLabel={deliveryTatLabel}
+                deliveryByLabel={deliveryByLabel}
+                studioIdLabel={studioIdLabel}
             />
         </div>
     );

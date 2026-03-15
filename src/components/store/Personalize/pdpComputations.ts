@@ -313,7 +313,7 @@ export function buildPriceBreakup(
         accessoriesSurge > 0 ? `Accessories: ₹ ${accessoriesSurge.toLocaleString('en-IN')}` : null,
         servicesSurge > 0 ? `Services: ₹ ${servicesSurge.toLocaleString('en-IN')}` : null,
         insuranceAddonsSurge > 0 ? `Insurance Add-ons: ₹ ${insuranceAddonsSurge.toLocaleString('en-IN')}` : null,
-        totalSurge > 0 ? `Total: ₹ ${totalSurge.toLocaleString('en-IN')}` : null,
+        `Total: ₹ ${totalSurge.toLocaleString('en-IN')}`,
     ].filter(Boolean) as string[];
 
     // ── TAT from bestOffer (canonical source — F1 fix) ──
@@ -421,9 +421,7 @@ export function buildPriceBreakup(
                   },
               ]
             : []),
-        ...(totalSurge > 0
-            ? [{ label: 'Surge Charges', value: totalSurge, caption: 'Demand Adjustments', helpText: surgeHelpLines }]
-            : []),
+        ...[{ label: 'Surge Charges', value: totalSurge, caption: 'Demand Adjustments', helpText: surgeHelpLines }],
 
         // Spacer → Group 3
         { label: '', value: '', isSpacer: true },
