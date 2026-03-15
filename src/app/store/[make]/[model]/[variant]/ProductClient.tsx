@@ -1249,15 +1249,35 @@ export default function ProductClient({
             typeof (serverPricing as any)?.dealer?.is_serviceable === 'boolean'
                 ? Boolean((serverPricing as any)?.dealer?.is_serviceable)
                 : null;
-        const isServiceable = isServiceableFromBestOffer ?? isServiceableFromServerPricing;
-        if (isServiceable === null) return undefined;
+        const isServiceableFromDealer = isServiceableFromBestOffer ?? isServiceableFromServerPricing;
+
+        // Primary: derive serviceability from location state code (GPS-first policy)
+        // MH-only policy: non-MH stateCode → unserviceable regardless of dealer flag
+        const stateCode = String(resolvedLocation?.stateCode || initialLocation?.stateCode || '')
+            .trim()
+            .toUpperCase()
+            .slice(0, 2);
+
+        const isMhState = stateCode === 'MH';
+        // If stateCode is known, it is authoritative. Dealer flag is secondary.
+        const isServiceable = stateCode ? isMhState && isServiceableFromDealer !== false : isServiceableFromDealer;
+
+        if (isServiceable === null || isServiceable === undefined) return undefined;
         return {
-            isServiceable,
-            status: 'SET',
+            isServiceable: Boolean(isServiceable),
+            status: isServiceable ? 'serviceable' : 'unserviceable',
             pincode: resolvedLocation?.pincode || initialLocation?.pincode,
             taluka: resolvedLocation?.taluka || resolvedLocation?.district || initialLocation?.taluka,
+            stateCode: stateCode || undefined,
         };
-    }, [bestOffer, initialLocation?.pincode, initialLocation?.taluka, resolvedLocation, serverPricing]);
+    }, [
+        bestOffer,
+        initialLocation?.pincode,
+        initialLocation?.stateCode,
+        initialLocation?.taluka,
+        resolvedLocation,
+        serverPricing,
+    ]);
 
     const commonProps = {
         product,

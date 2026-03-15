@@ -34,7 +34,21 @@ export async function POST(req: NextRequest) {
         let resolvedState = state || null;
         let resolvedDistrict = district || null;
         let resolvedTaluka = taluka || null;
-        if ((!Number.isFinite(lat) || !Number.isFinite(lng)) && /^\d{6}$/.test(String(pincode || ''))) {
+
+        // Early specific guard: pincode provided but malformed (not exactly 6 digits)
+        const pincodeStr = String(pincode || '').trim();
+        if (pincodeStr && !/^\d{6}$/.test(pincodeStr)) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    message: 'Pincode must be exactly 6 digits.',
+                    code: 'INVALID_PINCODE_FORMAT',
+                },
+                { status: 400 }
+            );
+        }
+
+        if ((!Number.isFinite(lat) || !Number.isFinite(lng)) && /^\d{6}$/.test(pincodeStr)) {
             const { data: pinRow } = await adminClient
                 .from('loc_pincodes')
                 .select('latitude, longitude, state, district, taluka')
