@@ -43,6 +43,7 @@ import { MarketplaceFooter } from '@/components/layout/MarketplaceFooter';
 import { updateMemberProfile } from '@/actions/profileActions';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
+import { LocationPicker } from '@/components/store/LocationPicker';
 import dynamic from 'next/dynamic';
 const LoginSidebar = dynamic(() => import('@/components/auth/LoginSidebar'), { ssr: false });
 import { getDefaultAvatar } from '@/lib/avatars';
@@ -63,6 +64,7 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
     const [localAddresses, setLocalAddresses] = useState(addresses || []);
     const [isSaving, setIsSaving] = useState(false);
     const [isLoginOpen, setIsLoginOpen] = useState(false);
+    const [showLocationPickerForProfile, setShowLocationPickerForProfile] = useState(false);
     const [isEditMode, setIsEditMode] = useState(false);
     const [activeTab, setActiveTab] = useState('QUOTES');
     const [originalMember, setOriginalMember] = useState(member || {});
@@ -786,19 +788,50 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                     )}
 
                     {!localMember.latitude && !localMember.longitude && (
-                        <div className="mt-6 p-6 rounded-3xl bg-amber-50 dark:bg-amber-900/10border border-amber-200 dark:border-amber-500/20">
+                        <div className="mt-6 p-6 rounded-3xl bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-500/20">
                             <div className="flex items-start gap-3">
                                 <AlertCircle size={20} className="text-amber-600 flex-shrink-0 mt-0.5" />
-                                <div>
+                                <div className="flex-1">
                                     <p className="text-sm font-bold text-amber-600">GPS Location Not Captured</p>
                                     <p className="text-xs font-medium text-slate-600 dark:text-slate-400 mt-1">
-                                        Your account was created before GPS capture was mandatory. Location data will be
-                                        collected on your next quote request.
+                                        {localMember.pincode
+                                            ? `Pincode ${localMember.pincode} is set, but GPS was not captured at signup.`
+                                            : 'No location signal found for your account. Add your pincode to unlock accurate pricing and offers.'}
                                     </p>
+                                    <button
+                                        onClick={() => setShowLocationPickerForProfile(true)}
+                                        className="mt-3 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-black uppercase tracking-widest rounded-xl transition-colors"
+                                    >
+                                        📍 Update Location
+                                    </button>
                                 </div>
                             </div>
                         </div>
                     )}
+
+                    {/* Inline LocationPicker for profile update */}
+                    <LocationPicker
+                        isOpen={showLocationPickerForProfile}
+                        onClose={() => setShowLocationPickerForProfile(false)}
+                        initialPincode={localMember.pincode || ''}
+                        onLocationSet={async (pincode: string, taluka: string) => {
+                            // Enrich pincode → state/district
+                            const { getPincodeDetails } = await import('@/actions/pincode');
+                            const enriched = await getPincodeDetails(pincode);
+                            const { updateSelfMemberLocation } = await import('@/actions/members');
+                            await updateSelfMemberLocation({
+                                pincode,
+                                taluka: taluka || enriched.data?.taluka || '',
+                                district: enriched.data?.district || '',
+                                state: enriched.data?.state || '',
+                            });
+                            handleUpdateField('pincode', pincode);
+                            handleUpdateField('district', enriched.data?.district || '');
+                            handleUpdateField('taluka', taluka || enriched.data?.taluka || '');
+                            handleUpdateField('state', enriched.data?.state || '');
+                            setShowLocationPickerForProfile(false);
+                        }}
+                    />
                 </motion.div>
 
                 {/* Jan Kundali: Address & Vault Matrix */}

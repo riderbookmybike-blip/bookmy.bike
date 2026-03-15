@@ -26,6 +26,7 @@ import { getSmartPincode } from '@/lib/location/geocode';
 import { syncMemberLocation } from '@/actions/locationSync';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { getErrorMessage } from '@/lib/utils/errorMessage';
+import { resolveLocation } from '@/utils/locationResolver';
 
 interface LoginSidebarProps {
     isOpen: boolean;
@@ -45,7 +46,7 @@ export default function LoginSidebar({
     const router = useRouter();
     const { setTenantType, tenantId, activeRole, userRole, setUserRole, setActiveRole, setUserName } = useTenant();
     const [loginError, setLoginError] = useState<string | null>(null);
-    const [step, setStep] = useState<'INITIAL' | 'SIGNUP' | 'GPS_UPDATE' | 'OTP'>('INITIAL');
+    const [step, setStep] = useState<'INITIAL' | 'SIGNUP' | 'GPS_UPDATE' | 'OTP' | 'PINCODE_FALLBACK'>('INITIAL');
     const [authMethod, setAuthMethod] = useState<'PHONE' | 'EMAIL'>('PHONE');
     const [isMarketplace, setIsMarketplace] = useState(true);
     const [isNewUser, setIsNewUser] = useState(false);
@@ -92,6 +93,18 @@ export default function LoginSidebar({
         district: string;
         taluka: string;
         area: string;
+    } | null>(null);
+
+    // Pincode fallback (when GPS fails)
+    const [pincodeInput, setPincodeInput] = useState('');
+    const [pincodeResolveState, setPincodeResolveState] = useState<
+        'idle' | 'resolving' | 'ok' | 'non-serviceable' | 'error'
+    >('idle');
+    const [resolvedFallbackLocation, setResolvedFallbackLocation] = useState<{
+        pincode: string;
+        state: string;
+        district: string;
+        taluka: string;
     } | null>(null);
 
     const inputRef = useRef<HTMLInputElement>(null);
@@ -535,24 +548,25 @@ export default function LoginSidebar({
             }
         }
 
-        const coordsAvailable = !!location.latitude && !!location.longitude;
+        // Number.isFinite is NaN-safe (rejects null, undefined, NaN, Infinity)
+        const coordsAvailable = Number.isFinite(location.latitude) && Number.isFinite(location.longitude);
 
         // For existing users: Check if GPS data exists
         if (!isNewUser && user) {
             const { data: memberProfile } = await supabase
                 .from('id_members')
-                .select('latitude, longitude')
+                .select('latitude, longitude, pincode')
                 .eq('id', user.id)
                 .maybeSingle();
 
+            // Gate 1: missing GPS coords
             if (!memberProfile?.latitude || !memberProfile?.longitude) {
                 if (!coordsAvailable) {
-                    setStep('GPS_UPDATE');
-                    setLoginError('GPS location is required. Please allow location access to continue.');
+                    // No GPS captured → try pincode fallback
+                    setStep('PINCODE_FALLBACK');
                     return;
                 }
-
-                // Background sync without blocking login
+                // GPS captured → update in background
                 void syncMemberLocation({
                     latitude: location.latitude!,
                     longitude: location.longitude!,
@@ -562,6 +576,16 @@ export default function LoginSidebar({
                     taluka: locationData?.taluka,
                     area: locationData?.area,
                 });
+            }
+
+            // Gate 2: missing pincode (regardless of GPS)
+            if (!memberProfile?.pincode) {
+                if (coordsAvailable) {
+                    setStep('GPS_UPDATE');
+                } else {
+                    setStep('PINCODE_FALLBACK');
+                }
+                return;
             }
         } else if (isNewUser && coordsAvailable) {
             void syncMemberLocation({
@@ -736,7 +760,9 @@ export default function LoginSidebar({
                                                   ? 'Create'
                                                   : step === 'GPS_UPDATE'
                                                     ? 'Update'
-                                                    : 'Verify'}
+                                                    : step === 'PINCODE_FALLBACK'
+                                                      ? 'Confirm'
+                                                      : 'Verify'}
                                             <span className="block text-[#F4B000]">
                                                 {step === 'INITIAL'
                                                     ? 'Journey.'
@@ -744,7 +770,9 @@ export default function LoginSidebar({
                                                       ? 'Profile.'
                                                       : step === 'GPS_UPDATE'
                                                         ? 'Location.'
-                                                        : 'Identity.'}
+                                                        : step === 'PINCODE_FALLBACK'
+                                                          ? 'Location.'
+                                                          : 'Identity.'}
                                             </span>
                                         </h2>
                                         <p className="text-sm font-bold text-black dark:text-white max-w-xs leading-relaxed text-center mx-auto">
@@ -756,6 +784,8 @@ export default function LoginSidebar({
                                                     : 'We just need your name to set up your rider profile.')}
                                             {step === 'GPS_UPDATE' &&
                                                 'We need your location to provide accurate pricing and verify your service area. This is mandatory for all accounts.'}
+                                            {step === 'PINCODE_FALLBACK' &&
+                                                'GPS was unavailable. Enter your 6-digit pincode to set your service area.'}
                                             {step === 'OTP' && `Enter the verification code sent to ${identifier}.`}
                                         </p>
                                     </div>
@@ -811,18 +841,32 @@ export default function LoginSidebar({
                                                         <p className="text-sm font-bold text-red-600 dark:text-red-400 whitespace-pre-wrap text-center">
                                                             {gpsError}
                                                         </p>
-                                                        <div className="flex gap-3 justify-center">
+                                                        <div className="flex flex-col gap-2">
+                                                            <div className="flex gap-3 justify-center">
+                                                                <button
+                                                                    onClick={detectGPSLocation}
+                                                                    className="px-6 py-2 bg-brand-primary hover:bg-brand-primary/90 text-white font-bold rounded-xl transition-all"
+                                                                >
+                                                                    Retry GPS
+                                                                </button>
+                                                                <button
+                                                                    onClick={onClose}
+                                                                    className="px-6 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-black dark:text-white font-bold rounded-xl transition-all"
+                                                                >
+                                                                    Cancel
+                                                                </button>
+                                                            </div>
                                                             <button
-                                                                onClick={detectGPSLocation}
-                                                                className="px-6 py-2 bg-brand-primary hover:bg-brand-primary/90 text-white font-bold rounded-xl transition-all"
+                                                                onClick={() => {
+                                                                    setGpsError(null);
+                                                                    setPincodeInput('');
+                                                                    setPincodeResolveState('idle');
+                                                                    setResolvedFallbackLocation(null);
+                                                                    setStep('PINCODE_FALLBACK');
+                                                                }}
+                                                                className="text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:text-brand-primary transition-colors text-center"
                                                             >
-                                                                Retry GPS
-                                                            </button>
-                                                            <button
-                                                                onClick={onClose}
-                                                                className="px-6 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-black dark:text-white font-bold rounded-xl transition-all"
-                                                            >
-                                                                Cancel Signup
+                                                                📍 Enter Pincode Instead
                                                             </button>
                                                         </div>
                                                     </div>
@@ -854,6 +898,175 @@ export default function LoginSidebar({
                                                         </p>
                                                     </div>
                                                 )}
+                                            </div>
+                                        )}
+
+                                        {/* PINCODE FALLBACK — 6-digit input when GPS unavailable */}
+                                        {step === 'PINCODE_FALLBACK' && (
+                                            <div className="space-y-4">
+                                                <div className="space-y-2">
+                                                    <label className="text-[10px] font-black uppercase tracking-widest text-black dark:text-white block text-center w-full">
+                                                        📍 Your Pincode
+                                                    </label>
+                                                    <input
+                                                        autoFocus
+                                                        type="text"
+                                                        inputMode="numeric"
+                                                        maxLength={6}
+                                                        value={pincodeInput}
+                                                        onChange={async e => {
+                                                            const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+                                                            setPincodeInput(val);
+                                                            if (val.length === 6) {
+                                                                setPincodeResolveState('resolving');
+                                                                setResolvedFallbackLocation(null);
+                                                                try {
+                                                                    const result = await resolveLocation(val);
+                                                                    if (result) {
+                                                                        setResolvedFallbackLocation({
+                                                                            pincode: result.pincode,
+                                                                            state: result.state || '',
+                                                                            district: result.district || '',
+                                                                            taluka: result.taluka || '',
+                                                                        });
+                                                                        const stateCode = String(result.state || '')
+                                                                            .trim()
+                                                                            .toUpperCase()
+                                                                            .slice(0, 2);
+                                                                        setPincodeResolveState(
+                                                                            stateCode === 'MH'
+                                                                                ? 'ok'
+                                                                                : 'non-serviceable'
+                                                                        );
+                                                                    } else {
+                                                                        setPincodeResolveState('error');
+                                                                    }
+                                                                } catch {
+                                                                    setPincodeResolveState('error');
+                                                                }
+                                                            } else {
+                                                                if (pincodeResolveState !== 'idle') {
+                                                                    setPincodeResolveState('idle');
+                                                                    setResolvedFallbackLocation(null);
+                                                                }
+                                                            }
+                                                        }}
+                                                        placeholder="6-DIGIT PINCODE"
+                                                        className="w-[80%] max-w-sm mx-auto block bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-2xl p-5 text-lg font-bold text-black dark:text-white placeholder:text-slate-400 dark:placeholder:text-white/40 focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all text-center tracking-[0.3em]"
+                                                    />
+                                                </div>
+
+                                                {/* Result banner */}
+                                                {pincodeResolveState === 'resolving' && (
+                                                    <div className="flex items-center justify-center gap-2 p-3 rounded-2xl bg-slate-100 dark:bg-white/10">
+                                                        <div className="w-4 h-4 border-2 border-brand-primary border-t-transparent rounded-full animate-spin" />
+                                                        <span className="text-xs font-bold text-slate-600 dark:text-slate-400">
+                                                            Verifying pincode…
+                                                        </span>
+                                                    </div>
+                                                )}
+                                                {pincodeResolveState === 'ok' && resolvedFallbackLocation && (
+                                                    <div className="p-3 rounded-2xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-500/30 text-center">
+                                                        <p className="text-sm font-black text-green-700 dark:text-green-400">
+                                                            ✅ We serve your area.
+                                                        </p>
+                                                        <p className="text-xs text-green-600 dark:text-green-500 mt-0.5">
+                                                            {resolvedFallbackLocation.district},{' '}
+                                                            {resolvedFallbackLocation.state}
+                                                        </p>
+                                                    </div>
+                                                )}
+                                                {pincodeResolveState === 'non-serviceable' &&
+                                                    resolvedFallbackLocation && (
+                                                        <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-500/30 text-center">
+                                                            <p className="text-sm font-black text-amber-800 dark:text-amber-400">
+                                                                ⚠️ Service not available in your area yet.
+                                                            </p>
+                                                            <p className="text-xs text-amber-700 dark:text-amber-500 mt-0.5">
+                                                                Prices shown for Maharashtra.
+                                                            </p>
+                                                        </div>
+                                                    )}
+                                                {pincodeResolveState === 'error' && (
+                                                    <div className="p-3 rounded-2xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-500/30 text-center">
+                                                        <p className="text-sm font-black text-red-700 dark:text-red-400">
+                                                            ❌ Invalid pincode. Please try another.
+                                                        </p>
+                                                    </div>
+                                                )}
+
+                                                {/* Continue button */}
+                                                <button
+                                                    disabled={
+                                                        pincodeResolveState !== 'ok' &&
+                                                        pincodeResolveState !== 'non-serviceable'
+                                                    }
+                                                    onClick={async () => {
+                                                        if (!resolvedFallbackLocation) return;
+                                                        setLoading(true);
+                                                        try {
+                                                            // Persist location
+                                                            const { setLocationCookie } =
+                                                                await import('@/actions/locationCookie');
+                                                            await setLocationCookie({
+                                                                pincode: resolvedFallbackLocation.pincode,
+                                                                district: resolvedFallbackLocation.district,
+                                                                taluka: resolvedFallbackLocation.taluka,
+                                                                state: resolvedFallbackLocation.state,
+                                                            });
+                                                            localStorage.setItem(
+                                                                'bkmb_user_pincode',
+                                                                JSON.stringify(resolvedFallbackLocation)
+                                                            );
+                                                            window.dispatchEvent(new CustomEvent('locationChanged'));
+
+                                                            // Update member record if logged in
+                                                            const supabaseClient = createClient();
+                                                            const {
+                                                                data: { user: currentUser },
+                                                            } = await supabaseClient.auth.getUser();
+                                                            if (currentUser) {
+                                                                const { updateSelfMemberLocation } =
+                                                                    await import('@/actions/members');
+                                                                await updateSelfMemberLocation({
+                                                                    pincode: resolvedFallbackLocation.pincode,
+                                                                    district: resolvedFallbackLocation.district,
+                                                                    taluka: resolvedFallbackLocation.taluka,
+                                                                    state: resolvedFallbackLocation.state,
+                                                                });
+                                                                await completeLogin(currentUser, null);
+                                                            } else {
+                                                                // New user flow — proceed with pincode as location signal
+                                                                await completeLogin(null, null);
+                                                            }
+                                                        } catch (err) {
+                                                            setLoginError('Failed to save location. Please try again.');
+                                                        } finally {
+                                                            setLoading(false);
+                                                        }
+                                                    }}
+                                                    className={`w-full py-4 rounded-2xl font-black uppercase tracking-[0.15em] text-[11px] transition-all ${
+                                                        pincodeResolveState === 'ok' ||
+                                                        pincodeResolveState === 'non-serviceable'
+                                                            ? 'bg-brand-primary text-black shadow-[0_10px_30px_rgba(244,176,0,0.2)] hover:-translate-y-0.5'
+                                                            : 'bg-slate-100 dark:bg-white/10 text-slate-400 cursor-not-allowed'
+                                                    }`}
+                                                >
+                                                    {loading ? 'Saving…' : 'Continue →'}
+                                                </button>
+
+                                                <button
+                                                    onClick={() => {
+                                                        setPincodeInput('');
+                                                        setPincodeResolveState('idle');
+                                                        setResolvedFallbackLocation(null);
+                                                        setGpsError(null);
+                                                        setStep(isNewUser ? 'SIGNUP' : 'GPS_UPDATE');
+                                                    }}
+                                                    className="w-full py-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
+                                                >
+                                                    ← Try GPS Again
+                                                </button>
                                             </div>
                                         )}
 
