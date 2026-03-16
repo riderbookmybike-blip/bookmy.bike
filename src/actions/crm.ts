@@ -863,7 +863,7 @@ async function enrichLeadIndexRows(rows: LeadIndexRow[]): Promise<LeadIndexRow[]
         });
     });
 
-    const financeTenantIdsFromEvents = Array.from(
+    const financeTenantIdsFromEvents: string[] = Array.from(
         new Set(
             (leadEventsResult.data || []).map((row: any) => String(row?.actor_tenant_id || '').trim()).filter(Boolean)
         )

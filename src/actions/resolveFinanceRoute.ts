@@ -88,7 +88,7 @@ export async function resolveFinanceRoute(dealerTenantId: string): Promise<Resol
                 applicability: { brands: 'ALL', models: 'ALL', dealerships: 'ALL' },
             } as any;
 
-            const bank = bankMap.get(s.lender_tenant_id);
+            const bank = bankMap.get(s.lender_tenant_id || '');
             if (bank) {
                 bank.schemes.push(mapped);
                 allSchemes.push({ partnerId: bank.id, partnerName: bank.name, scheme: mapped });

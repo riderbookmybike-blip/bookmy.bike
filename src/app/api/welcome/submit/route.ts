@@ -205,8 +205,12 @@ export async function POST(req: NextRequest) {
                     ...(resolvedLocation?.state ? { state: resolvedLocation.state } : {}),
                     ...(resolvedLocation?.district ? { district: resolvedLocation.district } : {}),
                     ...(resolvedLocation?.taluka ? { taluka: resolvedLocation.taluka } : {}),
-                    ...(resolvedLocation?.latitude !== null ? { latitude: resolvedLocation.latitude } : {}),
-                    ...(resolvedLocation?.longitude !== null ? { longitude: resolvedLocation.longitude } : {}),
+                    ...(resolvedLocation && resolvedLocation.latitude != null
+                        ? { latitude: resolvedLocation.latitude }
+                        : {}),
+                    ...(resolvedLocation && resolvedLocation.longitude != null
+                        ? { longitude: resolvedLocation.longitude }
+                        : {}),
                 })
                 .eq('id', userId);
         } else {
@@ -221,8 +225,12 @@ export async function POST(req: NextRequest) {
                 ...(resolvedLocation?.state ? { state: resolvedLocation.state } : {}),
                 ...(resolvedLocation?.district ? { district: resolvedLocation.district } : {}),
                 ...(resolvedLocation?.taluka ? { taluka: resolvedLocation.taluka } : {}),
-                ...(resolvedLocation?.latitude !== null ? { latitude: resolvedLocation.latitude } : {}),
-                ...(resolvedLocation?.longitude !== null ? { longitude: resolvedLocation.longitude } : {}),
+                ...(resolvedLocation && resolvedLocation.latitude != null
+                    ? { latitude: resolvedLocation.latitude }
+                    : {}),
+                ...(resolvedLocation && resolvedLocation.longitude != null
+                    ? { longitude: resolvedLocation.longitude }
+                    : {}),
             });
             if (memberInsertError) {
                 return NextResponse.json({ success: false, message: memberInsertError.message }, { status: 500 });

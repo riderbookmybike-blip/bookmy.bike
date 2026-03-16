@@ -1,5 +1,7 @@
 'use server';
 
+import { getErrorMessage } from '@/lib/utils/errorMessage';
+
 /**
  * scraperAction.ts — Controlled Ingestion Engine (Server Actions)
  *

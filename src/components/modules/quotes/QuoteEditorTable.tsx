@@ -3362,7 +3362,7 @@ export default function QuoteEditorTable({
                                 leadId={quote.leadId || null}
                                 quoteId={quote.id || null}
                                 bookingId={booking?.id || null}
-                                phone={quote.customer?.phone || quote.customerProfile?.phone || null}
+                                phone={quote.customer?.phone || quote.customerProfile?.primaryPhone || null}
                                 email={quote.customerProfile?.email || null}
                                 timelineEvents={(quote.timeline || []).map((ev: any, idx: number) => ({
                                     id: String(idx),
