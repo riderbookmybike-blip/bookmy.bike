@@ -1391,7 +1391,7 @@ export default function ProductClient({
                 isOpen={pdpGateReason === 'LOCATION_REQUIRED'}
                 onResolved={(_confidence, _pincode) => {
                     // Modal persists + fires locationChanged itself (via persistAndFire).
-                    // locationChanged event causes DesktopCatalog/hook to re-run,
+                    // locationChanged event causes UniversalCatalog/hook to re-run,
                     // which resolves hasResolvedLocation → pdpGateReason becomes READY.
                     // Trigger explicit re-check via retrySignal bump:
                     setDealerRetryCount(c => c + 1);

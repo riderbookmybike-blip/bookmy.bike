@@ -641,7 +641,7 @@ export const UniversalCatalog = ({
                             }
                         } else {
                             trackEvent('INTENT_SIGNAL', 'catalog_gps_auto_success', {
-                                source: 'DesktopCatalog',
+                                source: 'UniversalCatalog',
                             });
                         }
                     },
@@ -662,7 +662,7 @@ export const UniversalCatalog = ({
                                         }
                                     } else {
                                         trackEvent('INTENT_SIGNAL', 'catalog_gps_auto_success', {
-                                            source: 'DesktopCatalog_retry',
+                                            source: 'UniversalCatalog_retry',
                                         });
                                     }
                                 },

@@ -571,7 +571,7 @@ input[type='number'] {
 
 /* =============================================
    TCL TV OPTIMIZATION (960×540 CSS px, DPR 2.0, Physical 1920×1080)
-   Activated when data-tv="1" on <html> — set by DesktopCatalog heuristic.
+   Activated when data-tv="1" on <html> — set by UniversalCatalog heuristic.
    SURGICAL approach: only target specific blur utilities, not all elements.
    ============================================= */
 [data-tv='1'] {

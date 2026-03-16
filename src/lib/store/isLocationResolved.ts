@@ -1,7 +1,7 @@
 /**
  * isLocationResolved — shared SOT helper for location gate logic.
  *
- * Used by: DesktopCatalog, ProductClient (PDP guard), and any future surface
+ * Used by: UniversalCatalog, ProductClient (PDP guard), and any future surface
  * that needs to enforce the catalog-first location policy.
  *
  * Serviceability matrix (locked 2026-03-15):
