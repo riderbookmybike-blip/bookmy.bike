@@ -121,7 +121,7 @@ export function DiscoveryBar({
                                     }
                                     if (e.key === 'Escape') setDropdownOpen(false);
                                 }}
-                                className={`${reduceEffects ? 'h-9' : 'h-10'} rounded-2xl transition-all duration-300 border border-black/10`}
+                                className={`${reduceEffects ? 'h-9' : 'h-10'} rounded-full transition-all duration-300 border border-black/10`}
                                 style={{
                                     background: reduceEffects ? 'rgba(255,255,255,1)' : 'rgba(255,255,255,0.45)',
                                     backdropFilter: reduceEffects ? 'none' : 'blur(8px)',
