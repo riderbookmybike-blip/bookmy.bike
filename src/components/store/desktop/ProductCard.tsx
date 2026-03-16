@@ -603,6 +603,9 @@ export const ProductCard = ({
         : 'State On-Road price';
 
     const shouldDevanagari = language === 'hi' || language === 'mr';
+    const coinMetaIconSize = isTv ? 10 : 12;
+    // Match B-icon visual height with primary numeric value (like INR symbol parity)
+    const coinPrimaryIconSize = isTv ? 19 : 21;
     const scriptText = (value?: string) => {
         if (!value) return '';
         return shouldDevanagari ? toDevanagariScript(value) : value;
@@ -783,7 +786,7 @@ export const ProductCard = ({
                             <p
                                 className={`text-sm font-black ${netImpact >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}
                             >
-                                {netImpact !== 0 ? `₹${formatRoundedPrice(Math.abs(netImpact))}` : 'No Change'}
+                                {netImpact !== 0 ? `₹ ${formatRoundedPrice(Math.abs(netImpact))}` : 'No Change'}
                             </p>
                         </div>
                     </div>
@@ -797,7 +800,7 @@ export const ProductCard = ({
                                 <div className="flex flex-col">
                                     <div className="flex items-baseline gap-3">
                                         <span className="text-3xl font-black text-slate-900 leading-none tracking-tight">
-                                            ₹{formatRoundedPrice(baseOnRoadPrice)}
+                                            ₹ {formatRoundedPrice(baseOnRoadPrice)}
                                         </span>
                                         {bestOffer ? (
                                             <div className="flex flex-col items-start leading-none">
@@ -822,7 +825,7 @@ export const ProductCard = ({
                                             v.price?.onRoad && (
                                                 <div className="flex flex-col">
                                                     <span className="text-[10px] font-bold text-slate-400 line-through">
-                                                        ₹{formatRoundedPrice(v.price.onRoad)}
+                                                        ₹ {formatRoundedPrice(v.price.onRoad)}
                                                     </span>
                                                     {(priceSourceLabel || v.price.pricingSource) && (
                                                         <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
@@ -842,14 +845,18 @@ export const ProductCard = ({
                                         <p
                                             className={`text-3xl font-black text-brand-primary ${isTv ? '' : 'drop-shadow-[0_0_8px_rgba(244,176,0,0.2)]'} leading-none`}
                                         >
-                                            {emiValue !== null ? `₹${formatRoundedPrice(emiValue)}` : '—'}
+                                            {emiValue !== null ? `₹ ${formatRoundedPrice(emiValue)}` : '—'}
                                         </p>
                                         <div className="flex items-center gap-1.5 mt-2">
                                             <p className="text-sm font-black text-slate-500 uppercase leading-none">
                                                 {emiValue !== null ? `x${activeTenure}` : 'Finance unavailable'}
                                             </p>
                                             <div className="flex items-center gap-1">
-                                                <Logo variant="icon" size={10} />
+                                                <Logo
+                                                    variant="icon"
+                                                    size={coinMetaIconSize}
+                                                    iconClassName="drop-shadow-[0_0_0.45px_rgba(15,23,42,0.95)]"
+                                                />
                                                 <span className="text-[10px] font-black text-brand-primary italic">
                                                     {bcoinTotal.toLocaleString('en-IN')}
                                                 </span>
@@ -872,7 +879,7 @@ export const ProductCard = ({
                                         <p className="leading-relaxed">
                                             EMI on{' '}
                                             <span className="font-bold text-green-400">
-                                                ₹{formatRoundedPrice(downpayment || 0)}
+                                                ₹ {formatRoundedPrice(downpayment || 0)}
                                             </span>{' '}
                                             downpayment at{' '}
                                             <span className="font-bold text-green-400">{tenure} months</span>
@@ -1019,7 +1026,7 @@ export const ProductCard = ({
                             <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500 text-white rounded-lg shadow-[0_3px_10px_rgba(16,185,129,0.25)] border border-emerald-300/35 transition-all">
                                 <Sparkles size={9} className="fill-white text-white" />
                                 <span className="text-[9px] font-black uppercase tracking-[0.12em]">
-                                    Save ₹{formatRoundedPrice(Math.abs(offerDelta))}
+                                    Save ₹ {formatRoundedPrice(Math.abs(offerDelta))}
                                 </span>
                             </div>
                         </div>
@@ -1030,7 +1037,7 @@ export const ProductCard = ({
                             <div className="flex items-center gap-1.5 px-2.5 py-1 bg-rose-500 text-white rounded-lg shadow-[0_3px_10px_rgba(244,63,94,0.25)] border border-rose-300/35 transition-all">
                                 <Zap size={9} className="fill-white text-white" />
                                 <span className="text-[9px] font-black uppercase tracking-[0.12em]">
-                                    Surge ₹{formatRoundedPrice(offerDelta)}
+                                    Surge ₹ {formatRoundedPrice(offerDelta)}
                                 </span>
                             </div>
                         </div>
@@ -1112,7 +1119,7 @@ export const ProductCard = ({
                             <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500 text-white rounded-lg border border-emerald-400/30 shadow-[0_3px_10px_rgba(16,185,129,0.25)]">
                                 <Sparkles size={9} className="fill-white text-white" />
                                 <span className="text-[9px] font-black uppercase tracking-[0.12em]">
-                                    SAVE ₹{formatRoundedPrice(Math.abs(bestOffer.price))}
+                                    SAVE ₹ {formatRoundedPrice(Math.abs(bestOffer.price))}
                                 </span>
                             </div>
                         </div>
@@ -1133,7 +1140,7 @@ export const ProductCard = ({
                                 <Zap size={9} className="fill-white text-white" />
                             </motion.div>
                             <span className="text-[9px] font-black uppercase tracking-[0.12em] relative z-10">
-                                SURGE ₹{formatRoundedPrice(Math.abs(bestOffer.price))}
+                                SURGE ₹ {formatRoundedPrice(Math.abs(bestOffer.price))}
                             </span>
                             {/* Shimmer Effect */}
                             <div className="absolute inset-0 w-full h-full overflow-hidden rounded-xl pointer-events-none">
@@ -1370,10 +1377,14 @@ export const ProductCard = ({
                                                     className={`font-black italic leading-none ${isTv ? 'text-[22px]' : 'text-[22px] md:text-[26px]'}`}
                                                     style={{ color: finText }}
                                                 >
-                                                    ₹{formatRoundedPrice(downpayment || 0)}
+                                                    ₹ {formatRoundedPrice(downpayment || 0)}
                                                 </span>
                                                 <div className="flex items-center gap-1 mt-1">
-                                                    <Logo variant="icon" size={10} />
+                                                    <Logo
+                                                        variant="icon"
+                                                        size={coinMetaIconSize}
+                                                        iconClassName="drop-shadow-[0_0_0.45px_rgba(255,255,255,0.9)]"
+                                                    />
                                                     <span
                                                         className="text-[9px] font-bold italic uppercase tracking-wider leading-none"
                                                         style={{ color: finSubText }}
@@ -1399,7 +1410,7 @@ export const ProductCard = ({
                                                     className={`font-black italic leading-none ${isTv ? 'text-[22px]' : 'text-[22px] md:text-[26px]'}`}
                                                     style={{ color: finText }}
                                                 >
-                                                    {emiValue !== null ? `₹${formatRoundedPrice(emiValue)}` : '—'}
+                                                    {emiValue !== null ? `₹ ${formatRoundedPrice(emiValue)}` : '—'}
                                                 </span>
                                                 <div className="flex items-center gap-1 mt-1">
                                                     <Clock size={9} style={{ color: finSubText }} />
@@ -1531,7 +1542,7 @@ export const ProductCard = ({
                                                             className={`${cashCurrencyValueClass} font-black italic leading-none cursor-pointer hover:scale-105 active:scale-95 transition-all`}
                                                             style={{ color: cashPrimaryText }}
                                                         >
-                                                            ₹{formatRoundedPrice(effectiveOfferPrice)}
+                                                            ₹ {formatRoundedPrice(effectiveOfferPrice)}
                                                         </span>
                                                     </div>
                                                 </div>
@@ -1551,7 +1562,12 @@ export const ProductCard = ({
 
                                                 <div className="flex flex-col items-end gap-0.5">
                                                     <div className={`flex items-center ${isTv ? 'gap-1' : 'gap-2'}`}>
-                                                        <Logo variant="icon" size={16} customColor={cashPrimaryText} />
+                                                        <Logo
+                                                            variant="icon"
+                                                            size={coinPrimaryIconSize}
+                                                            customColor={cashPrimaryText}
+                                                            iconClassName="drop-shadow-[0_0_0.6px_rgba(15,23,42,0.98)]"
+                                                        />
                                                         <span
                                                             className={`${cashCurrencyValueClass} font-black italic leading-none`}
                                                             style={{ color: cashPrimaryText }}
