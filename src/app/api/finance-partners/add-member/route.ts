@@ -75,7 +75,8 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Member not found' }, { status: 404 });
         }
 
-        const existingTeam = Array.isArray(tenant?.config?.team) ? tenant?.config?.team : [];
+        const tenantConfig = (tenant?.config as Record<string, unknown>) || {};
+        const existingTeam = Array.isArray(tenantConfig.team) ? (tenantConfig.team as any[]) : [];
         const updatedTeam = existingTeam.filter((m: any) => m?.id !== member.id);
         updatedTeam.push({
             id: member.id,
@@ -91,7 +92,7 @@ export async function POST(req: NextRequest) {
             .from('id_tenants')
             .update({
                 config: {
-                    ...(tenant?.config || {}),
+                    ...tenantConfig,
                     team: updatedTeam,
                 },
             })

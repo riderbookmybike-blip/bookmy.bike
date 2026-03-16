@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
 
         if (!result?.success) {
             return NextResponse.json(
-                { success: false, message: result?.message || 'Failed to resolve referrer' },
+                { success: false, message: (result as any)?.message || 'Failed to resolve referrer' },
                 { status: 400 }
             );
         }

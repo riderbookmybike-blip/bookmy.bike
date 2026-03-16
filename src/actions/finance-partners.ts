@@ -90,12 +90,12 @@ export async function getFinancerTeamAccess(dealerId: string, financeId: string)
         const configTeam = Array.isArray((financeTenant as any)?.config?.team)
             ? (financeTenant as any).config.team
             : [];
-        const configTeamUserIds = Array.from(
+        const configTeamUserIds: string[] = Array.from(
             new Set(configTeam.map((member: any) => String(member?.id || '').trim()).filter((id: string) => !!id))
         );
 
         const idTeamUserIdSet = new Set((teamMembers || []).map((m: any) => String(m.user_id || '')));
-        const missingUserIds = configTeamUserIds.filter(id => !idTeamUserIdSet.has(id));
+        const missingUserIds: string[] = configTeamUserIds.filter(id => !idTeamUserIdSet.has(id));
 
         let missingMembers: any[] = [];
         if (missingUserIds.length > 0) {

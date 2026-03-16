@@ -315,6 +315,39 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
         if (!isCompact && slug) router.push(`/app/${slug}/leads`);
     };
 
+    const handleCreateLead = async (data: {
+        customerName: string;
+        phone: string;
+        pincode: string;
+        interestText: string;
+        organisation?: string;
+        dob?: string;
+        selectedDealerId?: string;
+        attachmentPurpose?: string;
+        attachments?: File[];
+        referredByCode?: string;
+        referredByPhone?: string;
+        referredByName?: string;
+    }) => {
+        const result = await createLeadAction({
+            customer_name: data.customerName,
+            customer_phone: data.phone,
+            customer_pincode: data.pincode,
+            customer_dob: data.dob,
+            interest_text: data.interestText,
+            selected_dealer_id: data.selectedDealerId,
+            organisation: data.organisation,
+            referred_by_code: data.referredByCode,
+            referred_by_phone: data.referredByPhone,
+            referred_by_name: data.referredByName,
+            source: 'CRM_MANUAL',
+        });
+        if (result?.success) {
+            setIsLeadFormOpen(false);
+            await fetchLeadIndex();
+        }
+    };
+
     const effectiveView = isPhone ? 'list' : view;
 
     if (!selectedLeadId) {
@@ -641,7 +674,7 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
                     </div>
                 </div>
                 <div className="h-full flex flex-col overflow-y-auto no-scrollbar bg-white">
-                    <LeadEditorWrapper leadId={selectedLeadId} onClose={handleCloseDetail} onRefresh={fetchLeadIndex} />
+                    <LeadEditorWrapper leadId={selectedLeadId!} />
                 </div>
             </MasterListDetailLayout>
 
@@ -651,7 +684,7 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
                     onClose={() => setIsLeadFormOpen(false)}
                     onSubmit={handleCreateLead}
                     dealerOptions={dealerOptions}
-                    initialDealerId={initialSelectedDealerId}
+                    initialSelectedDealerId={initialSelectedDealerId}
                 />
             )}
         </div>

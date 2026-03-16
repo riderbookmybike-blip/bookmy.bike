@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
             leadId: result.leadId,
             duplicate: Boolean((result as any).duplicate),
             noteSaved: Boolean(noteResult?.success),
-            noteMessage: noteResult?.message || null,
+            noteMessage: (noteResult as any)?.message || null,
         });
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Internal Server Error';

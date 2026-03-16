@@ -7,7 +7,6 @@ export async function POST(request: NextRequest) {
         const context = await resolvePricingContext({
             leadId: params?.leadId || null,
             dealerId: params?.dealerId || null,
-            district: params?.district || null,
             state: params?.state || null,
             studio: params?.studio || null,
         });

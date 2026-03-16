@@ -2487,6 +2487,10 @@ export async function checkQuickLeadContextAction(input: {
             createdAt: string | null;
             lastEditedByName: string | null;
             lastEditedAt: string | null;
+            ownerUserId?: string | null;
+            canWrite?: boolean;
+            canRequestShare?: boolean;
+            pendingShareRequest?: boolean;
         } | null = null;
 
         if (lead?.id) {

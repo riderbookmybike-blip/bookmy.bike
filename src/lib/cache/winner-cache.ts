@@ -168,24 +168,20 @@ export async function getCachedPriceSnapshot(
     const tag = tagPriceSnapshot(sku_id, state_code);
     const key = buildPriceSnapshotKey(sku_id, state_code);
 
-    const fetchFn = unstable_cache(
-        async (): Promise<PriceSnapshotRow | null> => {
-            const { data, error } = await adminClient
-                .from('price_snapshot_sku')
-                .select('*')
-                .eq('sku_id', sku_id)
-                .eq('state_code', state_code)
-                .maybeSingle();
-
-            if (error) {
-                console.error(`[winner-cache] price_snapshot_sku error: ${error.message}`);
-                return null;
-            }
-            return data as any as PriceSnapshotRow | null;
-        },
-        [key],
-        { revalidate: WINNER_CACHE_TTL, tags: [tag] }
-    );
+    const _fetchPriceSnapshot: () => Promise<PriceSnapshotRow | null> = async () => {
+        const { data, error } = await adminClient
+            .from('price_snapshot_sku')
+            .select('*')
+            .eq('sku_id', sku_id)
+            .eq('state_code', state_code)
+            .maybeSingle();
+        if (error) {
+            console.error(`[winner-cache] price_snapshot_sku error: ${error.message}`);
+            return null;
+        }
+        return data as any as PriceSnapshotRow | null;
+    };
+    const fetchFn = unstable_cache(_fetchPriceSnapshot, [key], { revalidate: WINNER_CACHE_TTL, tags: [tag] });
 
     const row = await fetchFn();
 
@@ -212,26 +208,22 @@ export async function getCachedWinnerPrice(
     const tag = tagWinnerPrice(sku_id, state_code, geo_cell);
     const key = buildWinnerPriceKey(state_code, geo_cell, sku_id, offer_mode);
 
-    const fetchFn = unstable_cache(
-        async (): Promise<WinnerPriceRow | null> => {
-            const { data, error } = await adminClient
-                .from('market_winner_price')
-                .select('*')
-                .eq('state_code', state_code)
-                .eq('geo_cell', geo_cell)
-                .eq('sku_id', sku_id)
-                .eq('offer_mode', offer_mode)
-                .maybeSingle();
-
-            if (error) {
-                console.error(`[winner-cache] market_winner_price error: ${error.message}`);
-                return null;
-            }
-            return data as any as WinnerPriceRow | null;
-        },
-        [key],
-        { revalidate: WINNER_CACHE_TTL, tags: [tag] }
-    );
+    const _fetchWinnerPrice: () => Promise<WinnerPriceRow | null> = async () => {
+        const { data, error } = await adminClient
+            .from('market_winner_price')
+            .select('*')
+            .eq('state_code', state_code)
+            .eq('geo_cell', geo_cell)
+            .eq('sku_id', sku_id)
+            .eq('offer_mode', offer_mode)
+            .maybeSingle();
+        if (error) {
+            console.error(`[winner-cache] market_winner_price error: ${error.message}`);
+            return null;
+        }
+        return data as any as WinnerPriceRow | null;
+    };
+    const fetchFn = unstable_cache(_fetchWinnerPrice, [key], { revalidate: WINNER_CACHE_TTL, tags: [tag] });
 
     return fetchFn();
 }
@@ -250,27 +242,23 @@ export async function getCachedWinnerFinance(
     const tag = tagWinnerFinance(sku_id, state_code);
     const key = buildWinnerFinanceKey(state_code, sku_id, dp_bucket, tenure_months, policy);
 
-    const fetchFn = unstable_cache(
-        async (): Promise<WinnerFinanceRow | null> => {
-            const { data, error } = await adminClient
-                .from('market_winner_finance')
-                .select('*')
-                .eq('state_code', state_code)
-                .eq('sku_id', sku_id)
-                .eq('dp_bucket', dp_bucket)
-                .eq('tenure_months', tenure_months)
-                .eq('policy', policy)
-                .maybeSingle();
-
-            if (error) {
-                console.error(`[winner-cache] market_winner_finance error: ${error.message}`);
-                return null;
-            }
-            return data as any as WinnerFinanceRow | null;
-        },
-        [key],
-        { revalidate: WINNER_CACHE_TTL, tags: [tag] }
-    );
+    const _fetchWinnerFinance: () => Promise<WinnerFinanceRow | null> = async () => {
+        const { data, error } = await adminClient
+            .from('market_winner_finance')
+            .select('*')
+            .eq('state_code', state_code)
+            .eq('sku_id', sku_id)
+            .eq('dp_bucket', dp_bucket)
+            .eq('tenure_months', tenure_months)
+            .eq('policy', policy)
+            .maybeSingle();
+        if (error) {
+            console.error(`[winner-cache] market_winner_finance error: ${error.message}`);
+            return null;
+        }
+        return data as any as WinnerFinanceRow | null;
+    };
+    const fetchFn = unstable_cache(_fetchWinnerFinance, [key], { revalidate: WINNER_CACHE_TTL, tags: [tag] });
 
     return fetchFn();
 }

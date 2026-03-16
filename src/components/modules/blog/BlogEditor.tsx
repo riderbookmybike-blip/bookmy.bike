@@ -52,7 +52,7 @@ export default function BlogEditor({ postId }: { postId?: string }) {
                 const { data: post, error } = await supabase.from('blog_posts').select('*').eq('id', postId).single();
 
                 if (!error && post) {
-                    setData(post);
+                    setData(post as unknown as BlogsData);
                 }
                 setLoading(false);
             };
