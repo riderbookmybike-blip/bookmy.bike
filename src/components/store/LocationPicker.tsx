@@ -54,6 +54,7 @@ export function LocationPicker({ isOpen, onClose, onLocationSet, initialPincode 
                         pincode: resolved.pincode,
                         district: resolved.district,
                         taluka: resolved.taluka,
+                        area: resolved.taluka || resolved.district || null,
                         state: resolved.state,
                         latitude: resolved.lat ?? null,
                         longitude: resolved.lng ?? null,

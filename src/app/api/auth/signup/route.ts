@@ -2,16 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminClient } from '@/lib/supabase/admin';
 import { getAuthPassword } from '@/lib/auth/password-utils';
 import { toAppStorageFormat, isValidPhone } from '@/lib/utils/phoneUtils';
+import { normalizeGeoCoordinates } from '@/lib/location/coordinates';
 
 export async function POST(req: NextRequest) {
     try {
-        const { phone, displayName, pincode, state, district, taluka, area, latitude, longitude } = await req.json();
+        const { phone, displayName, referralCode, pincode, state, district, taluka, area, latitude, longitude } =
+            await req.json();
 
-        if (!phone || !displayName) {
+        if (!phone || !referralCode) {
             return NextResponse.json(
                 {
                     success: false,
-                    message: 'Phone and Name are required',
+                    message: 'Phone and Referral Code are required',
                 },
                 { status: 400 }
             );
@@ -28,9 +30,38 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // Prefer direct GPS; fallback to pincode-derived coordinates for BMB user creation.
-        let lat = Number(latitude);
-        let lng = Number(longitude);
+        const normalizedReferralCode = String(referralCode || '')
+            .trim()
+            .toUpperCase();
+        if (!/^[A-Z0-9-]{4,32}$/.test(normalizedReferralCode)) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    message: 'Invalid referral code format',
+                },
+                { status: 400 }
+            );
+        }
+        const { data: referrer } = await adminClient
+            .from('id_members')
+            .select('id, referral_code, role, full_name, display_id')
+            .eq('referral_code', normalizedReferralCode)
+            .maybeSingle();
+        if (!referrer?.id) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    message: 'Referral code not found',
+                    code: 'INVALID_REFERRAL_CODE',
+                },
+                { status: 400 }
+            );
+        }
+
+        // Coordinates SOT: normalize once, support both lat/lng and latitude/longitude payloads.
+        const normalizedCoords = normalizeGeoCoordinates({ latitude, longitude });
+        let lat = normalizedCoords.latitude;
+        let lng = normalizedCoords.longitude;
         let resolvedState = state || null;
         let resolvedDistrict = district || null;
         let resolvedTaluka = taluka || null;
@@ -67,16 +98,14 @@ export async function POST(req: NextRequest) {
                 resolvedTaluka = resolvedTaluka || (pinRow as any).taluka || null;
             }
         }
-        if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    message: 'GPS or valid pincode-based location is required to create an account',
-                    code: 'LOCATION_REQUIRED',
-                },
-                { status: 400 }
-            );
-        }
+        const hasCoords = Number.isFinite(Number(lat)) && Number.isFinite(Number(lng));
+
+        const resolvedDisplayName = String(displayName || '').trim() || `Rider ${cleanPhone.slice(-4)}`;
+        const referrerRole = String(referrer.role || '')
+            .trim()
+            .toUpperCase();
+        const referrerType = referrerRole === 'MEMBER' ? 'MEMBER' : 'TEAM';
+        const referralBenefitEligible = referrerType === 'MEMBER';
 
         const formattedPhone = `+91${cleanPhone}`;
         const email = `${cleanPhone}@bookmy.bike`;
@@ -103,7 +132,11 @@ export async function POST(req: NextRequest) {
             phone: formattedPhone,
             email_confirm: true,
             phone_confirm: true,
-            user_metadata: { full_name: displayName, phone: cleanPhone },
+            user_metadata: {
+                full_name: resolvedDisplayName,
+                phone: cleanPhone,
+                referral_code_used: normalizedReferralCode,
+            },
             password: password,
         });
 
@@ -122,7 +155,7 @@ export async function POST(req: NextRequest) {
         // 3. Create Profile (member role by default)
         const { error: profileError } = await adminClient.from('id_members').insert({
             id: userId,
-            full_name: displayName,
+            full_name: resolvedDisplayName,
             phone: cleanPhone,
             primary_phone: cleanPhone,
             role: 'member',
@@ -130,8 +163,18 @@ export async function POST(req: NextRequest) {
             state: resolvedState,
             district: resolvedDistrict,
             taluka: resolvedTaluka,
-            latitude: lat,
-            longitude: lng,
+            latitude: hasCoords ? Number(lat) : null,
+            longitude: hasCoords ? Number(lng) : null,
+            preferences: {
+                signup_referral_code: normalizedReferralCode,
+                signup_referrer_member_id: referrer.id,
+                signup_referrer_type: referrerType,
+                signup_referrer_name: referrer.full_name || null,
+                signup_referrer_display_id: referrer.display_id || null,
+                signup_referral_benefit_eligible: referralBenefitEligible,
+                signup_referral_benefit_status: referralBenefitEligible ? 'ELIGIBLE' : 'BLOCKED_TEAM_REFERRER',
+                signup_area: area || null,
+            },
         });
 
         if (profileError) {
@@ -161,6 +204,13 @@ export async function POST(req: NextRequest) {
             userId,
             session: signInData?.session,
             user: signInData?.user,
+            referredBy: {
+                id: referrer.id,
+                displayId: referrer.display_id || null,
+                name: referrer.full_name || null,
+                type: referrerType,
+                referralBenefitEligible,
+            },
             message: 'Account created successfully',
         });
     } catch (error) {

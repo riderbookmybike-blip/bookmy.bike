@@ -4,6 +4,46 @@ import { adminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 
 import { toAppStorageFormat, isValidPhone, toE164IN, getPhoneLookupVariants } from '@/lib/utils/phoneUtils';
+import { normalizeGeoCoordinates } from '@/lib/location/coordinates';
+
+type ReferralKind = 'MEMBER' | 'TEAM';
+
+type ReferrerSummary = {
+    id: string;
+    display_id: string | null;
+    full_name: string | null;
+    role: string | null;
+    kind: ReferralKind;
+    benefit_eligible: boolean;
+};
+
+const resolveReferralKind = (role: string | null | undefined): ReferralKind => {
+    return String(role || '')
+        .trim()
+        .toUpperCase() === 'MEMBER'
+        ? 'MEMBER'
+        : 'TEAM';
+};
+
+const extractSignupReferrerMemberId = (preferences: unknown): string | null => {
+    if (!preferences || typeof preferences !== 'object' || Array.isArray(preferences)) return null;
+    const candidate = (preferences as Record<string, unknown>).signup_referrer_member_id;
+    if (typeof candidate !== 'string') return null;
+    const trimmed = candidate.trim();
+    return trimmed.length > 0 ? trimmed : null;
+};
+
+const buildReferrerSummary = (row: any): ReferrerSummary => {
+    const kind = resolveReferralKind(row?.role ?? null);
+    return {
+        id: row?.id,
+        display_id: row?.display_id ?? null,
+        full_name: row?.full_name ?? null,
+        role: row?.role ?? null,
+        kind,
+        benefit_eligible: kind === 'MEMBER',
+    };
+};
 
 const toTitleCase = (str: string) =>
     str
@@ -305,6 +345,7 @@ export async function getMembersForTenant(tenantId: string, search?: string, pag
             quotes_count,
             primary_phone,
             primary_email,
+            preferences,
             id_member_tenants!inner(tenant_id, status)
         `,
             { count: 'exact' }
@@ -351,6 +392,7 @@ export async function getMembersForTenant(tenantId: string, search?: string, pag
                 quotes_count,
                 primary_phone,
                 primary_email,
+                preferences,
                 id_member_tenants(tenant_id, status)
             `,
                 { count: 'exact' }
@@ -396,13 +438,42 @@ export async function getMembersForTenant(tenantId: string, search?: string, pag
         });
     }
 
-    const members = (data || []).map((m: any) => ({
-        ...m,
-        member_status: (m.id_member_tenants?.[0]?.status || m.member_status || 'ACTIVE').toUpperCase(),
-        leads_count: m.leads_count || 0,
-        bookings_count: m.bookings_count || 0,
-        quotes_count: m.quotes_count || 0,
-    }));
+    const referrerMemberIds = Array.from(
+        new Set(
+            (data || [])
+                .map((m: any) => extractSignupReferrerMemberId(m.preferences))
+                .filter((id): id is string => Boolean(id))
+        )
+    );
+
+    let referrerMap = new Map<string, ReferrerSummary>();
+    if (referrerMemberIds.length > 0) {
+        const { data: referrerRows } = await adminClient
+            .from('id_members')
+            .select('id, display_id, full_name, role')
+            .in('id', referrerMemberIds);
+        referrerMap = new Map(
+            (referrerRows || []).filter((row: any) => row?.id).map((row: any) => [row.id, buildReferrerSummary(row)])
+        );
+    }
+
+    const members = (data || []).map((m: any) => {
+        const referrerMemberId = extractSignupReferrerMemberId(m.preferences);
+        const referredBy = referrerMemberId ? referrerMap.get(referrerMemberId) || null : null;
+        return {
+            ...m,
+            referred_by: referredBy,
+            referral_benefit_status: referredBy
+                ? referredBy.benefit_eligible
+                    ? 'ELIGIBLE'
+                    : 'BLOCKED_TEAM_REFERRER'
+                : null,
+            member_status: (m.id_member_tenants?.[0]?.status || m.member_status || 'ACTIVE').toUpperCase(),
+            leads_count: m.leads_count || 0,
+            bookings_count: m.bookings_count || 0,
+            quotes_count: m.quotes_count || 0,
+        };
+    });
 
     return {
         data: members,
@@ -545,7 +616,7 @@ export async function getMemberFullProfile(memberId: string) {
     const { data: member, error } = await adminClient
         .from('id_members')
         .select(
-            'id, display_id, full_name, primary_phone, primary_email, pan_number, aadhaar_number, date_of_birth, role, work_company, work_designation, work_email, work_phone, pincode, state, rto, district, taluka, created_at, updated_at'
+            'id, display_id, full_name, primary_phone, primary_email, pan_number, aadhaar_number, date_of_birth, role, work_company, work_designation, work_email, work_phone, pincode, state, rto, district, taluka, preferences, created_at, updated_at'
         )
         .eq('id', memberId)
         .maybeSingle();
@@ -558,7 +629,7 @@ export async function getMemberFullProfile(memberId: string) {
         const { data: memberByDisplay, error: displayError } = await adminClient
             .from('id_members')
             .select(
-                'id, display_id, full_name, primary_phone, primary_email, pan_number, aadhaar_number, date_of_birth, role, work_company, work_designation, work_email, work_phone, pincode, state, rto, district, taluka, created_at, updated_at'
+                'id, display_id, full_name, primary_phone, primary_email, pan_number, aadhaar_number, date_of_birth, role, work_company, work_designation, work_email, work_phone, pincode, state, rto, district, taluka, preferences, created_at, updated_at'
             )
             .eq('display_id', memberId)
             .maybeSingle();
@@ -571,6 +642,37 @@ export async function getMemberFullProfile(memberId: string) {
     if (!resolvedMember) {
         return null;
     }
+
+    const resolvedMemberId = resolvedMember.id;
+
+    const signupReferrerMemberId = extractSignupReferrerMemberId((resolvedMember as any).preferences);
+    let referredBy: ReferrerSummary | null = null;
+    if (signupReferrerMemberId) {
+        const { data: referrerRow } = await adminClient
+            .from('id_members')
+            .select('id, display_id, full_name, role')
+            .eq('id', signupReferrerMemberId)
+            .maybeSingle();
+        if (referrerRow?.id) {
+            referredBy = buildReferrerSummary(referrerRow);
+        }
+    }
+
+    const { data: referredMembersRows } = await adminClient
+        .from('id_members')
+        .select('id, display_id, full_name, role, created_at, preferences')
+        .contains('preferences', { signup_referrer_member_id: resolvedMemberId })
+        .order('created_at', { ascending: false })
+        .limit(30);
+
+    const referredMembers = (referredMembersRows || []).map((row: any) => ({
+        id: row.id,
+        display_id: row.display_id || null,
+        full_name: row.full_name || null,
+        role: row.role || null,
+        kind: resolveReferralKind(row.role),
+        created_at: row.created_at || null,
+    }));
 
     const [
         { data: contacts },
@@ -585,40 +687,44 @@ export async function getMemberFullProfile(memberId: string) {
         adminClient
             .from('id_member_contacts')
             .select('*')
-            .eq('member_id', memberId)
+            .eq('member_id', resolvedMemberId)
             .order('created_at', { ascending: false }),
         adminClient
             .from('id_member_addresses')
             .select('*')
-            .eq('member_id', memberId)
+            .eq('member_id', resolvedMemberId)
             .order('created_at', { ascending: false }),
         adminClient
             .from('id_member_events')
             .select('*')
-            .eq('member_id', memberId)
+            .eq('member_id', resolvedMemberId)
             .order('created_at', { ascending: false }),
         adminClient
             .from('id_member_assets')
             .select('*')
-            .eq('entity_id', memberId)
+            .eq('entity_id', resolvedMemberId)
             .order('created_at', { ascending: false }),
         adminClient
             .from('crm_payments')
             .select('*')
-            .eq('member_id', memberId)
+            .eq('member_id', resolvedMemberId)
             .order('created_at', { ascending: false }),
-        adminClient.from('crm_leads').select('*').eq('customer_id', memberId).order('created_at', { ascending: false }),
+        adminClient
+            .from('crm_leads')
+            .select('*')
+            .eq('customer_id', resolvedMemberId)
+            .order('created_at', { ascending: false }),
         adminClient
             .from('oclub_wallets')
             .select(
                 'available_system, available_referral, available_sponsored, locked_referral, pending_sponsored, lifetime_earned, lifetime_redeemed, updated_at'
             )
-            .eq('member_id', memberId)
+            .eq('member_id', resolvedMemberId)
             .maybeSingle(),
         adminClient
             .from('oclub_coin_ledger')
             .select('id, coin_type, delta, status, source_type, source_id, sponsor_id, metadata, created_at')
-            .eq('member_id', memberId)
+            .eq('member_id', resolvedMemberId)
             .order('created_at', { ascending: false })
             .limit(50),
     ]);
@@ -630,7 +736,7 @@ export async function getMemberFullProfile(memberId: string) {
             .select(
                 '*, insurance:crm_insurance(*), allotment:crm_allotments(*), registration:crm_registration(*), pdi:crm_pdi(*)'
             )
-            .eq('user_id', memberId)
+            .eq('user_id', resolvedMemberId)
             .order('created_at', { ascending: false });
         if (bookingsError) throw bookingsError;
         bookings = bookingsData || [];
@@ -638,7 +744,7 @@ export async function getMemberFullProfile(memberId: string) {
         const { data: bookingsFallback } = await adminClient
             .from('crm_bookings')
             .select('*')
-            .eq('user_id', memberId)
+            .eq('user_id', resolvedMemberId)
             .order('created_at', { ascending: false });
         bookings = bookingsFallback || [];
     }
@@ -659,6 +765,13 @@ export async function getMemberFullProfile(memberId: string) {
               phone: resolvedMember.primary_phone,
               email: resolvedMember.primary_email,
               member_status: (resolvedMember as any).role || 'ACTIVE',
+              referred_by: referredBy,
+              referral_benefit_status: referredBy
+                  ? referredBy.benefit_eligible
+                      ? 'ELIGIBLE'
+                      : 'BLOCKED_TEAM_REFERRER'
+                  : null,
+              referred_members_count: referredMembers.length,
           }
         : resolvedMember;
 
@@ -674,6 +787,7 @@ export async function getMemberFullProfile(memberId: string) {
         quotes: quotes || [],
         wallet: wallet || null,
         oclubLedger: ledger || [],
+        referredMembers,
     };
 }
 
@@ -792,6 +906,9 @@ export async function updateSelfMemberLocation(location: {
     district?: string | null;
     taluka?: string | null;
     state?: string | null;
+    area?: string | null;
+    lat?: number | null;
+    lng?: number | null;
     latitude?: number | null;
     longitude?: number | null;
 }) {
@@ -804,8 +921,24 @@ export async function updateSelfMemberLocation(location: {
     if (location.district) updates.district = location.district;
     if (location.taluka) updates.taluka = location.taluka;
     if (location.state) updates.state = location.state;
-    if (typeof location.latitude === 'number') updates.latitude = location.latitude;
-    if (typeof location.longitude === 'number') updates.longitude = location.longitude;
+    const coords = normalizeGeoCoordinates(location);
+    if (typeof coords.latitude === 'number') updates.latitude = coords.latitude;
+    if (typeof coords.longitude === 'number') updates.longitude = coords.longitude;
+    if (location.area) {
+        const { data: existing } = await supabase
+            .from('id_members')
+            .select('preferences')
+            .eq('id', user.id)
+            .maybeSingle();
+        const existingPrefs =
+            existing && typeof (existing as any).preferences === 'object' && (existing as any).preferences
+                ? (existing as any).preferences
+                : {};
+        updates.preferences = {
+            ...existingPrefs,
+            location_area: location.area,
+        };
+    }
 
     if (Object.keys(updates).length === 0) {
         return { success: false, error: 'NO_UPDATES' };

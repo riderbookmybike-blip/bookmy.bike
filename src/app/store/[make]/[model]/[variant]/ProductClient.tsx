@@ -6,6 +6,7 @@ import { useSystemPDPLogic } from '@/hooks/SystemPDPLogic';
 import { LeadCaptureModal } from '@/components/leads/LeadCaptureModal';
 import { EmailUpdateModal } from '@/components/auth/EmailUpdateModal';
 import { PincodeGateModal } from '@/components/store/Personalize/PincodeGateModal';
+import { LocationPicker } from '@/components/store/LocationPicker';
 import { buildPdpGuardRedirectUrl, isPdpGuardRedirected } from '@/lib/store/isLocationResolved';
 import { createClient } from '@/lib/supabase/client';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -462,6 +463,7 @@ export default function ProductClient({
     const [showQuoteSuccess, setShowQuoteSuccess] = useState(false);
     const [showEmailModal, setShowEmailModal] = useState(false);
     const [showReferralModal, setShowReferralModal] = useState(false);
+    const [showLocationPicker, setShowLocationPicker] = useState(false);
     const [dealerRetryCount, setDealerRetryCount] = useState(0);
     const [waInFlight, setWaInFlight] = useState(false);
     const shouldForcePhoneCapture = isTeamMember;
@@ -489,6 +491,16 @@ export default function ProductClient({
 
     useEffect(() => {
         const syncLocationState = () => {
+            try {
+                const cached = localStorage.getItem('bkmb_user_pincode');
+                const parsed = cached ? JSON.parse(cached) : null;
+                setCachedLocationHint({
+                    district: parsed?.district || parsed?.taluka || parsed?.city || undefined,
+                    pincode: parsed?.pincode || undefined,
+                });
+            } catch {
+                setCachedLocationHint(null);
+            }
             setHasResolvedLocation(hasResolvedLocationSignal(initialLocation) || readLocationResolvedFromCache());
             // Also trigger dealer hook re-run so it picks up newly resolved lat/lng from localStorage.
             // This closes the race: StoreLayoutClient bootstraps location async → fires locationChanged
@@ -1299,7 +1311,7 @@ export default function ProductClient({
         dealerFetchState,
         dealerFetchNotice: dealerFetchNotice || undefined,
         onRetryDealerFetch: () => setDealerRetryCount(c => c + 1),
-        onRetryLocation: () => setDealerRetryCount(c => c + 1),
+        onRetryLocation: () => setShowLocationPicker(true),
         onWaSend: handleWaSend,
         cachedPincode: cachedLocationHint?.pincode || undefined,
         serviceability: derivedServiceability,
@@ -1382,6 +1394,26 @@ export default function ProductClient({
                     // locationChanged event causes DesktopCatalog/hook to re-run,
                     // which resolves hasResolvedLocation → pdpGateReason becomes READY.
                     // Trigger explicit re-check via retrySignal bump:
+                    setDealerRetryCount(c => c + 1);
+                }}
+            />
+            <LocationPicker
+                isOpen={showLocationPicker}
+                onClose={() => setShowLocationPicker(false)}
+                initialPincode={
+                    cachedLocationHint?.pincode || resolvedLocation?.pincode || initialLocation?.pincode || ''
+                }
+                onLocationSet={(pincode, taluka, lat, lng) => {
+                    const nextLocation = {
+                        ...(resolvedLocation || initialLocation || {}),
+                        pincode,
+                        taluka,
+                        district: taluka,
+                        lat: lat ?? null,
+                        lng: lng ?? null,
+                    };
+                    localStorage.setItem('bkmb_user_pincode', JSON.stringify(nextLocation));
+                    window.dispatchEvent(new Event('locationChanged'));
                     setDealerRetryCount(c => c + 1);
                 }}
             />

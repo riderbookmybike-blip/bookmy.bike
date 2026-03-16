@@ -5,6 +5,7 @@ import { IDV_DEPRECIATION_RATE } from '@/lib/constants/pricingConstants';
 import { getDeliveryChargeByDistance } from '@/lib/pricing/deliveryCharge';
 import { OfferMode, rankCandidates, type CandidateOffer } from '@/lib/marketplace/winnerEngine';
 import { calculateDistance } from '@/utils/geoUtils';
+import { normalizeLatLng } from '@/lib/location/coordinates';
 
 interface UseDealerContextProps {
     product: any;
@@ -182,14 +183,7 @@ const normalizeClientStateCode = (value?: string | null) => {
 };
 
 const readLatLng = (value: any): { lat: number | null; lng: number | null } => {
-    const latRaw = value?.lat ?? value?.latitude;
-    const lngRaw = value?.lng ?? value?.longitude;
-    const lat = Number(latRaw);
-    const lng = Number(lngRaw);
-    return {
-        lat: Number.isFinite(lat) ? lat : null,
-        lng: Number.isFinite(lng) ? lng : null,
-    };
+    return normalizeLatLng(value);
 };
 
 type RankedOffer = {

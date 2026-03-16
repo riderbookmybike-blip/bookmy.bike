@@ -21,6 +21,10 @@ export interface MemberRow {
     phone?: string | null;
     status?: string | null;
     createdAt?: string | null;
+    referredByName?: string | null;
+    referredByDisplayId?: string | null;
+    referrerType?: 'MEMBER' | 'TEAM' | null;
+    referralBenefitEligible?: boolean | null;
 }
 
 export default function MembersPage({ initialMemberId }: { initialMemberId?: string }) {
@@ -57,6 +61,11 @@ export default function MembersPage({ initialMemberId }: { initialMemberId?: str
                 phone: m.primary_phone || m.phone || null,
                 status: m.member_status || 'ACTIVE',
                 createdAt: m.created_at || null,
+                referredByName: m.referred_by?.full_name || null,
+                referredByDisplayId: m.referred_by?.display_id || null,
+                referrerType: m.referred_by?.kind || null,
+                referralBenefitEligible:
+                    typeof m.referred_by?.benefit_eligible === 'boolean' ? m.referred_by.benefit_eligible : null,
             }));
             setMembers(mapped);
         } catch (error) {
@@ -165,6 +174,19 @@ export default function MembersPage({ initialMemberId }: { initialMemberId?: str
                                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                                         {member.phone || 'No phone'}
                                     </div>
+                                    <div className="mt-3 text-[10px] font-bold text-slate-500">
+                                        {member.referredByName
+                                            ? `Referred by: ${member.referredByName} (${member.referrerType || 'TEAM'})`
+                                            : 'Referred by: —'}
+                                    </div>
+                                    <div className="mt-1 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                        Benefit:{' '}
+                                        {member.referralBenefitEligible === null
+                                            ? 'Not Linked'
+                                            : member.referralBenefitEligible
+                                              ? 'Eligible'
+                                              : 'Blocked'}
+                                    </div>
                                 </div>
                             ))}
                         </div>
@@ -184,6 +206,9 @@ export default function MembersPage({ initialMemberId }: { initialMemberId?: str
                                         </th>
                                         <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 text-center">
                                             Status
+                                        </th>
+                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                                            Referral
                                         </th>
                                     </tr>
                                 </thead>
@@ -213,6 +238,19 @@ export default function MembersPage({ initialMemberId }: { initialMemberId?: str
                                             <td className="px-6 py-4 text-center">
                                                 <div className="px-2.5 py-1 rounded inline-block text-[9px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-600 border border-emerald-100">
                                                     {member.status}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="text-[10px] font-black text-slate-700 uppercase tracking-widest">
+                                                    {member.referredByName || '—'}
+                                                </div>
+                                                <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-1">
+                                                    {member.referrerType || '—'} •{' '}
+                                                    {member.referralBenefitEligible === null
+                                                        ? 'No Referral'
+                                                        : member.referralBenefitEligible
+                                                          ? 'Benefit Eligible'
+                                                          : 'Benefit Blocked'}
                                                 </div>
                                             </td>
                                         </tr>

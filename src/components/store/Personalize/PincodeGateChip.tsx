@@ -116,6 +116,7 @@ export function PincodeGateChip({
                 pincode: payload.pincode,
                 district: payload.district || null,
                 taluka: payload.taluka || null,
+                area: payload.taluka || payload.district || null,
                 state: payload.state || null,
                 latitude: payload.lat ?? null,
                 longitude: payload.lng ?? null,

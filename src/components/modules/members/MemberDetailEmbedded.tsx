@@ -30,6 +30,12 @@ interface Member {
     created_at: string;
     pan_number?: string;
     aadhaar_number?: string;
+    referred_by?: {
+        full_name?: string | null;
+        kind?: 'MEMBER' | 'TEAM' | string | null;
+    } | null;
+    referral_benefit_status?: string | null;
+    referred_members_count?: number | null;
 }
 
 interface MemberProfile {
@@ -206,6 +212,27 @@ export default function MemberDetailEmbedded({ memberId }: { memberId: string })
                                         </p>
                                         <p className="font-mono font-bold text-sm tracking-tighter">
                                             {profile.member?.aadhaar_number || '—'}
+                                        </p>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest">
+                                            Referred By
+                                        </p>
+                                        <p className="font-bold text-sm">
+                                            {profile.member?.referred_by?.full_name || '—'}
+                                        </p>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest">
+                                            Referrer Type
+                                        </p>
+                                        <p className="font-bold text-sm">
+                                            {profile.member?.referred_by?.kind || '—'} •{' '}
+                                            {profile.member?.referral_benefit_status === 'ELIGIBLE'
+                                                ? 'Benefit Eligible'
+                                                : profile.member?.referral_benefit_status === 'BLOCKED_TEAM_REFERRER'
+                                                  ? 'Benefit Blocked'
+                                                  : 'No Referral'}
                                         </p>
                                     </div>
                                 </div>

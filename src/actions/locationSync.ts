@@ -5,10 +5,9 @@ import { getAuthUser } from '@/lib/auth/resolver';
 import { reverseGeocode } from '@/lib/location/reverseGeocode';
 import { getPincodeDetails } from '@/actions/pincode';
 import { formatLocationName, mergeAreas, normalizeLocationKey } from '@/lib/location/locationNormalizer';
+import type { GeoCoordinates } from '@/lib/location/coordinates';
 
-type LocationSyncInput = {
-    latitude: number;
-    longitude: number;
+type LocationSyncInput = GeoCoordinates & {
     pincode?: string | null;
     state?: string | null;
     district?: string | null;

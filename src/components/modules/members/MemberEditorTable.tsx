@@ -15,6 +15,7 @@ import {
     FileText,
     MoreHorizontal,
     User,
+    Users,
     Wallet,
     Activity,
     ShieldCheck,
@@ -62,6 +63,7 @@ export interface MemberProfile {
         [key: string]: any;
     };
     oclubLedger?: any[];
+    referredMembers?: any[];
 }
 
 const formatDate = (value?: string | null) => {
@@ -277,6 +279,8 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
         taluka: profile.member?.taluka || '',
     });
     const [pincodeLoading, setPincodeLoading] = useState(false);
+    const [referredSearch, setReferredSearch] = useState('');
+    const [referredSort, setReferredSort] = useState<'NEWEST' | 'OLDEST' | 'NAME_ASC'>('NEWEST');
 
     const handleEditField = (field: string, value: string) => {
         setEditFields(prev => ({ ...prev, [field]: value }));
@@ -413,6 +417,39 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
     );
 
     const wallet = profile.wallet || {};
+    const normalizedReferredSearch = referredSearch.trim().toLowerCase();
+    const filteredReferredMembers = useMemo(
+        () =>
+            (profile.referredMembers || []).filter((item: any) => {
+                if (!normalizedReferredSearch) return true;
+                const name = String(item?.full_name || '').toLowerCase();
+                const displayId = String(formatDisplayId(item?.display_id || item?.id || '')).toLowerCase();
+                const kind = String(item?.kind || '').toLowerCase();
+                return (
+                    name.includes(normalizedReferredSearch) ||
+                    displayId.includes(normalizedReferredSearch) ||
+                    kind.includes(normalizedReferredSearch)
+                );
+            }),
+        [profile.referredMembers, normalizedReferredSearch]
+    );
+    const sortedFilteredReferredMembers = useMemo(() => {
+        const rows = [...filteredReferredMembers];
+        if (referredSort === 'NAME_ASC') {
+            rows.sort((a: any, b: any) => String(a?.full_name || '').localeCompare(String(b?.full_name || '')));
+            return rows;
+        }
+        rows.sort((a: any, b: any) => {
+            const aTs = a?.created_at ? new Date(a.created_at).getTime() : 0;
+            const bTs = b?.created_at ? new Date(b.created_at).getTime() : 0;
+            return referredSort === 'OLDEST' ? aTs - bTs : bTs - aTs;
+        });
+        return rows;
+    }, [filteredReferredMembers, referredSort]);
+    const openMemberProfile = (targetMemberId?: string | null) => {
+        if (!targetMemberId || !slug || targetMemberId === profile.member?.id) return;
+        router.push(`/app/${slug}/members/${targetMemberId}`);
+    };
 
     // Phone-first layout mirrors Leads/Quote mobile accordions
     if (isPhone) {
@@ -473,6 +510,29 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
                             <div className="flex items-center gap-2">
                                 <BadgeCheck size={14} className="text-slate-400" />
                                 <span className="font-black">{profile.member?.kyc_status || 'KYC PENDING'}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <User size={14} className="text-slate-400" />
+                                <span className="font-black">
+                                    Referred By: {profile.member?.referred_by?.full_name || '—'}
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <ShieldCheck size={14} className="text-slate-400" />
+                                <span className="font-black">
+                                    Type: {profile.member?.referred_by?.kind || '—'} • Benefit:{' '}
+                                    {profile.member?.referral_benefit_status === 'ELIGIBLE'
+                                        ? 'Eligible'
+                                        : profile.member?.referral_benefit_status === 'BLOCKED_TEAM_REFERRER'
+                                          ? 'Blocked'
+                                          : 'Not Linked'}
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Users size={14} className="text-slate-400" />
+                                <span className="font-black">
+                                    Referred Members: {profile.member?.referred_members_count || 0}
+                                </span>
                             </div>
                         </div>
                     </PhoneSection>
@@ -552,6 +612,57 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
                                 <span>Receipts</span>
                                 <span className="text-indigo-600">{receiptCount}</span>
                             </div>
+                        </div>
+                    </PhoneSection>
+
+                    <PhoneSection title="Referred Members" count={profile.referredMembers?.length || 0}>
+                        <div className="space-y-2">
+                            <div className="grid grid-cols-2 gap-2">
+                                <input
+                                    type="text"
+                                    value={referredSearch}
+                                    onChange={e => setReferredSearch(e.target.value)}
+                                    placeholder="Search referred members..."
+                                    className="col-span-2 w-full rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.03] px-3 py-2 text-[11px] font-bold text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                                />
+                                <select
+                                    value={referredSort}
+                                    onChange={e => setReferredSort(e.target.value as 'NEWEST' | 'OLDEST' | 'NAME_ASC')}
+                                    className="col-span-2 w-full rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.03] px-3 py-2 text-[11px] font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                                >
+                                    <option value="NEWEST">Newest</option>
+                                    <option value="OLDEST">Oldest</option>
+                                    <option value="NAME_ASC">Name A-Z</option>
+                                </select>
+                            </div>
+                            {(profile.referredMembers || []).length === 0 && (
+                                <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                                    No referred members yet
+                                </div>
+                            )}
+                            {(profile.referredMembers || []).length > 0 &&
+                                sortedFilteredReferredMembers.length === 0 && (
+                                    <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                                        No match found
+                                    </div>
+                                )}
+                            {sortedFilteredReferredMembers.slice(0, 20).map((item: any) => (
+                                <button
+                                    key={item.id}
+                                    onClick={() => openMemberProfile(item.id)}
+                                    className="w-full text-left rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.03] px-3 py-2 hover:border-indigo-300 hover:bg-indigo-50/40 dark:hover:bg-indigo-500/5 transition-colors"
+                                >
+                                    <div className="text-[11px] font-black text-slate-900 dark:text-white">
+                                        {item.full_name || 'Unnamed Member'}
+                                    </div>
+                                    <div className="mt-1 text-[9px] font-bold uppercase tracking-wider text-slate-500">
+                                        {formatDisplayId(item.display_id || item.id)} • {item.kind || 'TEAM'}
+                                    </div>
+                                    <div className="mt-1 text-[9px] font-bold text-slate-400">
+                                        Joined: {formatDate(item.created_at)}
+                                    </div>
+                                </button>
+                            ))}
                         </div>
                     </PhoneSection>
 
@@ -1271,6 +1382,42 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
                                         editFields={editFields}
                                         onFieldChange={handleEditField}
                                     />
+                                    <div className="flex items-start justify-between gap-3">
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                            Referred By
+                                        </span>
+                                        <span className="text-[12px] font-bold text-slate-700 dark:text-slate-200 text-right">
+                                            {profile.member?.referred_by?.full_name || '—'}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-start justify-between gap-3">
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                            Referrer Type
+                                        </span>
+                                        <span className="text-[12px] font-bold text-slate-700 dark:text-slate-200 text-right">
+                                            {profile.member?.referred_by?.kind || '—'}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-start justify-between gap-3">
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                            Referral Benefit
+                                        </span>
+                                        <span className="text-[12px] font-bold text-slate-700 dark:text-slate-200 text-right">
+                                            {profile.member?.referral_benefit_status === 'ELIGIBLE'
+                                                ? 'Eligible'
+                                                : profile.member?.referral_benefit_status === 'BLOCKED_TEAM_REFERRER'
+                                                  ? 'Blocked (Team)'
+                                                  : 'Not Linked'}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-start justify-between gap-3">
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                            Referred Members
+                                        </span>
+                                        <span className="text-[12px] font-bold text-slate-700 dark:text-slate-200 text-right">
+                                            {profile.member?.referred_members_count || 0}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
 
@@ -1414,6 +1561,70 @@ export default function MemberEditorTable({ profile }: { profile: MemberProfile 
                                         onFieldChange={handleEditField}
                                     />
                                 </div>
+                            </div>
+                        </div>
+
+                        <div className="bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/5 rounded-2xl overflow-hidden">
+                            <div className="px-6 py-4 border-b border-slate-100 dark:border-white/5 flex items-center justify-between">
+                                <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                    Referred Members
+                                </div>
+                                <div className="text-[10px] font-black uppercase tracking-widest text-indigo-600">
+                                    {(profile.referredMembers || []).length}
+                                </div>
+                            </div>
+                            <div className="px-6 py-3 border-b border-slate-100 dark:border-white/5">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                                    <input
+                                        type="text"
+                                        value={referredSearch}
+                                        onChange={e => setReferredSearch(e.target.value)}
+                                        placeholder="Search by name, member id, type..."
+                                        className="md:col-span-2 w-full rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.03] px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                                    />
+                                    <select
+                                        value={referredSort}
+                                        onChange={e =>
+                                            setReferredSort(e.target.value as 'NEWEST' | 'OLDEST' | 'NAME_ASC')
+                                        }
+                                        className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.03] px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                                    >
+                                        <option value="NEWEST">Newest</option>
+                                        <option value="OLDEST">Oldest</option>
+                                        <option value="NAME_ASC">Name A-Z</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div className="divide-y divide-slate-100 dark:divide-white/5">
+                                {(profile.referredMembers || []).length === 0 && (
+                                    <div className="px-6 py-6 text-xs text-slate-400">No referred members yet.</div>
+                                )}
+                                {(profile.referredMembers || []).length > 0 &&
+                                    sortedFilteredReferredMembers.length === 0 && (
+                                        <div className="px-6 py-6 text-xs text-slate-400">No match found.</div>
+                                    )}
+                                {sortedFilteredReferredMembers.slice(0, 30).map((item: any) => (
+                                    <button
+                                        key={item.id}
+                                        onClick={() => openMemberProfile(item.id)}
+                                        className="w-full text-left px-6 py-4 hover:bg-indigo-50/40 dark:hover:bg-indigo-500/5 transition-colors"
+                                    >
+                                        <div className="flex items-start justify-between gap-4">
+                                            <div className="min-w-0">
+                                                <div className="text-xs font-black text-slate-900 dark:text-white truncate">
+                                                    {item.full_name || 'Unnamed Member'}
+                                                </div>
+                                                <div className="mt-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                                                    {formatDisplayId(item.display_id || item.id)} •{' '}
+                                                    {item.kind || 'TEAM'}
+                                                </div>
+                                            </div>
+                                            <div className="text-[10px] font-bold text-slate-400 whitespace-nowrap">
+                                                {formatDate(item.created_at)}
+                                            </div>
+                                        </div>
+                                    </button>
+                                ))}
                             </div>
                         </div>
 

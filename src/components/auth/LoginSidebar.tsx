@@ -54,7 +54,7 @@ export default function LoginSidebar({
     const [identifier, setIdentifier] = useState('');
     const [otp, setOtp] = useState('');
     const [fullName, setFullName] = useState('');
-    const [manualPincode, setManualPincode] = useState('');
+    const [referralCode, setReferralCode] = useState('');
     const [showSignupPrompt, setShowSignupPrompt] = useState(false);
     const [loading, setLoading] = useState(false);
     const [termsAccepted, setTermsAccepted] = useState(false);
@@ -157,6 +157,7 @@ export default function LoginSidebar({
             setIdentifier('');
             setOtp('');
             setFullName('');
+            setReferralCode('');
             setLoginError(null);
             setShowSignupPrompt(false);
             setIsStaff(false);
@@ -169,10 +170,10 @@ export default function LoginSidebar({
 
     // Auto-trigger GPS detection for new users OR existing users without GPS
     useEffect(() => {
-        if ((step === 'SIGNUP' || step === 'GPS_UPDATE') && !location.latitude && !isDetectingLocation) {
+        if (step === 'GPS_UPDATE' && !location.latitude && !isDetectingLocation) {
             detectGPSLocation();
         }
-    }, [step]);
+    }, [step, location.latitude, isDetectingLocation]);
 
     // Auto-proceed after successful GPS capture + enrichment
     useEffect(() => {
@@ -388,16 +389,16 @@ export default function LoginSidebar({
     };
 
     const validateSignupRequirements = () => {
-        const nameOk = fullName.trim().length > 0;
+        const referralOk = referralCode.trim().length > 0;
 
-        // For new signup, name is required
-        if (step === 'SIGNUP' && !nameOk) {
-            setLoginError('Please enter your full name to continue.');
+        // For new signup, only referral code is mandatory.
+        if (step === 'SIGNUP' && !referralOk) {
+            setLoginError('Referral code is required to continue.');
             return false;
         }
 
-        // GPS is MANDATORY for both new and existing users
-        if (!location.latitude || !location.longitude) {
+        // For explicit GPS update flow, coordinates are mandatory.
+        if (step === 'GPS_UPDATE' && (!location.latitude || !location.longitude)) {
             setLoginError('GPS location is required. Please allow location access.');
             return false;
         }
@@ -519,7 +520,6 @@ export default function LoginSidebar({
         // Sync User Data
         const isEmail = authMethod === 'EMAIL';
         const phoneVal = !isEmail ? identifier.replace(/\D/g, '') : '';
-        const resolvedPincode = location.pincode || manualPincode.trim() || null;
 
         if (isNewUser) {
             const signupRes = await fetch('/api/auth/signup', {
@@ -528,7 +528,8 @@ export default function LoginSidebar({
                     phone: phoneVal,
                     email: isEmail ? identifier : '',
                     displayName: fullName || 'Rider',
-                    pincode: locationData?.pincode || location.pincode || resolvedPincode,
+                    referralCode: referralCode.trim().toUpperCase(),
+                    pincode: locationData?.pincode || location.pincode || null,
                     state: locationData?.state || null,
                     district: locationData?.district || null,
                     taluka: locationData?.taluka || null,
@@ -550,44 +551,7 @@ export default function LoginSidebar({
 
         // Number.isFinite is NaN-safe (rejects null, undefined, NaN, Infinity)
         const coordsAvailable = Number.isFinite(location.latitude) && Number.isFinite(location.longitude);
-
-        // For existing users: Check if GPS data exists
-        if (!isNewUser && user) {
-            const { data: memberProfile } = await supabase
-                .from('id_members')
-                .select('latitude, longitude, pincode')
-                .eq('id', user.id)
-                .maybeSingle();
-
-            // Gate 1: missing GPS coords
-            if (!memberProfile?.latitude || !memberProfile?.longitude) {
-                if (!coordsAvailable) {
-                    // No GPS captured → try pincode fallback
-                    setStep('PINCODE_FALLBACK');
-                    return;
-                }
-                // GPS captured → update in background
-                void syncMemberLocation({
-                    latitude: location.latitude!,
-                    longitude: location.longitude!,
-                    pincode: locationData?.pincode || location.pincode,
-                    state: locationData?.state,
-                    district: locationData?.district,
-                    taluka: locationData?.taluka,
-                    area: locationData?.area,
-                });
-            }
-
-            // Gate 2: missing pincode (regardless of GPS)
-            if (!memberProfile?.pincode) {
-                if (coordsAvailable) {
-                    setStep('GPS_UPDATE');
-                } else {
-                    setStep('PINCODE_FALLBACK');
-                }
-                return;
-            }
-        } else if (isNewUser && coordsAvailable) {
+        if (coordsAvailable) {
             void syncMemberLocation({
                 latitude: location.latitude!,
                 longitude: location.longitude!,
@@ -808,7 +772,7 @@ export default function LoginSidebar({
                                         {step === 'SIGNUP' && (
                                             <div className="space-y-2">
                                                 <label className="text-[10px] font-black uppercase tracking-widest text-black dark:text-white block text-center w-full">
-                                                    Full Name
+                                                    Full Name (Optional)
                                                 </label>
                                                 <input
                                                     type="text"
@@ -821,7 +785,25 @@ export default function LoginSidebar({
                                             </div>
                                         )}
 
-                                        {(step === 'SIGNUP' || step === 'GPS_UPDATE') && (
+                                        {step === 'SIGNUP' && (
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black uppercase tracking-widest text-black dark:text-white block text-center w-full">
+                                                    Referral Code
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    value={referralCode}
+                                                    onChange={e => {
+                                                        setReferralCode(e.target.value.toUpperCase().trim());
+                                                        setLoginError(null);
+                                                    }}
+                                                    placeholder="ENTER REFERRAL CODE"
+                                                    className="w-[80%] max-w-sm mx-auto block bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-2xl p-5 text-lg font-bold text-black dark:text-white placeholder:text-slate-400 dark:placeholder:text-white/40 focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all text-center uppercase tracking-wide"
+                                                />
+                                            </div>
+                                        )}
+
+                                        {step === 'GPS_UPDATE' && (
                                             <div className="space-y-2">
                                                 <label className="text-[10px] font-black uppercase tracking-widest text-black dark:text-white block text-center w-full">
                                                     📍 Location (GPS Required)
@@ -1192,9 +1174,6 @@ export default function LoginSidebar({
                                                     setStep('SIGNUP');
                                                     setShowSignupPrompt(false);
                                                     setLoginError(null);
-                                                    if (!location.pincode) {
-                                                        detectLocation();
-                                                    }
                                                 }}
                                                 className="w-[80%] max-w-sm mx-auto py-5 bg-[#F4B000] text-black rounded-2xl text-xs font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 hover:opacity-90 transition-all shadow-xl animate-in fade-in slide-in-from-bottom-4"
                                             >

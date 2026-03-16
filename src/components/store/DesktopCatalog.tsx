@@ -1217,7 +1217,7 @@ export const DesktopCatalog = ({
     ]);
 
     // Location gate: catalog stays in DOM for SEO, but overlaid with modal when location missing
-    const showLocationGate = needsLocation || serviceability.status === 'unset';
+    const showLocationGate = needsLocation;
 
     return (
         <div

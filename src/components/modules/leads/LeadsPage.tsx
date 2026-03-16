@@ -209,6 +209,9 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
         return () => window.clearTimeout(timeout);
     }, [searchQuery]);
 
+    const hasPrev = page > 1;
+    const hasNext = totalPages > 0 && page < totalPages;
+
     const fetchLeadIndex = useCallback(async () => {
         if (!tenantId) return;
         setIsLoading(true);
