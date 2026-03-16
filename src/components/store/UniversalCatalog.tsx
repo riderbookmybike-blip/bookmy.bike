@@ -62,7 +62,7 @@ import {
 
 type CatalogFilters = ReturnType<typeof useCatalogFilters>;
 
-interface DesktopCatalogProps {
+interface UniversalCatalogProps {
     filters: CatalogFilters;
     variant?: 'default' | 'tv';
     items?: ProductVariant[];
@@ -89,7 +89,7 @@ const StarRating = ({ rating = 4.5, size = 10 }: { rating?: number; size?: numbe
 
 // ... ProductCard ends above ...
 
-export const DesktopCatalog = ({
+export const UniversalCatalog = ({
     filters,
     variant: _variant = 'default',
     items = [],
@@ -98,7 +98,7 @@ export const DesktopCatalog = ({
     basePath = '/store',
     mode = 'default',
     needsLocation = false,
-}: DesktopCatalogProps) => {
+}: UniversalCatalogProps) => {
     // Prefer client-resolved items when available, otherwise SSR
     const router = useRouter();
     const { device } = useBreakpoint();
@@ -272,7 +272,9 @@ export const DesktopCatalog = ({
 
     // Local State
     const isSmart = mode === 'smart';
-    const [sortBy] = useState<'popular' | 'price' | 'emi'>('price');
+    const [sortBy, setSortBy] = useState<'popular' | 'price' | 'emi' | 'mileage' | 'seatHeight' | 'kerbWeight'>(
+        'price'
+    );
     const [viewMode, setViewMode] = useState<'grid' | 'list'>(VEHICLE_MODE_CONFIG.catalog.defaultView);
 
     const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -963,6 +965,11 @@ export const DesktopCatalog = ({
 
     const results = useMemo(() => {
         const vehicles = Array.isArray(filteredVehicles) ? [...filteredVehicles] : [];
+        // Safe numeric extractor — handles null/undefined/string spec values
+        const safeNum = (v: unknown, fallback = 0): number => {
+            const n = parseFloat(String(v ?? ''));
+            return Number.isFinite(n) ? n : fallback;
+        };
         if (sortBy === 'popular') {
             vehicles.sort((a, b) => (b.popularityScore || 0) - (a.popularityScore || 0));
         }
@@ -977,6 +984,28 @@ export const DesktopCatalog = ({
                 const bEmi = Math.round(((b.price?.exShowroom || 0) - downpayment) * getEmiFactor(36));
                 return aEmi - bEmi;
             });
+        }
+        if (sortBy === 'mileage') {
+            // Higher mileage first (best fuel efficiency at top)
+            vehicles.sort(
+                (a, b) => safeNum(b.specifications?.engine?.mileage) - safeNum(a.specifications?.engine?.mileage)
+            );
+        }
+        if (sortBy === 'seatHeight') {
+            // Lower seat height first (more accessible for shorter riders)
+            vehicles.sort(
+                (a, b) =>
+                    safeNum(a.specifications?.dimensions?.seatHeight, Infinity) -
+                    safeNum(b.specifications?.dimensions?.seatHeight, Infinity)
+            );
+        }
+        if (sortBy === 'kerbWeight') {
+            // Lighter first (easier to handle)
+            vehicles.sort(
+                (a, b) =>
+                    safeNum(a.specifications?.dimensions?.kerbWeight, Infinity) -
+                    safeNum(b.specifications?.dimensions?.kerbWeight, Infinity)
+            );
         }
         return vehicles;
     }, [filteredVehicles, sortBy, downpayment]);
@@ -1746,7 +1775,7 @@ export const DesktopCatalog = ({
                             tenure={tenure}
                             onTenureChange={setTenure}
                             sortBy={sortBy}
-                            onSortChange={() => {}}
+                            onSortChange={val => setSortBy(val as typeof sortBy)}
                         />
                     </>
                 )}

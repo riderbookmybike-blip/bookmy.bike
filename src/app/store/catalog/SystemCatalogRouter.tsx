@@ -4,7 +4,7 @@ import React, { useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { CatalogGridSkeleton } from '@/components/store/CatalogSkeleton';
 
-const DesktopCatalog = dynamic(() => import('@/components/store/DesktopCatalog').then(m => m.DesktopCatalog), {
+const UniversalCatalog = dynamic(() => import('@/components/store/UniversalCatalog').then(m => m.UniversalCatalog), {
     loading: () => <CatalogGridSkeleton count={6} />,
 });
 
@@ -57,7 +57,7 @@ function SmartCatalogRouter({ initialItems, basePath = '/store' }: SystemCatalog
     const filters = useCatalogFilters(currentItems);
 
     return (
-        <DesktopCatalog
+        <UniversalCatalog
             filters={filters}
             leadId={leadId || undefined}
             basePath={basePath}
@@ -84,7 +84,7 @@ function DefaultCatalogRouter({ initialItems, basePath = '/store' }: SystemCatal
     const filters = useCatalogFilters(currentItems);
 
     return (
-        <DesktopCatalog
+        <UniversalCatalog
             filters={filters}
             leadId={leadId || undefined}
             basePath={basePath}
