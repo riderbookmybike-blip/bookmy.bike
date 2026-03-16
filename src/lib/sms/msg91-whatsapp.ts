@@ -195,8 +195,13 @@ export async function sendQuoteDossierWhatsApp(
 const WA_WELCOME_DEDUPE_WINDOW_MS = 60_000;
 const recentWelcomeRequests = new Map<string, number>();
 
-export type WelcomeLanguage = 'en' | 'hi' | 'mr';
-const WELCOME_LANGUAGES: readonly WelcomeLanguage[] = ['en', 'hi', 'mr'];
+export type WelcomeLanguage = 'en_GB' | 'hi' | 'mr';
+const WELCOME_LANGUAGES: readonly WelcomeLanguage[] = ['en_GB', 'hi', 'mr'];
+const WELCOME_TEMPLATE_SUFFIX_BY_LANGUAGE: Record<WelcomeLanguage, 'en' | 'hi' | 'mr'> = {
+    en_GB: 'en',
+    hi: 'hi',
+    mr: 'mr',
+};
 
 export interface WelcomeWhatsAppData {
     /** Recipient 10-digit phone (will be normalized to 91XXXXXXXXXX) */
@@ -211,7 +216,7 @@ export interface WelcomeWhatsAppData {
      * App only needs to send the variable value, NOT the full URL.
      */
     referral_code: string;
-    /** Language selection: en | hi | mr — determines template name + language code */
+    /** Language selection: en_GB | hi | mr — determines template name + language code */
     language: WelcomeLanguage;
 }
 
@@ -235,7 +240,7 @@ export async function sendWelcomeTemplateWhatsApp(data: WelcomeWhatsAppData): Pr
 
     // Validate language
     if (!WELCOME_LANGUAGES.includes(data.language)) {
-        return { success: false, message: `Invalid language "${data.language}" — must be en, hi, or mr` };
+        return { success: false, message: `Invalid language "${data.language}" — must be en_GB, hi, or mr` };
     }
 
     // Guard: required business variables
@@ -250,7 +255,7 @@ export async function sendWelcomeTemplateWhatsApp(data: WelcomeWhatsAppData): Pr
     }
 
     // Derive template name and language code from language selection
-    const templateName = `welcome_${data.language}`;
+    const templateName = `welcome_${WELCOME_TEMPLATE_SUFFIX_BY_LANGUAGE[data.language]}`;
     const languageCode = data.language;
 
     // Normalize recipient phone → 91XXXXXXXXXX

@@ -103,7 +103,7 @@ export function ProfileDropdown({
     const [referralCopied, setReferralCopied] = useState(false);
     // WA Quick Welcome state
     const [waPhone, setWaPhone] = useState('');
-    const [waLang, setWaLang] = useState<'en' | 'hi' | 'mr' | ''>('');
+    const [waLang, setWaLang] = useState<'en_GB' | 'hi' | 'mr' | ''>('');
     const [waStatus, setWaStatus] = useState<'idle' | 'sending' | 'done' | 'error'>('idle');
     const [waError, setWaError] = useState('');
 
@@ -1769,52 +1769,52 @@ ${referralUrl}`;
 
                                                                                 {/* Language buttons */}
                                                                                 <div className="flex gap-1.5">
-                                                                                    {(['en', 'hi', 'mr'] as const).map(
-                                                                                        lang => {
-                                                                                            const labels: Record<
-                                                                                                string,
-                                                                                                string
-                                                                                            > = {
-                                                                                                en: 'EN',
-                                                                                                hi: 'हि',
-                                                                                                mr: 'मर',
-                                                                                            };
-                                                                                            const full: Record<
-                                                                                                string,
-                                                                                                string
-                                                                                            > = {
-                                                                                                en: 'English',
-                                                                                                hi: 'Hindi',
-                                                                                                mr: 'Marathi',
-                                                                                            };
-                                                                                            return (
-                                                                                                <button
-                                                                                                    key={lang}
-                                                                                                    type="button"
-                                                                                                    onClick={() => {
-                                                                                                        setWaLang(lang);
-                                                                                                        setWaError('');
-                                                                                                    }}
-                                                                                                    className={`flex-1 flex flex-col items-center py-1.5 rounded-xl border transition-all ${
-                                                                                                        waLang === lang
-                                                                                                            ? 'border-[#25D366] bg-[#25D366]/10 ring-1 ring-[#25D366]/30'
-                                                                                                            : 'border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.03] hover:border-[#25D366]/40'
-                                                                                                    }`}
+                                                                                    {(
+                                                                                        ['en_GB', 'hi', 'mr'] as const
+                                                                                    ).map(lang => {
+                                                                                        const labels: Record<
+                                                                                            string,
+                                                                                            string
+                                                                                        > = {
+                                                                                            en_GB: 'EN',
+                                                                                            hi: 'हि',
+                                                                                            mr: 'मर',
+                                                                                        };
+                                                                                        const full: Record<
+                                                                                            string,
+                                                                                            string
+                                                                                        > = {
+                                                                                            en_GB: 'English',
+                                                                                            hi: 'Hindi',
+                                                                                            mr: 'Marathi',
+                                                                                        };
+                                                                                        return (
+                                                                                            <button
+                                                                                                key={lang}
+                                                                                                type="button"
+                                                                                                onClick={() => {
+                                                                                                    setWaLang(lang);
+                                                                                                    setWaError('');
+                                                                                                }}
+                                                                                                className={`flex-1 flex flex-col items-center py-1.5 rounded-xl border transition-all ${
+                                                                                                    waLang === lang
+                                                                                                        ? 'border-[#25D366] bg-[#25D366]/10 ring-1 ring-[#25D366]/30'
+                                                                                                        : 'border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.03] hover:border-[#25D366]/40'
+                                                                                                }`}
+                                                                                            >
+                                                                                                <span
+                                                                                                    className={`text-[12px] font-black ${waLang === lang ? 'text-[#25D366]' : 'text-slate-500 dark:text-slate-400'}`}
                                                                                                 >
-                                                                                                    <span
-                                                                                                        className={`text-[12px] font-black ${waLang === lang ? 'text-[#25D366]' : 'text-slate-500 dark:text-slate-400'}`}
-                                                                                                    >
-                                                                                                        {labels[lang]}
-                                                                                                    </span>
-                                                                                                    <span
-                                                                                                        className={`text-[7px] font-semibold ${waLang === lang ? 'text-[#25D366]' : 'text-slate-400'}`}
-                                                                                                    >
-                                                                                                        {full[lang]}
-                                                                                                    </span>
-                                                                                                </button>
-                                                                                            );
-                                                                                        }
-                                                                                    )}
+                                                                                                    {labels[lang]}
+                                                                                                </span>
+                                                                                                <span
+                                                                                                    className={`text-[7px] font-semibold ${waLang === lang ? 'text-[#25D366]' : 'text-slate-400'}`}
+                                                                                                >
+                                                                                                    {full[lang]}
+                                                                                                </span>
+                                                                                            </button>
+                                                                                        );
+                                                                                    })}
                                                                                 </div>
 
                                                                                 {waError && (

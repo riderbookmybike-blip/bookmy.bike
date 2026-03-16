@@ -377,9 +377,9 @@ export function useSystemDealerContext({
                     }
                 }
 
-                // Backfill missing coords from pincode so all logged-in users hit the same dealer-resolution path.
-                const hasUserCoords = Number.isFinite(userLat) && Number.isFinite(userLng);
-                if (!hasUserCoords && pincode) {
+                // Normalize coords from pincode centroid for deterministic cross-device winner resolution.
+                // Same pincode => same lat/lng baseline, regardless of device GPS precision.
+                if (pincode) {
                     const pin = String(pincode).trim();
                     if (/^\d{6}$/.test(pin)) {
                         const { data: pinRow } = await supabase
@@ -392,8 +392,8 @@ export function useSystemDealerContext({
                         if (Number.isFinite(pinLat) && Number.isFinite(pinLng)) {
                             userLat = pinLat;
                             userLng = pinLng;
-                            district = district || (pinRow as any).district || district;
-                            stateCode = stateCode || (pinRow as any).state_code || stateCode;
+                            district = (pinRow as any).district || district;
+                            stateCode = (pinRow as any).state_code || stateCode;
                         }
                     }
                 }

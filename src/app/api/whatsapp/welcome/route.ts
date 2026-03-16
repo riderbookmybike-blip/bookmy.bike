@@ -13,7 +13,7 @@
  *     advisor_mobile: string; // signed-in user phone (body_phone)
  *     referral_code: string;  // referral code only e.g. '8UH-Q2M-9JY' (button_1 url variable)
  *                             // Template URL https://www.bookmy.bike/store?ref={{1}} is set in MSG91
- *     language: 'en'|'hi'|'mr'; // determines template name + language code
+ *     language: 'en_GB'|'hi'|'mr'; // determines template name + language code
  *   }
  *
  * Returns: { success: boolean; message?: string; requestId?: string; providerStatus?: string; providerMessage?: string }
@@ -28,7 +28,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { sendWelcomeTemplateWhatsApp, type WelcomeLanguage } from '@/lib/sms/msg91-whatsapp';
 
-const VALID_LANGUAGES: readonly WelcomeLanguage[] = ['en', 'hi', 'mr'];
+const VALID_LANGUAGES: readonly WelcomeLanguage[] = ['en_GB', 'hi', 'mr'];
 
 export async function POST(req: NextRequest) {
     // ── Auth guard: require valid Supabase session ──

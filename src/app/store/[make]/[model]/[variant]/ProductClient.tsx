@@ -17,7 +17,6 @@ import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { useAnalytics } from '@/components/analytics/AnalyticsProvider';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { isHandheldPhoneUserAgent, isTvUserAgent } from '@/lib/utils/deviceUserAgent';
-import { useDiscoveryOptional } from '@/contexts/DiscoveryContext';
 import { OCLUB_SIGNUP_BONUS } from '@/lib/oclub/coin';
 
 import { InsuranceRule } from '@/types/insurance';
@@ -167,8 +166,12 @@ export default function ProductClient({
     const { memberships } = useTenant();
     const [forceMobileLayout, setForceMobileLayout] = useState(false);
     const { trackEvent } = useAnalytics();
-    const discoveryCtx = useDiscoveryOptional();
-    const offerMode = discoveryCtx?.offerMode ?? 'BEST_OFFER';
+    // Deterministic PDP mode:
+    // - Default to BEST_OFFER on all devices
+    // - Allow explicit override only via URL (?offer=FAST_DELIVERY)
+    const offerParam = searchParams.get('offer');
+    const offerMode: 'BEST_OFFER' | 'FAST_DELIVERY' =
+        offerParam === 'FAST_DELIVERY' || offerParam === 'BEST_OFFER' ? offerParam : 'BEST_OFFER';
 
     const activeSkuRef = useRef<string | null>(null);
     const activeSkuStartedAtRef = useRef<number | null>(null);
@@ -1065,7 +1068,7 @@ export default function ProductClient({
         }
     };
 
-    const handleWaSend = async (recipientPhone: string, language: 'en' | 'hi' | 'mr' = 'en') => {
+    const handleWaSend = async (recipientPhone: string, language: 'en_GB' | 'hi' | 'mr' = 'en_GB') => {
         if (waInFlight) return;
         setWaInFlight(true);
         try {

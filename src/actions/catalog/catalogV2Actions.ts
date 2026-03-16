@@ -231,6 +231,18 @@ export async function updateVariant(id: string, productType: ProductType, update
 }
 
 export async function deleteVariant(id: string, productType: ProductType) {
+    // Must delete child SKUs (and their pricing rows) before removing the variant
+    // to avoid violating the cat_skus → cat_variants_* foreign key constraint.
+    const fk = variantFk(productType);
+    const { data: skus, error: skuFetchError } = await adminClient.from('cat_skus').select('id').eq(fk, id);
+
+    if (skuFetchError) throw new Error(`deleteVariant(${productType}) failed fetching SKUs: ${skuFetchError.message}`);
+
+    // deleteSku already handles pricing-row cleanup before deleting each SKU.
+    for (const sku of skus ?? []) {
+        await deleteSku(sku.id);
+    }
+
     const { error } = await queryVariantTable('delete', productType, { id });
     if (error) throw new Error(`deleteVariant(${productType}) failed: ${error.message}`);
     return true;
