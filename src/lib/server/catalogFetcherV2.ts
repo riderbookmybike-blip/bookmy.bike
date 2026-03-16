@@ -440,6 +440,7 @@ function mapV2ToProductVariants(rows: RawProductRow[]): ProductVariant[] {
                 id: s.sku_id,
                 name: s.color_name || s.sku_name || 'Default',
                 hexCode: s.hex_primary || '#000000',
+                secondaryHexCode: s.hex_secondary || undefined,
                 imageUrl:
                     cleanImageUrl(s.primary_image) ||
                     modelColorFallbackImage.get(`${m.model_id}::${colorKey(s.color_name)}`) ||

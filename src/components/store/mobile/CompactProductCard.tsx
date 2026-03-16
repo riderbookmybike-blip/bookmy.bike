@@ -417,7 +417,11 @@ export function CompactProductCard({
                                 handleColorTap(color);
                             }}
                             className="w-8 h-8 shrink-0 rounded-full shadow-[0_0_0_1px_rgba(0,0,0,0.05)] relative hover:scale-110 transition-all duration-300 overflow-hidden"
-                            style={{ background: color.hexCode }}
+                            style={{
+                                background: (color as any).secondaryHexCode
+                                    ? `linear-gradient(135deg, ${color.hexCode} 50%, ${(color as any).secondaryHexCode} 50%)`
+                                    : color.hexCode,
+                            }}
                             title={`${color.name}${color.finish ? ` (${color.finish})` : ''}`}
                         >
                             {/* Visual Gloss Effect */}

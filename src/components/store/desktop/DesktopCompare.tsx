@@ -835,10 +835,7 @@ export default function DesktopCompare({ isWishlist = false }: { isWishlist?: bo
                             >
                                 <div className="w-full pb-4">
                                     {/* ── Sticky List Header: Preview, Model, Variant, Colours, Offer ── */}
-                                    <div
-                                        className="sticky z-[80] bg-white/95 backdrop-blur-md"
-                                        style={{ top: 'calc(var(--header-h) + 56px)' }}
-                                    >
+                                    <div className="sticky z-[80]" style={{ top: 'calc(var(--header-h) + 56px)' }}>
                                         <div className="px-2 py-1 space-y-2">
                                             {/* Row 1: Preview */}
                                             <div
@@ -954,7 +951,7 @@ export default function DesktopCompare({ isWishlist = false }: { isWishlist?: bo
                                                         key={vIdx}
                                                         className="px-2 py-1 flex items-center justify-center text-center bg-white border border-black/[0.04] rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.02)] min-h-[36px]"
                                                     >
-                                                        <span className="text-[9px] font-black tracking-tight text-slate-900 leading-tight">
+                                                        <span className="text-[9px] font-black tracking-tight text-slate-900 leading-tight uppercase">
                                                             {v.variant}
                                                         </span>
                                                     </div>
@@ -996,8 +993,12 @@ export default function DesktopCompare({ isWishlist = false }: { isWishlist?: bo
                                                                     {vSwatches.map((c, ci) => (
                                                                         <div
                                                                             key={ci}
-                                                                            className="w-2.5 h-2.5 rounded-full shadow-[0_1px_2px_rgba(0,0,0,0.15)]"
-                                                                            style={{ backgroundColor: c.hexCode }}
+                                                                            className="w-3 h-3 rounded-full shadow-[0_1px_2px_rgba(0,0,0,0.15)] overflow-hidden"
+                                                                            style={{
+                                                                                background: (c as any).secondaryHexCode
+                                                                                    ? `linear-gradient(135deg, ${c.hexCode} 50%, ${(c as any).secondaryHexCode} 50%)`
+                                                                                    : c.hexCode,
+                                                                            }}
                                                                             title={c.name}
                                                                         />
                                                                     ))}
