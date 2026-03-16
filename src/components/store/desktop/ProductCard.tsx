@@ -1133,6 +1133,7 @@ export const ProductCard = ({
                             : '#059669'; // fallback emerald
                         const cashDivider = rgb ? `rgba(${rgb.r},${rgb.g},${rgb.b},0.2)` : 'rgba(0,0,0,0.06)';
                         const cashBorder = rgb ? `rgba(${rgb.r},${rgb.g},${rgb.b},0.18)` : 'rgba(16,185,129,0.15)';
+                        const cashCurrencyValueClass = isTv ? 'text-[22px]' : 'text-[24px] md:text-[28px]';
 
                         return (
                             <div
@@ -1347,7 +1348,7 @@ export const ProductCard = ({
                                                     <div className="flex flex-col items-start gap-0.5">
                                                         <span
                                                             onClick={handleFlip}
-                                                            className="text-[24px] md:text-[28px] font-black italic leading-none cursor-pointer hover:scale-105 active:scale-95 transition-all"
+                                                            className={`${cashCurrencyValueClass} font-black italic leading-none cursor-pointer hover:scale-105 active:scale-95 transition-all`}
                                                             style={{ color: cashPrimaryText }}
                                                         >
                                                             ₹{formatRoundedPrice(effectiveOfferPrice)}
@@ -1370,9 +1371,9 @@ export const ProductCard = ({
 
                                                 <div className="flex flex-col items-end gap-0.5">
                                                     <div className={`flex items-center ${isTv ? 'gap-1' : 'gap-2'}`}>
-                                                        <Logo variant="icon" size={16} />
+                                                        <Logo variant="icon" size={16} customColor={cashPrimaryText} />
                                                         <span
-                                                            className={`${isTv ? 'text-[18px]' : 'text-[24px] md:text-[28px]'} font-black italic leading-none`}
+                                                            className={`${cashCurrencyValueClass} font-black italic leading-none`}
                                                             style={{ color: cashPrimaryText }}
                                                         >
                                                             {coinsNeededForPrice(effectiveOfferPrice).toLocaleString(
