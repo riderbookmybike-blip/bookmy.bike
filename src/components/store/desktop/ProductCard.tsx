@@ -1369,10 +1369,10 @@ export const ProductCard = ({
                                                 </p>
 
                                                 <div className="flex flex-col items-end gap-0.5">
-                                                    <div className="flex items-center gap-2">
+                                                    <div className={`flex items-center ${isTv ? 'gap-1' : 'gap-2'}`}>
                                                         <Logo variant="icon" size={16} />
                                                         <span
-                                                            className="text-[24px] md:text-[28px] font-black italic leading-none"
+                                                            className={`${isTv ? 'text-[18px]' : 'text-[24px] md:text-[28px]'} font-black italic leading-none`}
                                                             style={{ color: cashPrimaryText }}
                                                         >
                                                             {coinsNeededForPrice(effectiveOfferPrice).toLocaleString(
