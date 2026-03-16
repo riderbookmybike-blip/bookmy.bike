@@ -98,3 +98,30 @@ Please use GitHub Issues to report bugs. Include:
 ## 📜 License
 
 By contributing, you agree that your contributions will be licensed under the MIT License.
+
+---
+
+## 🤖 AI Agent Workflow (Infra Note)
+
+### Agent-Lock System — DISABLED (as of 2026-03-16)
+
+This repo previously used an agent-lock guard system to prevent concurrent AI agents from overwriting each other's files. The system has been **disabled** to restore normal git flow.
+
+**What was removed:**
+- `scripts/verify-agent-role.sh` and `scripts/verify-agent-locks.sh` no longer run in `.husky/pre-commit`
+- `.husky/pre-commit` now runs only `npx lint-staged`
+
+**What remains (safe to ignore):**
+- `scripts/agent-file-guard.sh` — the claim/release CLI tool, kept for reference
+- `.agents/` directory — contains workflow definitions and any residual lock files; can be safely deleted or left as-is
+
+**Why disabled:**
+- The recursive lock-on-lockfile behaviour caused commit friction (`file.lock` files were themselves guarded)
+- All Batch B3 TS fixes are committed and validated; concurrent agent risk is now low
+- Normal `git commit` works without any `AGENT_NAME=` prefix or file claiming steps
+
+If you need to re-enable the agent-lock guard, re-add these two lines to `.husky/pre-commit` **before** `npx lint-staged`:
+```sh
+scripts/verify-agent-role.sh
+scripts/verify-agent-locks.sh
+```
