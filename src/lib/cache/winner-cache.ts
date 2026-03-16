@@ -181,7 +181,7 @@ export async function getCachedPriceSnapshot(
                 console.error(`[winner-cache] price_snapshot_sku error: ${error.message}`);
                 return null;
             }
-            return data as PriceSnapshotRow | null;
+            return data as any as PriceSnapshotRow | null;
         },
         [key],
         { revalidate: WINNER_CACHE_TTL, tags: [tag] }
@@ -192,7 +192,7 @@ export async function getCachedPriceSnapshot(
     // version_hash staleness guard
     if (row && expectedVersionHash && row.version_hash !== expectedVersionHash) {
         // Purge stale cache entry — next request will re-fetch from DB
-        revalidateTag(tag);
+        revalidateTag(tag, 'default');
         return null;
     }
 
@@ -227,7 +227,7 @@ export async function getCachedWinnerPrice(
                 console.error(`[winner-cache] market_winner_price error: ${error.message}`);
                 return null;
             }
-            return data as WinnerPriceRow | null;
+            return data as any as WinnerPriceRow | null;
         },
         [key],
         { revalidate: WINNER_CACHE_TTL, tags: [tag] }
@@ -266,7 +266,7 @@ export async function getCachedWinnerFinance(
                 console.error(`[winner-cache] market_winner_finance error: ${error.message}`);
                 return null;
             }
-            return data as WinnerFinanceRow | null;
+            return data as any as WinnerFinanceRow | null;
         },
         [key],
         { revalidate: WINNER_CACHE_TTL, tags: [tag] }
@@ -319,7 +319,7 @@ export async function getCachedAccessoryMatrix(
  * Call after PRICE_SNAPSHOT worker job completes its upsert.
  */
 export function invalidatePriceSnapshot(sku_id: string, state_code: string): void {
-    revalidateTag(tagPriceSnapshot(sku_id, state_code));
+    revalidateTag(tagPriceSnapshot(sku_id, state_code), 'default');
 }
 
 /**
@@ -328,7 +328,7 @@ export function invalidatePriceSnapshot(sku_id: string, state_code: string): voi
  * Call after WINNER_PRICE worker job completes its upsert.
  */
 export function invalidateWinnerPrice(sku_id: string, state_code: string, geo_cell: string): void {
-    revalidateTag(tagWinnerPrice(sku_id, state_code, geo_cell));
+    revalidateTag(tagWinnerPrice(sku_id, state_code, geo_cell), 'default');
 }
 
 /**
@@ -337,7 +337,7 @@ export function invalidateWinnerPrice(sku_id: string, state_code: string, geo_ce
  * Call after WINNER_FINANCE worker job completes its upsert.
  */
 export function invalidateWinnerFinance(sku_id: string, state_code: string): void {
-    revalidateTag(tagWinnerFinance(sku_id, state_code));
+    revalidateTag(tagWinnerFinance(sku_id, state_code), 'default');
 }
 
 /**
@@ -345,7 +345,7 @@ export function invalidateWinnerFinance(sku_id: string, state_code: string): voi
  * Call after ACCESSORY_MATRIX worker job completes its upsert.
  */
 export function invalidateAccessoryMatrix(sku_id: string, state_code: string, dealer_id: string): void {
-    revalidateTag(tagAccessoryMatrix(sku_id, state_code, dealer_id));
+    revalidateTag(tagAccessoryMatrix(sku_id, state_code, dealer_id), 'default');
 }
 
 // ─────────────────────────────────────────────

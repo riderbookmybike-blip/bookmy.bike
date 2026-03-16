@@ -83,12 +83,18 @@ export function useDealerSession() {
 
         // 4. Call Server Action to resolve the "truth"
         try {
-            const context = await getResolvedPricingContextAction({
+            const context = (await getResolvedPricingContextAction({
                 leadId: urlLeadId,
                 dealerId: urlDealerId,
                 studio: urlStudio,
                 district: district,
-            });
+            })) as {
+                dealerId: string | null;
+                tenantName: string | null;
+                district: string | null;
+                stateCode: string;
+                source: string;
+            };
 
             const newSession: DealerSession = {
                 dealerId: context.dealerId,
@@ -98,13 +104,13 @@ export function useDealerSession() {
                 district: context.district,
                 locked: !!urlLeadId,
                 source:
-                    context.source === 'EXPLICIT'
-                        ? 'URL'
-                        : context.source.startsWith('PRIMARY')
-                          ? 'PRIMARY'
-                          : storedContext && !urlLeadId && !urlDealerId
-                            ? 'STORAGE'
-                            : 'DEFAULT',
+                    context.source === 'EXPLICIT' || context.source.startsWith('PRIMARY')
+                        ? context.source === 'EXPLICIT'
+                            ? 'URL'
+                            : 'PRIMARY'
+                        : storedContext && !urlLeadId && !urlDealerId
+                          ? 'STORAGE'
+                          : 'DEFAULT',
             };
 
             // 5. Persistence

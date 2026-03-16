@@ -152,7 +152,7 @@ export async function GET(request: NextRequest) {
             {
                 success: false,
                 error: getErrorMessage(e),
-                stack: e.stack,
+                stack: e instanceof Error ? e.stack : undefined,
             },
             { status: 500 }
         );
