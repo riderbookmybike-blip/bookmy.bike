@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, SlidersHorizontal } from 'lucide-react';
+import type { SortKey } from '../UniversalCatalog';
 
 const VISIBLE_COUNT = 3;
 
@@ -85,8 +86,8 @@ interface MobileFilterDrawerProps {
     onClearAll: () => void;
     activeFilterCount: number;
     /** Sort */
-    sortBy: string;
-    onSortChange: (val: string) => void;
+    sortBy: SortKey;
+    onSortChange: (val: SortKey) => void;
     /** Finance */
     downpayment: number;
     onDownpaymentChange: (val: number) => void;
@@ -189,13 +190,15 @@ export function MobileFilterDrawer({
                                     Sort By
                                 </h4>
                                 <div className="flex flex-wrap gap-2">
-                                    {[
-                                        { value: 'popular', label: 'Popularity' },
-                                        { value: 'price', label: 'Price' },
-                                        { value: 'mileage', label: 'Mileage' },
-                                        { value: 'seatHeight', label: 'Seat Height' },
-                                        { value: 'kerbWeight', label: 'Weight' },
-                                    ].map(opt => (
+                                    {(
+                                        [
+                                            { value: 'popular', label: 'Popularity' },
+                                            { value: 'price', label: 'Price' },
+                                            { value: 'mileage', label: 'Mileage' },
+                                            { value: 'seatHeight', label: 'Seat Height' },
+                                            { value: 'kerbWeight', label: 'Weight' },
+                                        ] as const
+                                    ).map(opt => (
                                         <button
                                             key={opt.value}
                                             onClick={() => onSortChange(opt.value)}

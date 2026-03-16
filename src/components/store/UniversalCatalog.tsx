@@ -3,7 +3,6 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    ChevronDown,
     Zap,
     Search,
     Heart,
@@ -42,7 +41,7 @@ import { setLocationCookie } from '@/actions/locationCookie';
 import { CatalogCardAdapter } from './cards/VehicleCardAdapters';
 import { CompareTray, type CompareItem } from './CompareTray';
 import { CompactProductCard } from './mobile/CompactProductCard';
-import { MobileFilterDrawer } from './mobile/MobileFilterDrawer';
+
 import { useOClubWallet } from '@/hooks/useOClubWallet';
 import { CatalogGridSkeleton } from './CatalogSkeleton';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
@@ -61,6 +60,18 @@ import {
 } from './cards/vehicleModeConfig';
 
 type CatalogFilters = ReturnType<typeof useCatalogFilters>;
+
+/** Shared sort key union — used by UniversalCatalog and MobileFilterDrawer */
+export type SortKey = 'popular' | 'price' | 'emi' | 'mileage' | 'seatHeight' | 'kerbWeight';
+
+const VALID_SORT_KEYS: ReadonlySet<string> = new Set<SortKey>([
+    'popular',
+    'price',
+    'emi',
+    'mileage',
+    'seatHeight',
+    'kerbWeight',
+]);
 
 interface UniversalCatalogProps {
     filters: CatalogFilters;
@@ -272,12 +283,11 @@ export const UniversalCatalog = ({
 
     // Local State
     const isSmart = mode === 'smart';
-    const [sortBy, setSortBy] = useState<'popular' | 'price' | 'emi' | 'mileage' | 'seatHeight' | 'kerbWeight'>(
-        'price'
-    );
+    const [sortBy, setSortBy] = useState<SortKey>('price');
+    const handleSortChange = (val: string) => {
+        if (VALID_SORT_KEYS.has(val)) setSortBy(val as SortKey);
+    };
     const [viewMode, setViewMode] = useState<'grid' | 'list'>(VEHICLE_MODE_CONFIG.catalog.defaultView);
-
-    const [isFilterOpen, setIsFilterOpen] = useState(false);
 
     // Compare state
     const [compareItems, setCompareItems] = useState<(CompareItem & { id: string })[]>([]);
@@ -732,85 +742,6 @@ export const UniversalCatalog = ({
         checkCurrentServiceability();
     }, []);
 
-    // Calculate active filter count
-    const activeFilterCount = useMemo(() => {
-        let count = 0;
-        const selectedMakeSet = new Set(selectedMakes.map(m => m.toUpperCase()));
-        const isAllMakesSelected =
-            makeOptions.length === 0 || makeOptions.every(m => selectedMakeSet.has(m.toUpperCase()));
-        if (!isAllMakesSelected) count++;
-        if (selectedCC.length > 0) count++;
-        if (selectedBrakes.length > 0) count++;
-        if (selectedWheels.length > 0) count++;
-        if (selectedFinishes.length > 0) count++;
-        if (selectedSeatHeight.length > 0) count++;
-        if (selectedWeights.length > 0) count++;
-        if (maxPrice < 1000000) count++;
-        if (maxEMI < 20000) count++;
-        return count;
-    }, [
-        selectedMakes,
-        makeOptions,
-        selectedCC.length,
-        selectedBrakes.length,
-        selectedWheels.length,
-        selectedFinishes.length,
-        selectedSeatHeight.length,
-        selectedWeights.length,
-        maxPrice,
-        maxEMI,
-    ]);
-
-    // Mobile filter drawer state (separate from desktop mega filter)
-    const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
-
-    const mobileFilterSections = [
-        {
-            title: 'Body Type',
-            options: [...bodyOptions],
-            selected: selectedBodyTypes,
-            onToggle: (v: string) => toggleFilter(setSelectedBodyTypes, v),
-            onReset: () => setSelectedBodyTypes([]),
-        },
-        {
-            title: 'Brand',
-            options: makeOptions,
-            selected: selectedMakes,
-            onToggle: (v: string) => toggleFilter(setSelectedMakes, v),
-            onReset: () => setSelectedMakes([]),
-        },
-        {
-            title: 'Fuel',
-            options: [...fuelOptions],
-            selected: selectedFuels,
-            onToggle: (v: string) => toggleFilter(setSelectedFuels, v),
-            onReset: () => setSelectedFuels([]),
-        },
-        {
-            title: 'Brakes',
-            options: [...brakeOptions],
-            selected: selectedBrakes,
-            onToggle: (v: string) => toggleFilter(setSelectedBrakes, v),
-            onReset: () => setSelectedBrakes([]),
-        },
-        {
-            title: 'Finish',
-            options: [...finishOptions],
-            selected: selectedFinishes,
-            onToggle: (v: string) => toggleFilter(setSelectedFinishes, v),
-            onReset: () => setSelectedFinishes([]),
-        },
-    ];
-
-    // Keyboard handlers
-    React.useEffect(() => {
-        const handleEsc = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') setIsFilterOpen(false);
-        };
-        window.addEventListener('keydown', handleEsc);
-        return () => window.removeEventListener('keydown', handleEsc);
-    }, []);
-
     // Sync pricing prefs from mobile bottom nav EMI sheet
     React.useEffect(() => {
         const handler = (e: Event) => {
@@ -842,22 +773,6 @@ export const UniversalCatalog = ({
         return () => window.removeEventListener('openFinancePanel', handler);
     }, []);
 
-    // Open mobile filter from bottom nav Filter tab
-    React.useEffect(() => {
-        const handler = () => setIsMobileFilterOpen(true);
-        window.addEventListener('openMobileFilter', handler);
-        return () => window.removeEventListener('openMobileFilter', handler);
-    }, []);
-
-    // Scroll lock
-    React.useEffect(() => {
-        if (isFilterOpen) {
-            document.body.style.overflow = 'hidden';
-        } else {
-            document.body.style.overflow = 'unset';
-        }
-    }, [isFilterOpen]);
-
     // Phone search overlay
     const [phoneSearchOpen, setPhoneSearchOpen] = useState(false);
     const phoneSearchRef = React.useRef<HTMLInputElement>(null);
@@ -872,96 +787,6 @@ export const UniversalCatalog = ({
         window.addEventListener('toggleCatalogSearch', handler);
         return () => window.removeEventListener('toggleCatalogSearch', handler);
     }, []);
-
-    const FilterGroup = ({
-        title,
-        options,
-        selectedValues,
-        onToggle,
-        showReset = false,
-        onReset,
-        allVisible = false,
-    }: {
-        title: string;
-        options: string[];
-        selectedValues: string[];
-        onToggle: (val: string) => void;
-        showReset?: boolean;
-        onReset: () => void;
-        allVisible?: boolean;
-    }) => {
-        const [isCollapsed, setIsCollapsed] = useState(false);
-        const [isExpanded, setIsExpanded] = useState(false);
-        const visibleOptions = isExpanded || allVisible ? options : options.slice(0, 3);
-
-        return (
-            <div className="space-y-4">
-                <div
-                    className="flex items-center justify-between border-b border-slate-200 pb-2 cursor-pointer group"
-                    onClick={() => setIsCollapsed(!isCollapsed)}
-                >
-                    <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-900 flex items-center gap-2">
-                        <div
-                            className={`w-1.5 h-1.5 rounded-full transition-all duration-500 ${selectedValues.length > 0 ? 'bg-brand-primary shadow-[0_0_12px_#F4B000]' : 'bg-slate-300'}`}
-                        />
-                        {title}
-                    </h4>
-                    <div className="flex items-center gap-3">
-                        {showReset && selectedValues.length > 0 && (
-                            <button
-                                onClick={e => {
-                                    e.stopPropagation();
-                                    onReset();
-                                }}
-                                className="text-[9px] font-black uppercase text-brand-primary hover:text-slate-900 transition-colors"
-                            >
-                                Reset
-                            </button>
-                        )}
-                        <ChevronDown
-                            size={12}
-                            className={`text-slate-400 transition-transform duration-500 ${isCollapsed ? '-rotate-90' : 'rotate-0'} group-hover:text-brand-primary`}
-                        />
-                    </div>
-                </div>
-
-                {!isCollapsed && (
-                    <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
-                        <div className="grid grid-cols-2 gap-2">
-                            {visibleOptions.map((opt: string) => (
-                                <button
-                                    key={opt}
-                                    onClick={() => onToggle(opt)}
-                                    className={`group relative flex items-center justify-between p-2.5 rounded-xl border transition-all duration-300 ${
-                                        selectedValues.includes(opt)
-                                            ? 'bg-brand-primary/10 border-brand-primary/50 shadow-sm'
-                                            : 'bg-white border-slate-200 hover:border-slate-300'
-                                    }`}
-                                >
-                                    <span
-                                        className={`text-[9px] font-black uppercase tracking-widest italic transition-colors ${selectedValues.includes(opt) ? 'text-slate-900' : 'text-slate-500 group-hover:text-slate-800'}`}
-                                    >
-                                        {opt}
-                                    </span>
-                                    {selectedValues.includes(opt) && (
-                                        <div className="w-1.5 h-1.5 rounded-full bg-brand-primary shadow-[0_0_8px_#F4B000]" />
-                                    )}
-                                </button>
-                            ))}
-                        </div>
-                        {!allVisible && options.length > 3 && (
-                            <button
-                                onClick={() => setIsExpanded(!isExpanded)}
-                                className="w-full py-2 flex items-center justify-center gap-2 text-[8px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-brand-primary transition-colors border border-dashed border-slate-200 rounded-xl"
-                            >
-                                {isExpanded ? 'Show Less' : `+ Show ${options.length - 3} More`}
-                            </button>
-                        )}
-                    </div>
-                )}
-            </div>
-        );
-    };
 
     const results = useMemo(() => {
         const vehicles = Array.isArray(filteredVehicles) ? [...filteredVehicles] : [];
@@ -1478,56 +1303,6 @@ export const UniversalCatalog = ({
                 <div
                     className={`flex gap-6 xl:gap-16 transition-all duration-700 ${viewMode === 'grid' ? 'max-w-full' : ''}`}
                 >
-                    {/* Filters removed by product decision; keep list view + compare only */}
-                    {false && viewMode === 'list' && (
-                        <aside
-                            className="hidden xl:block w-80 flex-shrink-0 space-y-6 sticky self-start pt-2 transition-all animate-in fade-in slide-in-from-left-4"
-                            style={{ top: 'calc(var(--header-h) + 24px)' }}
-                        >
-                            <div
-                                className={`flex flex-col gap-8 p-6 ${isTv ? 'bg-white' : 'bg-white/60 border border-slate-200/60 backdrop-blur-3xl'} rounded-[3rem] shadow-2xl`}
-                            >
-                                {/* Search Bar moved to Navbar via DiscoveryContext */}
-                                {/* Filter Groups in Sidebar (List View) */}
-                                <div className="space-y-6">
-                                    <FilterGroup
-                                        title="Quick Selection"
-                                        options={['HONDA', 'TVS', 'BAJAJ', 'SUZUKI', 'YAMAHA']}
-                                        selectedValues={selectedMakes}
-                                        onToggle={(v: string) => toggleFilter(setSelectedMakes, v)}
-                                        onReset={() => setSelectedMakes(makeOptions)}
-                                        showReset={selectedMakes.length < makeOptions.length}
-                                        allVisible={true}
-                                    />
-                                    <FilterGroup
-                                        title="CC Range"
-                                        options={['< 125cc', '125-250cc', '250-500cc', '> 500cc']}
-                                        selectedValues={selectedCC}
-                                        onToggle={(v: string) => toggleFilter(setSelectedCC, v)}
-                                        onReset={() => setSelectedCC([])}
-                                        showReset
-                                    />
-                                    <FilterGroup
-                                        title="Finish"
-                                        options={['MATTE', 'GLOSS']}
-                                        selectedValues={selectedFinishes}
-                                        onToggle={(v: string) => toggleFilter(setSelectedFinishes, v)}
-                                        onReset={() => setSelectedFinishes([])}
-                                        showReset
-                                    />
-                                    <FilterGroup
-                                        title="Seat Height"
-                                        options={['< 780mm', '780-810mm', '> 810mm']}
-                                        selectedValues={selectedSeatHeight}
-                                        onToggle={(v: string) => toggleFilter(setSelectedSeatHeight, v)}
-                                        onReset={() => setSelectedSeatHeight([])}
-                                        showReset
-                                    />
-                                </div>
-                            </div>
-                        </aside>
-                    )}
-
                     {/* Main Content Area */}
                     <div className={`flex-1 ${isTv ? 'space-y-1' : 'space-y-6'}`}>
                         {/* Results Header moved to Navbar via DiscoveryContext */}
@@ -1648,137 +1423,6 @@ export const UniversalCatalog = ({
                         </motion.div>
                     </div>
                 </div>
-
-                {false && isFilterOpen && viewMode === 'grid' ? (
-                    <AnimatePresence>
-                        {isFilterOpen && viewMode === 'grid' && (
-                            <>
-                                {/* Backdrop */}
-                                <motion.div
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    exit={{ opacity: 0 }}
-                                    onClick={() => setIsFilterOpen(false)}
-                                    className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm"
-                                />
-                                {/* Sidebar Panel */}
-                                <motion.div
-                                    initial={{ x: '100%' }}
-                                    animate={{ x: 0 }}
-                                    exit={{ x: '100%' }}
-                                    transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                                    className="fixed top-0 bottom-0 right-0 z-[101] w-full md:w-[460px] bg-white shadow-2xl flex flex-col border-l border-slate-200"
-                                >
-                                    {/* Sidebar Header */}
-                                    <div className="flex-shrink-0 px-8 py-8 border-b border-slate-100 flex items-center justify-between bg-white pt-[max(env(safe-area-inset-top),32px)]">
-                                        <div>
-                                            <h3 className="text-2xl font-black text-slate-900 tracking-widest uppercase italic">
-                                                Filters
-                                            </h3>
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-                                                Refine your search
-                                            </p>
-                                        </div>
-                                        <button
-                                            onClick={() => setIsFilterOpen(false)}
-                                            className="p-3 hover:bg-slate-100 rounded-full transition-all text-slate-700 hover:text-black"
-                                        >
-                                            <X size={20} />
-                                        </button>
-                                    </div>
-
-                                    {/* Sidebar Content */}
-                                    <div className="flex-1 overflow-y-auto px-8 py-8 custom-scrollbar space-y-8 bg-slate-50 pb-[120px]">
-                                        <FilterGroup
-                                            title="Brands"
-                                            options={makeOptions}
-                                            selectedValues={selectedMakes}
-                                            onToggle={(v: string) => toggleFilter(setSelectedMakes, v)}
-                                            onReset={() => setSelectedMakes(makeOptions)}
-                                            showReset={selectedMakes.length < makeOptions.length}
-                                            allVisible={true}
-                                        />
-                                        <FilterGroup
-                                            title="Engine Displacement"
-                                            options={['< 125cc', '125-250cc', '250-500cc', '> 500cc']}
-                                            selectedValues={selectedCC}
-                                            onToggle={(v: string) => toggleFilter(setSelectedCC, v)}
-                                            onReset={() => setSelectedCC([])}
-                                            showReset
-                                        />
-                                        <FilterGroup
-                                            title="Brake System"
-                                            options={[...brakeOptions]}
-                                            selectedValues={selectedBrakes}
-                                            onToggle={(v: string) => toggleFilter(setSelectedBrakes, v)}
-                                            onReset={() => setSelectedBrakes([])}
-                                            showReset
-                                        />
-                                        <FilterGroup
-                                            title="Finish"
-                                            options={['MATTE', 'GLOSS']}
-                                            selectedValues={selectedFinishes}
-                                            onToggle={(v: string) => toggleFilter(setSelectedFinishes, v)}
-                                            onReset={() => setSelectedFinishes([])}
-                                            showReset
-                                        />
-                                        <FilterGroup
-                                            title="Seat Height"
-                                            options={['< 780mm', '780-810mm', '> 810mm']}
-                                            selectedValues={selectedSeatHeight}
-                                            onToggle={(v: string) => toggleFilter(setSelectedSeatHeight, v)}
-                                            onReset={() => setSelectedSeatHeight([])}
-                                            showReset
-                                        />
-                                        <FilterGroup
-                                            title="Weight"
-                                            options={[...weightOptions]}
-                                            selectedValues={selectedWeights}
-                                            onToggle={(v: string) => toggleFilter(setSelectedWeights, v)}
-                                            onReset={() => setSelectedWeights([])}
-                                            showReset
-                                        />
-                                    </div>
-
-                                    {/* Sidebar Footer */}
-                                    <div className="absolute pl-8 pr-8 bottom-0 w-full p-6 border-t border-slate-200 bg-white flex items-center justify-between shadow-[0_-10px_30px_rgba(0,0,0,0.05)] pb-[max(env(safe-area-inset-bottom),24px)]">
-                                        <button
-                                            onClick={clearAll}
-                                            className="text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-rose-500 transition-colors"
-                                        >
-                                            Clear all filters
-                                        </button>
-                                        <button
-                                            onClick={() => setIsFilterOpen(false)}
-                                            className="px-8 py-4 bg-[#F4B000] text-black rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-[#F4B000]/20 hover:scale-105 transition-all"
-                                        >
-                                            Show {results.length} {results.length === 1 ? 'Result' : 'Results'}
-                                        </button>
-                                    </div>
-                                </motion.div>
-                            </>
-                        )}
-                    </AnimatePresence>
-                ) : null}
-
-                {/* Mobile Filter Drawer + Trigger (phone only) */}
-                {false && isPhone && (
-                    <>
-                        <MobileFilterDrawer
-                            isOpen={isMobileFilterOpen}
-                            onClose={() => setIsMobileFilterOpen(false)}
-                            sections={mobileFilterSections}
-                            onClearAll={clearAll}
-                            activeFilterCount={activeFilterCount}
-                            downpayment={downpayment}
-                            onDownpaymentChange={setDownpayment}
-                            tenure={tenure}
-                            onTenureChange={setTenure}
-                            sortBy={sortBy}
-                            onSortChange={val => setSortBy(val as typeof sortBy)}
-                        />
-                    </>
-                )}
             </div>
 
             <LocationPicker
