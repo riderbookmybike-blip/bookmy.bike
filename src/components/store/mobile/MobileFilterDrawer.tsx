@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, SlidersHorizontal } from 'lucide-react';
-import type { SortKey } from '../UniversalCatalog';
+import type { SortKey } from '@/lib/store/catalogSort';
 
 const VISIBLE_COUNT = 3;
 

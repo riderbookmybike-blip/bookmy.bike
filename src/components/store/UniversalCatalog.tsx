@@ -61,17 +61,9 @@ import {
 
 type CatalogFilters = ReturnType<typeof useCatalogFilters>;
 
-/** Shared sort key union — used by UniversalCatalog and MobileFilterDrawer */
-export type SortKey = 'popular' | 'price' | 'emi' | 'mileage' | 'seatHeight' | 'kerbWeight';
-
-const VALID_SORT_KEYS: ReadonlySet<string> = new Set<SortKey>([
-    'popular',
-    'price',
-    'emi',
-    'mileage',
-    'seatHeight',
-    'kerbWeight',
-]);
+// Re-export SortKey so downstream consumers (e.g. MobileFilterDrawer) can still import from here
+export { type SortKey, VALID_SORT_KEYS } from '@/lib/store/catalogSort';
+import { type SortKey, VALID_SORT_KEYS, sortCatalogVehicles } from '@/lib/store/catalogSort';
 
 interface UniversalCatalogProps {
     filters: CatalogFilters;
@@ -790,49 +782,7 @@ export const UniversalCatalog = ({
 
     const results = useMemo(() => {
         const vehicles = Array.isArray(filteredVehicles) ? [...filteredVehicles] : [];
-        // Safe numeric extractor — handles null/undefined/string spec values
-        const safeNum = (v: unknown, fallback = 0): number => {
-            const n = parseFloat(String(v ?? ''));
-            return Number.isFinite(n) ? n : fallback;
-        };
-        if (sortBy === 'popular') {
-            vehicles.sort((a, b) => (b.popularityScore || 0) - (a.popularityScore || 0));
-        }
-        if (sortBy === 'price') {
-            vehicles.sort(
-                (a, b) => (a.price?.onRoad || a.price?.exShowroom || 0) - (b.price?.onRoad || b.price?.exShowroom || 0)
-            );
-        }
-        if (sortBy === 'emi') {
-            vehicles.sort((a, b) => {
-                const aEmi = Math.round(((a.price?.exShowroom || 0) - downpayment) * getEmiFactor(36));
-                const bEmi = Math.round(((b.price?.exShowroom || 0) - downpayment) * getEmiFactor(36));
-                return aEmi - bEmi;
-            });
-        }
-        if (sortBy === 'mileage') {
-            // Higher mileage first (best fuel efficiency at top)
-            vehicles.sort(
-                (a, b) => safeNum(b.specifications?.engine?.mileage) - safeNum(a.specifications?.engine?.mileage)
-            );
-        }
-        if (sortBy === 'seatHeight') {
-            // Lower seat height first (more accessible for shorter riders)
-            vehicles.sort(
-                (a, b) =>
-                    safeNum(a.specifications?.dimensions?.seatHeight, Infinity) -
-                    safeNum(b.specifications?.dimensions?.seatHeight, Infinity)
-            );
-        }
-        if (sortBy === 'kerbWeight') {
-            // Lighter first (easier to handle)
-            vehicles.sort(
-                (a, b) =>
-                    safeNum(a.specifications?.dimensions?.kerbWeight, Infinity) -
-                    safeNum(b.specifications?.dimensions?.kerbWeight, Infinity)
-            );
-        }
-        return vehicles;
+        return sortCatalogVehicles(vehicles, sortBy, downpayment);
     }, [filteredVehicles, sortBy, downpayment]);
 
     const [smartModel, setSmartModel] = useState<string | null>(null);
