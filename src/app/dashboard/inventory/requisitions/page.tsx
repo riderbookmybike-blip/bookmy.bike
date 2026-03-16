@@ -206,7 +206,7 @@ export default function RequisitionsPage() {
             const { data, error } = await query;
             if (error) throw error;
 
-            const rows = (data as Requisition[]) || [];
+            const rows = (data as unknown as Requisition[]) || [];
             setRequisitions(rows);
 
             const skuIds = Array.from(new Set(rows.map(row => row.sku_id).filter(Boolean))) as string[];

@@ -325,7 +325,7 @@ export async function saveFinanceRouting(
 
         const { error: updateError } = await adminClient
             .from('id_tenants')
-            .update({ config: newConfig })
+            .update({ config: newConfig as any })
             .eq('id', tenant.id);
 
         if (updateError) throw updateError;

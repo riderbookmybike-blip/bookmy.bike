@@ -160,7 +160,7 @@ export async function updatePricingLedgerOffer(id: string, amount: number, tenan
             offer_amount: amount,
             updated_at: new Date().toISOString(),
             // tenant_id should be passed or derived
-        },
+        } as any,
         { onConflict: 'vehicle_color_id,tenant_id' }
     );
 
@@ -203,7 +203,7 @@ export async function updatePricingLedgerInclusion(id: string, type: string, ten
             vehicle_color_id: id,
             inclusion_type: type,
             updated_at: new Date().toISOString(),
-        },
+        } as any,
         { onConflict: 'vehicle_color_id,tenant_id' }
     );
 
@@ -227,7 +227,7 @@ export async function updatePricingLedgerLocalStatus(id: string, isActive: boole
             vehicle_color_id: id,
             is_active: isActive,
             updated_at: new Date().toISOString(),
-        },
+        } as any,
         { onConflict: 'vehicle_color_id,tenant_id' }
     );
 

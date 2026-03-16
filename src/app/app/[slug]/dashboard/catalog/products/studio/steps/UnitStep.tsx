@@ -398,7 +398,10 @@ export default function UnitStep({ family, variants = [], existingColors, onUpda
             if (applyVideosToAll) {
                 // Update cat_skus for all colors (specs)
                 const updatePromises = updatedList.map((item: any) =>
-                    supabase.from('cat_skus').update({ specs: item.specs }).eq('id', item.id)
+                    supabase
+                        .from('cat_skus')
+                        .update({ specs: item.specs } as any)
+                        .eq('id', item.id)
                 );
                 await Promise.all(updatePromises);
 

@@ -4875,7 +4875,7 @@ export type Database = {
                     quotes_count: number | null;
                     referral_code: string | null;
                     religion: string | null;
-                    role: string | null;
+                    role: string;
                     rto: string | null;
                     state: string | null;
                     taluka: string | null;
@@ -4939,7 +4939,7 @@ export type Database = {
                     quotes_count?: number | null;
                     referral_code?: string | null;
                     religion?: string | null;
-                    role?: string | null;
+                    role?: string;
                     rto?: string | null;
                     state?: string | null;
                     taluka?: string | null;
@@ -5003,7 +5003,7 @@ export type Database = {
                     quotes_count?: number | null;
                     referral_code?: string | null;
                     religion?: string | null;
-                    role?: string | null;
+                    role?: string;
                     rto?: string | null;
                     state?: string | null;
                     taluka?: string | null;
@@ -5910,6 +5910,114 @@ export type Database = {
                 };
                 Relationships: [];
             };
+            market_winner_finance: {
+                Row: {
+                    apr: number | null;
+                    charges_json: Json | null;
+                    computed_at: string | null;
+                    dp_bucket: number;
+                    emi: number | null;
+                    policy: string;
+                    processing_fee: number | null;
+                    sku_id: string;
+                    state_code: string;
+                    tenure_months: number;
+                    total_cost: number | null;
+                    version_hash: string | null;
+                    winner_lender_id: string | null;
+                    winner_scheme_code: string | null;
+                };
+                Insert: {
+                    apr?: number | null;
+                    charges_json?: Json | null;
+                    computed_at?: string | null;
+                    dp_bucket: number;
+                    emi?: number | null;
+                    policy?: string;
+                    processing_fee?: number | null;
+                    sku_id: string;
+                    state_code: string;
+                    tenure_months: number;
+                    total_cost?: number | null;
+                    version_hash?: string | null;
+                    winner_lender_id?: string | null;
+                    winner_scheme_code?: string | null;
+                };
+                Update: {
+                    apr?: number | null;
+                    charges_json?: Json | null;
+                    computed_at?: string | null;
+                    dp_bucket?: number;
+                    emi?: number | null;
+                    policy?: string;
+                    processing_fee?: number | null;
+                    sku_id?: string;
+                    state_code?: string;
+                    tenure_months?: number;
+                    total_cost?: number | null;
+                    version_hash?: string | null;
+                    winner_lender_id?: string | null;
+                    winner_scheme_code?: string | null;
+                };
+                Relationships: [];
+            };
+            market_winner_price: {
+                Row: {
+                    computed_at: string | null;
+                    delivery_charge: number | null;
+                    delivery_tat_days: number | null;
+                    distance_km: number | null;
+                    final_effective_price: number | null;
+                    geo_cell: string;
+                    is_serviceable: boolean | null;
+                    offer_mode: string;
+                    runner_up_json: Json | null;
+                    sku_id: string;
+                    state_code: string;
+                    tat_effective_hours: number | null;
+                    version_hash: string | null;
+                    winner_dealer_id: string | null;
+                    winner_offer_amount: number | null;
+                    winner_studio_id: string | null;
+                };
+                Insert: {
+                    computed_at?: string | null;
+                    delivery_charge?: number | null;
+                    delivery_tat_days?: number | null;
+                    distance_km?: number | null;
+                    final_effective_price?: number | null;
+                    geo_cell: string;
+                    is_serviceable?: boolean | null;
+                    offer_mode: string;
+                    runner_up_json?: Json | null;
+                    sku_id: string;
+                    state_code: string;
+                    tat_effective_hours?: number | null;
+                    version_hash?: string | null;
+                    winner_dealer_id?: string | null;
+                    winner_offer_amount?: number | null;
+                    winner_studio_id?: string | null;
+                };
+                Update: {
+                    computed_at?: string | null;
+                    delivery_charge?: number | null;
+                    delivery_tat_days?: number | null;
+                    distance_km?: number | null;
+                    final_effective_price?: number | null;
+                    geo_cell?: string;
+                    is_serviceable?: boolean | null;
+                    offer_mode?: string;
+                    runner_up_json?: Json | null;
+                    sku_id?: string;
+                    state_code?: string;
+                    tat_effective_hours?: number | null;
+                    version_hash?: string | null;
+                    winner_dealer_id?: string | null;
+                    winner_offer_amount?: number | null;
+                    winner_studio_id?: string | null;
+                };
+                Relationships: [];
+            };
             notifications: {
                 Row: {
                     created_at: string;
@@ -6341,6 +6449,141 @@ export type Database = {
                     },
                 ];
             };
+            price_snapshot_sku: {
+                Row: {
+                    computed_at: string | null;
+                    ex_showroom: number | null;
+                    insurance_json: Json | null;
+                    on_road_base: number | null;
+                    rto_json: Json | null;
+                    sku_id: string;
+                    state_code: string;
+                    version_hash: string | null;
+                };
+                Insert: {
+                    computed_at?: string | null;
+                    ex_showroom?: number | null;
+                    insurance_json?: Json | null;
+                    on_road_base?: number | null;
+                    rto_json?: Json | null;
+                    sku_id: string;
+                    state_code: string;
+                    version_hash?: string | null;
+                };
+                Update: {
+                    computed_at?: string | null;
+                    ex_showroom?: number | null;
+                    insurance_json?: Json | null;
+                    on_road_base?: number | null;
+                    rto_json?: Json | null;
+                    sku_id?: string;
+                    state_code?: string;
+                    version_hash?: string | null;
+                };
+                Relationships: [];
+            };
+            recompute_queue: {
+                Row: {
+                    attempts: number | null;
+                    created_at: string | null;
+                    id: string;
+                    job_type: string;
+                    last_error: string | null;
+                    payload: Json;
+                    priority: number | null;
+                    processed_at: string | null;
+                    status: string | null;
+                };
+                Insert: {
+                    attempts?: number | null;
+                    created_at?: string | null;
+                    id?: string;
+                    job_type: string;
+                    last_error?: string | null;
+                    payload: Json;
+                    priority?: number | null;
+                    processed_at?: string | null;
+                    status?: string | null;
+                };
+                Update: {
+                    attempts?: number | null;
+                    created_at?: string | null;
+                    id?: string;
+                    job_type?: string;
+                    last_error?: string | null;
+                    payload?: Json;
+                    priority?: number | null;
+                    processed_at?: string | null;
+                    status?: string | null;
+                };
+                Relationships: [];
+            };
+            shadow_compare_log: {
+                Row: {
+                    compared_at: string | null;
+                    dp_bucket: number | null;
+                    finance_match: boolean | null;
+                    geo_cell: string | null;
+                    id: string;
+                    legacy_dealer: string | null;
+                    legacy_emi: number | null;
+                    legacy_offer: number | null;
+                    legacy_tat: number | null;
+                    mismatch_reason_code: string | null;
+                    offer_mode: string | null;
+                    precomputed_dealer: string | null;
+                    precomputed_emi: number | null;
+                    precomputed_offer: number | null;
+                    precomputed_tat: number | null;
+                    sku_id: string | null;
+                    state_code: string | null;
+                    tenure_months: number | null;
+                    winner_match: boolean | null;
+                };
+                Insert: {
+                    compared_at?: string | null;
+                    dp_bucket?: number | null;
+                    finance_match?: boolean | null;
+                    geo_cell?: string | null;
+                    id?: string;
+                    legacy_dealer?: string | null;
+                    legacy_emi?: number | null;
+                    legacy_offer?: number | null;
+                    legacy_tat?: number | null;
+                    mismatch_reason_code?: string | null;
+                    offer_mode?: string | null;
+                    precomputed_dealer?: string | null;
+                    precomputed_emi?: number | null;
+                    precomputed_offer?: number | null;
+                    precomputed_tat?: number | null;
+                    sku_id?: string | null;
+                    state_code?: string | null;
+                    tenure_months?: number | null;
+                    winner_match?: boolean | null;
+                };
+                Update: {
+                    compared_at?: string | null;
+                    dp_bucket?: number | null;
+                    finance_match?: boolean | null;
+                    geo_cell?: string | null;
+                    id?: string;
+                    legacy_dealer?: string | null;
+                    legacy_emi?: number | null;
+                    legacy_offer?: number | null;
+                    legacy_tat?: number | null;
+                    mismatch_reason_code?: string | null;
+                    offer_mode?: string | null;
+                    precomputed_dealer?: string | null;
+                    precomputed_emi?: number | null;
+                    precomputed_offer?: number | null;
+                    precomputed_tat?: number | null;
+                    sku_id?: string | null;
+                    state_code?: string | null;
+                    tenure_months?: number | null;
+                    winner_match?: boolean | null;
+                };
+                Relationships: [];
+            };
             shadow_metrics_hourly: {
                 Row: {
                     captured_at: string | null;
@@ -6529,6 +6772,39 @@ export type Database = {
                     unified_context_strict_mode?: boolean | null;
                     unified_marketplace_context?: boolean | null;
                     updated_at?: string | null;
+                };
+                Relationships: [];
+            };
+            winner_cache_invalidation_log: {
+                Row: {
+                    dealer_id: string | null;
+                    geo_cell: string | null;
+                    id: string;
+                    invalidated_at: string | null;
+                    job_type: string | null;
+                    sku_id: string | null;
+                    state_code: string | null;
+                    tag: string | null;
+                };
+                Insert: {
+                    dealer_id?: string | null;
+                    geo_cell?: string | null;
+                    id?: string;
+                    invalidated_at?: string | null;
+                    job_type?: string | null;
+                    sku_id?: string | null;
+                    state_code?: string | null;
+                    tag?: string | null;
+                };
+                Update: {
+                    dealer_id?: string | null;
+                    geo_cell?: string | null;
+                    id?: string;
+                    invalidated_at?: string | null;
+                    job_type?: string | null;
+                    sku_id?: string | null;
+                    state_code?: string | null;
+                    tag?: string | null;
                 };
                 Relationships: [];
             };
@@ -6891,6 +7167,10 @@ export type Database = {
             };
             create_booking_from_quote: { Args: { quote_id: string }; Returns: string };
             encode_base33: { Args: { length: number; num: number }; Returns: string };
+            enqueue_recompute: {
+                Args: { p_job_type: string; p_payload: Json; p_priority?: number };
+                Returns: string;
+            };
             gen_sku_code_9: { Args: never; Returns: string };
             generate_display_id: { Args: never; Returns: string };
             get_dealer_offers: {

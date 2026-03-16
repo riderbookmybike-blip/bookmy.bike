@@ -49,7 +49,11 @@ export default function BlogEditor({ postId }: { postId?: string }) {
         if (postId) {
             const fetchPost = async () => {
                 const supabase = createClient();
-                const { data: post, error } = await supabase.from('blog_posts').select('*').eq('id', postId).single();
+                const { data: post, error } = await (supabase as any)
+                    .from('blog_posts')
+                    .select('*')
+                    .eq('id', postId)
+                    .single();
 
                 if (!error && post) {
                     setData(post as unknown as BlogsData);
@@ -73,10 +77,10 @@ export default function BlogEditor({ postId }: { postId?: string }) {
 
         let error;
         if (postId) {
-            const { error: err } = await supabase.from('blog_posts').update(postData).eq('id', postId);
+            const { error: err } = await (supabase as any).from('blog_posts').update(postData).eq('id', postId);
             error = err;
         } else {
-            const { error: err } = await supabase.from('blog_posts').insert([postData]);
+            const { error: err } = await (supabase as any).from('blog_posts').insert([postData]);
             error = err;
         }
 

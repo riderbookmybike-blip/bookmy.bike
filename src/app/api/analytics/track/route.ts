@@ -92,10 +92,12 @@ async function bootstrapLeadForTracking(userId: string): Promise<string | null> 
             customer_phone: phone,
             source: 'WEBSITE_TRACKING',
             status: 'NEW',
-            utm_source: 'WEBSITE_TRACKING',
+            // required non-nullable fields
+            created_by: userId,
+            referred_by_id: userId,
             interest_text: 'Web visit tracked',
             is_deleted: false,
-        })
+        } as any)
         .select('id')
         .maybeSingle();
 

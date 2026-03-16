@@ -419,7 +419,10 @@ export default function MatrixStep({ family, variants, colors, allColors = [], e
                     },
                 };
 
-                const { error } = await supabase.from('cat_skus').update(payload).eq('id', sku.id);
+                const { error } = await supabase
+                    .from('cat_skus')
+                    .update(payload as any)
+                    .eq('id', sku.id);
                 if (error) throw error;
 
                 successCount++;

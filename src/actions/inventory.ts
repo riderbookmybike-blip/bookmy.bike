@@ -1340,7 +1340,7 @@ export async function receiveStock(input: ReceiveStockInput): Promise<ActionResu
 // Fetch battery_type from cat_sku_specs for a given SKU (used by inline GRN form)
 export async function getSkuBatterySpec(skuId: string): Promise<ActionResult> {
     try {
-        const { data, error } = await adminClient
+        const { data, error } = await (adminClient as any)
             .from('cat_sku_specs')
             .select('battery_type, battery_capacity')
             .eq('sku_id', skuId)

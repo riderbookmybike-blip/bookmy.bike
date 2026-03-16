@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { BankPartner, MOCK_BANK_PARTNERS } from '@/types/bankPartner';
+import { BankPartner, BankScheme, MOCK_BANK_PARTNERS } from '@/types/bankPartner';
 import { ArrowLeft, Building2, MapPin, Users, Calculator, Loader2 } from 'lucide-react';
 import OverviewTab from './tabs/OverviewTab';
 import LocationsTab from './tabs/LocationsTab';
@@ -130,7 +130,7 @@ export default function BankFullDetail({ id }: BankFullDetailProps) {
                     },
                     locations: cfg?.locations || [],
                     team: cfg?.team || [],
-                    schemes: normalizedSchemes,
+                    schemes: normalizedSchemes as BankScheme[],
                     chargesMaster: cfg?.chargesMaster || [],
                     management: cfg?.management || { states: [], areas: [], dealerIds: [] },
                 };

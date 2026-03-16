@@ -3475,6 +3475,8 @@ export async function createLeadAction(data: {
         const { data: lead, error } = await adminClient
             .from('crm_leads')
             .insert({
+                // required non-nullable per schema
+                created_by: customerId,
                 customer_id: customerId,
                 customer_name: data.customer_name,
                 customer_phone: strictPhone,
@@ -3486,7 +3488,7 @@ export async function createLeadAction(data: {
                 interest_variant: data.model === 'GENERAL_ENQUIRY' ? null : null,
                 owner_tenant_id: effectiveOwnerId,
                 selected_dealer_tenant_id: financeTenantId || data.selected_dealer_id || null,
-                referred_by_id: resolvedReferrer?.memberId || null,
+                referred_by_id: resolvedReferrer?.memberId || '',
                 referred_by_name:
                     resolvedReferrer?.name ||
                     referredByNameInput ||
@@ -7634,7 +7636,7 @@ export async function getQuoteByDisplayId(
         __product_name: a.model?.name || '',
     }));
 
-    const { data: servicesData } = await supabase.from('cat_services').select('*').eq('status', 'ACTIVE');
+    const { data: servicesData } = await (supabase as any).from('cat_services').select('*').eq('status', 'ACTIVE');
 
     const accessoryIds = (accessoriesData || []).map((a: any) => a.id);
     const accessoryRules: Map<string, { offer: number; inclusion: string; isActive: boolean }> = new Map();

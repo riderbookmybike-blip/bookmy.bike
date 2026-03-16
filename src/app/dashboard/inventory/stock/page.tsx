@@ -118,7 +118,7 @@ export default function StockPage() {
             icon: Truck,
             color: 'indigo' as const,
         },
-        { label: 'Total Units', value: stock.length, icon: Warehouse, color: 'slate' as const },
+        { label: 'Total Units', value: stock.length, icon: Warehouse, color: 'indigo' as const },
     ];
 
     const slugFromParams = typeof params?.slug === 'string' ? params.slug : undefined;
@@ -144,7 +144,6 @@ export default function StockPage() {
                 view={effectiveView}
                 onViewChange={setView}
                 device={device}
-                actionLabel="Inward via GRN"
             >
                 <div className="space-y-4">
                     {/* Filter Chips */}

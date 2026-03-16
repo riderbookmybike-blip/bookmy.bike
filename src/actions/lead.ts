@@ -130,11 +130,15 @@ export async function submitLead(formData: FormData) {
         const { data: lead, error: insertError } = await adminClient
             .from('crm_leads')
             .insert({
+                // required non-nullable fields in schema
+                created_by: member.id,
+                referred_by_id: referrerUserId || member.id,
+                customer_name: data.name,
+                customer_phone: cleanPhone,
+                // optional fields
                 owner_tenant_id: ownerTenantId,
                 selected_dealer_tenant_id: rawData.selectedDealerId || null,
                 customer_id: member.id,
-                customer_name: data.name,
-                customer_phone: cleanPhone,
                 customer_taluka: data.taluka,
                 customer_pincode: data.pincode,
                 customer_dob: data.dob,
@@ -154,7 +158,6 @@ export async function submitLead(formData: FormData) {
                           source_tenant_id: referrerTenantId,
                       }
                     : null,
-                meta_data: referrerTenantId ? { source_tenant_id: referrerTenantId } : null,
             })
             .select('id')
             .single();
