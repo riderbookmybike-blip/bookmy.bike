@@ -1,12 +1,5 @@
 import { shouldSkipDealerContextUpdate, shouldSkipFinanceContextUpdate } from '@/lib/marketplace/dealerSessionGuards';
 
-function assert(condition: boolean, message: string) {
-    if (!condition) {
-        console.error(`FAIL: ${message}`);
-        process.exit(1);
-    }
-}
-
 const base = {
     dealerId: 'd1',
     financeId: 'f1',
@@ -17,12 +10,30 @@ const base = {
     source: 'DEFAULT' as const,
 };
 
-assert(shouldSkipFinanceContextUpdate(base, 'f1') === true, 'finance same value should skip');
-assert(shouldSkipFinanceContextUpdate(base, 'f2') === false, 'finance changed value should not skip');
-assert(shouldSkipFinanceContextUpdate(base, null) === false, 'finance clear should not skip when non-null');
+describe('shouldSkipFinanceContextUpdate', () => {
+    it('skips when finance value is unchanged', () => {
+        expect(shouldSkipFinanceContextUpdate(base, 'f1')).toBe(true);
+    });
 
-assert(shouldSkipDealerContextUpdate(base, 'd1', 'Pune') === true, 'dealer same + district same should skip');
-assert(shouldSkipDealerContextUpdate(base, 'd2', 'Pune') === false, 'dealer changed should not skip');
-assert(shouldSkipDealerContextUpdate(base, 'd1', 'Mumbai') === false, 'district changed should not skip');
+    it('does not skip when finance value changes', () => {
+        expect(shouldSkipFinanceContextUpdate(base, 'f2')).toBe(false);
+    });
 
-console.log('dealerSessionGuards.test.ts passed');
+    it('does not skip when clearing a non-null finance', () => {
+        expect(shouldSkipFinanceContextUpdate(base, null)).toBe(false);
+    });
+});
+
+describe('shouldSkipDealerContextUpdate', () => {
+    it('skips when dealer and district are unchanged', () => {
+        expect(shouldSkipDealerContextUpdate(base, 'd1', 'Pune')).toBe(true);
+    });
+
+    it('does not skip when dealer changes', () => {
+        expect(shouldSkipDealerContextUpdate(base, 'd2', 'Pune')).toBe(false);
+    });
+
+    it('does not skip when district changes', () => {
+        expect(shouldSkipDealerContextUpdate(base, 'd1', 'Mumbai')).toBe(false);
+    });
+});

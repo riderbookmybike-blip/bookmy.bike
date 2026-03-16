@@ -6,14 +6,6 @@ import {
     OfferMode,
 } from '../marketplace/winnerEngine';
 
-function assert(condition: boolean, msg: string) {
-    if (!condition) {
-        console.error(`❌ FAIL: ${msg}`);
-        process.exit(1);
-    }
-    console.log(`✅ PASS: ${msg}`);
-}
-
 const getDeliveryChargeByDistance = (km?: number | null) => (km ? km * 10 : 500); // simple mock
 
 const baseOffer: CandidateOffer = {
@@ -28,100 +20,103 @@ const baseOffer: CandidateOffer = {
     distance_km: 10,
 };
 
-// Test 1: BEST_OFFER sorts by winner_score ASC first
-{
-    const offers: CandidateOffer[] = [
-        { ...baseOffer, dealer_id: 'd1', offer_amount: -1000, tat_effective_hours: 72 }, // better score, worse TAT
-        { ...baseOffer, dealer_id: 'd2', offer_amount: -500, tat_effective_hours: 24 }, // worse score, better TAT
-    ];
-    const ranked = rankCandidates(offers, 'BEST_OFFER', 100000, getDeliveryChargeByDistance);
-    assert(ranked[0].dealer_id === 'd1', 'BEST_OFFER: lower winner_score wins over TAT');
-}
+describe('winnerEngine', () => {
+    describe('rankCandidates — BEST_OFFER mode', () => {
+        it('sorts by winner_score ASC (lower score wins over TAT)', () => {
+            const offers: CandidateOffer[] = [
+                { ...baseOffer, dealer_id: 'd1', offer_amount: -1000, delivery_tat_days: 5 },
+                { ...baseOffer, dealer_id: 'd2', offer_amount: -500, delivery_tat_days: 1 },
+            ];
+            const ranked = rankCandidates(offers, 'BEST_OFFER', 100000, getDeliveryChargeByDistance);
+            expect(ranked[0].dealer_id).toBe('d1');
+        });
 
-// Test 2: FAST_DELIVERY sorts by tat ASC first
-{
-    const offers: CandidateOffer[] = [
-        { ...baseOffer, dealer_id: 'd1', offer_amount: -1000, tat_effective_hours: 72 }, // better score, worse TAT
-        { ...baseOffer, dealer_id: 'd2', offer_amount: -500, tat_effective_hours: 24 }, // worse score, better TAT
-    ];
-    const ranked = rankCandidates(offers, 'FAST_DELIVERY', 100000, getDeliveryChargeByDistance);
-    assert(ranked[0].dealer_id === 'd2', 'FAST_DELIVERY: lower TAT wins over winner_score');
-}
+        it('tie-breaks on delivery_tat_days ASC when scores are equal', () => {
+            const offers: CandidateOffer[] = [
+                { ...baseOffer, dealer_id: 'd1', offer_amount: -500, delivery_tat_days: 5 },
+                { ...baseOffer, dealer_id: 'd2', offer_amount: -500, delivery_tat_days: 1 },
+            ];
+            const ranked = rankCandidates(offers, 'BEST_OFFER', 100000, getDeliveryChargeByDistance);
+            expect(ranked[0].dealer_id).toBe('d2');
+        });
 
-// Test 3: BEST_OFFER tie-break: equal score -> tat ASC
-{
-    const offers: CandidateOffer[] = [
-        { ...baseOffer, dealer_id: 'd1', offer_amount: -500, tat_effective_hours: 72 },
-        { ...baseOffer, dealer_id: 'd2', offer_amount: -500, tat_effective_hours: 24 },
-    ];
-    const ranked = rankCandidates(offers, 'BEST_OFFER', 100000, getDeliveryChargeByDistance);
-    assert(ranked[0].dealer_id === 'd2', 'BEST_OFFER tie: lower TAT wins');
-}
+        it('tie-breaks on distance ASC when score and tat are equal', () => {
+            const offers: CandidateOffer[] = [
+                { ...baseOffer, dealer_id: 'd1', offer_amount: -500, delivery_tat_days: 2, distance_km: 20 },
+                { ...baseOffer, dealer_id: 'd2', offer_amount: -500, delivery_tat_days: 2, distance_km: 10 },
+            ];
+            const ranked = rankCandidates(offers, 'BEST_OFFER', 100000, getDeliveryChargeByDistance);
+            expect(ranked[0].dealer_id).toBe('d2');
+        });
 
-// Test 4: FAST_DELIVERY tie-break: equal tat -> score ASC
-{
-    const offers: CandidateOffer[] = [
-        { ...baseOffer, dealer_id: 'd1', offer_amount: -1000, tat_effective_hours: 48 },
-        { ...baseOffer, dealer_id: 'd2', offer_amount: -500, tat_effective_hours: 48 },
-    ];
-    const ranked = rankCandidates(offers, 'FAST_DELIVERY', 100000, getDeliveryChargeByDistance);
-    assert(ranked[0].dealer_id === 'd1', 'FAST_DELIVERY tie: lower winner_score wins');
-}
+        it('tie-breaks on updated_at DESC (latest wins)', () => {
+            const offers: CandidateOffer[] = [
+                {
+                    ...baseOffer,
+                    dealer_id: 'd1',
+                    offer_amount: -500,
+                    delivery_tat_days: 2,
+                    distance_km: 10,
+                    updated_at: new Date('2026-03-01').toISOString(),
+                },
+                {
+                    ...baseOffer,
+                    dealer_id: 'd2',
+                    offer_amount: -500,
+                    delivery_tat_days: 2,
+                    distance_km: 10,
+                    updated_at: new Date('2026-03-02').toISOString(),
+                },
+            ];
+            const ranked = rankCandidates(offers, 'BEST_OFFER', 100000, getDeliveryChargeByDistance);
+            expect(ranked[0].dealer_id).toBe('d2');
+        });
+    });
 
-// Test 5: Tie-break distance ASC
-{
-    const offers: CandidateOffer[] = [
-        { ...baseOffer, dealer_id: 'd1', offer_amount: -500, tat_effective_hours: 48, distance_km: 20 },
-        { ...baseOffer, dealer_id: 'd2', offer_amount: -500, tat_effective_hours: 48, distance_km: 10 },
-    ];
-    const ranked = rankCandidates(offers, 'BEST_OFFER', 100000, getDeliveryChargeByDistance);
-    assert(ranked[0].dealer_id === 'd2', 'Tie-break: distance ASC wins');
-}
+    describe('rankCandidates — FAST_DELIVERY mode', () => {
+        it('sorts by delivery_tat_days ASC (lower TAT wins over score)', () => {
+            const offers: CandidateOffer[] = [
+                { ...baseOffer, dealer_id: 'd1', offer_amount: -1000, delivery_tat_days: 5 },
+                { ...baseOffer, dealer_id: 'd2', offer_amount: -500, delivery_tat_days: 1 },
+            ];
+            const ranked = rankCandidates(offers, 'FAST_DELIVERY', 100000, getDeliveryChargeByDistance);
+            expect(ranked[0].dealer_id).toBe('d2');
+        });
 
-// Test 6: Tie-break updated_at DESC
-{
-    const offers: CandidateOffer[] = [
-        {
-            ...baseOffer,
-            dealer_id: 'd1',
-            offer_amount: -500,
-            tat_effective_hours: 48,
-            distance_km: 10,
-            updated_at: new Date('2026-03-01').toISOString(),
-        },
-        {
-            ...baseOffer,
-            dealer_id: 'd2',
-            offer_amount: -500,
-            tat_effective_hours: 48,
-            distance_km: 10,
-            updated_at: new Date('2026-03-02').toISOString(),
-        },
-    ];
-    const ranked = rankCandidates(offers, 'BEST_OFFER', 100000, getDeliveryChargeByDistance);
-    assert(ranked[0].dealer_id === 'd2', 'Tie-break: updated_at DESC wins (latest)');
-}
+        it('tie-breaks on winner_score ASC when tat is equal', () => {
+            const offers: CandidateOffer[] = [
+                { ...baseOffer, dealer_id: 'd1', offer_amount: -1000, delivery_tat_days: 2 },
+                { ...baseOffer, dealer_id: 'd2', offer_amount: -500, delivery_tat_days: 2 },
+            ];
+            const ranked = rankCandidates(offers, 'FAST_DELIVERY', 100000, getDeliveryChargeByDistance);
+            expect(ranked[0].dealer_id).toBe('d1');
+        });
 
-// Test 7: NULL TAT pushed to end
-{
-    const offers: CandidateOffer[] = [
-        { ...baseOffer, dealer_id: 'd1', offer_amount: -500, tat_effective_hours: null },
-        { ...baseOffer, dealer_id: 'd2', offer_amount: -400, tat_effective_hours: 48 },
-    ];
-    const ranked = rankCandidates(offers, 'FAST_DELIVERY', 100000, getDeliveryChargeByDistance);
-    assert(ranked[0].dealer_id === 'd2', 'FAST_DELIVERY: NULL TAT pushed to end');
+        it('pushes NULL delivery_tat_days to end', () => {
+            const offers: CandidateOffer[] = [
+                { ...baseOffer, dealer_id: 'd1', offer_amount: -500, delivery_tat_days: null },
+                { ...baseOffer, dealer_id: 'd2', offer_amount: -400, delivery_tat_days: 2 },
+            ];
+            const ranked = rankCandidates(offers, 'FAST_DELIVERY', 100000, getDeliveryChargeByDistance);
+            expect(ranked[0].dealer_id).toBe('d2');
+        });
+    });
 
-    const rankedBest = rankCandidates(offers, 'BEST_OFFER', 100000, getDeliveryChargeByDistance);
-    assert(
-        rankedBest[0].dealer_id === 'd1',
-        'BEST_OFFER: Score still wins even if TAT is null (if score is strictly better)'
-    );
-}
+    describe('NULL delivery_tat_days in BEST_OFFER mode', () => {
+        it('score still wins even if TAT is null (when score is strictly better)', () => {
+            const offers: CandidateOffer[] = [
+                { ...baseOffer, dealer_id: 'd1', offer_amount: -500, delivery_tat_days: null },
+                { ...baseOffer, dealer_id: 'd2', offer_amount: -400, delivery_tat_days: 2 },
+            ];
+            const ranked = rankCandidates(offers, 'BEST_OFFER', 100000, getDeliveryChargeByDistance);
+            expect(ranked[0].dealer_id).toBe('d1');
+        });
+    });
 
-// Test 8: computeWinnerScore
-{
-    const score = computeWinnerScore({ ...baseOffer, offer_amount: -1500, delivery_charge: 500 }, 100000);
-    assert(score === 99000, 'computeWinnerScore adds basePayable (100k) + discount (-1500) + delivery (500) = 99000');
-}
-
-console.log('\n🎉 All winnerEngine tests passed.');
+    describe('computeWinnerScore', () => {
+        it('adds basePayable + discount + delivery charge', () => {
+            const score = computeWinnerScore({ ...baseOffer, offer_amount: -1500, delivery_charge: 500 }, 100000);
+            expect(score).toBe(99000);
+        });
+    });
+});
