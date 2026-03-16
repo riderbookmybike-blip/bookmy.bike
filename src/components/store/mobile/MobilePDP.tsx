@@ -138,7 +138,8 @@ export const MobilePDP = ({
         bestOffer,
         walletCoins,
     });
-    const { coinPricing, displayOnRoad, totalSavings, footerEmi } = commonState;
+    const { coinPricing, displayOnRoad, bCoinEquivalent, totalSavings, footerEmi, deliveryByLabel, studioIdLabel } =
+        commonState;
 
     // ── Command bar compute (shared with FloatingCommandBar via same fn) ──
     const commandBarState = buildCommandBarState({
@@ -478,6 +479,7 @@ export const MobilePDP = ({
                 displayOnRoad={commandBarState.displayOnRoad}
                 totalOnRoad={data.totalOnRoad ?? 0}
                 totalSavings={commandBarState.totalSavings}
+                totalSurge={data.totalSurge ?? 0}
                 coinPricing={coinPricing}
                 showOClubPrompt={showOClubPrompt ?? false}
                 footerEmi={commandBarState.footerEmi}
@@ -494,7 +496,6 @@ export const MobilePDP = ({
                     district: initialLocation?.district,
                 }}
                 onEditLocation={onRetryLocation}
-                deliveryTatLabel={deliveryTatLabel}
                 deliveryByLabel={deliveryByLabel}
                 studioIdLabel={studioIdLabel}
             />

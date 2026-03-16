@@ -1157,6 +1157,7 @@ export function DesktopPDP({
                 displayOnRoad={commandBarState.displayOnRoad}
                 totalOnRoad={totalOnRoad}
                 totalSavings={commandBarState.totalSavings}
+                totalSurge={totalSurge}
                 coinPricing={coinPricing}
                 showOClubPrompt={showOClubPrompt}
                 footerEmi={footerEmi}
@@ -1177,7 +1178,6 @@ export function DesktopPDP({
                 accessoriesTotal={accessoriesPrice ?? 0}
                 insuranceAddonsCount={selectedInsuranceAddons?.length ?? 0}
                 insuranceAddonsCost={(insuranceAddonsPrice ?? 0) + (insuranceAddonsDiscount ?? 0)}
-                deliveryTatLabel={deliveryTatLabel}
                 deliveryByLabel={deliveryByLabel}
                 studioIdLabel={studioIdLabel}
             />
