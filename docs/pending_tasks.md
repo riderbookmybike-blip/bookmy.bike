@@ -25,19 +25,6 @@ Or just run `next build` once before the next deploy; CI will catch it.
 
 ---
 
-### 2. Route Audit: `/d2` – `/d8` Dynamic Segments
-**Priority:** Low  
-**Type:** QA / Smoke  
-**Description:**  
-The `/d2` through `/d8` routes were only quick-sanity tested during Track 1 QA. A full smoke pass (mobile + desktop) covering:
-- Page load without crash
-- No missing chunk/import errors
-- Core interactions (filter, compare) functional
-
-has not been done post-Batch B3 TS changes.
-
-**Action:** Run a QA pass on `/d2`–`/d8` on next staging deploy, or add to playwright smoke suite.
-
 ---
 
 ## Completed ✅
@@ -50,6 +37,7 @@ has not been done post-Batch B3 TS changes.
 | TS Batch B (52→37 errors) | `b2aa35f1` | Schema/type drift |
 | TS Batch B2 (37→27 errors) | `54af8686` | Easy-win narrowing fixes |
 | TS Batch B3 (27→0 errors) | `783b7e95` | Supabase regen + schema drift |
+| Remove legacy `/d2`–`/d8` routes | _(pending commit)_ | Legacy design variants removed from app router |
 | Agent-lock guard disabled | `ff61543a` | pre-commit → lint-staged only |
 | Docs: agent-lock note | `17986f4a` | CONTRIBUTING.md updated |
 | Release tag | `v0.9.0-stable` | Rollback anchor at `17986f4a` |

@@ -143,7 +143,7 @@ export function ShopperBottomNav() {
 
     const isTabActive = (href: string) => {
         if (!pathname) return false;
-        if (href === '/') return pathname === '/' || pathname === '/store' || pathname === '/d2';
+        if (href === '/') return pathname === '/' || pathname === '/store';
         return pathname.startsWith(href);
     };
 
