@@ -6,6 +6,39 @@ import { getErrorMessage } from '@/lib/utils/errorMessage';
 
 // Initialize Admin Client for Writes
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+let locPincodesSupportsExpandedColumns = true;
+
+const isMissingLocPincodesColumn = (error: unknown) => {
+    const message = getErrorMessage(error).toLowerCase();
+    return (
+        message.includes("'area_keys'") ||
+        message.includes("'areas'") ||
+        message.includes("'state_key'") ||
+        message.includes("'district_key'") ||
+        message.includes("'taluka_key'")
+    );
+};
+
+const omitExpandedColumns = <T extends Record<string, unknown>>(record: T) => {
+    const { area_keys, areas, state_key, district_key, taluka_key, ...legacyRecord } = record;
+    return legacyRecord;
+};
+
+async function upsertLocPincodeCompat(record: Record<string, unknown>) {
+    const firstPayload = locPincodesSupportsExpandedColumns ? record : omitExpandedColumns(record);
+    const firstAttempt = await supabase.from('loc_pincodes').upsert(firstPayload, { onConflict: 'pincode' });
+
+    if (!firstAttempt.error) {
+        return firstAttempt;
+    }
+
+    if (locPincodesSupportsExpandedColumns && isMissingLocPincodesColumn(firstAttempt.error)) {
+        locPincodesSupportsExpandedColumns = false;
+        return supabase.from('loc_pincodes').upsert(omitExpandedColumns(record), { onConflict: 'pincode' });
+    }
+
+    return firstAttempt;
+}
 
 export async function getPincodeDetails(pincode: string) {
     if (!pincode || pincode.length !== 6) {
@@ -37,24 +70,26 @@ export async function getPincodeDetails(pincode: string) {
                     JSON.stringify(mergedAreas.areaKeys) !== JSON.stringify(cached.area_keys));
 
             if (needsUpdate) {
-                await supabase.from('loc_pincodes').upsert(
-                    {
-                        pincode,
-                        state: formattedState || cached.state,
-                        district: formattedDistrict || cached.district,
-                        taluka: formattedTaluka || cached.taluka,
-                        area: formattedArea || cached.area,
-                        areas: mergedAreas.areas.length > 0 ? mergedAreas.areas : cached.areas || null,
-                        area_keys: mergedAreas.areaKeys.length > 0 ? mergedAreas.areaKeys : cached.area_keys || null,
-                        state_key: formattedState ? normalizeLocationKey(formattedState) : cached.state_key || null,
-                        district_key: formattedDistrict
-                            ? normalizeLocationKey(formattedDistrict)
-                            : cached.district_key || null,
-                        taluka_key: formattedTaluka ? normalizeLocationKey(formattedTaluka) : cached.taluka_key || null,
-                        updated_at: new Date().toISOString(),
-                    },
-                    { onConflict: 'pincode' }
-                );
+                const upsertPayload = {
+                    pincode,
+                    state: formattedState || cached.state,
+                    district: formattedDistrict || cached.district,
+                    taluka: formattedTaluka || cached.taluka,
+                    area: formattedArea || cached.area,
+                    areas: mergedAreas.areas.length > 0 ? mergedAreas.areas : cached.areas || null,
+                    area_keys: mergedAreas.areaKeys.length > 0 ? mergedAreas.areaKeys : cached.area_keys || null,
+                    state_key: formattedState ? normalizeLocationKey(formattedState) : cached.state_key || null,
+                    district_key: formattedDistrict
+                        ? normalizeLocationKey(formattedDistrict)
+                        : cached.district_key || null,
+                    taluka_key: formattedTaluka ? normalizeLocationKey(formattedTaluka) : cached.taluka_key || null,
+                    updated_at: new Date().toISOString(),
+                };
+
+                const { error: upsertError } = await upsertLocPincodeCompat(upsertPayload);
+                if (upsertError) {
+                    console.error('Failed to update location database cache:', upsertError.message);
+                }
             }
             return { success: true, data: cached };
         }
@@ -96,9 +131,7 @@ export async function getPincodeDetails(pincode: string) {
             };
 
             // 3. Upsert to loc_pincodes (Strictly no duplicates via onConflict)
-            const { error: upsertError } = await supabase
-                .from('loc_pincodes')
-                .upsert(newRecord, { onConflict: 'pincode' });
+            const { error: upsertError } = await upsertLocPincodeCompat(newRecord);
 
             if (upsertError) {
                 console.error('Failed to grow location database:', upsertError.message);

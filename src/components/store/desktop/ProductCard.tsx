@@ -26,7 +26,7 @@ import { useI18n } from '@/components/providers/I18nProvider';
 import { toDevanagariScript } from '@/lib/i18n/transliterate';
 import { coinsNeededForPrice, discountForCoins } from '@/lib/oclub/coin';
 import { Logo } from '@/components/brand/Logo';
-import { usePathname, useSearchParams, useRouter } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { getEmiFactor } from '@/lib/constants/pricingConstants';
 import { useAnalytics } from '@/components/analytics/AnalyticsProvider';
 import { useDiscovery } from '@/contexts/DiscoveryContext';
@@ -436,30 +436,6 @@ export const ProductCard = ({
         }
     };
 
-    const router = useRouter();
-    const variantUrl = buildProductUrl({
-        make: v.make,
-        model: v.model,
-        variant: v.variant,
-        studio: studioIdLabel || undefined,
-        leadId: leadId,
-        basePath,
-    }).url;
-    const handleCardClick = () => {
-        if (isPending || isNavigating) return;
-        setIsNavigating(true);
-        trackEvent('INTENT_SIGNAL', 'catalog_vehicle_click', {
-            lead_id: leadId || undefined,
-            sku_id: v.availableColors?.[0]?.id || undefined,
-            make_slug: slugify(v.make || ''),
-            model_slug: slugify(v.model || ''),
-            variant_slug: slugify(v.variant || ''),
-            source: 'STORE_CATALOG',
-        });
-        startTransition(() => {
-            router.push(variantUrl);
-        });
-    };
     const handleExploreClick = (e: React.MouseEvent<HTMLButtonElement>) => {
         e.stopPropagation();
         if (isNavigating || isPending || !onExplore) return;
@@ -810,7 +786,6 @@ export const ProductCard = ({
                 data-offer-delta={offerDeltaForParity}
                 data-on-road={baseOnRoadPrice || 0}
                 data-ex-showroom={v.price?.exShowroom || 0}
-                onClick={handleCardClick}
                 onMouseMove={isTv ? undefined : handleMouseMove}
                 onMouseEnter={isTv ? undefined : handleMouseEnter}
                 onMouseLeave={isTv ? undefined : handleMouseLeave}

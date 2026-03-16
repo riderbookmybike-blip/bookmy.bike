@@ -972,10 +972,18 @@ export async function getCatalogSnapshot(stateCode: string = 'MH'): Promise<Cata
         }
 
         // Filter to VEHICLE-type products only — exclude accessories & services from catalog
+        // Also enforce Model and Variant status to be ACTIVE
         const safeSkus = skus || [];
         const vehicleSkus = safeSkus.filter((s: any) => {
             const productType = String(s.model?.product_type || '').toUpperCase();
             const skuType = String(s.sku_type || '').toUpperCase();
+            const modelStatus = String(s.model?.status || '').toUpperCase();
+            const variantStatus = String(s.vehicle_variant?.status || '').toUpperCase();
+
+            // Enforce Model + Variant must be ACTIVE
+            // This ensures deactivating a model in AUMS hides it globally.
+            if (modelStatus !== 'ACTIVE') return false;
+            if (s.vehicle_variant_id && variantStatus !== 'ACTIVE') return false;
 
             // Explicitly reject non-vehicle SKU types, even if tied to a vehicle model
             if (skuType === 'ACCESSORY' || skuType === 'SERVICE' || skuType === 'MERCHANDISE') {
