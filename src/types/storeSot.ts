@@ -17,6 +17,8 @@ export interface SotModel {
     brand: { name: string; slug: string } | null;
     primary_image: string | null;
     media_shared: boolean | null;
+    video_url_1?: string | null;
+    video_url_2?: string | null;
 }
 
 // ─── Vehicle Variant ─────────────────────────────────────────
@@ -25,6 +27,9 @@ export interface SotVariant {
     name: string;
     slug: string;
     status: string;
+    media_shared?: boolean | null;
+    video_url_1?: string | null;
+    video_url_2?: string | null;
 }
 
 // ─── Colour ──────────────────────────────────────────────────
@@ -34,6 +39,9 @@ export interface SotColour {
     hex_primary: string | null;
     hex_secondary: string | null;
     finish: string | null;
+    media_shared?: boolean | null;
+    video_url_1?: string | null;
+    video_url_2?: string | null;
 }
 
 // ─── SKU (as returned from the canonical query) ──────────────
@@ -57,6 +65,8 @@ export interface SotSku {
     finish: string | null;
     colour_id: string | null;
     vehicle_variant_id: string | null;
+    video_url_1?: string | null;
+    video_url_2?: string | null;
     colour: SotColour | null;
     vehicle_variant: SotVariant | null;
 }

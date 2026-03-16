@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback, useTransition } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useTransition, useMemo } from 'react';
 import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
 import {
     Heart,
@@ -14,9 +14,12 @@ import {
     GitCompareArrows,
     Pencil,
     Clock,
+    Youtube,
+    X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
+import { createPortal } from 'react-dom';
 import { buildProductUrl, buildVariantExplorerUrl } from '@/lib/utils/urlHelper';
 import { slugify } from '@/utils/slugs';
 import { getStableReviewCount } from '@/utils/vehicleUtils';
@@ -302,6 +305,189 @@ export const ProductCard = ({
     const dealerLabelDisplay = dealerLabel || 'UNASSIGNED';
     const studioDisplayLabel = bestOffer?.studio_id || v.studioCode || null;
     const studioIdLabel = studioDisplayLabel || bestOffer?.studio_id || null;
+    const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
+    const [activeVideoIndex, setActiveVideoIndex] = useState(0);
+    const [isClientMounted, setIsClientMounted] = useState(false);
+    const videoIframeRef = useRef<HTMLIFrameElement | null>(null);
+    const extractYouTubeId = useCallback((source: string): string => {
+        const raw = String(source || '').trim();
+        if (!raw) return '';
+        if (/^[a-zA-Z0-9_-]{11}$/.test(raw)) return raw;
+
+        try {
+            const url = new URL(raw);
+            const host = url.hostname.replace(/^www\./, '').toLowerCase();
+            if (host === 'youtu.be') return url.pathname.split('/').filter(Boolean)[0] || '';
+            if (host.includes('youtube.com')) {
+                if (url.pathname.startsWith('/watch')) return url.searchParams.get('v') || '';
+                if (url.pathname.startsWith('/embed/')) return url.pathname.split('/embed/')[1]?.split('/')[0] || '';
+                if (url.pathname.startsWith('/shorts/')) return url.pathname.split('/shorts/')[1]?.split('/')[0] || '';
+            }
+        } catch {
+            return '';
+        }
+        return '';
+    }, []);
+    const availableVideoIds = useMemo(() => {
+        const variantAny = v as any;
+        const sources: string[] = [
+            variantAny?.video,
+            variantAny?.video_url,
+            variantAny?.video_url_1,
+            variantAny?.video_url_2,
+            ...(Array.isArray(variantAny?.videoUrls) ? variantAny.videoUrls : []),
+            ...(Array.isArray(variantAny?.video_urls) ? variantAny.video_urls : []),
+        ].filter((value): value is string => typeof value === 'string' && value.trim().length > 0);
+
+        (v.availableColors || []).forEach((color: any) => {
+            sources.push(
+                color?.video,
+                color?.video_url,
+                color?.video_url_1,
+                color?.video_url_2,
+                ...(Array.isArray(color?.videoUrls) ? color.videoUrls : []),
+                ...(Array.isArray(color?.video_urls) ? color.video_urls : [])
+            );
+        });
+
+        const resolvedIds = Array.from(
+            new Set(
+                sources.map(extractYouTubeId).filter((id): id is string => typeof id === 'string' && id.length === 11)
+            )
+        );
+        if (resolvedIds.length > 0) return resolvedIds;
+
+        // Model-level fallback (until catalog payload always carries inherited video fields)
+        const makeSlug = slugify(v.make || '');
+        const modelSlug = slugify(v.model || '');
+        if (makeSlug === 'honda' && modelSlug === 'activa') {
+            return ['RZcki0JVASQ', '4TFu_oDpTNI', 'FGyvYjxWFtQ'];
+        }
+        return [];
+    }, [extractYouTubeId, v, v.availableColors]);
+    const activeVideoId = availableVideoIds[activeVideoIndex] || '';
+    useEffect(() => {
+        setIsClientMounted(true);
+    }, []);
+    const hasVideos = availableVideoIds.length > 0;
+    const activeVideoEmbedUrl = activeVideoId
+        ? `https://www.youtube.com/embed/${activeVideoId}?autoplay=1&mute=1&rel=0&enablejsapi=1&playsinline=1&vq=hd1080`
+        : '';
+    const openVideoModal = useCallback(
+        (e: React.MouseEvent) => {
+            e.stopPropagation();
+            if (availableVideoIds.length === 0) {
+                toast.error('No videos available for this vehicle');
+                return;
+            }
+            setActiveVideoIndex(0);
+            setIsVideoModalOpen(true);
+            trackEvent('INTENT_SIGNAL', 'catalog_video_click', {
+                lead_id: leadId || undefined,
+                sku_id: v.availableColors?.[0]?.id || undefined,
+                make_slug: slugify(v.make || ''),
+                model_slug: slugify(v.model || ''),
+                variant_slug: slugify(v.variant || ''),
+                source: 'STORE_CATALOG',
+            });
+        },
+        [availableVideoIds.length, leadId, trackEvent, v]
+    );
+
+    useEffect(() => {
+        if (!isVideoModalOpen) return;
+        const onMessage = (event: MessageEvent) => {
+            if (!String(event.origin || '').includes('youtube.com')) return;
+            if (typeof event.data !== 'string') return;
+            let payload: any;
+            try {
+                payload = JSON.parse(event.data);
+            } catch {
+                return;
+            }
+            if (payload?.event === 'onStateChange' && payload?.info === 0) {
+                setActiveVideoIndex(prev => {
+                    const next = prev + 1;
+                    if (next < availableVideoIds.length) return next;
+                    setIsVideoModalOpen(false);
+                    return prev;
+                });
+            }
+            if (payload?.event === 'onReady') {
+                const frame = videoIframeRef.current;
+                if (frame?.contentWindow) {
+                    frame.contentWindow.postMessage(
+                        JSON.stringify({
+                            event: 'command',
+                            func: 'mute',
+                            args: [],
+                        }),
+                        '*'
+                    );
+                    frame.contentWindow.postMessage(
+                        JSON.stringify({
+                            event: 'command',
+                            func: 'setPlaybackQuality',
+                            args: ['hd1080'],
+                        }),
+                        '*'
+                    );
+                }
+            }
+        };
+        window.addEventListener('message', onMessage);
+        return () => window.removeEventListener('message', onMessage);
+    }, [availableVideoIds.length, isVideoModalOpen]);
+
+    useEffect(() => {
+        if (!isVideoModalOpen || !activeVideoEmbedUrl) return;
+        const frame = videoIframeRef.current;
+        if (!frame?.contentWindow) return;
+        frame.contentWindow.postMessage(
+            JSON.stringify({
+                event: 'command',
+                func: 'addEventListener',
+                args: ['onStateChange'],
+            }),
+            '*'
+        );
+    }, [activeVideoEmbedUrl, isVideoModalOpen]);
+
+    const renderVideoModal = () =>
+        isVideoModalOpen && isClientMounted
+            ? createPortal(
+                  <div className="fixed inset-0 z-[9999] flex items-center justify-center p-0">
+                      <div
+                          className="absolute inset-0 bg-slate-950/95 backdrop-blur-2xl animate-in fade-in duration-500"
+                          onClick={() => setIsVideoModalOpen(false)}
+                      />
+                      <div className="relative w-screen h-screen bg-black overflow-hidden shadow-[0_0_100px_rgba(37,99,235,0.3)] border-0 rounded-none animate-in zoom-in-95 duration-500">
+                          <button
+                              onClick={() => setIsVideoModalOpen(false)}
+                              className="absolute top-6 right-6 z-50 w-12 h-12 bg-black/40 hover:bg-black/60 backdrop-blur-xl rounded-full flex items-center justify-center text-white transition-all hover:rotate-90 border border-white/20"
+                          >
+                              <X size={24} />
+                          </button>
+                          <div className="w-full h-full">
+                              {activeVideoEmbedUrl ? (
+                                  <iframe
+                                      ref={videoIframeRef}
+                                      src={activeVideoEmbedUrl}
+                                      className="w-full h-full"
+                                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                      allowFullScreen
+                                  />
+                              ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-white/80 text-sm font-semibold">
+                                      Video unavailable
+                                  </div>
+                              )}
+                          </div>
+                      </div>
+                  </div>,
+                  document.body
+              )
+            : null;
 
     // State-locked context: location label uses studio/state only, never district.
     const combinedLocationLabel = studioDisplayLabel || null;
@@ -536,7 +722,7 @@ export const ProductCard = ({
                                 {displayVariant} • <span className="text-brand-primary">{displayColor}</span>
                             </p>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-col items-center gap-2">
                             <button
                                 onClick={() =>
                                     toggleFavorite({
@@ -552,6 +738,15 @@ export const ProductCard = ({
                             >
                                 <Heart size={20} className={isSaved ? 'fill-current' : ''} />
                             </button>
+                            {hasVideos && (
+                                <button
+                                    onClick={openVideoModal}
+                                    className="w-12 h-12 border border-slate-200 rounded-full flex items-center justify-center transition-all shadow-sm text-red-600 hover:text-red-500 bg-white"
+                                    title="Watch Videos"
+                                >
+                                    <Youtube size={20} />
+                                </button>
+                            )}
                         </div>
                     </div>
 
@@ -763,6 +958,7 @@ export const ProductCard = ({
                         )}
                     </div>
                 </div>
+                {renderVideoModal()}
             </div>
         );
     }
@@ -900,6 +1096,15 @@ export const ProductCard = ({
                                 <Heart size={isTv ? 10 : 14} className={isSaved ? 'fill-current' : ''} />
                             </motion.div>
                         </button>
+                        {hasVideos && (
+                            <button
+                                onClick={openVideoModal}
+                                className={`${isTv ? 'w-5 h-5' : 'w-8 h-8'} rounded-full border border-slate-200 flex items-center justify-center transition-all shadow-[0_4px_14px_rgba(0,0,0,0.08)] bg-white/80 text-red-600 hover:text-red-500 hover:scale-105`}
+                                title="Watch Videos"
+                            >
+                                <Youtube size={isTv ? 10 : 14} />
+                            </button>
+                        )}
                     </div>
 
                     {bestOffer && bestOffer.price !== undefined && bestOffer.price < 0 && (
@@ -1454,6 +1659,7 @@ export const ProductCard = ({
                     )}
                 </div>
             </motion.div>
+            {renderVideoModal()}
         </div>
     );
 };

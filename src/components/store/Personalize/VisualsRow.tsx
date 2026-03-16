@@ -2,7 +2,7 @@
 /* eslint-disable @next/next/no-img-element */
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Play, X, ChevronLeft, ChevronRight, Maximize2, Youtube } from 'lucide-react';
 import ChromelessVideo from '@/components/ui/ChromelessVideo';
 
@@ -21,6 +21,7 @@ interface VisualsRowProps {
     productImage: string;
     assets?: any[];
     videoSource: string;
+    videoSources?: string[];
     className?: string;
     isVideoOpen?: boolean;
     onCloseVideo?: () => void;
@@ -41,6 +42,7 @@ export default function VisualsRow({
     productImage,
     assets = [],
     videoSource,
+    videoSources = [],
     className = '',
     isVideoOpen = false,
     onCloseVideo = () => {},
@@ -49,6 +51,102 @@ export default function VisualsRow({
     offsetX = 0,
     offsetY = 0,
 }: VisualsRowProps) {
+    const extractYouTubeId = (source: string): string => {
+        const raw = String(source || '').trim();
+        if (!raw) return '';
+
+        let videoId = '';
+
+        if (/^[a-zA-Z0-9_-]{11}$/.test(raw)) {
+            videoId = raw;
+        } else {
+            try {
+                const url = new URL(raw);
+                const host = url.hostname.replace(/^www\./, '').toLowerCase();
+
+                if (host === 'youtu.be') {
+                    videoId = url.pathname.split('/').filter(Boolean)[0] || '';
+                } else if (host.includes('youtube.com')) {
+                    if (url.pathname.startsWith('/watch')) {
+                        videoId = url.searchParams.get('v') || '';
+                    } else if (url.pathname.startsWith('/embed/')) {
+                        videoId = url.pathname.split('/embed/')[1]?.split('/')[0] || '';
+                    } else if (url.pathname.startsWith('/shorts/')) {
+                        videoId = url.pathname.split('/shorts/')[1]?.split('/')[0] || '';
+                    }
+                }
+            } catch {
+                videoId = '';
+            }
+        }
+
+        if (!/^[a-zA-Z0-9_-]{11}$/.test(videoId)) return '';
+        return videoId;
+    };
+
+    const allVideoIds = useMemo(
+        () =>
+            Array.from(
+                new Set(
+                    [...(videoSources || []), videoSource]
+                        .map(extractYouTubeId)
+                        .filter((id): id is string => typeof id === 'string' && id.length === 11)
+                )
+            ),
+        [videoSources, videoSource]
+    );
+    const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
+    const iframeRef = useRef<HTMLIFrameElement | null>(null);
+
+    useEffect(() => {
+        if (isVideoOpen) setCurrentVideoIndex(0);
+    }, [isVideoOpen]);
+
+    useEffect(() => {
+        if (!isVideoOpen) return;
+
+        const onMessage = (event: MessageEvent) => {
+            if (typeof event.data !== 'string') return;
+            let payload: any;
+            try {
+                payload = JSON.parse(event.data);
+            } catch {
+                return;
+            }
+
+            // YouTube state 0 = ended
+            if (payload?.event === 'onStateChange' && payload?.info === 0) {
+                setCurrentVideoIndex(prev => {
+                    const next = prev + 1;
+                    if (next < allVideoIds.length) return next;
+                    onCloseVideo();
+                    return prev;
+                });
+            }
+        };
+
+        window.addEventListener('message', onMessage);
+        return () => window.removeEventListener('message', onMessage);
+    }, [allVideoIds.length, isVideoOpen, onCloseVideo]);
+
+    const currentVideoId = allVideoIds[currentVideoIndex] || '';
+    const embedVideoUrl = currentVideoId
+        ? `https://www.youtube.com/embed/${currentVideoId}?autoplay=1&rel=0&enablejsapi=1&playsinline=1`
+        : '';
+
+    useEffect(() => {
+        if (!isVideoOpen || !embedVideoUrl) return;
+        const frame = iframeRef.current;
+        if (!frame?.contentWindow) return;
+        frame.contentWindow.postMessage(
+            JSON.stringify({
+                event: 'command',
+                func: 'addEventListener',
+                args: ['onStateChange'],
+            }),
+            '*'
+        );
+    }, [embedVideoUrl, isVideoOpen]);
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [imageLoaded, setImageLoaded] = useState(false);
     const [is360Active, setIs360Active] = useState(false);
@@ -260,12 +358,19 @@ export default function VisualsRow({
                         </button>
 
                         <div className="w-full h-full">
-                            <iframe
-                                src={`https://www.youtube.com/embed/${videoSource}?autoplay=1&rel=0`}
-                                className="w-full h-full"
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                allowFullScreen
-                            />
+                            {embedVideoUrl ? (
+                                <iframe
+                                    ref={iframeRef}
+                                    src={embedVideoUrl}
+                                    className="w-full h-full"
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                    allowFullScreen
+                                />
+                            ) : (
+                                <div className="w-full h-full flex items-center justify-center text-white/80 text-sm font-semibold">
+                                    Video unavailable
+                                </div>
+                            )}
                         </div>
 
                         {/* Video Caption Indicator */}

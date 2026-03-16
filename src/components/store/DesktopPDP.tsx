@@ -348,6 +348,20 @@ export function DesktopPDP({
 
     const activeColorConfig = colors.find((c: any) => c.id === selectedColor) || colors[0];
     const activeColorAssets = activeColorConfig?.assets || [];
+    const modelVideoSources = useMemo(
+        () =>
+            Array.from(
+                new Set(
+                    (colors || [])
+                        .flatMap((color: any) => [
+                            ...(Array.isArray(color?.videoUrls) ? color.videoUrls : []),
+                            ...(color?.video ? [color.video] : []),
+                        ])
+                        .filter((value: any): value is string => typeof value === 'string' && value.trim().length > 0)
+                )
+            ),
+        [colors]
+    );
 
     const shouldDevanagari = language === 'hi' || language === 'mr';
     const scriptText = (value?: string) => {
@@ -536,7 +550,7 @@ export function DesktopPDP({
     };
 
     return (
-        <div className="relative min-h-screen bg-white transition-colors duration-500 font-sans pt-[104px] pb-20">
+        <div className="relative min-h-screen bg-white transition-colors duration-500 font-sans pb-20">
             {/* Location control moved into bottom command bar */}
             {/* Parity Snapshot — hidden DOM element for Playwright parity tests */}
             <ParitySnapshot data={data} product={product} commonState={commonState} />
@@ -696,10 +710,10 @@ export function DesktopPDP({
                             >
                                 {/* Header */}
                                 <div
-                                    className={`p-6 items-center gap-3 transition-colors duration-500 shrink-0 ${isActive ? 'bg-white border-b border-slate-100' : ''} ${isActive && card.id === 'GALLERY' ? 'grid grid-cols-[auto_1fr_auto]' : 'flex'}`}
+                                    className={`p-6 flex items-center gap-3 transition-colors duration-500 shrink-0 ${isActive ? 'bg-white border-b border-slate-100' : ''}`}
                                 >
-                                    {/* Left: Icon + Label + Color Name */}
-                                    <div className="flex items-center gap-3">
+                                    {/* Left: Icon + Label + Subtext */}
+                                    <div className="flex items-center gap-3 flex-1">
                                         <div
                                             className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-500
                                             ${isActive ? 'bg-brand-primary text-black shadow-[0_0_20px_rgba(255,215,0,0.4)]' : 'bg-slate-200 text-slate-400'}`}
@@ -719,65 +733,6 @@ export function DesktopPDP({
                                             )}
                                         </div>
                                     </div>
-
-                                    {/* Center: Color Swatches — Gallery only */}
-                                    {isActive && card.id === 'GALLERY' && (
-                                        <div
-                                            className="flex items-center justify-center gap-3"
-                                            onClick={e => e.stopPropagation()}
-                                        >
-                                            {colors.map(
-                                                (color: { id: string; name: string; hex: string; class?: string }) => {
-                                                    const isSel = selectedColor === color.id;
-                                                    return (
-                                                        <button
-                                                            key={color.id}
-                                                            onClick={() => handleColorChange(color.id)}
-                                                            className="flex flex-col items-center group/swatch relative"
-                                                            title={color.name}
-                                                        >
-                                                            <div
-                                                                className={`w-7 h-7 rounded-full transition-all duration-300 border-2 ${isSel ? 'border-[#F4B000] scale-110 shadow-[0_0_8px_rgba(255,215,0,0.4)]' : 'border-transparent hover:scale-110'}`}
-                                                            >
-                                                                <div
-                                                                    className="w-full h-full rounded-full border border-black/10 relative overflow-hidden"
-                                                                    style={{ backgroundColor: color.hex }}
-                                                                >
-                                                                    {/* Shimmer gloss effect — enhanced */}
-                                                                    <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/50 via-white/10 to-transparent" />
-                                                                    <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-transparent via-white/30 to-white/10" />
-                                                                    <div className="absolute inset-[-2px] rounded-full bg-[conic-gradient(from_0deg,transparent_60%,rgba(255,255,255,0.3)_80%,transparent_100%)] animate-[spin_3s_linear_infinite] opacity-40" />
-                                                                </div>
-                                                            </div>
-                                                        </button>
-                                                    );
-                                                }
-                                            )}
-                                        </div>
-                                    )}
-
-                                    {/* Right: YouTube + Favorite — Gallery only */}
-                                    {isActive && card.id === 'GALLERY' && (
-                                        <div
-                                            className="flex items-center justify-end gap-2"
-                                            onClick={e => e.stopPropagation()}
-                                        >
-                                            <button
-                                                onClick={() => setIsVideoOpen(true)}
-                                                className="w-7 h-7 rounded-full flex items-center justify-center bg-red-600 hover:bg-red-500 transition-all hover:scale-110 shadow-lg"
-                                                title="Watch Video"
-                                            >
-                                                <Youtube size={14} className="text-white" />
-                                            </button>
-                                            <button
-                                                onClick={() => handleSaveQuote()}
-                                                className="w-7 h-7 rounded-full flex items-center justify-center bg-white/10 hover:bg-white/20 transition-all hover:scale-110 border border-black/10"
-                                                title="Save to Wishlist"
-                                            >
-                                                <Heart size={14} className="text-rose-400" />
-                                            </button>
-                                        </div>
-                                    )}
                                 </div>
 
                                 {/* Content Area */}
@@ -793,21 +748,85 @@ export function DesktopPDP({
                                                 className={`absolute inset-0 flex flex-col ${card.id === 'GALLERY' ? '' : ''}`}
                                             >
                                                 {card.id === 'GALLERY' ? (
-                                                    <VisualsRow
-                                                        className="h-full"
-                                                        colors={colors}
-                                                        selectedColor={selectedColor}
-                                                        onColorSelect={handleColorChange}
-                                                        productImage={getProductImage()}
-                                                        assets={activeColorAssets}
-                                                        videoSource={activeColorConfig?.video || ''}
-                                                        isVideoOpen={isVideoOpen}
-                                                        onCloseVideo={() => setIsVideoOpen(false)}
-                                                        isFlipped={activeColorConfig?.isFlipped ?? false}
-                                                        zoomFactor={activeColorConfig?.zoomFactor ?? null}
-                                                        offsetX={activeColorConfig?.offsetX ?? 0}
-                                                        offsetY={activeColorConfig?.offsetY ?? 0}
-                                                    />
+                                                    <>
+                                                        <VisualsRow
+                                                            className="flex-1 min-h-0"
+                                                            colors={colors}
+                                                            selectedColor={selectedColor}
+                                                            onColorSelect={handleColorChange}
+                                                            productImage={getProductImage()}
+                                                            assets={activeColorAssets}
+                                                            videoSource={activeColorConfig?.video || ''}
+                                                            videoSources={modelVideoSources}
+                                                            isVideoOpen={isVideoOpen}
+                                                            onCloseVideo={() => setIsVideoOpen(false)}
+                                                            isFlipped={activeColorConfig?.isFlipped ?? false}
+                                                            zoomFactor={activeColorConfig?.zoomFactor ?? null}
+                                                            offsetX={activeColorConfig?.offsetX ?? 0}
+                                                            offsetY={activeColorConfig?.offsetY ?? 0}
+                                                        />
+                                                        {/* Bottom Swatch Strip — image ke niche, centered */}
+                                                        <div
+                                                            className="shrink-0 flex items-center px-6 py-3 bg-white/80 backdrop-blur-sm border-t border-slate-100"
+                                                            onClick={e => e.stopPropagation()}
+                                                        >
+                                                            <div className="flex-1" />
+                                                            <div className="flex items-center justify-center gap-3">
+                                                                {colors.map(
+                                                                    (color: {
+                                                                        id: string;
+                                                                        name: string;
+                                                                        hex: string;
+                                                                        class?: string;
+                                                                    }) => {
+                                                                        const isSel = selectedColor === color.id;
+                                                                        return (
+                                                                            <button
+                                                                                key={color.id}
+                                                                                onClick={() =>
+                                                                                    handleColorChange(color.id)
+                                                                                }
+                                                                                className="flex flex-col items-center group/swatch relative"
+                                                                                title={color.name}
+                                                                            >
+                                                                                <div
+                                                                                    className={`w-9 h-9 rounded-full transition-all duration-300 border-2 ${isSel ? 'border-[#F4B000] scale-110 shadow-[0_0_10px_rgba(255,215,0,0.5)]' : 'border-transparent hover:scale-110 hover:border-slate-300'}`}
+                                                                                >
+                                                                                    <div
+                                                                                        className="w-full h-full rounded-full border border-black/10 relative overflow-hidden"
+                                                                                        style={{
+                                                                                            backgroundColor: color.hex,
+                                                                                        }}
+                                                                                    >
+                                                                                        {/* Shimmer gloss effect */}
+                                                                                        <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/50 via-white/10 to-transparent" />
+                                                                                        <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-transparent via-white/30 to-white/10" />
+                                                                                        <div className="absolute inset-[-2px] rounded-full bg-[conic-gradient(from_0deg,transparent_60%,rgba(255,255,255,0.3)_80%,transparent_100%)] animate-[spin_3s_linear_infinite] opacity-40" />
+                                                                                    </div>
+                                                                                </div>
+                                                                            </button>
+                                                                        );
+                                                                    }
+                                                                )}
+                                                            </div>
+                                                            <div className="flex-1 flex items-center justify-end gap-2 pl-1">
+                                                                <button
+                                                                    onClick={() => handleSaveQuote()}
+                                                                    className="w-8 h-8 rounded-full flex items-center justify-center bg-white/80 hover:bg-white transition-all hover:scale-110 border border-black/10"
+                                                                    title="Save to Wishlist"
+                                                                >
+                                                                    <Heart size={14} className="text-rose-500" />
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => setIsVideoOpen(true)}
+                                                                    className="w-8 h-8 rounded-full flex items-center justify-center bg-red-600 hover:bg-red-500 transition-all hover:scale-110 shadow-lg"
+                                                                    title="Watch Video"
+                                                                >
+                                                                    <Youtube size={14} className="text-white" />
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </>
                                                 ) : (
                                                     <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar flex flex-col pl-[76px] pr-[76px] pt-2 pb-4">
                                                         {card.id === 'PRICING' && (
@@ -1006,6 +1025,7 @@ export function DesktopPDP({
                         productImage={getProductImage()}
                         assets={activeColorAssets}
                         videoSource={activeColorConfig?.video || ''}
+                        videoSources={modelVideoSources}
                         isVideoOpen={isVideoOpen}
                         onCloseVideo={() => setIsVideoOpen(false)}
                     />

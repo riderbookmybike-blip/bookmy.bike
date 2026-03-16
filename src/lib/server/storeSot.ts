@@ -72,7 +72,9 @@ export const SKU_SELECT = `
     is_flipped,
     offset_x,
     offset_y,
-    colour:cat_colours!colour_id(id, name, hex_primary, hex_secondary, finish, primary_image, media_shared),
+    video_url_1,
+    video_url_2,
+    colour:cat_colours!colour_id(id, name, hex_primary, hex_secondary, finish, primary_image, media_shared, video_url_1, video_url_2),
     vehicle_variant:cat_variants_vehicle!vehicle_variant_id(
         id, name, slug, status,
         displacement, max_power, max_torque, transmission, mileage_arai,
@@ -91,7 +93,7 @@ export const SKU_SELECT = `
         low_fuel_indicator, low_oil_indicator, low_battery_indicator,
         pillion_seat, pillion_footrest, stand_alarm, pass_light, killswitch,
         warranty_years, warranty_km, service_interval,
-        primary_image, media_shared
+        primary_image, media_shared, video_url_1, video_url_2
     )
 `;
 
@@ -126,12 +128,12 @@ export const CATALOG_SKU_SELECT = `
     offset_y,
     colour_id,
     colour:cat_colours!colour_id (
-        id, name, hex_primary, hex_secondary, finish, primary_image, media_shared
+        id, name, hex_primary, hex_secondary, finish, primary_image, media_shared, video_url_1, video_url_2
     ),
     model:cat_models!model_id (
         id, name, slug, product_type, body_type, segment,
         engine_cc, fuel_type, emission_standard, status,
-        primary_image, media_shared,
+        primary_image, media_shared, video_url_1, video_url_2,
         brand:cat_brands!brand_id (
             id, name, slug, logo_svg
         )
@@ -154,7 +156,7 @@ export const CATALOG_SKU_SELECT = `
         low_fuel_indicator, low_oil_indicator, low_battery_indicator,
         pillion_seat, pillion_footrest, stand_alarm, pass_light, killswitch,
         warranty_years, warranty_km, service_interval,
-        primary_image, media_shared
+        primary_image, media_shared, video_url_1, video_url_2
     ),
     accessory_variant:cat_variants_accessory!accessory_variant_id (
         id, name, slug, status,
@@ -372,7 +374,7 @@ export async function resolveModel(makeSlug: string, modelSlug: string): Promise
     const { data: modelRows } = await (adminClient as any)
         .from('cat_models')
         .select(
-            'id, brand_id, name, slug, brand:cat_brands!brand_id(name, slug), fuel_type, engine_cc, status, primary_image, media_shared'
+            'id, brand_id, name, slug, brand:cat_brands!brand_id(name, slug), fuel_type, engine_cc, status, primary_image, media_shared, video_url_1, video_url_2'
         )
         .eq('status', 'ACTIVE');
 

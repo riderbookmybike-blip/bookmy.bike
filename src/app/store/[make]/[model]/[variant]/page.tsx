@@ -973,6 +973,39 @@ export default async function Page({ params, searchParams }: Props) {
         return primary?.url || first?.url || null;
     };
 
+    const HONDA_ACTIVA_VIDEO_URLS = [
+        'https://www.youtube.com/watch?v=RZcki0JVASQ',
+        'https://www.youtube.com/watch?v=4TFu_oDpTNI',
+        'https://www.youtube.com/watch?v=FGyvYjxWFtQ',
+    ];
+    const makeName = String(item.brand?.name || resolvedParams.make || '').toLowerCase();
+    const modelName = String(item.parent?.name || resolvedParams.model || '').toLowerCase();
+    const isHondaActiva = makeName.includes('honda') && modelName.includes('activa');
+    const normalizeVideoUrls = (values: any[]): string[] =>
+        Array.from(new Set(values.map(v => String(v || '').trim()).filter(v => v.length > 0)));
+    const collectVideoUrls = (node: any): string[] => {
+        if (!node || typeof node !== 'object') return [];
+        return normalizeVideoUrls([
+            node.video_url_1,
+            node.video_url_2,
+            node.video_url,
+            ...(Array.isArray(node.video_urls) ? node.video_urls : []),
+            ...(Array.isArray(node.specs?.video_urls) ? node.specs.video_urls : []),
+            node.specs?.video_url,
+        ]);
+    };
+    const modelLevelVideoUrls = collectVideoUrls(modelRow);
+    const resolveVideoUrls = (sku: any): string[] => {
+        const modelUrls = normalizeVideoUrls([
+            ...(modelRow?.media_shared === false ? [] : modelLevelVideoUrls),
+            ...(isHondaActiva ? HONDA_ACTIVA_VIDEO_URLS : []),
+        ]);
+        const variantUrls = sku?.vehicle_variant?.media_shared === false ? [] : collectVideoUrls(sku?.vehicle_variant);
+        const colourUrls = sku?.colour?.media_shared === false ? [] : collectVideoUrls(sku?.colour);
+        const skuUrls = collectVideoUrls(sku);
+        return normalizeVideoUrls([...modelUrls, ...variantUrls, ...colourUrls, ...skuUrls]);
+    };
+
     const colors =
         colorDefs && colorDefs.length > 0
             ? colorDefs
@@ -1000,6 +1033,8 @@ export default async function Page({ params, searchParams }: Props) {
                       const cleanId = slugify(cleanName);
                       const rawOffer = sku?.id ? marketOffers[sku.id] || 0 : 0;
 
+                      const videoUrls = resolveVideoUrls(sku);
+
                       return {
                           id: cleanId,
                           skuId: sku?.id,
@@ -1019,7 +1054,8 @@ export default async function Page({ params, searchParams }: Props) {
                               color?.specs?.image_url ||
                               null,
                           assets: sku?.assets || [], // PASS ASSETS FOR GALLERY
-                          video: sku?.video_url || sku?.specs?.video_urls?.[0] || sku?.specs?.video_url || null,
+                          video: videoUrls[0] || null,
+                          videoUrls,
                           pricingOverride: undefined,
                           dealerOffer: rawOffer,
                           isPrimary: Boolean(sku?.is_primary || color?.is_primary),
@@ -1054,6 +1090,8 @@ export default async function Page({ params, searchParams }: Props) {
                       const rawOffer = marketOffers[sku.id] || 0;
                       const assetImage = pickImageFromAssets(sku?.assets);
 
+                      const videoUrls = resolveVideoUrls(sku);
+
                       return {
                           id: cleanId,
                           skuId: sku.id,
@@ -1066,7 +1104,8 @@ export default async function Page({ params, searchParams }: Props) {
                               sku.specs?.gallery?.[0] ||
                               null,
                           assets: sku.assets || [], // PASS ASSETS FOR GALLERY
-                          video: sku.video_url || sku.specs?.video_urls?.[0] || sku.specs?.video_url || null,
+                          video: videoUrls[0] || null,
+                          videoUrls,
                           pricingOverride: undefined,
                           dealerOffer: rawOffer,
                           isPrimary: Boolean(sku?.is_primary),
