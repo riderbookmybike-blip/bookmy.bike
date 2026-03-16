@@ -20,8 +20,9 @@
  */
 
 import React, { useState, useRef } from 'react';
+import { motion } from 'framer-motion';
 import Image from 'next/image';
-import { ArrowRight, Wallet, Package, Shield, Zap, MessageCircle, X, Send, MapPin, Pencil } from 'lucide-react';
+import { ArrowRight, Wallet, Package, Shield, Zap, MessageCircle, X, Send } from 'lucide-react';
 import { Logo } from '@/components/brand/Logo';
 import { OCircleLogo } from '@/components/common/OCircleLogo';
 import { coinsNeededForPrice } from '@/lib/oclub/coin';
@@ -218,243 +219,218 @@ function WhatsAppPhoneModal({ onClose, onSend }: WhatsAppPhoneModalProps) {
 
 // ── Desktop Metric Cards ─────────────────────────────────────────────────────
 
-interface DesktopMetricCardsProps {
-    displayOnRoad: number;
-    totalSavings: number;
-    totalSurge: number;
-    coinPricing: any;
-    bCoinEquivalent: number;
+interface DesktopIdentityClusterProps {
+    getProductImage: () => string;
+    displayModel: string;
+    displayVariant: string;
+    displayColor: string;
+    activeColorConfig: { hex: string };
+}
+
+interface DesktopCommercialClusterProps {
     onRoadBase: number;
     accessoriesCount: number;
     accessoriesTotal: number;
     insuranceAddonsCount: number;
     insuranceAddonsCost: number;
+    totalSurge: number;
+    totalSavings: number;
+    coinPricing: any;
+    displayOnRoad: number;
+    bCoinEquivalent: number;
 }
 
-/** Uniform desktop command-bar card.
- *  "Premium Cockpit" style: bg-slate-900/90, white accents, monospaced values.
- */
-function DesktopCard({
-    testId,
-    value,
-    labelNode,
-    accentColor,
-    isActive = true,
-    flexValue = '1',
-}: {
-    testId?: string;
-    value: React.ReactNode;
-    labelNode: React.ReactNode;
-    accentColor: 'violet' | 'blue' | 'rose' | 'emerald' | 'amber' | 'slate';
-    isActive?: boolean;
-    flexValue?: string;
-}) {
-    // Static mapping for Tailwind classes to ensure they are picked up by the compiler
-    const themes = {
-        violet: {
-            text: 'text-violet-400',
-            border: 'border-violet-500/30',
-            bg: 'bg-violet-500/10',
-            glow: 'bg-violet-400/50',
-        },
-        blue: { text: 'text-blue-400', border: 'border-blue-500/30', bg: 'bg-blue-500/10', glow: 'bg-blue-400/50' },
-        rose: { text: 'text-rose-400', border: 'border-rose-500/30', bg: 'bg-rose-500/10', glow: 'bg-rose-400/50' },
-        emerald: {
-            text: 'text-emerald-400',
-            border: 'border-emerald-500/30',
-            bg: 'bg-emerald-500/10',
-            glow: 'bg-emerald-400/50',
-        },
-        amber: {
-            text: 'text-amber-400',
-            border: 'border-amber-500/30',
-            bg: 'bg-amber-500/10',
-            glow: 'bg-amber-400/50',
-        },
-        slate: {
-            text: 'text-slate-400',
-            border: 'border-slate-500/30',
-            bg: 'bg-slate-500/10',
-            glow: 'bg-slate-400/50',
-        },
-    };
+interface DesktopActionClusterProps {
+    primaryLabel: string;
+    isDisabled: boolean;
+    primaryAction: () => void;
+}
 
-    const theme = themes[accentColor];
-    const accentClass = isActive ? theme.text : 'text-slate-500';
-    const borderClass = isActive ? theme.border : 'border-white/5';
-    const bgClass = isActive ? theme.bg : 'bg-white/5';
+function compactInr(value: number, sign: '+' | '-' | '' = '') {
+    return `${sign}₹ ${Math.round(value).toLocaleString('en-IN')}`;
+}
 
+function DesktopIdentityCluster({
+    getProductImage,
+    displayModel,
+    displayVariant,
+    displayColor,
+    activeColorConfig,
+}: DesktopIdentityClusterProps) {
     return (
-        <div
-            data-testid={testId}
-            style={{ flex: flexValue }}
-            className={`relative flex flex-col items-center justify-center text-center px-3 py-2 rounded-xl border transition-all duration-300 group
-                ${isActive ? 'shadow-lg shadow-black/20' : ''}
-                ${borderClass} ${bgClass}`}
-        >
-            <div
-                className={`absolute top-0 inset-x-0 h-px transition-colors duration-300 ${isActive ? theme.glow : 'bg-white/10'}`}
-            />
-
-            <p
-                className={`text-[13px] font-black font-mono tabular-nums leading-none transition-colors duration-300 ${isActive ? 'text-white' : 'text-slate-500'}`}
-            >
-                {value}
-            </p>
-            <div
-                className={`mt-1.5 inline-flex items-center gap-1.5 text-[8px] font-black uppercase tracking-[0.08em] transition-colors duration-300 ${accentClass}`}
-            >
-                {labelNode}
+        <section className="w-[260px] shrink-0 min-w-0 h-[92px] rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+            <div className="flex items-center gap-3 min-w-0 h-full">
+                <div className="w-11 h-11 relative flex items-center justify-center bg-white/5 border border-white/10 rounded-xl overflow-hidden shrink-0">
+                    <Image
+                        src={getProductImage()}
+                        alt={displayModel}
+                        fill
+                        sizes="44px"
+                        className="object-contain p-1"
+                    />
+                </div>
+                <div className="min-w-0 flex-1">
+                    <p className="text-[12px] font-black text-white uppercase italic tracking-tight leading-none truncate">
+                        {displayModel}{' '}
+                        <span className="text-[8px] font-semibold text-white/90 tracking-[0.08em] not-italic">
+                            {displayVariant}
+                        </span>
+                    </p>
+                    <div className="flex items-center gap-1.5 mt-1">
+                        <div
+                            className="w-2.5 h-2.5 rounded-full border border-white/10"
+                            style={{ backgroundColor: activeColorConfig.hex }}
+                        />
+                        <span className="text-[8px] font-semibold tracking-[0.08em] text-white/90 uppercase leading-none truncate">
+                            {displayColor}
+                        </span>
+                    </div>
+                </div>
             </div>
-        </div>
+        </section>
     );
 }
 
-/** Info chip (Delivery By / STUDIO) — matches Cockpit system. */
-function DesktopInfoChip({
-    chipLabel,
-    chipValue,
-    icon,
-}: {
-    chipLabel: string;
-    chipValue: string;
-    icon?: React.ReactNode;
-}) {
-    return (
-        <div className="relative flex flex-col items-center justify-center text-center px-3 py-2 rounded-xl border border-white/5 bg-white/5 overflow-hidden transition-all duration-200 min-w-[70px]">
-            <p className="text-[12px] font-black font-mono tabular-nums leading-none text-slate-300">{chipValue}</p>
-            <p className="mt-1.5 text-[7px] font-black uppercase tracking-[0.12em] text-slate-500 inline-flex items-center gap-1">
-                {icon}
-                {chipLabel}
-            </p>
-        </div>
-    );
-}
-
-function DesktopMetricCards({
-    displayOnRoad,
-    totalSavings,
-    totalSurge,
-    coinPricing,
-    bCoinEquivalent,
+function DesktopCommercialCluster({
     onRoadBase,
     accessoriesCount,
     accessoriesTotal,
     insuranceAddonsCount,
     insuranceAddonsCost,
-}: DesktopMetricCardsProps) {
+    totalSurge,
+    totalSavings,
+    coinPricing,
+    displayOnRoad,
+    bCoinEquivalent,
+}: DesktopCommercialClusterProps) {
     const bCoinDiscount = coinPricing?.discount || 0;
+    const showSurgeCard = totalSurge > 0;
 
     return (
-        <div className="hidden md:flex items-stretch gap-1.5 flex-1 h-12">
-            {/* 1. On-Road base */}
-            <DesktopCard
-                testId="cmd-bar-on-road"
-                accentColor="slate"
-                value={`₹ ${onRoadBase.toLocaleString('en-IN')}`}
-                labelNode={
-                    <>
-                        <Wallet size={8} /> On-Road
-                    </>
-                }
-                isActive={true}
-            />
+        <div className="flex-1 flex gap-2 min-w-0">
+            {/* Primary Metrics Cluster */}
+            <div className="flex-[2] h-[92px] rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 flex items-center justify-between overflow-hidden">
+                <div data-testid="cmd-bar-on-road" className="min-w-0">
+                    <p className="text-[8px] uppercase tracking-[0.2em] text-white/70 mb-1 font-black">Base Price</p>
+                    <p className="text-[15px] font-black font-mono text-white leading-none whitespace-nowrap">
+                        {compactInr(onRoadBase)}
+                    </p>
+                </div>
 
-            {/* 2. Accessories */}
-            <DesktopCard
-                testId="cmd-bar-accessories"
-                accentColor="violet"
-                value={accessoriesCount > 0 ? `+ ₹ ${accessoriesTotal.toLocaleString('en-IN')}` : '₹ 0'}
-                labelNode={
-                    <>
-                        <Package size={8} /> {accessoriesCount > 0 ? `${accessoriesCount} Acc` : 'Accessories'}
-                    </>
-                }
-                isActive={accessoriesCount > 0}
-            />
+                <div className="text-white/30 text-xs font-light">+</div>
 
-            {/* 3. Insurance */}
-            <DesktopCard
-                testId="cmd-bar-ins-addons"
-                accentColor="blue"
-                value={
-                    insuranceAddonsCost > 0 ? `+ ₹ ${Math.round(insuranceAddonsCost).toLocaleString('en-IN')}` : '₹ 0'
-                }
-                labelNode={
-                    <>
-                        <Shield size={8} /> {insuranceAddonsCount > 0 ? `${insuranceAddonsCount} Ins` : 'Insurance'}
-                    </>
-                }
-                isActive={insuranceAddonsCost > 0}
-            />
+                <div data-testid="cmd-bar-accessories" className="min-w-0">
+                    <p className="text-[8px] uppercase tracking-[0.2em] text-white/70 mb-1 font-black">
+                        {accessoriesCount > 0 ? `${accessoriesCount} Accessories` : 'Additional Accessories'}
+                    </p>
+                    <p className="text-[13px] font-black font-mono text-white leading-none whitespace-nowrap">
+                        {accessoriesTotal > 0 ? compactInr(accessoriesTotal, '+') : '₹ 0'}
+                    </p>
+                </div>
 
-            {/* 4. Surge */}
-            <DesktopCard
-                testId="cmd-bar-surge"
-                accentColor="rose"
-                value={totalSurge > 0 ? `+ ₹ ${Math.round(totalSurge).toLocaleString('en-IN')}` : '₹ 0'}
-                labelNode={
-                    <>
-                        <Zap size={8} /> Surge
-                    </>
-                }
-                isActive={totalSurge > 0}
-            />
+                <div className="text-white/30 text-xs font-light">+</div>
 
-            {/* 5. O'Circle */}
-            <DesktopCard
-                testId="cmd-bar-ocircle"
-                accentColor="emerald"
-                value={`− ₹ ${Math.max(0, totalSavings).toLocaleString('en-IN')}`}
-                labelNode={
-                    <>
-                        <OCircleLogo size={8} color={totalSavings > 0 ? '#10B981' : '#64748b'} strokeWidth={20} />
-                        O'Circle
-                    </>
-                }
-                isActive={totalSavings > 0}
-            />
+                <div data-testid="cmd-bar-ins-addons" className="min-w-0">
+                    <p className="text-[8px] uppercase tracking-[0.2em] text-white/70 mb-1 font-black">
+                        {insuranceAddonsCount > 0 ? `${insuranceAddonsCount} Insurance` : 'Insurance Addons'}
+                    </p>
+                    <p className="text-[13px] font-black font-mono text-white leading-none whitespace-nowrap">
+                        {insuranceAddonsCost > 0 ? compactInr(insuranceAddonsCost, '+') : '₹ 0'}
+                    </p>
+                </div>
+            </div>
 
-            {/* 6. BCoin Wallet */}
-            <DesktopCard
-                testId="cmd-bar-bcoin"
-                accentColor="amber"
-                value={bCoinDiscount > 0 ? `− ₹ ${bCoinDiscount.toLocaleString('en-IN')}` : '₹ 0'}
-                labelNode={
-                    <>
-                        <Logo variant="icon" size={8} customColor={bCoinDiscount > 0 ? '#f59e0b' : '#64748b'} />
-                        Wallet
-                    </>
-                }
-                isActive={bCoinDiscount > 0}
-            />
+            {/* Adjustments & Savings Cluster */}
+            <div className="flex-1 h-[92px] rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 flex items-center justify-between">
+                <div data-testid={showSurgeCard ? 'cmd-bar-surge' : 'cmd-bar-ocircle'} className="min-w-0">
+                    <p className="text-[7px] uppercase tracking-[0.2em] text-white/70 mb-1 font-black">
+                        {showSurgeCard ? 'Surge' : 'Savings'}
+                    </p>
+                    <p
+                        className={`text-[11px] font-black font-mono leading-none ${showSurgeCard ? 'text-rose-400' : 'text-emerald-400'}`}
+                    >
+                        {showSurgeCard
+                            ? compactInr(totalSurge, '+')
+                            : totalSavings > 0
+                              ? compactInr(totalSavings, '-')
+                              : '₹ 0'}
+                    </p>
+                </div>
 
-            {/* 7. Final Offer — Premium Golden Hero */}
+                <div className="w-px h-6 bg-white/10 mx-2" />
+
+                <div data-testid="cmd-bar-bcoin" className="min-w-0">
+                    <p className="text-[7px] uppercase tracking-[0.2em] text-white/70 mb-1 font-black">Wallet</p>
+                    <p className="text-[11px] font-black font-mono text-amber-400 leading-none">
+                        {bCoinDiscount > 0 ? compactInr(bCoinDiscount, '-') : '₹ 0'}
+                    </p>
+                </div>
+            </div>
+
+            {/* Final Outcome Cluster */}
             <div
                 data-testid="cmd-bar-final-offer"
-                style={{ flex: '1.8' }}
-                className="relative flex flex-col items-center justify-center text-center px-4 py-2 rounded-xl overflow-hidden border border-amber-500/40 bg-[#0b0d10] transition-all duration-300 group"
+                className="flex-[1.2] h-[92px] rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-2.5 relative overflow-hidden group flex flex-col items-center justify-center text-center"
             >
-                {/* Premium Golden Glow */}
-                <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 via-transparent to-transparent opacity-50" />
-                <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-amber-400 to-transparent" />
-
-                <div className="relative flex items-center gap-2 justify-center">
-                    <p className="text-[15px] font-black font-mono tabular-nums leading-none text-white tracking-tight">
-                        ₹ {displayOnRoad.toLocaleString('en-IN')}
-                    </p>
-                    <div className="flex items-center gap-1 bg-amber-500/20 border border-amber-500/30 rounded-lg px-2 py-0.5">
-                        <Logo variant="icon" size={9} customColor="#fbbf24" />
-                        <span className="text-[12px] font-black text-amber-200 font-mono tabular-nums leading-none">
+                <div className="absolute top-0 right-0 p-1.5 opacity-10 group-hover:opacity-30 transition-opacity">
+                    <Logo variant="icon" size={20} customColor="#F4B000" />
+                </div>
+                <p className="text-[8px] uppercase tracking-[0.2em] text-amber-500 font-black mb-1.5">
+                    Final Deal Value
+                </p>
+                <div className="flex items-center justify-center gap-4">
+                    <div className="flex items-center gap-2">
+                        <span className="text-[18px] font-black font-mono text-amber-400 leading-none">₹</span>
+                        <span className="text-[18px] font-black font-mono text-amber-400 leading-none tracking-tight">
+                            {displayOnRoad.toLocaleString('en-IN')}
+                        </span>
+                    </div>
+                    <div className="w-px h-3 bg-amber-500/20" />
+                    <div className="flex items-center gap-2">
+                        <Logo variant="icon" size={16} customColor="#F4B000" />
+                        <span className="text-[18px] font-black font-mono text-amber-400 leading-none tracking-tight">
                             {bCoinEquivalent.toLocaleString('en-IN')}
                         </span>
                     </div>
                 </div>
-                <p className="relative mt-1.5 inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-[0.14em] text-amber-500/80">
-                    <Zap size={8} className="fill-amber-500 text-amber-500" />
-                    Final Offer
-                </p>
             </div>
+        </div>
+    );
+}
+
+function DesktopActionCluster({ primaryLabel, isDisabled, primaryAction }: DesktopActionClusterProps) {
+    return (
+        <div className="h-[92px] rounded-xl border border-white/10 bg-white/5 px-2 py-2 flex items-center justify-center">
+            <motion.button
+                onClick={primaryAction}
+                disabled={isDisabled}
+                whileHover={!isDisabled ? { scale: 1.02, backgroundColor: '#FFB800' } : {}}
+                whileTap={!isDisabled ? { scale: 0.98 } : {}}
+                className={`relative w-full h-full px-6 font-black text-xs uppercase tracking-widest rounded-xl shadow-2xl overflow-hidden flex items-center justify-center gap-3 transition-all
+                    ${
+                        isDisabled
+                            ? 'bg-slate-800 text-slate-500 cursor-not-allowed grayscale shadow-none'
+                            : 'bg-[#F4B000] text-black shadow-[#F4B000]/20 hover:shadow-[#F4B000]/40'
+                    }`}
+            >
+                {/* Shimmer Effect */}
+                {!isDisabled && (
+                    <motion.div
+                        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+                        initial={{ x: '-100%', skewX: -20 }}
+                        animate={{ x: '200%' }}
+                        transition={{
+                            repeat: Infinity,
+                            duration: 2,
+                            ease: 'easeInOut',
+                            delay: 0.5,
+                        }}
+                    />
+                )}
+
+                <span className="relative z-10">{primaryLabel}</span>
+                <ArrowRight size={18} className="relative z-10 group-hover:translate-x-1 transition-transform" />
+            </motion.button>
         </div>
     );
 }
@@ -601,9 +577,9 @@ function MobilePriceSummary({
             </div>
 
             {/* Row 2: Final price + BCoin */}
-            <div className="flex items-center gap-2.5">
-                <div className="flex items-baseline gap-1.5">
-                    <span className="text-[17px] font-black text-white font-mono tabular-nums leading-none tracking-tight drop-shadow-sm">
+            <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5">
+                    <span className="text-[16px] font-black text-amber-400 font-mono tabular-nums leading-none tracking-tight">
                         ₹{displayOnRoad.toLocaleString('en-IN')}
                     </span>
                     {hasSavings && (
@@ -613,9 +589,9 @@ function MobilePriceSummary({
                     )}
                 </div>
                 <div className="w-px h-3.5 bg-white/15" />
-                <div className="flex items-center gap-1">
-                    <Logo variant="icon" size={10} customColor="#FFD700" />
-                    <span className="text-[12px] font-bold text-[#FFD700] font-mono tabular-nums leading-none">
+                <div className="flex items-center gap-2">
+                    <Logo variant="icon" size={12} customColor="#F4B000" />
+                    <span className="text-[16px] font-black text-amber-400 font-mono tabular-nums leading-none">
                         {bCoinEquivalent.toLocaleString('en-IN')}
                     </span>
                 </div>
@@ -699,101 +675,66 @@ export function PdpCommandBar({
                     <div
                         className={`pointer-events-none absolute inset-0 ${isDesktop ? 'bg-gradient-to-b from-white/[0.03] to-transparent' : 'bg-[linear-gradient(135deg,rgba(255,255,255,0.06),rgba(255,255,255,0.01)_65%)]'}`}
                     />
-                    <div
-                        className={`relative z-10 flex items-center justify-between ${
-                            isDesktop ? 'px-4 py-3.5 md:px-8 md:py-4 gap-4 md:gap-8' : 'px-4 py-3 gap-3'
-                        }`}
-                    >
-                        {/* Left: Product Identity + Logistics */}
-                        <div className="flex items-center gap-4 md:gap-6 min-w-0">
-                            {/* Product Thumbnail — Desktop only */}
-                            {isDesktop && (
-                                <div className="hidden md:flex items-center gap-4 min-w-0">
-                                    <div className="w-11 h-11 relative flex items-center justify-center bg-white/5 border border-white/10 rounded-xl overflow-hidden shrink-0">
-                                        <Image
-                                            src={getProductImage()}
-                                            alt={displayModel}
-                                            fill
-                                            sizes="44px"
-                                            className="object-contain p-1"
-                                        />
+                    {isDesktop ? (
+                        <div className="relative z-10 hidden md:flex items-center gap-2 px-6 py-3.5 overflow-x-auto">
+                            {/* Cluster 1: Identity & Logistics (Left) */}
+                            <div className="flex-[0.8] flex gap-2 min-w-[320px]">
+                                <DesktopIdentityCluster
+                                    getProductImage={getProductImage}
+                                    displayModel={displayModel}
+                                    displayVariant={displayVariant}
+                                    displayColor={displayColor}
+                                    activeColorConfig={activeColorConfig}
+                                />
+                                <div className="flex-1 h-[92px] rounded-xl border border-white/10 bg-[#0b0d10] px-4 py-2.5 flex flex-col justify-center">
+                                    <div className="min-w-0" data-testid="cmd-bar-location">
+                                        <p className="text-[10px] font-black text-blue-400 leading-none truncate mb-1.5">
+                                            {locationInfo?.pincode || 'Set City'}
+                                        </p>
+                                        <p className="text-[7.5px] uppercase tracking-[0.1em] text-white/40 truncate">
+                                            {locationHeadline || 'Location'}
+                                        </p>
                                     </div>
-                                    <div className="flex flex-col min-w-0">
-                                        <span className="text-[13px] font-black text-white uppercase italic tracking-tight leading-none truncate">
-                                            {displayModel}{' '}
-                                            <span className="text-[9px] font-semibold text-slate-500 tracking-[0.08em] not-italic">
-                                                {displayVariant}
-                                            </span>
-                                        </span>
-                                        <div className="flex items-center gap-1.5 mt-1.5">
-                                            <div
-                                                className="w-2.5 h-2.5 rounded-full border border-white/10"
-                                                style={{ backgroundColor: activeColorConfig.hex }}
-                                            />
-                                            <span className="text-[8px] font-semibold tracking-[0.08em] text-slate-400 uppercase leading-none">
-                                                {displayColor}
-                                            </span>
-                                        </div>
+                                    <div className="my-1.5 h-px bg-white/5" />
+                                    <div className="min-w-0" data-testid="cmd-bar-delivery">
+                                        <p className="text-[9px] font-black text-white/90 leading-none truncate mb-1">
+                                            {deliveryByLabel || 'Fastest'}
+                                        </p>
+                                        <p className="text-[7px] uppercase tracking-[0.1em] text-white/40 truncate">
+                                            Delivery
+                                        </p>
                                     </div>
-
-                                    {/* Logistics Group */}
-                                    <div className="flex items-center gap-1.5 ml-2">
-                                        {!!locationInfo?.pincode && (
-                                            <button
-                                                type="button"
-                                                onClick={() => onEditLocation?.()}
-                                                className="relative flex flex-col items-center justify-center text-center px-3 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20 transition-all duration-200 min-w-[90px] group"
-                                                title="Change location"
-                                            >
-                                                <span className="text-[11px] font-black font-mono tabular-nums leading-none text-blue-400 group-hover:text-blue-300 transition-colors">
-                                                    {locationInfo.pincode}
-                                                </span>
-                                                <span className="mt-1.5 text-[7px] font-black uppercase tracking-[0.12em] text-slate-500 inline-flex items-center gap-1">
-                                                    <MapPin size={7} />
-                                                    {locationInfo.area || locationInfo.district || 'Location'}
-                                                    <Pencil
-                                                        size={6}
-                                                        className="opacity-0 group-hover:opacity-100 transition-opacity"
-                                                    />
-                                                </span>
-                                            </button>
-                                        )}
-                                        {deliveryByLabel && (
-                                            <DesktopInfoChip
-                                                chipLabel="Delivery by"
-                                                chipValue={deliveryByLabel}
-                                                icon={<Zap size={7} className="text-amber-400" />}
-                                            />
-                                        )}
-                                        {studioIdLabel && (
-                                            <DesktopInfoChip
-                                                chipLabel="STUDIO"
-                                                chipValue={String(studioIdLabel).toUpperCase()}
-                                                icon={<Package size={7} className="text-slate-400" />}
-                                            />
-                                        )}
-                                    </div>
-
-                                    {/* Vertical Divider between Logistics and Commercials */}
-                                    <div className="w-px h-8 bg-white/10 mx-2" />
                                 </div>
-                            )}
+                            </div>
 
-                            {/* Commercials: Price Summary */}
-                            {isDesktop ? (
-                                <DesktopMetricCards
-                                    displayOnRoad={displayOnRoad}
-                                    totalSavings={totalSavings}
-                                    totalSurge={totalSurge}
-                                    coinPricing={coinPricing}
-                                    bCoinEquivalent={bCoinEquivalent}
+                            {/* Cluster 2: Price Math (Center) */}
+                            <div className="flex-[2] min-w-[600px]">
+                                <DesktopCommercialCluster
                                     onRoadBase={onRoadBase}
                                     accessoriesCount={accessoriesCount}
                                     accessoriesTotal={accessoriesTotal}
                                     insuranceAddonsCount={insuranceAddonsCount}
                                     insuranceAddonsCost={insuranceAddonsCost}
+                                    totalSurge={totalSurge}
+                                    totalSavings={totalSavings}
+                                    coinPricing={coinPricing}
+                                    displayOnRoad={displayOnRoad}
+                                    bCoinEquivalent={bCoinEquivalent}
                                 />
-                            ) : (
+                            </div>
+
+                            {/* Cluster 3: Final Action (Right) */}
+                            <div className="flex-[0.7] min-w-[220px]">
+                                <DesktopActionCluster
+                                    primaryLabel={primaryLabel}
+                                    isDisabled={isDisabled}
+                                    primaryAction={primaryAction}
+                                />
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="relative z-10 flex items-center justify-between px-4 py-3 gap-3">
+                            <div className="min-w-0 flex-1">
                                 <MobilePriceSummary
                                     displayOnRoad={displayOnRoad}
                                     totalOnRoad={totalOnRoad}
@@ -810,29 +751,23 @@ export function PdpCommandBar({
                                     insuranceAddonsCost={insuranceAddonsCost}
                                     totalSurge={totalSurge}
                                 />
-                            )}
-                        </div>
+                            </div>
 
-                        {/* Right: Actions + CTA */}
-                        <div className="flex items-center gap-3 md:gap-4">
-                            {/* CTA Button — both layouts */}
                             <button
                                 onClick={primaryAction}
                                 disabled={isDisabled}
-                                className={`${isDesktop ? 'h-12 px-7' : 'h-10 px-4.5'} font-black text-[11px] uppercase tracking-[0.12em] rounded-full shadow-xl flex items-center gap-2 transition-all group
+                                className={`h-10 px-4.5 font-black text-[11px] uppercase tracking-[0.12em] rounded-full shadow-xl flex items-center gap-2 transition-all group shrink-0
                                     ${
                                         isDisabled
                                             ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
-                                            : isDesktop
-                                              ? 'bg-[#FFD700] hover:bg-[#FFD700]/90 text-slate-900 shadow-[#FFD700]/20 hover:shadow-[#FFD700]/40 hover:-translate-y-0.5'
-                                              : 'bg-[#FFD700] text-[#0b0d10] shadow-[0_0_20px_rgba(255,215,0,0.3)]'
+                                            : 'bg-[#FFD700] text-[#0b0d10] shadow-[0_0_20px_rgba(255,215,0,0.3)]'
                                     }`}
                             >
                                 {primaryLabel}
                                 <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
                             </button>
                         </div>
-                    </div>
+                    )}
                 </div>
             </div>
 
