@@ -1,4 +1,5 @@
-import { test, expect, type Page, type APIRequestContext } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
+import * as fs from 'fs';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -6,6 +7,7 @@ const AUMS_PHONE = '9820760596';
 const OFFERS_PATH = '/app/aums/dashboard/catalog/offers';
 const SUPABASE_URL = 'https://aytdeqjxxjxbgiyslubx.supabase.co';
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
+const FIXTURE_STATE_FILE = '/tmp/pw-fixture-state.json';
 
 // ── Fixture anchor (real row — edit test patches this, afterAll restores it) ──
 // TVS Autorace / NTORQ 150 Stealth Silver / MH / offer_amount: 4796
@@ -21,53 +23,22 @@ const ANCHOR = {
     tenantName: 'TVS Autorace',
 } as const;
 
-// ─── Supabase REST helpers ────────────────────────────────────────────────────
+// ─── Anchor row restore (safe via page.request — only needs service key for PATCH) ────
 
-function supabaseHeaders(extraPrefer?: string) {
-    return {
-        apikey: SUPABASE_SERVICE_KEY,
-        Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
-        'Content-Type': 'application/json',
-        Prefer: extraPrefer ?? 'return=representation',
-    };
-}
-
-async function upsertOfferRow(
-    request: APIRequestContext,
-    row: {
-        tenant_id: string;
-        vehicle_color_id: string;
-        state_code: string;
-        offer_amount: number;
-        is_active: boolean;
-        inclusion_type: string;
-        tat_days: number;
-    }
-): Promise<string | null> {
-    const res = await request.post(`${SUPABASE_URL}/rest/v1/cat_price_dealer`, {
-        headers: supabaseHeaders('return=representation,resolution=merge-duplicates'),
-        data: row,
-    });
-    if (!res.ok()) return null;
-    const body: unknown = await res.json().catch(() => []);
-    return Array.isArray(body) && body[0]?.id ? String(body[0].id) : null;
-}
-
-async function restoreAnchorRow(request: APIRequestContext) {
-    await request.patch(`${SUPABASE_URL}/rest/v1/cat_price_dealer?id=eq.${ANCHOR.id}`, {
-        headers: supabaseHeaders(),
+async function restoreAnchorRow(page: Page) {
+    await page.request.patch(`https://aytdeqjxxjxbgiyslubx.supabase.co/rest/v1/cat_price_dealer?id=eq.${ANCHOR.id}`, {
+        headers: {
+            apikey: SUPABASE_SERVICE_KEY,
+            Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+            'Content-Type': 'application/json',
+            Prefer: 'return=minimal',
+        },
         data: {
             offer_amount: ANCHOR.originalAmount,
             is_active: true,
             inclusion_type: ANCHOR.inclusionType,
             tat_days: ANCHOR.tatDays,
         },
-    });
-}
-
-async function deleteRow(request: APIRequestContext, id: string) {
-    await request.delete(`${SUPABASE_URL}/rest/v1/cat_price_dealer?id=eq.${id}`, {
-        headers: supabaseHeaders(),
     });
 }
 
@@ -130,23 +101,31 @@ test.describe('AUMS — Dealer Offer Override Mutations', () => {
 
     let removableRowId: string | null = null;
 
-    test.beforeAll(async ({ request }) => {
-        // Insert a dedicated removable fixture row (GJ state, -500) for the remove test.
-        // Hard-deleted in afterAll so real data is never permanently affected.
-        removableRowId = await upsertOfferRow(request, {
-            tenant_id: ANCHOR.tenantId,
-            vehicle_color_id: ANCHOR.vehicleColorId,
-            state_code: 'GJ', // distinct state → distinct unique key from anchor (MH)
-            offer_amount: -500,
-            is_active: true,
-            inclusion_type: 'OPTIONAL',
-            tat_days: 7,
-        });
+    test.beforeAll(async () => {
+        // Read the fixture row ID written by global-setup.ts (runs in pure Node.js, not browser).
+        // global-setup inserts the ZZ-state row via Supabase JS client, bypassing browser-key restrictions.
+        try {
+            const raw = fs.readFileSync(FIXTURE_STATE_FILE, 'utf8');
+            removableRowId = JSON.parse(raw).removableRowId ?? null;
+        } catch {
+            throw new Error(
+                'Fixture state file not found — ensure global-setup.ts ran successfully. ' +
+                    'Set SUPABASE_SERVICE_ROLE_KEY and re-run npx playwright test.'
+            );
+        }
+
+        if (!removableRowId) {
+            throw new Error(
+                'removableRowId is null — global-setup fixture insert failed. ' +
+                    'Check SUPABASE_SERVICE_ROLE_KEY and DB constraints.'
+            );
+        }
     });
 
-    test.afterAll(async ({ request }) => {
-        await restoreAnchorRow(request);
-        if (removableRowId) await deleteRow(request, removableRowId);
+    // Restore anchor row after each test — the edit test modifies it, others don't.
+    // ZZ fixture row deletion is handled by global-teardown.ts.
+    test.afterEach(async ({ page }) => {
+        await restoreAnchorRow(page);
     });
 
     test.beforeEach(async ({ page }, testInfo) => {
@@ -200,25 +179,22 @@ test.describe('AUMS — Dealer Offer Override Mutations', () => {
     // ── 2. Remove (soft disable) ──────────────────────────────────────────────
 
     test('remove offer row — row disappears from active view', async ({ page }) => {
-        test.skip(!removableRowId, 'Removable fixture row was not created');
-
         await gotoOffersPage(page);
         await waitForTableReady(page);
 
         // Filter to TVS Autorace to narrow the table
         await selectDealerFilter(page, ANCHOR.tenantId);
 
-        // Find the GJ fixture row (offer: -500, state: GJ)
+        // Find the ZZ fixture row — it must be visible since beforeAll guarantees insertion
         const fixtureRow = page
             .locator('table tbody tr')
             .filter({ hasText: ANCHOR.skuName })
-            .filter({ hasText: 'GJ' })
+            .filter({ hasText: 'ZZ' })
             .first();
 
-        if (!(await fixtureRow.isVisible().catch(() => false))) {
-            // REST-confirmed it exists; may be on a later page — treat as non-critical skip
-            test.skip();
-        }
+        // The fixture row MUST be visible — if not, the fixture is broken (fail loudly).
+        // ZZ is a sentinel state_code impossible in production, guaranteed on page 1 of autorace filter.
+        await expect(fixtureRow).toBeVisible({ timeout: 10_000 });
 
         // Auto-accept any confirm() / window.confirm dialog
         page.on('dialog', dialog => void dialog.accept());
