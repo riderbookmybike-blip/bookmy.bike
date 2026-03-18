@@ -177,7 +177,9 @@ const CLIENT_STATE_MAP: Record<string, string> = {
 const normalizeClientStateCode = (value?: string | null) => {
     if (!value) return 'MH';
     const key = String(value).toUpperCase().trim();
+    const normalizedKey = key.replace(/[\s-]+/g, '_');
     if (CLIENT_STATE_MAP[key]) return CLIENT_STATE_MAP[key];
+    if (CLIENT_STATE_MAP[normalizedKey]) return CLIENT_STATE_MAP[normalizedKey];
     if (/^[A-Z]{2}$/.test(key)) return key;
     return 'MH';
 };
@@ -365,8 +367,8 @@ export function useSystemDealerContext({
                         userLat = cachedCoords.lat ?? userLat;
                         userLng = cachedCoords.lng ?? userLng;
                         // Fallback for State Code if missing in cache but state name exists
-                        if (!stateCode && parsed?.state?.toUpperCase?.().includes('MAHARASHTRA')) {
-                            stateCode = 'MH';
+                        if (!stateCode && parsed?.state) {
+                            stateCode = normalizeClientStateCode(parsed.state);
                         }
                     }
                 }

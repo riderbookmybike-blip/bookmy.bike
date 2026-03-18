@@ -1276,7 +1276,7 @@ ${referralUrl}`;
     const isLight = tone === 'light' || (tone !== 'dark' && (mounted ? theme !== 'dark' : true));
     const isDarkSurface = !isLight;
     const triggerClass = isDarkSurface
-        ? 'bg-transparent border-white/35 text-white hover:text-white hover:border-white/50'
+        ? 'bg-transparent border-white/40 text-white hover:text-white hover:border-white/70'
         : 'border-slate-900/10 text-slate-900 hover:bg-slate-100 dark:border-white/10 dark:text-white dark:hover:bg-white/10 shadow-sm';
 
     const displayName = user
@@ -1341,7 +1341,7 @@ ${referralUrl}`;
                         className={`flex ${compactTrigger ? 'h-9' : 'h-11'} w-auto pl-1 ${compactTrigger ? 'pr-3' : 'pr-4'} rounded-full border transition-all duration-300 relative flex-shrink-0 items-center ${compactTrigger ? 'gap-2' : 'gap-3'} group z-[101] ${triggerClass} ${hideTrigger ? 'hidden' : ''}`}
                     >
                         <div
-                            className={`${compactTrigger ? 'w-7 h-7' : 'w-8 h-8'} rounded-full overflow-hidden flex items-center justify-center text-slate-900 dark:text-white font-black text-xs transition-all ring-1 ring-white/10 shadow-inner`}
+                            className={`${compactTrigger ? 'w-8 h-8' : 'w-8 h-8'} rounded-full overflow-hidden flex items-center justify-center text-slate-900 dark:text-white font-black text-xs transition-all ring-1 ring-white/10 shadow-inner`}
                         >
                             <img
                                 src={user.user_metadata?.avatar_url || getDefaultAvatar(user.id, displayName)}

@@ -120,77 +120,105 @@ export default function FinanceCard({
 
     return (
         <div className="md:bg-transparent md:backdrop-blur-none md:border-0 md:shadow-none rounded-[2.5rem] md:rounded-none overflow-hidden flex flex-col h-full group/fcard relative">
-            <div className="flex-1 flex flex-col">
-                {/* Column headers */}
-                <div className="w-full px-4 pb-2 mb-2 border-b border-slate-100 shrink-0">
-                    <div className="w-full max-w-[760px] mr-auto grid grid-cols-[1.45fr_1fr_1.15fr_1.1fr_1.45fr] items-center gap-3">
-                        <span className="text-[7px] font-bold uppercase tracking-[0.15em] text-slate-400 text-left pl-2">
-                            EMI
-                        </span>
-                        <span className="text-[7px] font-bold uppercase tracking-[0.15em] text-slate-400 text-center">
-                            Tenure
-                        </span>
-                        <span className="text-[7px] font-bold uppercase tracking-[0.15em] text-slate-400 text-center">
-                            Loan
-                        </span>
-                        <span className="text-[7px] font-bold uppercase tracking-[0.15em] text-slate-400 text-center">
-                            Interest
-                        </span>
-                        <span className="text-[7px] font-bold uppercase tracking-[0.15em] text-slate-400 text-right pr-2">
-                            Total
-                        </span>
+            <div className="w-full flex-1 flex gap-2 lg:gap-3 px-4 md:px-0 pb-4 overflow-x-auto max-w-[800px] mr-auto hide-scrollbar">
+                {/* Independent Vertical Cards */}
+                {[
+                    { key: 'emi', label: 'EMI', align: 'text-left lg:text-center' },
+                    { key: 'tenure', label: 'Tenure', align: 'text-center' },
+                    { key: 'loan', label: 'Loan', align: 'text-center' },
+                    { key: 'interest', label: 'Interest', align: 'text-center' },
+                    { key: 'total', label: 'Total', align: 'text-right lg:text-center' },
+                ].map(col => (
+                    <div
+                        key={col.key}
+                        className="flex-1 min-w-[80px] flex flex-col rounded-xl border border-slate-200/80 bg-white shadow-sm overflow-hidden"
+                    >
+                        {/* Header */}
+                        <div className="bg-slate-50/80 w-full py-2.5 px-2 border-b border-slate-200 flex items-center justify-center shrink-0 h-[38px]">
+                            <span className="text-[8px] font-bold uppercase tracking-[0.15em] text-slate-500">
+                                {col.label}
+                            </span>
+                        </div>
+                        {/* Vertical Cells */}
+                        <div className="flex flex-col flex-1 divide-y divide-slate-100">
+                            {tenures.map(t => {
+                                const calculatedEmiForT = Math.round(calculateEMI(t));
+                                const totalPaidViaEMI = calculatedEmiForT * t;
+                                const totalInterest = Math.round(totalPaidViaEMI - grossLoan);
+                                const totalCost = Math.round(totalPaidViaEMI + downPayment);
+                                const isSelected = emiTenure === t;
+
+                                let valueNode = <></>;
+
+                                if (col.key === 'emi') {
+                                    valueNode = (
+                                        <span
+                                            className={`text-[11px] lg:text-[12px] font-black font-mono tracking-tight ${isSelected ? 'text-brand-primary' : 'text-slate-700'}`}
+                                        >
+                                            ₹{calculatedEmiForT.toLocaleString('en-IN')}
+                                        </span>
+                                    );
+                                } else if (col.key === 'tenure') {
+                                    valueNode = (
+                                        <span
+                                            className={`text-[11px] lg:text-[12px] font-bold font-mono tracking-tight ${isSelected ? 'text-brand-primary' : 'text-slate-600'}`}
+                                        >
+                                            {String(t).padStart(2, '0')}mo
+                                        </span>
+                                    );
+                                } else if (col.key === 'loan') {
+                                    valueNode = (
+                                        <span
+                                            className={`text-[11px] lg:text-[12px] font-semibold font-mono tracking-tight ${isSelected ? 'text-brand-primary' : 'text-slate-500'}`}
+                                        >
+                                            ₹{grossLoan.toLocaleString('en-IN')}
+                                        </span>
+                                    );
+                                } else if (col.key === 'interest') {
+                                    valueNode = (
+                                        <span
+                                            className={`text-[11px] lg:text-[12px] font-semibold font-mono tracking-tight ${totalInterest > 0 ? 'text-red-400/80' : 'text-slate-400'} ${isSelected && 'opacity-90'}`}
+                                        >
+                                            +₹{Math.max(0, totalInterest).toLocaleString('en-IN')}
+                                        </span>
+                                    );
+                                } else if (col.key === 'total') {
+                                    valueNode = (
+                                        <span
+                                            className={`text-[11px] lg:text-[12px] font-bold font-mono tracking-tight ${isSelected ? 'text-brand-primary' : 'text-slate-600'}`}
+                                        >
+                                            ₹{totalCost.toLocaleString('en-IN')}
+                                        </span>
+                                    );
+                                }
+
+                                return (
+                                    <button
+                                        key={`${col.key}-${t}`}
+                                        onClick={() => {
+                                            setEmiTenure && setEmiTenure(t);
+                                        }}
+                                        className={`w-full py-2.5 px-2 flex items-center justify-center transition-all duration-300 relative
+                                        ${isSelected ? 'bg-brand-primary/10 relative z-10' : 'hover:bg-slate-50/60'}`}
+                                    >
+                                        {/* Row sync hover highlight hack */}
+                                        <div className="absolute inset-x-0 inset-y-0 opacity-0 group-hover/row:opacity-100 peer-hover:bg-slate-50/60 pointer-events-none" />
+
+                                        {/* Selection Indicators (Left/Right borders on active cell to act like a connected row) */}
+                                        {isSelected && col.key === 'emi' && (
+                                            <div className="absolute left-0 inset-y-0 w-[5px] bg-brand-primary rounded-r-md" />
+                                        )}
+                                        {isSelected && col.key === 'total' && (
+                                            <div className="absolute right-0 inset-y-0 w-[3px] bg-brand-primary" />
+                                        )}
+
+                                        {valueNode}
+                                    </button>
+                                );
+                            })}
+                        </div>
                     </div>
-                </div>
-                {/* Pill rows */}
-                <div className="w-full flex-1 flex flex-col justify-evenly gap-0.5">
-                    {tenures.map((t, idx) => {
-                        const calculatedEmiForT = Math.round(calculateEMI(t));
-                        const totalPaidViaEMI = calculatedEmiForT * t;
-                        const totalInterest = Math.round(totalPaidViaEMI - grossLoan);
-                        const totalCost = Math.round(totalPaidViaEMI + downPayment);
-                        const isSelected = emiTenure === t;
-                        return (
-                            <button
-                                key={t}
-                                onClick={() => {
-                                    setEmiTenure && setEmiTenure(t);
-                                }}
-                                className={`w-full max-w-[760px] mr-auto grid grid-cols-[1.45fr_1fr_1.15fr_1.1fr_1.45fr] items-center py-2 px-4 rounded-lg border transition-all duration-300 gap-3
-                                ${
-                                    isSelected
-                                        ? 'bg-brand-primary/10 border-brand-primary shadow-[0_4px_15px_rgba(255,215,0,0.1)]'
-                                        : 'bg-transparent border-transparent hover:bg-slate-50/50'
-                                }`}
-                            >
-                                <span
-                                    className={`text-[10px] font-black font-mono tracking-tight text-left pl-2 ${isSelected ? 'text-brand-primary' : 'text-slate-700'}`}
-                                >
-                                    ₹{calculatedEmiForT.toLocaleString('en-IN')}
-                                </span>
-                                <span
-                                    className={`text-[10px] font-black font-mono tracking-tight text-center ${isSelected ? 'text-brand-primary' : 'text-slate-600'}`}
-                                >
-                                    {String(t).padStart(2, '0')}mo
-                                </span>
-                                <span
-                                    className={`text-[10px] font-black font-mono tracking-tight text-center ${isSelected ? 'text-brand-primary' : 'text-slate-500'}`}
-                                >
-                                    ₹{grossLoan.toLocaleString('en-IN')}
-                                </span>
-                                <span
-                                    className={`text-[10px] font-black font-mono tracking-tight text-center ${totalInterest > 0 ? 'text-red-400/60' : 'text-slate-400'}`}
-                                >
-                                    +₹{Math.max(0, totalInterest).toLocaleString('en-IN')}
-                                </span>
-                                <span
-                                    className={`text-[10px] font-black font-mono tracking-tight text-right pr-2 ${isSelected ? 'text-brand-primary' : 'text-slate-500'}`}
-                                >
-                                    ₹{totalCost.toLocaleString('en-IN')}
-                                </span>
-                            </button>
-                        );
-                    })}
-                </div>
+                ))}
             </div>
         </div>
     );

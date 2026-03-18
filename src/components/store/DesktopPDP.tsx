@@ -348,10 +348,10 @@ export function DesktopPDP({
 
     const activeColorConfig = colors.find((c: any) => c.id === selectedColor) || colors[0];
     const activeColorAssets = activeColorConfig?.assets || [];
-    const modelVideoSources = useMemo(
+    const modelVideoSources: string[] = useMemo(
         () =>
             Array.from(
-                new Set(
+                new Set<string>(
                     (colors || [])
                         .flatMap((color: any) => [
                             ...(Array.isArray(color?.videoUrls) ? color.videoUrls : []),
@@ -473,27 +473,60 @@ export function DesktopPDP({
     const [activeConfigTab, setActiveConfigTab] = useState<string | null>('INSURANCE');
     const [heroActiveTab, setHeroActiveTab] = useState<string>('GALLERY');
 
+    const fmtBadg = (v: number) => `₹${v.toLocaleString('en-IN')}`;
+    const getBadgePrice = (v: number) => (v > 0 ? fmtBadg(v) : 'Free');
+
     const configCards = [
         {
             id: 'ACCESSORIES',
             label: 'Accessories',
             subtext: selectedAccessories.length > 0 ? `${selectedAccessories.length} Selected` : 'Add Extras',
+            totalLabel: getBadgePrice(Math.round(accessoriesPrice || 0)),
             icon: Package,
         },
         {
             id: 'INSURANCE',
             label: 'Insurance',
             subtext: selectedInsuranceAddons.length > 0 ? `${selectedInsuranceAddons.length} Addons` : 'Secure Rider',
+            totalLabel: getBadgePrice(Math.round((baseInsurance || 0) + (insuranceAddonsPrice || 0))),
             icon: ShieldCheck,
         },
-        { id: 'REGISTRATION', label: 'Registration', subtext: regType || 'Choose Type', icon: ClipboardList },
+        {
+            id: 'REGISTRATION',
+            label: 'Registration',
+            subtext: (() => {
+                let lbl = regType || 'Choose Type';
+                if (regType === 'STATE')
+                    lbl = data.stateCode ? `${data.stateCode.toUpperCase()} Registration` : 'State Registration';
+                else if (regType === 'BH') lbl = 'Bharat (BH) Registration';
+                else if (regType === 'COMPANY') lbl = 'Corporate Registration';
+                return lbl;
+            })(),
+            totalLabel: getBadgePrice(
+                Math.round(
+                    typeof rtoEstimates === 'number'
+                        ? rtoEstimates
+                        : rtoEstimates?.[regType] || data.rtoOptions?.find((o: any) => o.id === regType)?.price || 0
+                )
+            ),
+            icon: ClipboardList,
+        },
         {
             id: 'SERVICES',
             label: 'Services',
             subtext: selectedServices.length > 0 ? `${selectedServices.length} Selected` : 'AMC & Plans',
+            totalLabel: getBadgePrice(Math.round(servicesPrice || 0)),
             icon: Wrench,
         },
-        { id: 'WARRANTY', label: 'Warranty', subtext: 'Protect Ride', icon: Gift },
+        {
+            id: 'WARRANTY',
+            label: 'Warranty',
+            subtext: 'Protect Ride',
+            totalLabel: getBadgePrice(
+                Math.round((warrantyItems || []).reduce((acc: number, w: any) => acc + (w.price || 0), 0))
+            ),
+            icon: Gift,
+        },
     ];
 
     const heroCards = [
@@ -1056,10 +1089,17 @@ export function DesktopPDP({
                                             <p className="text-[11px] font-medium text-slate-500">{category.subtext}</p>
                                         </div>
                                     </div>
-                                    <ChevronRight
-                                        size={18}
-                                        className={`text-slate-400 transition-transform ${isOpen ? 'rotate-90' : ''}`}
-                                    />
+                                    <div className="flex items-center gap-3">
+                                        {category.totalLabel && (
+                                            <span className="text-[12px] font-black tracking-tight tabular-nums text-slate-900 bg-slate-100 px-2.5 py-1 rounded-md">
+                                                {category.totalLabel}
+                                            </span>
+                                        )}
+                                        <ChevronRight
+                                            size={18}
+                                            className={`text-slate-400 transition-transform ${isOpen ? 'rotate-90' : ''}`}
+                                        />
+                                    </div>
                                 </button>
                                 {isOpen && (
                                     <div className="px-5 pb-5">
@@ -1119,6 +1159,19 @@ export function DesktopPDP({
                                             {category.subtext}
                                         </span>
                                     </div>
+
+                                    <div
+                                        className={`absolute right-6 top-5 transition-all duration-500 ${isActive ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 pointer-events-none'}`}
+                                    >
+                                        <div className="flex items-center gap-2 px-4 py-2 rounded-[1rem] bg-gradient-to-tr from-brand-primary/20 to-brand-primary/5 border border-brand-primary/30 shadow-[0_8px_20px_rgba(255,215,0,0.15)] ring-2 ring-white/50">
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                                                TOTAL
+                                            </span>
+                                            <span className="text-[15px] font-black tracking-tight tabular-nums text-slate-900">
+                                                {category.totalLabel}
+                                            </span>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 {/* Content Area (Only visible when active) */}
@@ -1143,11 +1196,24 @@ export function DesktopPDP({
                                                 initial={{ opacity: 0 }}
                                                 animate={{ opacity: 1 }}
                                                 exit={{ opacity: 0 }}
-                                                className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                                                className="absolute inset-0 pointer-events-none"
                                             >
-                                                <span className="text-[28px] font-extrabold uppercase tracking-[0.16em] text-slate-400/75 -rotate-90 whitespace-nowrap">
-                                                    {category.label}
-                                                </span>
+                                                <div className="absolute inset-0 flex items-center justify-center">
+                                                    <span className="text-[28px] font-extrabold uppercase tracking-[0.16em] text-slate-400/50 -rotate-90 whitespace-nowrap">
+                                                        {category.label}
+                                                    </span>
+                                                </div>
+
+                                                {category.totalLabel && category.totalLabel !== 'Free' && (
+                                                    <div className="absolute bottom-16 left-0 right-0 flex justify-center">
+                                                        <div className="-rotate-90 origin-center bg-white shadow-xl shadow-black/5 border border-brand-primary/30 rounded-2xl px-4 py-2 whitespace-nowrap flex items-center gap-2">
+                                                            <div className="w-1.5 h-1.5 rounded-full bg-brand-primary" />
+                                                            <span className="text-[13px] font-black tracking-widest tabular-nums text-slate-900">
+                                                                {category.totalLabel}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </motion.div>
                                         )}
                                     </AnimatePresence>

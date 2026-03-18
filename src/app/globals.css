@@ -665,3 +665,11 @@ input[type='number'] {
     width: 10px;
     height: 10px;
 }
+
+/* ── TV Header: Nav Icon Button Sizing ─────────────────────────────────────── */
+/* TV header is 56px — dial back icon buttons proportionally */
+[data-tv='1'] .nav-icon-btn {
+    width: 32px !important; /* w-8 */
+    height: 32px !important; /* h-8 */
+    border-width: 1px !important;
+}

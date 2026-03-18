@@ -40,7 +40,7 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
     }, []);
 
     const navBtnClass =
-        'w-9 h-9 rounded-full transition-all duration-300 flex items-center justify-center text-white/95 hover:text-white bg-transparent border border-white hover:border-white';
+        'nav-icon-btn w-9 h-9 rounded-full transition-all duration-300 flex items-center justify-center text-white/90 hover:text-white bg-transparent border border-white/40 hover:border-white/70';
 
     return (
         <>
@@ -57,9 +57,9 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                 }
                 center={null}
                 right={
-                    <div className="flex items-center gap-3 lg:gap-6">
+                    <div className="flex items-center gap-2 lg:gap-5">
                         {/* ── Desktop: nav icons + profile pill ── */}
-                        <div className="hidden lg:flex items-center gap-3">
+                        <div className="hidden lg:flex items-center gap-2.5">
                             <Link href="/" className={navBtnClass}>
                                 <HomeIcon size={18} />
                             </Link>

@@ -22,7 +22,19 @@
 import React, { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
-import { ArrowRight, Wallet, Package, Shield, Zap, MessageCircle, X, Send } from 'lucide-react';
+import {
+    ArrowRight,
+    Wallet,
+    Package,
+    Shield,
+    Zap,
+    MessageCircle,
+    X,
+    Send,
+    Edit2,
+    Share2,
+    Download,
+} from 'lucide-react';
 import { Logo } from '@/components/brand/Logo';
 import { OCircleLogo } from '@/components/common/OCircleLogo';
 import { coinsNeededForPrice } from '@/lib/oclub/coin';
@@ -45,6 +57,7 @@ export interface PdpCommandBarProps {
     emiTenure: number;
     handleShareQuote: () => void;
     handleSaveQuote: () => void;
+    handleDownloadQuote?: () => void;
     handleBookingRequest: () => void;
     serviceability?: any;
     isGated: boolean;
@@ -244,6 +257,8 @@ interface DesktopActionClusterProps {
     primaryLabel: string;
     isDisabled: boolean;
     primaryAction: () => void;
+    handleShareQuote?: () => void;
+    handleDownloadQuote?: () => void;
 }
 
 function compactInr(value: number, sign: '+' | '-' | '' = '') {
@@ -258,30 +273,31 @@ function DesktopIdentityCluster({
     activeColorConfig,
 }: DesktopIdentityClusterProps) {
     return (
-        <section className="w-[260px] shrink-0 min-w-0 h-[92px] rounded-lg border border-white/10 bg-white/5 px-3 py-2">
-            <div className="flex items-center gap-3 min-w-0 h-full">
-                <div className="w-11 h-11 relative flex items-center justify-center bg-white/5 border border-white/10 rounded-xl overflow-hidden shrink-0">
+        <section className="flex-1 lg:flex-[2.5] w-full min-w-[200px] max-w-none shrink-0 h-[72px] lg:h-[80px] rounded-[18px] border border-white/10 glass-card px-3 lg:px-6 py-2 flex items-center justify-center relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-tr from-white/5 to-transparent pointer-events-none" />
+            <div className="flex items-center justify-center gap-2 lg:gap-3 min-w-0 w-full relative z-10">
+                <div className="w-[56px] h-[56px] lg:w-[64px] lg:h-[64px] relative flex items-center justify-center shrink-0">
                     <Image
                         src={getProductImage()}
                         alt={displayModel}
                         fill
-                        sizes="44px"
-                        className="object-contain p-1"
+                        sizes="(min-width: 1024px) 64px, 56px"
+                        className="object-contain drop-shadow-md"
                     />
                 </div>
-                <div className="min-w-0 flex-1">
-                    <p className="text-[12px] font-black text-white uppercase italic tracking-tight leading-none truncate">
+                <div className="min-w-0 flex flex-col justify-center items-center shrink-0">
+                    <p className="text-[12px] font-black text-white uppercase italic tracking-tight leading-none truncate text-center">
                         {displayModel}{' '}
                         <span className="text-[8px] font-semibold text-white/90 tracking-[0.08em] not-italic">
                             {displayVariant}
                         </span>
                     </p>
-                    <div className="flex items-center gap-1.5 mt-1">
+                    <div className="flex items-center justify-center gap-1.5 mt-1 relative w-full overflow-hidden whitespace-nowrap">
                         <div
-                            className="w-2.5 h-2.5 rounded-full border border-white/10"
+                            className="w-2.5 h-2.5 rounded-full border border-white/10 shrink-0 inline-block align-middle"
                             style={{ backgroundColor: activeColorConfig.hex }}
                         />
-                        <span className="text-[8px] font-semibold tracking-[0.08em] text-white/90 uppercase leading-none truncate">
+                        <span className="text-[8px] font-semibold tracking-[0.08em] text-white/90 uppercase leading-none truncate inline-block align-middle mt-0.5">
                             {displayColor}
                         </span>
                     </div>
@@ -300,123 +316,195 @@ function DesktopCommercialCluster({
     totalSurge,
     totalSavings,
     coinPricing,
-    displayOnRoad,
-    bCoinEquivalent,
 }: DesktopCommercialClusterProps) {
     const bCoinDiscount = coinPricing?.discount || 0;
     const showSurgeCard = totalSurge > 0;
+    const hasAccessories = accessoriesTotal > 0;
+    const hasInsurance = insuranceAddonsCost > 0;
+    const hasSavings = totalSavings > 0;
+    const hasWallet = bCoinDiscount > 0;
 
     return (
-        <div className="flex-1 flex gap-2 min-w-0">
+        <div className="flex-1 flex gap-px min-w-0 bg-white/5 p-px rounded-2xl overflow-hidden glass-card">
             {/* Primary Metrics Cluster */}
-            <div className="flex-[2] h-[92px] rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 flex items-center justify-between overflow-hidden">
-                <div data-testid="cmd-bar-on-road" className="min-w-0">
-                    <p className="text-[8px] uppercase tracking-[0.2em] text-white/70 mb-1 font-black">Base Price</p>
-                    <p className="text-[15px] font-black font-mono text-white leading-none whitespace-nowrap">
+            <div className="flex-[1.5] flex items-center bg-[#050505] px-2 lg:px-3 xl:px-6 py-2 xl:py-3 rounded-l-2xl min-w-0">
+                <div data-testid="cmd-bar-on-road" className="min-w-0 flex-1 shrink">
+                    <p className="text-[18px] font-black font-mono text-white leading-tight whitespace-nowrap">
                         {compactInr(onRoadBase)}
                     </p>
+                    <p className="text-[9px] uppercase tracking-[0.14em] text-white/50 font-black mt-0.5">On Road</p>
                 </div>
 
-                <div className="text-white/30 text-xs font-light">+</div>
+                <div className="text-white/10 text-xs font-light px-1 xl:px-2 shrink-0">+</div>
 
-                <div data-testid="cmd-bar-accessories" className="min-w-0">
-                    <p className="text-[8px] uppercase tracking-[0.2em] text-white/70 mb-1 font-black">
-                        {accessoriesCount > 0 ? `${accessoriesCount} Accessories` : 'Additional Accessories'}
+                <div data-testid="cmd-bar-accessories" className="min-w-0 flex-1 shrink">
+                    <p
+                        className={`text-[16px] font-black font-mono leading-tight whitespace-nowrap transition-colors ${hasAccessories ? 'text-white' : 'text-white/20'}`}
+                    >
+                        {hasAccessories ? compactInr(accessoriesTotal, '+') : '₹ 0'}
                     </p>
-                    <p className="text-[13px] font-black font-mono text-white leading-none whitespace-nowrap">
-                        {accessoriesTotal > 0 ? compactInr(accessoriesTotal, '+') : '₹ 0'}
+                    <p
+                        className={`text-[9px] uppercase tracking-[0.14em] font-black mt-0.5 transition-colors ${hasAccessories ? 'text-white/50' : 'text-white/20'}`}
+                    >
+                        {accessoriesCount > 0 ? `${accessoriesCount} Additional Accessories` : 'Additional Accessories'}
                     </p>
                 </div>
 
-                <div className="text-white/30 text-xs font-light">+</div>
+                <div className="text-white/10 text-xs font-light px-1 xl:px-2 shrink-0">+</div>
 
-                <div data-testid="cmd-bar-ins-addons" className="min-w-0">
-                    <p className="text-[8px] uppercase tracking-[0.2em] text-white/70 mb-1 font-black">
-                        {insuranceAddonsCount > 0 ? `${insuranceAddonsCount} Insurance` : 'Insurance Addons'}
+                <div data-testid="cmd-bar-ins-addons" className="min-w-0 flex-1 shrink">
+                    <p
+                        className={`text-[16px] font-black font-mono leading-tight whitespace-nowrap transition-colors ${hasInsurance ? 'text-white' : 'text-white/20'}`}
+                    >
+                        {hasInsurance ? compactInr(insuranceAddonsCost, '+') : '₹ 0'}
                     </p>
-                    <p className="text-[13px] font-black font-mono text-white leading-none whitespace-nowrap">
-                        {insuranceAddonsCost > 0 ? compactInr(insuranceAddonsCost, '+') : '₹ 0'}
+                    <p
+                        className={`text-[9px] uppercase tracking-[0.14em] font-black mt-0.5 transition-colors ${hasInsurance ? 'text-white/50' : 'text-white/20'}`}
+                    >
+                        {insuranceAddonsCount > 0 ? `${insuranceAddonsCount} Insurance Addons` : 'Insurance Addons'}
                     </p>
                 </div>
             </div>
 
             {/* Adjustments & Savings Cluster */}
-            <div className="flex-1 h-[92px] rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 flex items-center justify-between">
-                <div data-testid={showSurgeCard ? 'cmd-bar-surge' : 'cmd-bar-ocircle'} className="min-w-0">
-                    <p className="text-[7px] uppercase tracking-[0.2em] text-white/70 mb-1 font-black">
-                        {showSurgeCard ? 'Surge' : 'Savings'}
+            <div className="w-[110px] lg:w-[140px] xl:w-[180px] shrink-0 flex flex-col justify-center bg-[#050505] px-2 xl:px-4 py-2 rounded-r-2xl gap-2 relative overflow-hidden group">
+                <div className="absolute inset-0 bg-gradient-to-tr from-emerald-500/5 to-amber-500/5 pointer-events-none opacity-0 group-hover:opacity-100 transition-duration-300" />
+
+                <div
+                    data-testid={showSurgeCard ? 'cmd-bar-surge' : 'cmd-bar-ocircle'}
+                    className="min-w-0 flex items-center justify-between gap-2 relative z-10"
+                >
+                    <p
+                        className={`text-[9px] uppercase tracking-[0.14em] font-black whitespace-nowrap ${showSurgeCard ? 'text-rose-400' : hasSavings ? 'text-emerald-400' : 'text-white/20'}`}
+                    >
+                        {showSurgeCard ? 'Surge' : "O'Circle"}
                     </p>
                     <p
-                        className={`text-[11px] font-black font-mono leading-none ${showSurgeCard ? 'text-rose-400' : 'text-emerald-400'}`}
+                        className={`text-[13px] font-black font-mono leading-tight whitespace-nowrap ${showSurgeCard ? 'text-rose-400 drop-shadow-[0_0_8px_rgba(251,113,133,0.3)]' : hasSavings ? 'text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.3)]' : 'text-white/20'}`}
                     >
                         {showSurgeCard
                             ? compactInr(totalSurge, '+')
-                            : totalSavings > 0
+                            : hasSavings
                               ? compactInr(totalSavings, '-')
                               : '₹ 0'}
                     </p>
                 </div>
 
-                <div className="w-px h-6 bg-white/10 mx-2" />
+                <div className="h-px w-full bg-gradient-to-r from-white/10 to-transparent relative z-10" />
 
-                <div data-testid="cmd-bar-bcoin" className="min-w-0">
-                    <p className="text-[7px] uppercase tracking-[0.2em] text-white/70 mb-1 font-black">Wallet</p>
-                    <p className="text-[11px] font-black font-mono text-amber-400 leading-none">
-                        {bCoinDiscount > 0 ? compactInr(bCoinDiscount, '-') : '₹ 0'}
+                <div
+                    data-testid="cmd-bar-bcoin"
+                    className="min-w-0 flex items-center justify-between gap-2 relative z-10"
+                >
+                    <p
+                        className={`text-[9px] uppercase tracking-[0.14em] font-black whitespace-nowrap ${hasWallet ? 'text-amber-400' : 'text-white/20'}`}
+                    >
+                        Wallet
                     </p>
-                </div>
-            </div>
-
-            {/* Final Outcome Cluster */}
-            <div
-                data-testid="cmd-bar-final-offer"
-                className="flex-[1.2] h-[92px] rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-2.5 relative overflow-hidden group flex flex-col items-center justify-center text-center"
-            >
-                <div className="absolute top-0 right-0 p-1.5 opacity-10 group-hover:opacity-30 transition-opacity">
-                    <Logo variant="icon" size={20} customColor="#F4B000" />
-                </div>
-                <p className="text-[8px] uppercase tracking-[0.2em] text-amber-500 font-black mb-1.5">
-                    Final Deal Value
-                </p>
-                <div className="flex items-center justify-center gap-4">
-                    <div className="flex items-center gap-2">
-                        <span className="text-[18px] font-black font-mono text-amber-400 leading-none">₹</span>
-                        <span className="text-[18px] font-black font-mono text-amber-400 leading-none tracking-tight">
-                            {displayOnRoad.toLocaleString('en-IN')}
-                        </span>
-                    </div>
-                    <div className="w-px h-3 bg-amber-500/20" />
-                    <div className="flex items-center gap-2">
-                        <Logo variant="icon" size={16} customColor="#F4B000" />
-                        <span className="text-[18px] font-black font-mono text-amber-400 leading-none tracking-tight">
-                            {bCoinEquivalent.toLocaleString('en-IN')}
-                        </span>
-                    </div>
+                    <p
+                        className={`text-[13px] font-black font-mono leading-tight whitespace-nowrap ${hasWallet ? 'text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.3)]' : 'text-white/20'}`}
+                    >
+                        {hasWallet ? compactInr(bCoinDiscount, '-') : '₹ 0'}
+                    </p>
                 </div>
             </div>
         </div>
     );
 }
 
-function DesktopActionCluster({ primaryLabel, isDisabled, primaryAction }: DesktopActionClusterProps) {
+interface DesktopFinalOutcomeProps {
+    displayOnRoad: number;
+    bCoinEquivalent: number;
+}
+
+function DesktopFinalOutcome({ displayOnRoad, bCoinEquivalent }: DesktopFinalOutcomeProps) {
     return (
-        <div className="h-[92px] rounded-xl border border-white/10 bg-white/5 px-2 py-2 flex items-center justify-center">
+        <div className="h-full px-2 lg:px-4 py-2 flex flex-col justify-center items-center relative overflow-hidden group w-full">
+            {/* Ambient Background Glow */}
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(245,158,11,0.12)_0%,transparent_70%)] pointer-events-none opacity-50 group-hover:opacity-100 transition-opacity duration-500" />
+
+            <div className="absolute top-0 right-0 p-1.5 opacity-5 group-hover:opacity-15 transition-opacity duration-500">
+                <Logo variant="icon" size={40} customColor="#F4B000" />
+            </div>
+
+            <div className="flex items-center gap-4 relative z-10 w-full justify-center">
+                {/* Main Price */}
+                <div className="flex items-center gap-1.5">
+                    <span className="text-[18px] lg:text-[22px] font-bold text-amber-500/80 mt-[2px] lg:mt-[4px]">
+                        ₹
+                    </span>
+                    <span className="text-[24px] lg:text-[32px] font-black font-mono text-amber-500 leading-none tracking-tighter drop-shadow-[0_0_12px_rgba(245,158,11,0.3)] group-hover:drop-shadow-[0_0_20px_rgba(245,158,11,0.6)] transition-all duration-300">
+                        {displayOnRoad.toLocaleString('en-IN')}
+                    </span>
+                </div>
+
+                {/* Separator */}
+                <div className="w-px h-6 bg-gradient-to-b from-transparent via-amber-500/30 to-transparent" />
+
+                {/* B-Coin Equivalent */}
+                <div className="flex items-center gap-1.5 opacity-90 group-hover:opacity-100 transition-opacity duration-300">
+                    <Logo variant="icon" size={18} customColor="#F59E0B" />
+                    <span className="text-[18px] lg:text-[24px] font-black font-mono text-amber-500/90 leading-none tracking-tight">
+                        {bCoinEquivalent.toLocaleString('en-IN')}
+                    </span>
+                </div>
+            </div>
+
+            <p className="text-[9px] lg:text-[10px] uppercase tracking-[0.25em] bg-gradient-to-r from-amber-500/50 via-amber-400 to-amber-500/50 bg-clip-text text-transparent font-black mt-1.5 lg:mt-2 relative z-10">
+                Final Deal Value
+            </p>
+        </div>
+    );
+}
+
+function DesktopActionCluster({
+    primaryLabel,
+    isDisabled,
+    primaryAction,
+    handleShareQuote,
+    handleDownloadQuote,
+}: DesktopActionClusterProps) {
+    return (
+        <div className="h-full flex items-center justify-end w-full gap-2">
+            {/* Download Quote Button */}
+            <motion.button
+                onClick={handleDownloadQuote || (() => console.log('Download clicked'))}
+                whileHover={{ scale: 1.05, backgroundColor: '#1f1f1f' }}
+                whileTap={{ scale: 0.95 }}
+                className="w-[50px] lg:w-[60px] h-full rounded-[18px] bg-[#0f0f0f] border border-[#2a2a2a] flex items-center justify-center text-white/70 hover:text-white transition-colors shrink-0 shadow-[0_4px_12px_rgba(0,0,0,0.5)]"
+                title="Download Quote"
+            >
+                <Download size={18} strokeWidth={2.5} />
+            </motion.button>
+
+            {/* Share Quote Button */}
+            <motion.button
+                onClick={handleShareQuote}
+                whileHover={{ scale: 1.05, backgroundColor: '#1f1f1f' }}
+                whileTap={{ scale: 0.95 }}
+                className="w-[50px] lg:w-[60px] h-full rounded-[18px] bg-[#0f0f0f] border border-[#2a2a2a] flex items-center justify-center text-white/70 hover:text-white transition-colors shrink-0 shadow-[0_4px_12px_rgba(0,0,0,0.5)]"
+                title="Share Quote"
+            >
+                <Share2 size={18} strokeWidth={2.5} />
+            </motion.button>
+
+            {/* Main Action Button (Save) */}
             <motion.button
                 onClick={primaryAction}
                 disabled={isDisabled}
                 whileHover={!isDisabled ? { scale: 1.02, backgroundColor: '#FFB800' } : {}}
                 whileTap={!isDisabled ? { scale: 0.98 } : {}}
-                className={`relative w-full h-full px-6 font-black text-xs uppercase tracking-widest rounded-xl shadow-2xl overflow-hidden flex items-center justify-center gap-3 transition-all
+                className={`relative flex-1 lg:w-[150px] h-full px-4 font-black text-[10px] lg:text-xs uppercase tracking-widest rounded-[18px] overflow-hidden flex items-center justify-center gap-2 transition-all
                     ${
                         isDisabled
                             ? 'bg-slate-800 text-slate-500 cursor-not-allowed grayscale shadow-none'
-                            : 'bg-[#F4B000] text-black shadow-[#F4B000]/20 hover:shadow-[#F4B000]/40'
+                            : 'bg-[#F4B000] text-[#0a0a0a] shadow-[inset_0_2px_4px_rgba(255,255,255,0.4)] hover:shadow-[0_0_20px_rgba(244,176,0,0.3)]'
                     }`}
             >
                 {/* Shimmer Effect */}
                 {!isDisabled && (
                     <motion.div
-                        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+                        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent"
                         initial={{ x: '-100%', skewX: -20 }}
                         animate={{ x: '200%' }}
                         transition={{
@@ -429,7 +517,6 @@ function DesktopActionCluster({ primaryLabel, isDisabled, primaryAction }: Deskt
                 )}
 
                 <span className="relative z-10">{primaryLabel}</span>
-                <ArrowRight size={18} className="relative z-10 group-hover:translate-x-1 transition-transform" />
             </motion.button>
         </div>
     );
@@ -619,6 +706,7 @@ export function PdpCommandBar({
     emiTenure,
     handleShareQuote,
     handleSaveQuote,
+    handleDownloadQuote,
     serviceability,
     isGated,
     accessoriesCount = 0,
@@ -668,17 +756,17 @@ export function PdpCommandBar({
                 <div
                     className={`relative overflow-hidden border ${
                         isDesktop
-                            ? 'rounded-none border-x-0 border-b-0 border-t-white/10 bg-[#0b0d10]/95 backdrop-blur-2xl shadow-[0_-8px_32px_rgba(0,0,0,0.40)]'
-                            : 'rounded-2xl border-white/[0.08] bg-[#0b0d10]/85 backdrop-blur-2xl shadow [0_8px_32px_rgba(0,0,0,0.45),0_0_0_1px_rgba(255,255,255,0.06)_inset]'
+                            ? 'rounded-t-[32px] border-x-0 border-b-0 border-t-white/10 tft-glass-panel shadow-[0_-20px_60px_rgba(0,0,0,0.6)]'
+                            : 'rounded-2xl border-white/[0.08] bg-[#0b0d10]/85 backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.45),inset_0_0_0_1px_rgba(255,255,255,0.06)]'
                     }`}
                 >
                     <div
                         className={`pointer-events-none absolute inset-0 ${isDesktop ? 'bg-gradient-to-b from-white/[0.03] to-transparent' : 'bg-[linear-gradient(135deg,rgba(255,255,255,0.06),rgba(255,255,255,0.01)_65%)]'}`}
                     />
                     {isDesktop ? (
-                        <div className="relative z-10 hidden md:flex items-center gap-2 px-6 py-3.5 overflow-x-auto">
-                            {/* Cluster 1: Identity & Logistics (Left) */}
-                            <div className="flex-[0.8] flex gap-2 min-w-[320px]">
+                        <div className="relative z-10 hidden md:flex items-center justify-center w-full px-4 lg:px-8 py-3 lg:py-4">
+                            <div className="flex items-stretch justify-center gap-3 lg:gap-8 w-full max-w-[1600px] overflow-x-auto">
+                                {/* Card 1: Identity */}
                                 <DesktopIdentityCluster
                                     getProductImage={getProductImage}
                                     displayModel={displayModel}
@@ -686,50 +774,56 @@ export function PdpCommandBar({
                                     displayColor={displayColor}
                                     activeColorConfig={activeColorConfig}
                                 />
-                                <div className="flex-1 h-[92px] rounded-xl border border-white/10 bg-[#0b0d10] px-4 py-2.5 flex flex-col justify-center">
-                                    <div className="min-w-0" data-testid="cmd-bar-location">
-                                        <p className="text-[10px] font-black text-blue-400 leading-none truncate mb-1.5">
-                                            {locationInfo?.pincode || 'Set City'}
-                                        </p>
-                                        <p className="text-[7.5px] uppercase tracking-[0.1em] text-white/40 truncate">
-                                            {locationHeadline || 'Location'}
-                                        </p>
-                                    </div>
-                                    <div className="my-1.5 h-px bg-white/5" />
-                                    <div className="min-w-0" data-testid="cmd-bar-delivery">
-                                        <p className="text-[9px] font-black text-white/90 leading-none truncate mb-1">
+
+                                {/* Card 2: Final Deal */}
+                                <div className="flex-[1.2] lg:flex-[1.6] w-full min-w-[220px] max-w-[480px] h-[72px] lg:h-[80px] rounded-[18px] bg-[#050505] border border-[#1a1a1a] shadow-[0_10px_40px_rgba(0,0,0,0.8)] overflow-hidden">
+                                    <DesktopFinalOutcome
+                                        displayOnRoad={displayOnRoad}
+                                        bCoinEquivalent={bCoinEquivalent}
+                                    />
+                                </div>
+
+                                {/* Card 3: Location and TAT */}
+                                <div className="flex-[0.8] lg:flex-1 w-full min-w-[150px] max-w-[300px] shrink-0 h-[72px] lg:h-[80px] rounded-lg border border-white/10 glass-card px-4 lg:px-6 py-2 lg:py-3 flex flex-col justify-center gap-2">
+                                    <button
+                                        onClick={onEditLocation}
+                                        className="min-w-0 flex items-center justify-between group cursor-pointer text-left"
+                                        data-testid="cmd-bar-location"
+                                    >
+                                        <div className="flex flex-col flex-1 min-w-0 pr-4">
+                                            <p className="text-[11px] font-black text-white/90 leading-none truncate mb-1 group-hover:text-white transition-colors">
+                                                {locationHeadline || 'Location'}
+                                            </p>
+                                            <p className="text-[9px] uppercase tracking-[0.1em] text-amber-500 font-bold truncate">
+                                                {locationInfo?.pincode || 'Set City'}
+                                            </p>
+                                        </div>
+                                        <Edit2 className="w-3.5 h-3.5 text-white/30 group-hover:text-amber-500 transition-colors shrink-0" />
+                                    </button>
+                                    <div className="h-px bg-white/5 w-full" />
+                                    <div
+                                        className="min-w-0 flex items-center justify-between"
+                                        data-testid="cmd-bar-delivery"
+                                    >
+                                        <p className="text-[11px] font-black text-white/90 leading-none truncate mb-1">
                                             {deliveryByLabel || 'Fastest'}
                                         </p>
-                                        <p className="text-[7px] uppercase tracking-[0.1em] text-white/40 truncate">
-                                            Delivery
+                                        <p className="text-[9px] uppercase tracking-[0.1em] text-white/40 font-bold truncate">
+                                            Delivery By
                                         </p>
                                     </div>
                                 </div>
-                            </div>
 
-                            {/* Cluster 2: Price Math (Center) */}
-                            <div className="flex-[2] min-w-[600px]">
-                                <DesktopCommercialCluster
-                                    onRoadBase={onRoadBase}
-                                    accessoriesCount={accessoriesCount}
-                                    accessoriesTotal={accessoriesTotal}
-                                    insuranceAddonsCount={insuranceAddonsCount}
-                                    insuranceAddonsCost={insuranceAddonsCost}
-                                    totalSurge={totalSurge}
-                                    totalSavings={totalSavings}
-                                    coinPricing={coinPricing}
-                                    displayOnRoad={displayOnRoad}
-                                    bCoinEquivalent={bCoinEquivalent}
-                                />
-                            </div>
-
-                            {/* Cluster 3: Final Action (Right) */}
-                            <div className="flex-[0.7] min-w-[220px]">
-                                <DesktopActionCluster
-                                    primaryLabel={primaryLabel}
-                                    isDisabled={isDisabled}
-                                    primaryAction={primaryAction}
-                                />
+                                {/* Card 4: CTA Cluster (Download, Share, Save) */}
+                                <div className="shrink-0 w-auto min-w-[260px] lg:min-w-[360px] max-w-[460px] lg:flex-[1.2] h-[72px] lg:h-[80px] flex-none">
+                                    <DesktopActionCluster
+                                        primaryLabel={primaryLabel}
+                                        isDisabled={isDisabled}
+                                        primaryAction={primaryAction}
+                                        handleShareQuote={handleShareQuote}
+                                        handleDownloadQuote={handleDownloadQuote}
+                                    />
+                                </div>
                             </div>
                         </div>
                     ) : (

@@ -641,10 +641,10 @@ export function buildCommandBarState(input: CommandBarStateInput): CommandBarSta
     const strikethroughPrice = Math.max(displayOnRoad, displayOnRoad + combinedSavings);
 
     const isShareMode = isGated;
-    // Locked serviceability matrix: status === 'unserviceable' → blocked
-    // (Previous check used 'SET' which was a legacy enum value — never matched)
-    const isServiceabilityBlocked = serviceability?.status === 'unserviceable';
-    const isDisabled = !isShareMode && isServiceabilityBlocked;
+    // Serviceability is authoritative for CTA state regardless of share/team mode.
+    const isServiceabilityBlocked =
+        serviceability?.status === 'unserviceable' || serviceability?.isServiceable === false;
+    const isDisabled = isServiceabilityBlocked;
     const primaryLabel = isDisabled ? 'NON-SERVICEABLE' : isShareMode ? 'SAVE QUOTE' : 'GET QUOTE';
 
     return {

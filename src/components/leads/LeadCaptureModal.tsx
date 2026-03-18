@@ -441,407 +441,317 @@ export function LeadCaptureModal({
         }
     }
 
+    const image = commercials?.image_url || '';
+    const colorName = commercials?.pricing_snapshot?.color_name || colorId || '';
+    const totalOnRoad = commercials?.pricing_snapshot?.grand_total || commercials?.grand_total || 0;
+    const exShowroom = commercials?.pricing_snapshot?.ex_showroom || commercials?.ex_showroom || 0;
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-in fade-in duration-300">
-            <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-[3rem] shadow-[0_25px_60px_rgba(15,23,42,0.15),0_4px_20px_rgba(15,23,42,0.08)] border border-slate-200/80 dark:border-white/10 p-8 md:p-10 relative overflow-hidden">
-                {/* Subtle gradient overlay — matches FloatingCommandBar */}
-                <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.9),rgba(255,255,255,0.3)_50%,rgba(255,215,0,0.04))]" />
-
-                {/* Close Button */}
-                <button
-                    onClick={onClose}
-                    className="absolute top-6 right-6 z-10 p-2.5 rounded-2xl bg-slate-100/80 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 transition-all active:scale-95 border border-slate-200/50"
-                >
-                    <X className="w-4 h-4 text-slate-500" />
-                </button>
-
-                {success ? (
-                    <div className="text-center py-8 space-y-6 animate-in zoom-in-95 duration-500">
-                        <div className="relative w-24 h-24 mx-auto">
-                            <div className="absolute inset-0 bg-emerald-500/20 rounded-full animate-ping" />
-                            <div className="relative w-24 h-24 bg-emerald-50 dark:bg-emerald-950/30 rounded-full flex items-center justify-center text-emerald-600 dark:text-emerald-400 border-4 border-emerald-500/30">
-                                <CheckCircle className="w-12 h-12" />
-                            </div>
-                        </div>
-                        <div className="space-y-2">
-                            <h3 className="text-3xl font-black uppercase italic tracking-tighter text-slate-900 dark:text-white leading-tight">
-                                QUOTE SAVED!
-                            </h3>
-                            {quoteId && (
-                                <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-600 dark:text-slate-300">
-                                    ID: <span className="text-slate-900 dark:text-white">{quoteId}</span>
-                                </p>
-                            )}
-                            {smsFeedback && (
-                                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-indigo-600 dark:text-indigo-400">
-                                    {smsFeedback}
-                                </p>
-                            )}
-                        </div>
-
-                        {/* Share Buttons */}
-                        {quoteUuid && shareStatus !== 'sent' && (
-                            <div className="space-y-3">
-                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
-                                    Share Quote with Customer
-                                </p>
-                                <div className="flex gap-3">
-                                    <button
-                                        onClick={async () => {
-                                            try {
-                                                setShareStatus('sending-wa');
-                                                const { shareQuoteViaWhatsApp } = await getCrmActions();
-                                                const result = await shareQuoteViaWhatsApp(quoteUuid);
-                                                if (result.success) {
-                                                    setShareStatus('sent');
-                                                    setSmsFeedback('Shared via WhatsApp ✅');
-                                                    toast.success('Quote sent via WhatsApp!');
-                                                } else {
-                                                    setShareStatus('idle');
-                                                    toast.error(result.error || 'WhatsApp send failed');
-                                                }
-                                            } catch (err) {
-                                                setShareStatus('idle');
-                                                if (!isAbortError(err)) {
-                                                    toast.error('WhatsApp send failed');
-                                                    console.error('WhatsApp share failed:', err);
-                                                }
-                                            }
-                                        }}
-                                        disabled={shareStatus !== 'idle'}
-                                        className="flex-1 py-4 bg-[#25D366] hover:bg-[#20BD5A] disabled:bg-slate-200 dark:disabled:bg-slate-800 text-white disabled:text-slate-400 font-black uppercase tracking-widest rounded-3xl transition-all shadow-lg shadow-[#25D366]/20 disabled:shadow-none flex items-center justify-center gap-3 active:scale-[0.97] text-sm"
-                                    >
-                                        {shareStatus === 'sending-wa' ? (
-                                            <Loader2 className="w-5 h-5 animate-spin" />
-                                        ) : (
-                                            <>
-                                                <MessageCircle className="w-5 h-5" />
-                                                WhatsApp
-                                            </>
-                                        )}
-                                    </button>
-                                    <button
-                                        onClick={async () => {
-                                            try {
-                                                setShareStatus('sending-sms');
-                                                const { shareQuoteViaSms } = await getCrmActions();
-                                                const result = await shareQuoteViaSms(quoteUuid);
-                                                if (result.success) {
-                                                    setShareStatus('sent');
-                                                    setSmsFeedback('Shared via SMS ✅');
-                                                    toast.success('Quote sent via SMS!');
-                                                } else {
-                                                    setShareStatus('idle');
-                                                    toast.error(result.error || 'SMS send failed');
-                                                }
-                                            } catch (err) {
-                                                setShareStatus('idle');
-                                                if (!isAbortError(err)) {
-                                                    toast.error('SMS send failed');
-                                                    console.error('SMS share failed:', err);
-                                                }
-                                            }
-                                        }}
-                                        disabled={shareStatus !== 'idle'}
-                                        className="flex-1 py-4 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 dark:disabled:bg-slate-800 text-white disabled:text-slate-400 font-black uppercase tracking-widest rounded-3xl transition-all shadow-lg shadow-blue-600/20 disabled:shadow-none flex items-center justify-center gap-3 active:scale-[0.97] text-sm"
-                                    >
-                                        {shareStatus === 'sending-sms' ? (
-                                            <Loader2 className="w-5 h-5 animate-spin" />
-                                        ) : (
-                                            <>
-                                                <Send className="w-5 h-5" />
-                                                SMS
-                                            </>
-                                        )}
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Sent confirmation */}
-                        {shareStatus === 'sent' && (
-                            <div className="p-4 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 rounded-2xl">
-                                <p className="text-xs font-black uppercase tracking-[0.15em] text-emerald-600">
-                                    ✅ Quote Shared Successfully
-                                </p>
-                            </div>
-                        )}
-
-                        <button
-                            onClick={onClose}
-                            className="w-full py-4 bg-slate-950 dark:bg-white text-white dark:text-slate-950 font-black uppercase italic tracking-widest rounded-3xl hover:translate-y-[-2px] active:translate-y-[1px] transition-all shadow-xl shadow-slate-900/20 dark:shadow-white/10 text-sm"
-                        >
-                            {shareStatus === 'sent' ? 'Done' : 'Close'}
-                        </button>
+            <div className="bg-white dark:bg-slate-900 w-full max-w-5xl rounded-[2rem] md:rounded-[3rem] shadow-[0_25px_60px_rgba(15,23,42,0.15),0_4px_20px_rgba(15,23,42,0.08)] border border-slate-200/80 dark:border-white/10 flex flex-col md:flex-row relative overflow-hidden">
+                {/* Dossier Left Side (Desktop Only) */}
+                <div className="hidden md:flex w-5/12 bg-slate-50 dark:bg-[#0a0a0a] border-r border-slate-200 dark:border-white/5 p-8 flex-col relative overflow-hidden">
+                    <div className="absolute top-0 right-0 p-8 opacity-5">
+                        <Briefcase className="w-32 h-32" />
                     </div>
-                ) : (
-                    <div className="relative z-10 space-y-6">
-                        {isStaff && step === 'PHONE' && (
-                            <div className="bg-blue-600/5 border border-blue-600/15 rounded-2xl p-4 flex items-center gap-4 animate-in slide-in-from-top-4 duration-500">
-                                <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white flex-shrink-0 shadow-lg shadow-blue-600/20">
-                                    <Briefcase size={20} />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600 mb-1 leading-none">
-                                        Staff Referral Mode
-                                    </p>
-                                    <p className="text-xs font-bold text-slate-600 dark:text-slate-400 truncate">
-                                        Booking for a customer from{' '}
-                                        <span className="text-blue-600 dark:text-blue-400">
-                                            {primaryMembership?.tenants?.name || 'your dealership'}
-                                        </span>
-                                    </p>
-                                </div>
+
+                    <div className="relative z-10 flex-1 flex flex-col">
+                        <div className="mb-6">
+                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#F4B000] mb-2">
+                                Quote Dossier
+                            </p>
+                            <h2 className="text-3xl font-black uppercase italic tracking-tighter text-slate-900 dark:text-white leading-none">
+                                {productName}
+                            </h2>
+                            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-2">
+                                {variant} • {colorName}
+                            </p>
+                        </div>
+
+                        {image && (
+                            <div className="relative w-full flex-1 min-h-[160px] mb-8 mix-blend-multiply dark:mix-blend-normal">
+                                <img
+                                    src={image}
+                                    alt={productName}
+                                    className="object-contain w-full h-full drop-shadow-2xl"
+                                />
                             </div>
                         )}
 
-                        {/* TabHeader — matches PDP personalization tabs */}
-                        <div className="flex items-center gap-6 px-1">
-                            <div className="w-14 h-14 bg-brand-primary/10 rounded-2xl flex items-center justify-center border border-brand-primary/30 text-brand-primary shrink-0 shadow-[0_0_20px_rgba(255,215,0,0.15)]">
-                                {step === 'PHONE' ? (
-                                    isStaff ? (
-                                        <UserSearch className="w-8 h-8" />
-                                    ) : (
-                                        <Sparkles className="w-8 h-8" />
-                                    )
-                                ) : step === 'PHONE_CONFIRM' ? (
-                                    <ShieldCheck className="w-8 h-8" />
-                                ) : (
-                                    <UserCircle2 className="w-8 h-8" />
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/5 pb-4 opacity-80">
+                                <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                                    Ex-Showroom
+                                </span>
+                                <span className="text-sm font-black font-mono text-slate-900 dark:text-white">
+                                    ₹ {exShowroom?.toLocaleString('en-IN')}
+                                </span>
+                            </div>
+                            <div className="flex items-center justify-between pt-2">
+                                <span className="text-xs font-black uppercase tracking-[0.1em] text-slate-900 dark:text-white">
+                                    Total On-Road Estimate
+                                </span>
+                                <span className="text-2xl font-black font-mono text-[#F4B000] drop-shadow-[0_0_12px_rgba(244,176,0,0.3)]">
+                                    ₹ {totalOnRoad?.toLocaleString('en-IN')}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Right Side / Form */}
+                <div className="w-full md:w-7/12 p-8 md:p-10 relative overflow-y-auto max-h-[90vh] md:max-h-auto">
+                    {/* Subtle gradient overlay — matches FloatingCommandBar */}
+                    <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.9),rgba(255,255,255,0.3)_50%,rgba(255,215,0,0.04))]" />
+
+                    {/* Close Button */}
+                    <button
+                        onClick={onClose}
+                        className="absolute top-6 right-6 z-10 p-2.5 rounded-2xl bg-slate-100/80 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 transition-all active:scale-95 border border-slate-200/50"
+                    >
+                        <X className="w-4 h-4 text-slate-500" />
+                    </button>
+
+                    {success ? (
+                        <div className="text-center py-8 space-y-6 animate-in zoom-in-95 duration-500">
+                            <div className="relative w-24 h-24 mx-auto">
+                                <div className="absolute inset-0 bg-emerald-500/20 rounded-full animate-ping" />
+                                <div className="relative w-24 h-24 bg-emerald-50 dark:bg-emerald-950/30 rounded-full flex items-center justify-center text-emerald-600 dark:text-emerald-400 border-4 border-emerald-500/30">
+                                    <CheckCircle className="w-12 h-12" />
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <h3 className="text-3xl font-black uppercase italic tracking-tighter text-slate-900 dark:text-white leading-tight">
+                                    QUOTE SAVED!
+                                </h3>
+                                {quoteId && (
+                                    <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-600 dark:text-slate-300">
+                                        ID: <span className="text-slate-900 dark:text-white">{quoteId}</span>
+                                    </p>
+                                )}
+                                {smsFeedback && (
+                                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-indigo-600 dark:text-indigo-400">
+                                        {smsFeedback}
+                                    </p>
                                 )}
                             </div>
-                            <div className="flex-1">
-                                <h3 className="text-3xl font-black uppercase italic tracking-tighter text-slate-900 dark:text-white leading-none">
-                                    {step === 'PHONE'
-                                        ? isStaff
-                                            ? 'Identify Customer'
-                                            : 'Get Personal Quote'
-                                        : step === 'PHONE_CONFIRM'
-                                          ? 'Confirm Mobile'
-                                          : 'Complete Profile'}
-                                </h3>
-                                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1.5">
-                                    {productName}
-                                </p>
-                            </div>
-                        </div>
 
-                        {/* Step Progress Indicator */}
-                        <div className="flex items-center gap-2 px-1">
-                            {(['PHONE', ...(isStaff ? ['PHONE_CONFIRM'] : []), 'DETAILS'] as LeadStep[]).map(
-                                (s, idx) => {
-                                    const stepIndex = [
-                                        'PHONE',
-                                        ...(isStaff ? ['PHONE_CONFIRM'] : []),
-                                        'DETAILS',
-                                    ].indexOf(step);
-                                    const thisIndex = idx;
-                                    const isComplete = thisIndex < stepIndex;
-                                    const isCurrent = s === step;
-                                    return (
-                                        <div
-                                            key={s}
-                                            className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${
-                                                isComplete
-                                                    ? 'bg-brand-primary shadow-[0_0_8px_rgba(255,215,0,0.4)]'
-                                                    : isCurrent
-                                                      ? 'bg-brand-primary/40'
-                                                      : 'bg-slate-200 dark:bg-slate-700'
-                                            }`}
-                                        />
-                                    );
-                                }
+                            {/* Share Buttons */}
+                            {quoteUuid && shareStatus !== 'sent' && (
+                                <div className="space-y-3">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                                        Share Quote with Customer
+                                    </p>
+                                    <div className="flex gap-3">
+                                        <button
+                                            onClick={async () => {
+                                                try {
+                                                    setShareStatus('sending-wa');
+                                                    const { shareQuoteViaWhatsApp } = await getCrmActions();
+                                                    const result = await shareQuoteViaWhatsApp(quoteUuid);
+                                                    if (result.success) {
+                                                        setShareStatus('sent');
+                                                        setSmsFeedback('Shared via WhatsApp ✅');
+                                                        toast.success('Quote sent via WhatsApp!');
+                                                    } else {
+                                                        setShareStatus('idle');
+                                                        toast.error(result.error || 'WhatsApp send failed');
+                                                    }
+                                                } catch (err) {
+                                                    setShareStatus('idle');
+                                                    if (!isAbortError(err)) {
+                                                        toast.error('WhatsApp send failed');
+                                                        console.error('WhatsApp share failed:', err);
+                                                    }
+                                                }
+                                            }}
+                                            disabled={shareStatus !== 'idle'}
+                                            className="flex-1 py-4 bg-[#25D366] hover:bg-[#20BD5A] disabled:bg-slate-200 dark:disabled:bg-slate-800 text-white disabled:text-slate-400 font-black uppercase tracking-widest rounded-3xl transition-all shadow-lg shadow-[#25D366]/20 disabled:shadow-none flex items-center justify-center gap-3 active:scale-[0.97] text-sm"
+                                        >
+                                            {shareStatus === 'sending-wa' ? (
+                                                <Loader2 className="w-5 h-5 animate-spin" />
+                                            ) : (
+                                                <>
+                                                    <MessageCircle className="w-5 h-5" />
+                                                    WhatsApp
+                                                </>
+                                            )}
+                                        </button>
+                                        <button
+                                            onClick={async () => {
+                                                try {
+                                                    setShareStatus('sending-sms');
+                                                    const { shareQuoteViaSms } = await getCrmActions();
+                                                    const result = await shareQuoteViaSms(quoteUuid);
+                                                    if (result.success) {
+                                                        setShareStatus('sent');
+                                                        setSmsFeedback('Shared via SMS ✅');
+                                                        toast.success('Quote sent via SMS!');
+                                                    } else {
+                                                        setShareStatus('idle');
+                                                        toast.error(result.error || 'SMS send failed');
+                                                    }
+                                                } catch (err) {
+                                                    setShareStatus('idle');
+                                                    if (!isAbortError(err)) {
+                                                        toast.error('SMS send failed');
+                                                        console.error('SMS share failed:', err);
+                                                    }
+                                                }
+                                            }}
+                                            disabled={shareStatus !== 'idle'}
+                                            className="flex-1 py-4 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 dark:disabled:bg-slate-800 text-white disabled:text-slate-400 font-black uppercase tracking-widest rounded-3xl transition-all shadow-lg shadow-blue-600/20 disabled:shadow-none flex items-center justify-center gap-3 active:scale-[0.97] text-sm"
+                                        >
+                                            {shareStatus === 'sending-sms' ? (
+                                                <Loader2 className="w-5 h-5 animate-spin" />
+                                            ) : (
+                                                <>
+                                                    <Send className="w-5 h-5" />
+                                                    SMS
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
                             )}
+
+                            {/* Sent confirmation */}
+                            {shareStatus === 'sent' && (
+                                <div className="p-4 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 rounded-2xl">
+                                    <p className="text-xs font-black uppercase tracking-[0.15em] text-emerald-600">
+                                        ✅ Quote Shared Successfully
+                                    </p>
+                                </div>
+                            )}
+
+                            <button
+                                onClick={onClose}
+                                className="w-full py-4 bg-slate-950 dark:bg-white text-white dark:text-slate-950 font-black uppercase italic tracking-widest rounded-3xl hover:translate-y-[-2px] active:translate-y-[1px] transition-all shadow-xl shadow-slate-900/20 dark:shadow-white/10 text-sm"
+                            >
+                                {shareStatus === 'sent' ? 'Done' : 'Close'}
+                            </button>
                         </div>
-
-                        {/* Separator */}
-                        <div className="h-px bg-gradient-to-r from-transparent via-slate-200 dark:via-slate-700 to-transparent" />
-
-                        {error && (
-                            <div className="p-4 bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30 text-red-600 dark:text-red-400 text-xs font-bold rounded-2xl text-center animate-in shake duration-300">
-                                {error}
-                            </div>
-                        )}
-                        {isSubmitting && submitStage && (
-                            <div className="p-3 bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-[11px] font-black uppercase tracking-[0.18em] rounded-2xl text-center animate-in fade-in duration-300">
-                                {submitStage}
-                            </div>
-                        )}
-
-                        {step === 'PHONE' ? (
-                            <form onSubmit={handlePhoneSubmit} className="space-y-6">
-                                <div className="space-y-3">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 px-2">
-                                        {isStaff ? "Customer's Mobile" : 'Your Mobile'}
-                                    </p>
-                                    <div className="relative group">
-                                        <span className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 font-black tracking-tighter text-lg select-none z-10">
-                                            +91
-                                        </span>
-                                        <input
-                                            type="tel"
-                                            required
-                                            value={phone}
-                                            onChange={e => setPhone(normalizeIndianPhone(e.target.value))}
-                                            placeholder="00000 00000"
-                                            maxLength={10}
-                                            className="w-full pl-16 pr-6 py-5 bg-white dark:bg-black/20 border border-slate-200 dark:border-slate-700 focus:border-brand-primary/60 dark:focus:border-brand-primary/40 focus:shadow-[0_0_0_4px_rgba(255,215,0,0.1)] rounded-2xl outline-none font-black text-xl text-slate-900 dark:text-white tracking-[0.1em] transition-all placeholder:text-slate-300 dark:placeholder:text-slate-700"
-                                            autoFocus
-                                        />
+                    ) : (
+                        <div className="relative z-10 space-y-6">
+                            {isStaff && step === 'PHONE' && (
+                                <div className="bg-blue-600/5 border border-blue-600/15 rounded-2xl p-4 flex items-center gap-4 animate-in slide-in-from-top-4 duration-500">
+                                    <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white flex-shrink-0 shadow-lg shadow-blue-600/20">
+                                        <Briefcase size={20} />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600 mb-1 leading-none">
+                                            Staff Referral Mode
+                                        </p>
+                                        <p className="text-xs font-bold text-slate-600 dark:text-slate-400 truncate">
+                                            Booking for a customer from{' '}
+                                            <span className="text-blue-600 dark:text-blue-400">
+                                                {primaryMembership?.tenants?.name || 'your dealership'}
+                                            </span>
+                                        </p>
                                     </div>
                                 </div>
+                            )}
 
-                                <button
-                                    type="submit"
-                                    disabled={isSubmitting || !isValidPhone(phone)}
-                                    className="w-full group py-5 bg-[#FFD700] hover:bg-[#F4B000] disabled:bg-slate-100 dark:disabled:bg-slate-800 text-slate-900 disabled:text-slate-400 font-black text-xs uppercase tracking-[0.12em] rounded-2xl transition-all shadow-[0_4px_20px_rgba(255,215,0,0.3)] hover:shadow-[0_6px_28px_rgba(255,215,0,0.45)] disabled:shadow-none flex items-center justify-center gap-3 active:scale-[0.98] hover:-translate-y-0.5"
-                                >
-                                    {isSubmitting ? (
-                                        <>
-                                            <Loader2 className="w-5 h-5 animate-spin" />
-                                            <span>{submitStage || 'Processing'}</span>
-                                        </>
+                            {/* TabHeader — matches PDP personalization tabs */}
+                            <div className="flex items-center gap-6 px-1">
+                                <div className="w-14 h-14 bg-brand-primary/10 rounded-2xl flex items-center justify-center border border-brand-primary/30 text-brand-primary shrink-0 shadow-[0_0_20px_rgba(255,215,0,0.15)]">
+                                    {step === 'PHONE' ? (
+                                        isStaff ? (
+                                            <UserSearch className="w-8 h-8" />
+                                        ) : (
+                                            <Sparkles className="w-8 h-8" />
+                                        )
+                                    ) : step === 'PHONE_CONFIRM' ? (
+                                        <ShieldCheck className="w-8 h-8" />
                                     ) : (
-                                        <>
-                                            Continue
-                                            <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                                        </>
+                                        <UserCircle2 className="w-8 h-8" />
                                     )}
-                                </button>
-                            </form>
-                        ) : step === 'PHONE_CONFIRM' ? (
-                            <form
-                                onSubmit={handlePhoneConfirmSubmit}
-                                className="space-y-6 animate-in slide-in-from-right-4 duration-300"
-                            >
-                                <div className="space-y-3">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 px-2">
-                                        Re-enter Mobile
+                                </div>
+                                <div className="flex-1">
+                                    <h3 className="text-3xl font-black uppercase italic tracking-tighter text-slate-900 dark:text-white leading-none">
+                                        {step === 'PHONE'
+                                            ? isStaff
+                                                ? 'Identify Customer'
+                                                : 'Get Personal Quote'
+                                            : step === 'PHONE_CONFIRM'
+                                              ? 'Confirm Mobile'
+                                              : 'Complete Profile'}
+                                    </h3>
+                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1.5">
+                                        {productName}
                                     </p>
-                                    <div className="relative group">
-                                        <span className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 font-black tracking-tighter text-lg select-none z-10">
-                                            +91
-                                        </span>
-                                        <input
-                                            type="tel"
-                                            required
-                                            value={confirmPhone}
-                                            onChange={e => setConfirmPhone(normalizeIndianPhone(e.target.value))}
-                                            placeholder="Re-enter 10-digit mobile"
-                                            maxLength={10}
-                                            className="w-full pl-16 pr-6 py-5 bg-white dark:bg-black/20 border border-slate-200 dark:border-slate-700 focus:border-brand-primary/60 dark:focus:border-brand-primary/40 focus:shadow-[0_0_0_4px_rgba(255,215,0,0.1)] rounded-2xl outline-none font-black text-xl text-slate-900 dark:text-white tracking-[0.1em] transition-all placeholder:text-slate-300 dark:placeholder:text-slate-700"
-                                            autoFocus
-                                        />
-                                    </div>
                                 </div>
+                            </div>
 
-                                <div className="flex gap-3 pt-2">
-                                    <button
-                                        type="button"
-                                        onClick={() => setStep('PHONE')}
-                                        className="px-6 py-5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-black uppercase text-xs tracking-[0.12em] rounded-2xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-95 border border-slate-200/50"
-                                    >
-                                        Back
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        disabled={isSubmitting || !isValidPhone(confirmPhone)}
-                                        className="flex-1 py-5 bg-[#FFD700] hover:bg-[#F4B000] disabled:bg-slate-100 dark:disabled:bg-slate-800 text-slate-900 disabled:text-slate-400 font-black uppercase text-xs tracking-[0.12em] rounded-2xl transition-all shadow-[0_4px_20px_rgba(255,215,0,0.3)] hover:shadow-[0_6px_28px_rgba(255,215,0,0.45)] disabled:shadow-none flex items-center justify-center gap-3 active:scale-[0.98] hover:-translate-y-0.5"
-                                    >
-                                        Continue
-                                        <ChevronRight className="w-5 h-5" />
-                                    </button>
+                            {/* Step Progress Indicator */}
+                            <div className="flex items-center gap-2 px-1">
+                                {(['PHONE', ...(isStaff ? ['PHONE_CONFIRM'] : []), 'DETAILS'] as LeadStep[]).map(
+                                    (s, idx) => {
+                                        const stepIndex = [
+                                            'PHONE',
+                                            ...(isStaff ? ['PHONE_CONFIRM'] : []),
+                                            'DETAILS',
+                                        ].indexOf(step);
+                                        const thisIndex = idx;
+                                        const isComplete = thisIndex < stepIndex;
+                                        const isCurrent = s === step;
+                                        return (
+                                            <div
+                                                key={s}
+                                                className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${
+                                                    isComplete
+                                                        ? 'bg-brand-primary shadow-[0_0_8px_rgba(255,215,0,0.4)]'
+                                                        : isCurrent
+                                                          ? 'bg-brand-primary/40'
+                                                          : 'bg-slate-200 dark:bg-slate-700'
+                                                }`}
+                                            />
+                                        );
+                                    }
+                                )}
+                            </div>
+
+                            {/* Separator */}
+                            <div className="h-px bg-gradient-to-r from-transparent via-slate-200 dark:via-slate-700 to-transparent" />
+
+                            {error && (
+                                <div className="p-4 bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30 text-red-600 dark:text-red-400 text-xs font-bold rounded-2xl text-center animate-in shake duration-300">
+                                    {error}
                                 </div>
-                            </form>
-                        ) : (
-                            <form
-                                onSubmit={handleDetailSubmit}
-                                className="space-y-6 animate-in slide-in-from-right-4 duration-300"
-                            >
-                                <div className="space-y-5">
+                            )}
+                            {isSubmitting && submitStage && (
+                                <div className="p-3 bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-[11px] font-black uppercase tracking-[0.18em] rounded-2xl text-center animate-in fade-in duration-300">
+                                    {submitStage}
+                                </div>
+                            )}
+
+                            {step === 'PHONE' ? (
+                                <form onSubmit={handlePhoneSubmit} className="space-y-6">
                                     <div className="space-y-3">
                                         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 px-2">
-                                            Full Name
+                                            {isStaff ? "Customer's Mobile" : 'Your Mobile'}
                                         </p>
-                                        <input
-                                            type="text"
-                                            required
-                                            value={name}
-                                            onChange={e => setName(e.target.value)}
-                                            placeholder="Enter full name"
-                                            className="w-full px-6 py-4 bg-white dark:bg-black/20 border border-slate-200 dark:border-slate-700 focus:border-brand-primary/60 focus:shadow-[0_0_0_4px_rgba(255,215,0,0.1)] rounded-2xl outline-none font-bold text-slate-900 dark:text-white transition-all placeholder:text-slate-300"
-                                            autoFocus
-                                        />
-                                    </div>
-
-                                    <div className="space-y-3">
-                                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 px-2">
-                                            Pincode
-                                        </p>
-                                        <input
-                                            type="tel"
-                                            required
-                                            value={pincode}
-                                            onChange={e => setPincode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                                            placeholder="6-digit Pincode"
-                                            className="w-full px-6 py-4 bg-white dark:bg-black/20 border border-slate-200 dark:border-slate-700 focus:border-brand-primary/60 focus:shadow-[0_0_0_4px_rgba(255,215,0,0.1)] rounded-2xl outline-none font-bold text-slate-900 dark:text-white transition-all tracking-[0.2em] placeholder:text-slate-300"
-                                        />
-                                    </div>
-
-                                    {isStaff && (
-                                        <div className="space-y-3">
-                                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 px-2">
-                                                Referred By (Optional)
-                                            </p>
-                                            <div className="relative">
-                                                <span className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 font-bold text-sm select-none z-10">
-                                                    +91
-                                                </span>
-                                                <input
-                                                    type="tel"
-                                                    value={referredByPhone}
-                                                    onChange={e => {
-                                                        setReferredByPhone(normalizeIndianPhone(e.target.value));
-                                                        setReferralResolved(null);
-                                                        setReferralError(null);
-                                                    }}
-                                                    onBlur={handleReferralBlur}
-                                                    placeholder="Referrer's mobile"
-                                                    maxLength={10}
-                                                    className="w-full pl-14 pr-6 py-4 bg-white dark:bg-black/20 border border-slate-200 dark:border-slate-700 focus:border-indigo-500/60 focus:shadow-[0_0_0_4px_rgba(99,102,241,0.1)] rounded-2xl outline-none font-bold text-sm text-slate-900 dark:text-white tracking-wider transition-all placeholder:text-slate-300 dark:placeholder:text-slate-600"
-                                                />
-                                            </div>
-                                            {referralResolving && (
-                                                <p className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 px-2">
-                                                    <Loader2 className="w-3 h-3 animate-spin" /> Resolving referrer...
-                                                </p>
-                                            )}
-                                            {referralResolved && (
-                                                <p className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-600 px-2">
-                                                    ✓ {referralResolved.name || 'Member'} linked as referrer
-                                                </p>
-                                            )}
-                                            {referralError && (
-                                                <p className="text-[10px] font-bold text-red-500 px-2">
-                                                    {referralError}
-                                                </p>
-                                            )}
+                                        <div className="relative group">
+                                            <span className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 font-black tracking-tighter text-lg select-none z-10">
+                                                +91
+                                            </span>
+                                            <input
+                                                type="tel"
+                                                required
+                                                value={phone}
+                                                onChange={e => setPhone(normalizeIndianPhone(e.target.value))}
+                                                placeholder="00000 00000"
+                                                maxLength={10}
+                                                className="w-full pl-16 pr-6 py-5 bg-white dark:bg-black/20 border border-slate-200 dark:border-slate-700 focus:border-brand-primary/60 dark:focus:border-brand-primary/40 focus:shadow-[0_0_0_4px_rgba(255,215,0,0.1)] rounded-2xl outline-none font-black text-xl text-slate-900 dark:text-white tracking-[0.1em] transition-all placeholder:text-slate-300 dark:placeholder:text-slate-700"
+                                                autoFocus
+                                            />
                                         </div>
-                                    )}
-                                </div>
+                                    </div>
 
-                                <div className="flex gap-3 pt-2">
-                                    <button
-                                        type="button"
-                                        onClick={() => setStep(isStaff && !memberId ? 'PHONE_CONFIRM' : 'PHONE')}
-                                        className="px-6 py-5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-black uppercase text-xs tracking-[0.12em] rounded-2xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-95 border border-slate-200/50"
-                                    >
-                                        Back
-                                    </button>
                                     <button
                                         type="submit"
-                                        disabled={isSubmitting}
-                                        className="flex-1 py-5 bg-[#FFD700] hover:bg-[#F4B000] text-slate-900 font-black uppercase text-xs tracking-[0.12em] rounded-2xl transition-all shadow-[0_4px_20px_rgba(255,215,0,0.3)] hover:shadow-[0_6px_28px_rgba(255,215,0,0.45)] active:scale-[0.98] hover:-translate-y-0.5 flex items-center justify-center gap-3"
+                                        disabled={isSubmitting || !isValidPhone(phone)}
+                                        className="w-full group py-5 bg-[#FFD700] hover:bg-[#F4B000] disabled:bg-slate-100 dark:disabled:bg-slate-800 text-slate-900 disabled:text-slate-400 font-black text-xs uppercase tracking-[0.12em] rounded-2xl transition-all shadow-[0_4px_20px_rgba(255,215,0,0.3)] hover:shadow-[0_6px_28px_rgba(255,215,0,0.45)] disabled:shadow-none flex items-center justify-center gap-3 active:scale-[0.98] hover:-translate-y-0.5"
                                     >
                                         {isSubmitting ? (
                                             <>
@@ -849,39 +759,192 @@ export function LeadCaptureModal({
                                                 <span>{submitStage || 'Processing'}</span>
                                             </>
                                         ) : (
-                                            'Create Quote'
+                                            <>
+                                                Continue
+                                                <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                                            </>
                                         )}
                                     </button>
-                                </div>
-                            </form>
-                        )}
+                                </form>
+                            ) : step === 'PHONE_CONFIRM' ? (
+                                <form
+                                    onSubmit={handlePhoneConfirmSubmit}
+                                    className="space-y-6 animate-in slide-in-from-right-4 duration-300"
+                                >
+                                    <div className="space-y-3">
+                                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 px-2">
+                                            Re-enter Mobile
+                                        </p>
+                                        <div className="relative group">
+                                            <span className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 font-black tracking-tighter text-lg select-none z-10">
+                                                +91
+                                            </span>
+                                            <input
+                                                type="tel"
+                                                required
+                                                value={confirmPhone}
+                                                onChange={e => setConfirmPhone(normalizeIndianPhone(e.target.value))}
+                                                placeholder="Re-enter 10-digit mobile"
+                                                maxLength={10}
+                                                className="w-full pl-16 pr-6 py-5 bg-white dark:bg-black/20 border border-slate-200 dark:border-slate-700 focus:border-brand-primary/60 dark:focus:border-brand-primary/40 focus:shadow-[0_0_0_4px_rgba(255,215,0,0.1)] rounded-2xl outline-none font-black text-xl text-slate-900 dark:text-white tracking-[0.1em] transition-all placeholder:text-slate-300 dark:placeholder:text-slate-700"
+                                                autoFocus
+                                            />
+                                        </div>
+                                    </div>
 
-                        {/* B-coin Savings Banner */}
-                        {customerCoins !== null && customerCoins > 0 && (
-                            <div className="flex items-center gap-3 p-4 rounded-2xl bg-gradient-to-r from-brand-primary/5 to-brand-primary/10 border border-brand-primary/20 animate-in slide-in-from-bottom-2 duration-500">
-                                <div className="w-10 h-10 rounded-xl bg-brand-primary/20 flex items-center justify-center flex-shrink-0">
-                                    <Logo variant="icon" size={16} />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.15em] text-brand-primary leading-none">
-                                        {isNewCustomer ? "O' Circle Welcome Bonus" : "O' Circle Balance"}
-                                    </p>
-                                    <p className="mt-1 text-xs font-bold text-slate-600 dark:text-slate-300">
-                                        <span className="text-brand-primary font-black">{customerCoins}</span> coins ={' '}
-                                        <span className="text-emerald-600 font-black">
-                                            ₹{discountForCoins(customerCoins).toLocaleString()}
-                                        </span>{' '}
-                                        savings
-                                    </p>
-                                </div>
-                            </div>
-                        )}
+                                    <div className="flex gap-3 pt-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => setStep('PHONE')}
+                                            className="px-6 py-5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-black uppercase text-xs tracking-[0.12em] rounded-2xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-95 border border-slate-200/50"
+                                        >
+                                            Back
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            disabled={isSubmitting || !isValidPhone(confirmPhone)}
+                                            className="flex-1 py-5 bg-[#FFD700] hover:bg-[#F4B000] disabled:bg-slate-100 dark:disabled:bg-slate-800 text-slate-900 disabled:text-slate-400 font-black uppercase text-xs tracking-[0.12em] rounded-2xl transition-all shadow-[0_4px_20px_rgba(255,215,0,0.3)] hover:shadow-[0_6px_28px_rgba(255,215,0,0.45)] disabled:shadow-none flex items-center justify-center gap-3 active:scale-[0.98] hover:-translate-y-0.5"
+                                        >
+                                            Continue
+                                            <ChevronRight className="w-5 h-5" />
+                                        </button>
+                                    </div>
+                                </form>
+                            ) : (
+                                <form
+                                    onSubmit={handleDetailSubmit}
+                                    className="space-y-6 animate-in slide-in-from-right-4 duration-300"
+                                >
+                                    <div className="space-y-5">
+                                        <div className="space-y-3">
+                                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 px-2">
+                                                Full Name
+                                            </p>
+                                            <input
+                                                type="text"
+                                                required
+                                                value={name}
+                                                onChange={e => setName(e.target.value)}
+                                                placeholder="Enter full name"
+                                                className="w-full px-6 py-4 bg-white dark:bg-black/20 border border-slate-200 dark:border-slate-700 focus:border-brand-primary/60 focus:shadow-[0_0_0_4px_rgba(255,215,0,0.1)] rounded-2xl outline-none font-bold text-slate-900 dark:text-white transition-all placeholder:text-slate-300"
+                                                autoFocus
+                                            />
+                                        </div>
 
-                        <p className="text-[9px] text-center text-slate-400 dark:text-slate-600 leading-relaxed font-medium uppercase tracking-wider px-4">
-                            By continuing, you agree to receive a callback/WhatsApp from our authorized dealer partners.
-                        </p>
-                    </div>
-                )}
+                                        <div className="space-y-3">
+                                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 px-2">
+                                                Pincode
+                                            </p>
+                                            <input
+                                                type="tel"
+                                                required
+                                                value={pincode}
+                                                onChange={e =>
+                                                    setPincode(e.target.value.replace(/\D/g, '').slice(0, 6))
+                                                }
+                                                placeholder="6-digit Pincode"
+                                                className="w-full px-6 py-4 bg-white dark:bg-black/20 border border-slate-200 dark:border-slate-700 focus:border-brand-primary/60 focus:shadow-[0_0_0_4px_rgba(255,215,0,0.1)] rounded-2xl outline-none font-bold text-slate-900 dark:text-white transition-all tracking-[0.2em] placeholder:text-slate-300"
+                                            />
+                                        </div>
+
+                                        {isStaff && (
+                                            <div className="space-y-3">
+                                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 px-2">
+                                                    Referred By (Optional)
+                                                </p>
+                                                <div className="relative">
+                                                    <span className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 font-bold text-sm select-none z-10">
+                                                        +91
+                                                    </span>
+                                                    <input
+                                                        type="tel"
+                                                        value={referredByPhone}
+                                                        onChange={e => {
+                                                            setReferredByPhone(normalizeIndianPhone(e.target.value));
+                                                            setReferralResolved(null);
+                                                            setReferralError(null);
+                                                        }}
+                                                        onBlur={handleReferralBlur}
+                                                        placeholder="Referrer's mobile"
+                                                        maxLength={10}
+                                                        className="w-full pl-14 pr-6 py-4 bg-white dark:bg-black/20 border border-slate-200 dark:border-slate-700 focus:border-indigo-500/60 focus:shadow-[0_0_0_4px_rgba(99,102,241,0.1)] rounded-2xl outline-none font-bold text-sm text-slate-900 dark:text-white tracking-wider transition-all placeholder:text-slate-300 dark:placeholder:text-slate-600"
+                                                    />
+                                                </div>
+                                                {referralResolving && (
+                                                    <p className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 px-2">
+                                                        <Loader2 className="w-3 h-3 animate-spin" /> Resolving
+                                                        referrer...
+                                                    </p>
+                                                )}
+                                                {referralResolved && (
+                                                    <p className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-600 px-2">
+                                                        ✓ {referralResolved.name || 'Member'} linked as referrer
+                                                    </p>
+                                                )}
+                                                {referralError && (
+                                                    <p className="text-[10px] font-bold text-red-500 px-2">
+                                                        {referralError}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="flex gap-3 pt-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => setStep(isStaff && !memberId ? 'PHONE_CONFIRM' : 'PHONE')}
+                                            className="px-6 py-5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-black uppercase text-xs tracking-[0.12em] rounded-2xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-95 border border-slate-200/50"
+                                        >
+                                            Back
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            disabled={isSubmitting}
+                                            className="flex-1 py-5 bg-[#FFD700] hover:bg-[#F4B000] text-slate-900 font-black uppercase text-xs tracking-[0.12em] rounded-2xl transition-all shadow-[0_4px_20px_rgba(255,215,0,0.3)] hover:shadow-[0_6px_28px_rgba(255,215,0,0.45)] active:scale-[0.98] hover:-translate-y-0.5 flex items-center justify-center gap-3"
+                                        >
+                                            {isSubmitting ? (
+                                                <>
+                                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                                    <span>{submitStage || 'Processing'}</span>
+                                                </>
+                                            ) : (
+                                                'Create Quote'
+                                            )}
+                                        </button>
+                                    </div>
+                                </form>
+                            )}
+
+                            {/* B-coin Savings Banner */}
+                            {customerCoins !== null && customerCoins > 0 && (
+                                <div className="flex items-center gap-3 p-4 rounded-2xl bg-gradient-to-r from-brand-primary/5 to-brand-primary/10 border border-brand-primary/20 animate-in slide-in-from-bottom-2 duration-500">
+                                    <div className="w-10 h-10 rounded-xl bg-brand-primary/20 flex items-center justify-center flex-shrink-0">
+                                        <Logo variant="icon" size={16} />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-[10px] font-black uppercase tracking-[0.15em] text-brand-primary leading-none">
+                                            {isNewCustomer ? "O' Circle Welcome Bonus" : "O' Circle Balance"}
+                                        </p>
+                                        <p className="mt-1 text-xs font-bold text-slate-600 dark:text-slate-300">
+                                            <span className="text-brand-primary font-black">{customerCoins}</span> coins
+                                            ={' '}
+                                            <span className="text-emerald-600 font-black">
+                                                ₹{discountForCoins(customerCoins).toLocaleString()}
+                                            </span>{' '}
+                                            savings
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
+                            <p className="text-[9px] text-center text-slate-400 dark:text-slate-600 leading-relaxed font-medium uppercase tracking-wider px-4">
+                                By continuing, you agree to receive a callback/WhatsApp from our authorized dealer
+                                partners.
+                            </p>
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );

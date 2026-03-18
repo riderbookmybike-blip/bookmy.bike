@@ -29,11 +29,22 @@ export interface PdpConfigSectionProps {
 // ─── Shared config card definitions ───────────────────────
 function getConfigCards(data: any) {
     const { selectedAccessories, selectedInsuranceAddons, selectedServices, regType, activeAccessories } = data;
-    const accTotal = Math.round((data.accessoriesPrice || 0) + (data.accessoriesDiscount || 0));
-    const insAddonsTotal = Math.round((data.insuranceAddonsPrice || 0) + (data.insuranceAddonsDiscount || 0));
-    const svcTotal = Math.round((data.servicesPrice || 0) + (data.servicesDiscount || 0));
+    const accTotal = Math.round(data.accessoriesPrice || 0);
+    const insTotal = Math.round((data.baseInsurance || 0) + (data.insuranceAddonsPrice || 0));
+
+    // Resolve pure number or nested object for rtoEstimates
+    const rtoVal = data.rtoEstimates;
+    const rtoTotal = Math.round(
+        typeof rtoVal === 'number'
+            ? rtoVal
+            : rtoVal?.[regType] || data.rtoOptions?.find((o: any) => o.id === regType)?.price || 0
+    );
+
+    const svcTotal = Math.round(data.servicesPrice || 0);
+    const wtyTotal = Math.round((data.warrantyItems || []).reduce((acc: number, w: any) => acc + (w.price || 0), 0));
 
     const fmt = (v: number) => `₹${v.toLocaleString('en-IN')}`;
+    const getBadge = (v: number) => (v > 0 ? fmt(v) : 'Free');
 
     // Build accessory subtext: "Side Stand, Floor Matt & +5"
     let accSubtext = 'Add Extras';
@@ -65,12 +76,14 @@ function getConfigCards(data: any) {
             id: 'ACCESSORIES',
             label: 'Accessories',
             subtext: accSubtext,
+            totalLabel: getBadge(accTotal),
             icon: Package,
         },
         {
             id: 'INSURANCE',
             label: 'Insurance',
             subtext: INSURANCE_SUBTITLE,
+            totalLabel: getBadge(insTotal),
             icon: Shield,
         },
         {
@@ -79,8 +92,14 @@ function getConfigCards(data: any) {
             subtext: (() => {
                 const rtoOpts = data.rtoOptions || [];
                 const match = rtoOpts.find((o: any) => o.id === regType);
-                return match?.name || regType || 'Choose Type';
+                let label = match?.name || regType || 'Choose Type';
+                if (regType === 'STATE')
+                    label = data.stateCode ? `${data.stateCode.toUpperCase()} Registration` : 'State Registration';
+                else if (regType === 'BH') label = 'Bharat (BH) Registration';
+                else if (regType === 'COMPANY') label = 'Corporate Registration';
+                return label;
             })(),
+            totalLabel: getBadge(rtoTotal),
             icon: ClipboardList,
         },
         {
@@ -96,6 +115,7 @@ function getConfigCards(data: any) {
                 const rest = active.length - 2;
                 return rest > 0 ? `${shown} & +${rest}` : shown;
             })(),
+            totalLabel: getBadge(svcTotal),
             icon: Wrench,
         },
         {
@@ -109,6 +129,7 @@ function getConfigCards(data: any) {
                 const rest = items.length - 2;
                 return rest > 0 ? `${shown} & +${rest}` : shown;
             })(),
+            totalLabel: getBadge(wtyTotal),
             icon: Gift,
         },
     ];
@@ -215,6 +236,19 @@ export function PdpConfigSection({
                                     {card.label}
                                 </span>
                                 <span className="text-[9px] text-slate-500 leading-tight">{card.subtext}</span>
+
+                                {card.totalLabel && (
+                                    <span
+                                        className={`absolute top-2 right-2 px-1.5 py-0.5 rounded-[6px] border text-[9px] font-black tracking-tight tabular-nums transition-colors shadow-sm
+                                        ${
+                                            isActive
+                                                ? 'text-brand-primary border-brand-primary/30 bg-brand-primary/10'
+                                                : 'text-slate-500 border-slate-200 bg-slate-50'
+                                        }`}
+                                    >
+                                        {card.totalLabel}
+                                    </span>
+                                )}
                             </button>
                         );
                     })}
@@ -275,10 +309,17 @@ export function PdpConfigSection({
                                     <p className="text-[11px] font-semibold text-slate-600 truncate">{card.subtext}</p>
                                 </div>
                             </div>
-                            <ChevronDown
-                                size={18}
-                                className={`text-slate-400 transition-transform ${isCategoryOpen ? 'rotate-180' : ''}`}
-                            />
+                            <div className="flex items-center gap-3">
+                                {card.totalLabel && (
+                                    <span className="text-[11px] font-black tracking-tight tabular-nums text-slate-900 bg-slate-100 px-2 py-1 rounded-md">
+                                        {card.totalLabel}
+                                    </span>
+                                )}
+                                <ChevronDown
+                                    size={18}
+                                    className={`text-slate-400 transition-transform ${isCategoryOpen ? 'rotate-180' : ''}`}
+                                />
+                            </div>
                         </button>
                         {isCategoryOpen && (
                             <div className="px-5 pb-5">

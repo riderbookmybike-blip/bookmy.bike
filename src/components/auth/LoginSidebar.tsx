@@ -28,6 +28,9 @@ import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { getErrorMessage } from '@/lib/utils/errorMessage';
 import { resolveLocation } from '@/utils/locationResolver';
 
+const REFERRAL_CODE_PATTERN = /^[A-Z0-9-]{4,32}$/;
+const REFERRAL_STORAGE_KEY = 'bkmb_referral_code';
+
 interface LoginSidebarProps {
     isOpen: boolean;
     onClose: () => void;
@@ -55,6 +58,8 @@ export default function LoginSidebar({
     const [otp, setOtp] = useState('');
     const [fullName, setFullName] = useState('');
     const [referralCode, setReferralCode] = useState('');
+    const [referralCodeFromLink, setReferralCodeFromLink] = useState<string | null>(null);
+    const [isOtpVerifiedForSignup, setIsOtpVerifiedForSignup] = useState(false);
     const [showSignupPrompt, setShowSignupPrompt] = useState(false);
     const [loading, setLoading] = useState(false);
     const [termsAccepted, setTermsAccepted] = useState(false);
@@ -110,6 +115,84 @@ export default function LoginSidebar({
     const inputRef = useRef<HTMLInputElement>(null);
     const OTP_LENGTH = 4;
 
+    const normalizeReferralCode = (value?: string | null) =>
+        String(value || '')
+            .trim()
+            .toUpperCase();
+    const getEffectiveReferralCode = () => normalizeReferralCode(referralCodeFromLink || referralCode);
+    const hasReferralFromLink = !!normalizeReferralCode(referralCodeFromLink);
+    const getResolvedSignupLocation = () => {
+        if (resolvedFallbackLocation?.pincode) {
+            return {
+                pincode: resolvedFallbackLocation.pincode,
+                state: resolvedFallbackLocation.state || null,
+                district: resolvedFallbackLocation.district || null,
+                taluka: resolvedFallbackLocation.taluka || null,
+                area: null as string | null,
+            };
+        }
+
+        if (locationData?.pincode) {
+            return {
+                pincode: locationData.pincode,
+                state: locationData.state || null,
+                district: locationData.district || null,
+                taluka: locationData.taluka || null,
+                area: locationData.area || null,
+            };
+        }
+
+        if (location.pincode) {
+            return {
+                pincode: location.pincode,
+                state: null,
+                district: null,
+                taluka: null,
+                area: null,
+            };
+        }
+
+        return {
+            pincode: null,
+            state: null,
+            district: null,
+            taluka: null,
+            area: null,
+        };
+    };
+
+    const capturePendingMembership = async (reason: string, referralCodeInputOverride?: string) => {
+        const phone = identifier.replace(/\D/g, '');
+        if (phone.length !== 10) return;
+
+        const signupLocation = getResolvedSignupLocation();
+        const payload = {
+            phone,
+            fullName: fullName.trim() || null,
+            pincode: signupLocation.pincode,
+            state: signupLocation.state,
+            district: signupLocation.district,
+            taluka: signupLocation.taluka,
+            area: signupLocation.area,
+            latitude: location.latitude,
+            longitude: location.longitude,
+            referralCodeInput: normalizeReferralCode(referralCodeInputOverride ?? referralCode) || null,
+            referralCodeFromLink: normalizeReferralCode(referralCodeFromLink) || null,
+            source: hasReferralFromLink ? 'REFERRAL_LINK' : 'DIRECT_LINK',
+            reason,
+        };
+
+        try {
+            await fetch('/api/auth/pending-membership', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+        } catch (error) {
+            console.warn('[LoginSidebar] pending-membership capture failed', error);
+        }
+    };
+
     // AUTO-SUBMIT LOGIC: Trigger check when Phone is 10 digits
     useEffect(() => {
         if (step === 'INITIAL' && authMethod === 'PHONE') {
@@ -158,11 +241,24 @@ export default function LoginSidebar({
             setOtp('');
             setFullName('');
             setReferralCode('');
+            setReferralCodeFromLink(null);
+            setIsOtpVerifiedForSignup(false);
             setLoginError(null);
             setShowSignupPrompt(false);
             setIsStaff(false);
             setShowEmailFallback(false);
             setSecurityTimer(0);
+
+            const referralFromQuery = normalizeReferralCode(searchParams.get('ref'));
+            const referralFromStorage = normalizeReferralCode(localStorage.getItem(REFERRAL_STORAGE_KEY));
+            const resolvedReferral = referralFromQuery || referralFromStorage;
+            if (REFERRAL_CODE_PATTERN.test(resolvedReferral)) {
+                setReferralCodeFromLink(resolvedReferral);
+                setReferralCode(resolvedReferral);
+                localStorage.setItem(REFERRAL_STORAGE_KEY, resolvedReferral);
+            } else {
+                localStorage.removeItem(REFERRAL_STORAGE_KEY);
+            }
 
             setTimeout(() => inputRef.current?.focus(), 300); // Slightly longer delay for slide-in
         }
@@ -341,6 +437,9 @@ export default function LoginSidebar({
                 // setStep('SIGNUP'); // Don't auto-transition
                 setShowSignupPrompt(true);
                 setLoginError('Account not found. Create a new account?');
+                if (!hasReferralFromLink && !isEmail) {
+                    void capturePendingMembership('LOGIN_ATTEMPT_NO_REFERRAL_LINK');
+                }
             } else {
                 setIsNewUser(false);
                 if (isEmail) await handleSendEmailOtp(cleanId);
@@ -389,11 +488,33 @@ export default function LoginSidebar({
     };
 
     const validateSignupRequirements = () => {
-        const referralOk = referralCode.trim().length > 0;
+        const effectiveReferralCode = getEffectiveReferralCode();
+        const referralOk = !!effectiveReferralCode;
 
         // For new signup, only referral code is mandatory.
         if (step === 'SIGNUP' && !referralOk) {
             setLoginError('Referral code is required to continue.');
+            void capturePendingMembership('SIGNUP_BLOCKED_MISSING_REFERRAL');
+            return false;
+        }
+
+        if (step === 'SIGNUP' && !REFERRAL_CODE_PATTERN.test(effectiveReferralCode)) {
+            setLoginError('Referral code format is invalid.');
+            void capturePendingMembership('SIGNUP_BLOCKED_INVALID_REFERRAL_FORMAT', effectiveReferralCode);
+            return false;
+        }
+
+        if (step === 'SIGNUP' && !fullName.trim()) {
+            setLoginError('Full name is required.');
+            void capturePendingMembership('SIGNUP_BLOCKED_MISSING_NAME');
+            return false;
+        }
+
+        const signupLocation = getResolvedSignupLocation();
+        if (step === 'SIGNUP' && !signupLocation.pincode) {
+            setLoginError('Location pincode is required before signup.');
+            setStep('PINCODE_FALLBACK');
+            void capturePendingMembership('SIGNUP_BLOCKED_MISSING_LOCATION');
             return false;
         }
 
@@ -466,6 +587,17 @@ export default function LoginSidebar({
                 // We proceed to completeLogin which will trigger signup -> auto-login.
                 if (verifyData.isNew) {
                     setIsNewUser(true);
+                    setIsOtpVerifiedForSignup(true);
+                    setOtp('');
+                    loginTriggeredRef.current = false;
+                    if (hasReferralFromLink) {
+                        await completeLogin(null, null);
+                        return;
+                    }
+                    setStep('SIGNUP');
+                    setLoginError('OTP verified. Enter referral code to continue signup.');
+                    await capturePendingMembership('OTP_VERIFIED_WAITING_REFERRAL');
+                    return;
                 }
                 sessionData = verifyData.session ?? null;
                 userData = verifyData.user ?? null;
@@ -524,22 +656,34 @@ export default function LoginSidebar({
         if (isNewUser) {
             const signupRes = await fetch('/api/auth/signup', {
                 method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     phone: phoneVal,
                     email: isEmail ? identifier : '',
-                    displayName: fullName || 'Rider',
-                    referralCode: referralCode.trim().toUpperCase(),
-                    pincode: locationData?.pincode || location.pincode || null,
-                    state: locationData?.state || null,
-                    district: locationData?.district || null,
-                    taluka: locationData?.taluka || null,
-                    area: locationData?.area || null,
+                    displayName: fullName.trim() || 'Rider',
+                    referralCode: getEffectiveReferralCode(),
+                    pincode: getResolvedSignupLocation().pincode,
+                    state: getResolvedSignupLocation().state,
+                    district: getResolvedSignupLocation().district,
+                    taluka: getResolvedSignupLocation().taluka,
+                    area: getResolvedSignupLocation().area,
                     latitude: location.latitude,
                     longitude: location.longitude,
+                    referralCodeFromLink: normalizeReferralCode(referralCodeFromLink) || null,
+                    signupSource: hasReferralFromLink ? 'REFERRAL_LINK' : 'DIRECT_LINK',
                 }),
             });
             const signupData = await signupRes.json();
-            if (!signupData.success) throw new Error(signupData.message || 'Signup failed');
+            if (!signupData.success) {
+                if (
+                    signupData.code === 'INVALID_REFERRAL_CODE' ||
+                    signupData.code === 'MISSING_REFERRAL_CODE' ||
+                    signupData.code === 'INVALID_REFERRAL_FORMAT'
+                ) {
+                    await capturePendingMembership(`SIGNUP_BLOCKED_${signupData.code}`);
+                }
+                throw new Error(signupData.message || 'Signup failed');
+            }
 
             // Capture session from signup response
             const signupSession = signupData.session as Session | null;
@@ -744,8 +888,10 @@ export default function LoginSidebar({
                                                 'Enter your 10-digit mobile number to login or create a new account instantly.'}
                                             {step === 'SIGNUP' &&
                                                 (authMethod === 'EMAIL'
-                                                    ? 'Enter your name to complete signup.'
-                                                    : 'We just need your name to set up your rider profile.')}
+                                                    ? 'Enter your details to complete signup.'
+                                                    : hasReferralFromLink
+                                                      ? 'Referral link detected. Complete your profile and continue.'
+                                                      : 'OTP verify hone ke baad referral code daalna mandatory hai.')}
                                             {step === 'GPS_UPDATE' &&
                                                 'We need your location to provide accurate pricing and verify your service area. This is mandatory for all accounts.'}
                                             {step === 'PINCODE_FALLBACK' &&
@@ -772,7 +918,7 @@ export default function LoginSidebar({
                                         {step === 'SIGNUP' && (
                                             <div className="space-y-2">
                                                 <label className="text-[10px] font-black uppercase tracking-widest text-black dark:text-white block text-center w-full">
-                                                    Full Name (Optional)
+                                                    Full Name
                                                 </label>
                                                 <input
                                                     type="text"
@@ -792,14 +938,23 @@ export default function LoginSidebar({
                                                 </label>
                                                 <input
                                                     type="text"
-                                                    value={referralCode}
+                                                    value={
+                                                        hasReferralFromLink ? getEffectiveReferralCode() : referralCode
+                                                    }
                                                     onChange={e => {
-                                                        setReferralCode(e.target.value.toUpperCase().trim());
+                                                        if (hasReferralFromLink) return;
+                                                        setReferralCode(normalizeReferralCode(e.target.value));
                                                         setLoginError(null);
                                                     }}
                                                     placeholder="ENTER REFERRAL CODE"
+                                                    readOnly={hasReferralFromLink}
                                                     className="w-[80%] max-w-sm mx-auto block bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-2xl p-5 text-lg font-bold text-black dark:text-white placeholder:text-slate-400 dark:placeholder:text-white/40 focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all text-center uppercase tracking-wide"
                                                 />
+                                                {hasReferralFromLink && (
+                                                    <p className="text-[10px] font-black text-green-600 dark:text-green-400 text-center">
+                                                        Referral link auto-applied
+                                                    </p>
+                                                )}
                                             </div>
                                         )}
 
@@ -1018,8 +1173,15 @@ export default function LoginSidebar({
                                                                 });
                                                                 await completeLogin(currentUser, null);
                                                             } else {
-                                                                // New user flow — proceed with pincode as location signal
-                                                                await completeLogin(null, null);
+                                                                if (isOtpVerifiedForSignup) {
+                                                                    // New user flow — proceed with pincode as location signal
+                                                                    await completeLogin(null, null);
+                                                                } else {
+                                                                    setStep('SIGNUP');
+                                                                    setLoginError(
+                                                                        'OTP verification is required before signup.'
+                                                                    );
+                                                                }
                                                             }
                                                         } catch (err) {
                                                             setLoginError('Failed to save location. Please try again.');
@@ -1100,10 +1262,16 @@ export default function LoginSidebar({
                                                                 (authMethod === 'EMAIL' || termsAccepted)
                                                             )
                                                                 handleCheckUser();
-                                                            if (step === 'SIGNUP')
-                                                                authMethod === 'EMAIL'
-                                                                    ? handleSendEmailOtp(identifier)
-                                                                    : handleSendPhoneOtp(identifier);
+                                                            if (step === 'SIGNUP') {
+                                                                if (!validateSignupRequirements()) return;
+                                                                if (isOtpVerifiedForSignup) {
+                                                                    completeLogin(null, null);
+                                                                } else {
+                                                                    authMethod === 'EMAIL'
+                                                                        ? handleSendEmailOtp(identifier)
+                                                                        : handleSendPhoneOtp(identifier);
+                                                                }
+                                                            }
                                                             if (step === 'OTP') handleLogin();
                                                         }
                                                     }}
@@ -1133,9 +1301,13 @@ export default function LoginSidebar({
                                                         handleCheckUser();
                                                     } else if (step === 'SIGNUP') {
                                                         if (!validateSignupRequirements()) return;
-                                                        authMethod === 'EMAIL'
-                                                            ? handleSendEmailOtp(identifier)
-                                                            : handleSendPhoneOtp(identifier);
+                                                        if (isOtpVerifiedForSignup) {
+                                                            completeLogin(null, null);
+                                                        } else {
+                                                            authMethod === 'EMAIL'
+                                                                ? handleSendEmailOtp(identifier)
+                                                                : handleSendPhoneOtp(identifier);
+                                                        }
                                                     } else if (step === 'GPS_UPDATE') {
                                                         handleContinueAfterGPS();
                                                     } else if (step === 'OTP') handleLogin();
@@ -1152,7 +1324,9 @@ export default function LoginSidebar({
                                                 {step === 'INITIAL'
                                                     ? 'Agree & Proceed'
                                                     : step === 'SIGNUP'
-                                                      ? 'Complete Signup'
+                                                      ? isOtpVerifiedForSignup
+                                                          ? 'Complete Signup'
+                                                          : 'Send OTP'
                                                       : step === 'GPS_UPDATE'
                                                         ? location.latitude && location.longitude
                                                             ? 'Processing...'
@@ -1171,6 +1345,7 @@ export default function LoginSidebar({
                                             <button
                                                 onClick={() => {
                                                     setIsNewUser(true);
+                                                    setIsOtpVerifiedForSignup(false);
                                                     setStep('SIGNUP');
                                                     setShowSignupPrompt(false);
                                                     setLoginError(null);

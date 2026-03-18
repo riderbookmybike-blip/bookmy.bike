@@ -6,20 +6,72 @@ import { normalizeGeoCoordinates } from '@/lib/location/coordinates';
 
 export async function POST(req: NextRequest) {
     try {
-        const { phone, displayName, referralCode, pincode, state, district, taluka, area, latitude, longitude } =
-            await req.json();
+        const {
+            phone,
+            displayName,
+            referralCode,
+            referralCodeFromLink,
+            signupSource,
+            pincode,
+            state,
+            district,
+            taluka,
+            area,
+            latitude,
+            longitude,
+        } = await req.json();
+        const cleanPhone = toAppStorageFormat(phone || '');
+        const adminAny = adminClient as any;
+        const capturePendingMembership = async (reason: string, referralCodeAttempt?: string) => {
+            try {
+                await adminAny.from('id_pending_memberships').upsert(
+                    {
+                        phone: cleanPhone,
+                        full_name: String(displayName || '').trim() || null,
+                        pincode: pincode || null,
+                        state: state || null,
+                        district: district || null,
+                        taluka: taluka || null,
+                        area: area || null,
+                        latitude: Number.isFinite(Number(latitude)) ? Number(latitude) : null,
+                        longitude: Number.isFinite(Number(longitude)) ? Number(longitude) : null,
+                        referral_code_input:
+                            String(referralCodeAttempt || '')
+                                .trim()
+                                .toUpperCase() || null,
+                        referral_code_from_link:
+                            String(referralCodeFromLink || '')
+                                .trim()
+                                .toUpperCase() || null,
+                        source:
+                            String(signupSource || 'DIRECT_LINK')
+                                .trim()
+                                .toUpperCase() || 'DIRECT_LINK',
+                        reason,
+                        status: 'PENDING',
+                        last_seen_at: new Date().toISOString(),
+                    },
+                    { onConflict: 'phone' }
+                );
+            } catch (error) {
+                console.error('[signup] pending-membership capture failed:', error);
+            }
+        };
 
         if (!phone || !referralCode) {
+            if (isValidPhone(cleanPhone)) {
+                await capturePendingMembership('SIGNUP_BLOCKED_MISSING_REFERRAL_CODE', referralCode);
+            }
             return NextResponse.json(
                 {
                     success: false,
                     message: 'Phone and Referral Code are required',
+                    code: 'MISSING_REFERRAL_CODE',
                 },
                 { status: 400 }
             );
         }
 
-        const cleanPhone = toAppStorageFormat(phone);
         if (!isValidPhone(cleanPhone)) {
             return NextResponse.json(
                 {
@@ -34,10 +86,12 @@ export async function POST(req: NextRequest) {
             .trim()
             .toUpperCase();
         if (!/^[A-Z0-9-]{4,32}$/.test(normalizedReferralCode)) {
+            await capturePendingMembership('SIGNUP_BLOCKED_INVALID_REFERRAL_FORMAT', normalizedReferralCode);
             return NextResponse.json(
                 {
                     success: false,
                     message: 'Invalid referral code format',
+                    code: 'INVALID_REFERRAL_FORMAT',
                 },
                 { status: 400 }
             );
@@ -48,6 +102,7 @@ export async function POST(req: NextRequest) {
             .eq('referral_code', normalizedReferralCode)
             .maybeSingle();
         if (!referrer?.id) {
+            await capturePendingMembership('SIGNUP_BLOCKED_INVALID_REFERRAL_CODE', normalizedReferralCode);
             return NextResponse.json(
                 {
                     success: false,

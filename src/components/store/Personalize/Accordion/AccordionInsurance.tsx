@@ -55,6 +55,20 @@ export interface AccordionInsuranceProps {
     insuranceGstRate: number;
 }
 
+const getAddonDescription = (name: string) => {
+    const lowerName = name.toLowerCase();
+    if (lowerName.includes('pa ') || lowerName.includes('accident'))
+        return 'Financial security against disability or injury';
+    if (lowerName.includes('depreciation') || lowerName.includes('zero dep'))
+        return 'Full claim payout without wear & tear deductions';
+    if (lowerName.includes('rsa') || lowerName.includes('roadside')) return '24x7 emergency breakdown & towing support';
+    if (lowerName.includes('engine')) return 'Protection against water ingress & fluid leaks';
+    if (lowerName.includes('consumable')) return 'Covers cost of oils, nuts, bolts & coolants';
+    if (lowerName.includes('invoice') || lowerName.includes('rti'))
+        return 'Get full invoice value if vehicle is stolen or totalled';
+    return 'Optional Add-on Coverage';
+};
+
 export default function AccordionInsurance({
     availableInsuranceAddons,
     selectedInsuranceAddons,
@@ -83,9 +97,9 @@ export default function AccordionInsurance({
         },
     ];
 
-    // All items in one list: mandatory + addons
+    // All items built uniformly
     const allItems = [
-        ...mandatoryItems,
+        ...mandatoryItems.map(item => ({ ...item, isBundled: false })),
         ...availableInsuranceAddons.map((addon: any) => {
             const isBundled = addon.inclusionType === 'BUNDLE';
             const isMandatory = addon.isMandatory || isBundled;
@@ -100,10 +114,13 @@ export default function AccordionInsurance({
             const savingsPct = hasDiscount ? Math.round((savings / basePrice) * 100) : 0;
             const tenure = addon.tenure || addon.term || '1 Year';
 
+            const rawDesc =
+                addon.description && addon.description.toLowerCase() !== 'coverage' ? addon.description : null;
+
             return {
                 id: addon.id,
                 name: `${addon.name} (${tenure})`,
-                subtext: addon.description || (isBundled ? 'Bundled • Included Free' : 'Optional Add-On'),
+                subtext: rawDesc || (isBundled ? 'Bundled • Included Free' : getAddonDescription(addon.name)),
                 detail: '',
                 price: finalPrice,
                 originalPrice: hasDiscount ? basePrice : undefined,
@@ -114,109 +131,124 @@ export default function AccordionInsurance({
         }),
     ];
 
-    // Active addons total
-    const activeAddons = availableInsuranceAddons.filter((a: any) => selectedInsuranceAddons.includes(a.id));
-    const addonsTotal = activeAddons.reduce((sum: number, a: any) => sum + Number(a.price || 0), 0);
-    const totalInsurance = baseInsurance + addonsTotal;
+    // Move selected addons to the "Included" section at the top, but keep them optional to toggle
+    const included = allItems
+        .filter(item => item.isMandatory || selectedInsuranceAddons.includes(item.id))
+        .sort((a, b) => {
+            if (a.isMandatory && !b.isMandatory) return -1;
+            if (!a.isMandatory && b.isMandatory) return 1;
+            return b.price - a.price; // Largest price on top for addons
+        });
 
-    return (
-        <>
-            {allItems.map((item: any, idx: number) => {
-                const isSelected = item.isMandatory || selectedInsuranceAddons.includes(item.id);
+    const optional = allItems
+        .filter(item => !item.isMandatory && !selectedInsuranceAddons.includes(item.id))
+        .sort((a, b) => b.price - a.price); // Largest price on top
 
-                return (
-                    <div
-                        key={item.id}
-                        onClick={() => !item.isMandatory && toggleInsuranceAddon(item.id)}
-                        className={`group flex items-center gap-3 px-4 py-2.5 transition-all duration-300 cursor-pointer border-l-[3.5px] relative ${
-                            isSelected
-                                ? 'border-l-brand-primary bg-slate-50 shadow-sm'
-                                : 'border-l-transparent hover:bg-slate-50/80'
-                        } ${idx > 0 ? 'border-t border-t-slate-100/60' : ''}`}
-                    >
-                        {/* Checkbox — same circle style as accessories */}
+    const renderInsuranceRow = (item: any, idx: number) => {
+        const isSelected = item.isMandatory || selectedInsuranceAddons.includes(item.id);
+        const finalPrice = item.price;
+        const hasDiscount = item.savingsPct && item.savingsPct > 0;
+
+        return (
+            <div
+                key={item.id}
+                onClick={() => !item.isMandatory && toggleInsuranceAddon(item.id)}
+                className={`group flex items-center gap-3 px-4 py-3 transition-all duration-200 cursor-pointer border-l-[3px] ${
+                    isSelected
+                        ? 'border-l-brand-primary bg-brand-primary/[0.02]'
+                        : 'border-l-transparent hover:bg-slate-50'
+                } ${idx > 0 ? 'border-t border-t-slate-100/80' : ''} ${item.isMandatory ? 'cursor-default' : ''}`}
+            >
+                <div
+                    className={`w-[18px] h-[18px] rounded-full flex items-center justify-center transition-all shrink-0 ${
+                        isSelected
+                            ? 'bg-brand-primary text-black shadow-sm shadow-brand-primary/20'
+                            : 'border-2 border-slate-300 group-hover:border-brand-primary'
+                    }`}
+                >
+                    {isSelected && <CheckCircle2 size={12} strokeWidth={3} />}
+                </div>
+
+                {(() => {
+                    const config = getAddonIcon(item.id, item.name);
+                    const Icon = config.icon;
+                    return (
                         <div
-                            className={`w-5 h-5 rounded-full flex items-center justify-center transition-all shrink-0 ${
+                            className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-all ${
                                 isSelected
-                                    ? 'bg-brand-primary text-black shadow-md shadow-brand-primary/20'
-                                    : 'border-2 border-slate-200 group-hover:border-brand-primary/50'
+                                    ? `${config.bg} border border-${config.color.split('-')[1]}-200/50 shadow-sm`
+                                    : 'bg-slate-50 border border-slate-200 border-dashed'
                             }`}
                         >
-                            {isSelected && <CheckCircle2 size={14} strokeWidth={3} />}
+                            <Icon size={16} className={isSelected ? config.color : 'text-slate-300'} />
                         </div>
+                    );
+                })()}
 
-                        {/* Icon — Domain specific icons based on AUMS Engine patterns */}
-                        {(() => {
-                            const config = getAddonIcon(item.id, item.name);
-                            const Icon = config.icon;
-                            return (
-                                <div
-                                    className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-all border ${
-                                        isSelected
-                                            ? `${config.bg} border-${config.color.split('-')[1]}-200/50`
-                                            : 'bg-slate-50 border-slate-200 border-dashed'
-                                    }`}
-                                >
-                                    <Icon size={16} className={isSelected ? config.color : 'text-slate-300'} />
-                                </div>
-                            );
-                        })()}
+                <div className="flex-1 min-w-0">
+                    <p
+                        className={`text-[12px] font-black tracking-tight leading-tight truncate ${
+                            isSelected ? 'text-slate-900' : 'text-slate-700'
+                        }`}
+                    >
+                        {item.name}
+                    </p>
+                    {item.subtext && (
+                        <p
+                            className={`text-[11px] font-medium mt-0.5 truncate leading-tight ${isSelected ? 'text-slate-600' : 'text-slate-500'}`}
+                        >
+                            {item.subtext}
+                        </p>
+                    )}
+                    {item.detail && (
+                        <p className="text-[10px] text-slate-400 mt-0.5 truncate leading-tight">{item.detail}</p>
+                    )}
+                </div>
 
-                        {/* Name lines — same 3-line pattern as accessories */}
-                        <div className="flex-1 min-w-0">
-                            <p
-                                className={`text-[11px] font-black tracking-tight leading-none ${
-                                    isSelected ? 'text-slate-900' : 'text-slate-700'
-                                }`}
-                            >
-                                {item.name}
-                                {!isSelected && !item.isMandatory && (
-                                    <span className="ml-1 text-[#4666f2] font-black italic">
-                                        @₹{Math.round(item.price).toLocaleString()}
-                                    </span>
-                                )}
-                            </p>
-                            {item.subtext && (
-                                <p
-                                    className={`text-[9.5px] font-bold mt-1 truncate leading-none ${
-                                        isSelected ? 'text-slate-600' : 'text-slate-500'
-                                    }`}
-                                >
-                                    {item.subtext}
-                                </p>
-                            )}
-                            {item.detail && (
-                                <p className="text-[9px] text-slate-400 mt-1 truncate leading-none">{item.detail}</p>
-                            )}
+                <div className="flex flex-col items-end shrink-0 min-w-[72px]">
+                    <span
+                        className={`text-[13px] font-black tabular-nums ${
+                            isSelected ? 'text-brand-primary' : 'text-[#4666f2] italic'
+                        }`}
+                    >
+                        {finalPrice === 0
+                            ? 'FREE'
+                            : `${!isSelected && !item.isMandatory ? '@' : ''}₹${Math.round(finalPrice).toLocaleString()}`}
+                    </span>
+                    {hasDiscount && (
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className="text-[10px] text-slate-400 line-through tabular-nums">
+                                ₹{item.originalPrice?.toLocaleString()}
+                            </span>
+                            <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full leading-none">
+                                {item.savingsPct}% off
+                            </span>
                         </div>
+                    )}
+                </div>
+            </div>
+        );
+    };
 
-                        {/* Price block — Only show on right when selected or mandatory */}
-                        <div className="flex flex-col items-end shrink-0 min-w-[72px]">
-                            {isSelected ? (
-                                <>
-                                    <span className="text-xs font-black tabular-nums tracking-tight text-slate-900">
-                                        {item.price === 0
-                                            ? 'FREE'
-                                            : `₹${Math.round(Number(item.price || 0)).toLocaleString()}`}
-                                    </span>
-                                    {item.originalPrice && (
-                                        <div className="flex items-center gap-1.5 mt-0.5">
-                                            <span className="text-[10px] text-slate-400 line-through tabular-nums">
-                                                ₹{Math.round(item.originalPrice).toLocaleString()}
-                                            </span>
-                                            {item.savingsPct && (
-                                                <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full leading-none">
-                                                    {item.savingsPct}% off
-                                                </span>
-                                            )}
-                                        </div>
-                                    )}
-                                </>
-                            ) : null}
-                        </div>
-                    </div>
-                );
-            })}
-        </>
+    return (
+        <div className="flex flex-col">
+            {included.length > 0 && (
+                <div className="bg-slate-50/80 px-4 py-1.5 border-y border-slate-100/80">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                        Mandatory / Included
+                    </span>
+                </div>
+            )}
+            {included.map((item: any, idx: number) => renderInsuranceRow(item, idx))}
+
+            {optional.length > 0 && (
+                <div className="bg-slate-50/80 px-4 py-1.5 border-y border-slate-100/80 mt-2">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                        Optional Add-Ons
+                    </span>
+                </div>
+            )}
+            {optional.map((item: any, idx: number) => renderInsuranceRow(item, idx))}
+        </div>
     );
 }
