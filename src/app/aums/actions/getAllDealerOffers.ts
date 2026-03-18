@@ -11,6 +11,11 @@ const OFFER_OVERRIDE_ACTIONS = [
     'SUPER_ADMIN_DEALER_OFFER_DEACTIVATE',
 ] as const;
 
+const PAGE_SIZE_MAX = 200;
+const PAGE_SIZE_DEFAULT = 50;
+
+// ─── Interfaces ───────────────────────────────────────────────────────────────
+
 export interface AdminDealerOfferRow {
     id: string;
     tenantId: string;
@@ -36,10 +41,24 @@ export interface DealerOfferFilterOption {
     label: string;
 }
 
+export type DealerOfferStatus = 'ALL' | 'DISCOUNT' | 'SURGE' | 'FLAT' | 'INACTIVE';
+
+export interface GetAllDealerOffersInput {
+    page?: number; // 1-indexed, default 1
+    pageSize?: number; // default 50, max 200
+    tenantId?: string; // filter by dealership UUID ('ALL' = no filter)
+    brandName?: string; // post-enrichment filter
+    modelName?: string; // post-enrichment filter
+    status?: DealerOfferStatus;
+}
+
 export interface GetAllDealerOffersResult {
     success: boolean;
     message?: string;
     rows: AdminDealerOfferRow[];
+    totalCount: number;
+    page: number;
+    pageSize: number;
     dealerships: DealerOfferFilterOption[];
     brands: DealerOfferFilterOption[];
     models: DealerOfferFilterOption[];
@@ -56,6 +75,8 @@ export interface DealerOfferOverrideHistoryRow {
     updatedCount: number | null;
     createdAt: string;
 }
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function normalizeRole(role?: string | null) {
     return String(role || '')
@@ -76,171 +97,273 @@ async function isAumsAdmin(userId: string) {
     return SUPER_ADMIN_ROLES.has(role);
 }
 
-export async function getAllDealerOffersForAdmin(): Promise<GetAllDealerOffersResult> {
-    try {
-        const user = await getAuthUser();
-        if (!user?.id) {
-            return {
-                success: false,
-                message: 'Authentication required',
-                rows: [],
-                dealerships: [],
-                brands: [],
-                models: [],
-            };
-        }
+async function ensureAumsAdmin() {
+    const user = await getAuthUser();
+    if (!user?.id) return { ok: false as const, userId: null, message: 'Authentication required' };
+    const allowed = await isAumsAdmin(user.id);
+    if (!allowed)
+        return {
+            ok: false as const,
+            userId: user.id,
+            message: 'Only AUMS super admins can access dealer offer overrides.',
+        };
+    return { ok: true as const, userId: user.id, message: '' };
+}
 
-        const allowed = await isAumsAdmin(user.id);
-        if (!allowed) {
-            return {
-                success: false,
-                message: 'Only AUMS super admins can access dealer offer overrides.',
-                rows: [],
-                dealerships: [],
-                brands: [],
-                models: [],
-            };
-        }
-
-        const { data: offerRows, error: offerError } = await adminClient
-            .from('cat_price_dealer')
-            .select(
-                'id, tenant_id, vehicle_color_id, state_code, offer_amount, is_active, inclusion_type, tat_days, updated_at'
-            )
-            .not('vehicle_color_id', 'is', null)
-            .order('updated_at', { ascending: false })
-            .limit(5000);
-
-        if (offerError) {
-            return {
-                success: false,
-                message: `Failed to fetch dealer offers: ${getErrorMessage(offerError)}`,
-                rows: [],
-                dealerships: [],
-                brands: [],
-                models: [],
-            };
-        }
-
-        const safeOffers = (offerRows || []).filter(row => row.vehicle_color_id && row.tenant_id);
-        if (safeOffers.length === 0) {
-            return { success: true, rows: [], dealerships: [], brands: [], models: [] };
-        }
-
-        const tenantIds = Array.from(new Set(safeOffers.map(row => String(row.tenant_id))));
-        const skuIds = Array.from(new Set(safeOffers.map(row => String(row.vehicle_color_id))));
-        const stateCodes = Array.from(new Set(safeOffers.map(row => String(row.state_code || 'MH').toUpperCase())));
-
-        const [tenantRes, skuRes, basePriceRes] = await Promise.all([
-            adminClient.from('id_tenants').select('id, name, slug, type').in('id', tenantIds),
-            adminClient
-                .from('cat_skus')
-                .select('id, name, sku_type, brand_id, model_id, cat_brands:brand_id(name), cat_models:model_id(name)')
-                .in('id', skuIds),
-            adminClient
-                .from('cat_price_state_mh')
-                .select('sku_id, state_code, ex_showroom')
-                .in('sku_id', skuIds)
-                .in('state_code', stateCodes),
-        ]);
-
-        if (tenantRes.error || skuRes.error || basePriceRes.error) {
-            return {
-                success: false,
-                message: `Failed to resolve offer metadata: ${getErrorMessage(
-                    tenantRes.error || skuRes.error || basePriceRes.error
-                )}`,
-                rows: [],
-                dealerships: [],
-                brands: [],
-                models: [],
-            };
-        }
-
-        const tenantMap = new Map(
-            (tenantRes.data || []).map(tenant => [
-                tenant.id,
-                {
-                    name: String(tenant.name || 'Unknown Dealer'),
-                    slug: String(tenant.slug || ''),
-                    type: String(tenant.type || '').toUpperCase(),
-                },
-            ])
-        );
-
-        const skuMap = new Map(
-            (skuRes.data || []).map(sku => {
-                const brand = (sku as any)?.cat_brands?.name || 'Unknown Brand';
-                const model = (sku as any)?.cat_models?.name || 'Unknown Model';
-                return [
-                    sku.id,
-                    {
-                        name: String(sku.name || sku.id),
-                        skuType: String(sku.sku_type || 'UNKNOWN').toUpperCase(),
-                        brandName: String(brand),
-                        modelName: String(model),
-                    },
-                ];
-            })
-        );
-
-        const basePriceMap = new Map<string, number>();
-        for (const row of basePriceRes.data || []) {
-            basePriceMap.set(
-                `${row.sku_id}:${String(row.state_code || '').toUpperCase()}`,
-                Number(row.ex_showroom || 0)
-            );
-        }
-
-        const rows: AdminDealerOfferRow[] = [];
-        for (const row of safeOffers) {
-            const tenantId = String(row.tenant_id);
-            const skuId = String(row.vehicle_color_id);
-            const tenant = tenantMap.get(tenantId);
-            const sku = skuMap.get(skuId);
-
-            if (!tenant || tenant.type === 'SUPER_ADMIN' || !sku) {
-                continue;
+/**
+ * Build a Supabase query for cat_price_dealer with server-side filters applied.
+ * Brand/model filters are NOT applied here (those fields live on cat_skus).
+ */
+function buildOfferQuery(input: GetAllDealerOffersInput) {
+    let query = adminClient
+        .from('cat_price_dealer')
+        .select(
+            'id, tenant_id, vehicle_color_id, state_code, offer_amount, is_active, inclusion_type, tat_days, updated_at',
+            {
+                count: 'exact',
             }
+        )
+        .not('vehicle_color_id', 'is', null)
+        .order('updated_at', { ascending: false });
 
-            const stateCode = String(row.state_code || 'MH').toUpperCase();
-            const offerAmount = Number(row.offer_amount || 0);
-            const baseExShowroom = Number(basePriceMap.get(`${skuId}:${stateCode}`) || 0);
+    // Server-side tenant filter
+    const tenantId = input.tenantId?.trim();
+    if (tenantId && tenantId !== 'ALL') {
+        query = query.eq('tenant_id', tenantId);
+    }
 
-            rows.push({
-                id: row.id,
-                tenantId,
-                dealershipName: tenant.name,
-                dealershipSlug: tenant.slug,
-                skuId,
-                skuName: sku.name,
-                skuType: sku.skuType,
-                brandName: sku.brandName,
-                modelName: sku.modelName,
-                stateCode,
-                offerAmount,
-                isActive: row.is_active ?? true,
-                inclusionType: String(row.inclusion_type || 'OPTIONAL').toUpperCase(),
-                tatDays: row.tat_days,
-                baseExShowroom,
-                priceAfterOffer: baseExShowroom + offerAmount,
-                updatedAt: row.updated_at,
-            });
-        }
+    // Server-side status filter (is_active)
+    if (input.status === 'INACTIVE') {
+        query = query.eq('is_active', false);
+    } else if (input.status && input.status !== 'ALL') {
+        // DISCOUNT / SURGE / FLAT are all active rows — filter offer_amount post-enrichment
+        query = query.eq('is_active', true);
+    }
 
+    return query;
+}
+
+/**
+ * Enrich raw cat_price_dealer rows with tenant, SKU, and base price data.
+ * Applies brand/model/offer-amount post-enrichment filters.
+ */
+async function enrichOfferRows(
+    rawRows: Array<{
+        id: string;
+        tenant_id: unknown;
+        vehicle_color_id: unknown;
+        state_code: unknown;
+        offer_amount: unknown;
+        is_active: unknown;
+        inclusion_type: unknown;
+        tat_days: unknown;
+        updated_at: unknown;
+    }>,
+    input: GetAllDealerOffersInput
+): Promise<{ rows: AdminDealerOfferRow[]; error?: string }> {
+    const safeRows = rawRows.filter(r => r.vehicle_color_id && r.tenant_id);
+    if (safeRows.length === 0) return { rows: [] };
+
+    const tenantIds = Array.from(new Set(safeRows.map(r => String(r.tenant_id))));
+    const skuIds = Array.from(new Set(safeRows.map(r => String(r.vehicle_color_id))));
+    const stateCodes = Array.from(new Set(safeRows.map(r => String(r.state_code || 'MH').toUpperCase())));
+
+    const [tenantRes, skuRes, basePriceRes] = await Promise.all([
+        adminClient.from('id_tenants').select('id, name, slug, type').in('id', tenantIds),
+        adminClient
+            .from('cat_skus')
+            .select('id, name, sku_type, brand_id, model_id, cat_brands:brand_id(name), cat_models:model_id(name)')
+            .in('id', skuIds),
+        adminClient
+            .from('cat_price_state_mh')
+            .select('sku_id, state_code, ex_showroom')
+            .in('sku_id', skuIds)
+            .in('state_code', stateCodes),
+    ]);
+
+    if (tenantRes.error || skuRes.error || basePriceRes.error) {
+        return {
+            rows: [],
+            error: getErrorMessage(tenantRes.error || skuRes.error || basePriceRes.error),
+        };
+    }
+
+    const tenantMap = new Map(
+        (tenantRes.data || []).map(t => [
+            t.id,
+            {
+                name: String(t.name || 'Unknown Dealer'),
+                slug: String(t.slug || ''),
+                type: String(t.type || '').toUpperCase(),
+            },
+        ])
+    );
+
+    const skuMap = new Map(
+        (skuRes.data || []).map(sku => {
+            const brand = (sku as any)?.cat_brands?.name || 'Unknown Brand';
+            const model = (sku as any)?.cat_models?.name || 'Unknown Model';
+            return [
+                sku.id,
+                {
+                    name: String(sku.name || sku.id),
+                    skuType: String(sku.sku_type || 'UNKNOWN').toUpperCase(),
+                    brandName: String(brand),
+                    modelName: String(model),
+                },
+            ];
+        })
+    );
+
+    const basePriceMap = new Map<string, number>();
+    for (const r of basePriceRes.data || []) {
+        basePriceMap.set(`${r.sku_id}:${String(r.state_code || '').toUpperCase()}`, Number(r.ex_showroom || 0));
+    }
+
+    const brandFilter = input.brandName?.trim();
+    const modelFilter = input.modelName?.trim();
+
+    const rows: AdminDealerOfferRow[] = [];
+    for (const row of safeRows) {
+        const tenantId = String(row.tenant_id);
+        const skuId = String(row.vehicle_color_id);
+        const tenant = tenantMap.get(tenantId);
+        const sku = skuMap.get(skuId);
+
+        if (!tenant || tenant.type === 'SUPER_ADMIN' || !sku) continue;
+
+        // Post-enrichment brand/model filter
+        if (brandFilter && brandFilter !== 'ALL' && sku.brandName !== brandFilter) continue;
+        if (modelFilter && modelFilter !== 'ALL' && sku.modelName !== modelFilter) continue;
+
+        const stateCode = String(row.state_code || 'MH').toUpperCase();
+        const offerAmount = Number(row.offer_amount || 0);
+
+        // Post-enrichment offer-amount status filter
+        const status = input.status;
+        if (status === 'DISCOUNT' && offerAmount >= 0) continue;
+        if (status === 'SURGE' && offerAmount <= 0) continue;
+        if (status === 'FLAT' && offerAmount !== 0) continue;
+
+        const baseExShowroom = Number(basePriceMap.get(`${skuId}:${stateCode}`) || 0);
+
+        rows.push({
+            id: row.id,
+            tenantId,
+            dealershipName: tenant.name,
+            dealershipSlug: tenant.slug,
+            skuId,
+            skuName: sku.name,
+            skuType: sku.skuType,
+            brandName: sku.brandName,
+            modelName: sku.modelName,
+            stateCode,
+            offerAmount,
+            isActive: (row.is_active as boolean) ?? true,
+            inclusionType: String(row.inclusion_type || 'OPTIONAL').toUpperCase(),
+            tatDays: row.tat_days as number | null,
+            baseExShowroom,
+            priceAfterOffer: baseExShowroom + offerAmount,
+            updatedAt: row.updated_at as string | null,
+        });
+    }
+
+    return { rows };
+}
+
+// ─── Public Actions ───────────────────────────────────────────────────────────
+
+/**
+ * Paginated + server-filtered fetch for the AUMS offer override table.
+ * Also returns filter options (fetched from the full unfiltered dataset on first load).
+ */
+export async function getAllDealerOffersForAdmin(
+    input: GetAllDealerOffersInput = {}
+): Promise<GetAllDealerOffersResult> {
+    const empty = (msg?: string): GetAllDealerOffersResult => ({
+        success: !msg,
+        message: msg,
+        rows: [],
+        totalCount: 0,
+        page: 1,
+        pageSize: PAGE_SIZE_DEFAULT,
+        dealerships: [],
+        brands: [],
+        models: [],
+    });
+
+    try {
+        const auth = await ensureAumsAdmin();
+        if (!auth.ok) return empty(auth.message);
+
+        const page = Math.max(1, Math.trunc(Number(input.page || 1)));
+        const pageSize = Math.min(PAGE_SIZE_MAX, Math.max(1, Math.trunc(Number(input.pageSize || PAGE_SIZE_DEFAULT))));
+        const offset = (page - 1) * pageSize;
+
+        // Paginated query with server-side tenant + status filter
+        const {
+            data: rawPage,
+            count,
+            error: pageError,
+        } = await buildOfferQuery(input).range(offset, offset + pageSize - 1);
+
+        if (pageError) return empty(`Failed to fetch dealer offers: ${getErrorMessage(pageError)}`);
+
+        const totalCount = count ?? 0;
+        const { rows, error: enrichError } = await enrichOfferRows(rawPage || [], input);
+        if (enrichError) return empty(`Failed to resolve offer metadata: ${enrichError}`);
+
+        // Filter options: fetch from the full unfiltered set (only when on page 1 with no filters active,
+        // or always — options are cheap since we only pull distinct tenant/sku ids via the enrichment maps)
+        // For simplicity: only populate on first page load (caller caches them).
         const dealershipMap = new Map<string, string>();
         const brandMap = new Map<string, string>();
         const modelMap = new Map<string, string>();
 
-        for (const row of rows) {
-            dealershipMap.set(row.tenantId, row.dealershipName);
-            brandMap.set(row.brandName, row.brandName);
-            modelMap.set(row.modelName, row.modelName);
+        // If this is the first page with no filters, build option lists from current enriched rows.
+        // For a comprehensive options list, we do a lightweight separate fetch if needed.
+        const shouldFetchOptions =
+            page === 1 && !input.tenantId && !input.brandName && !input.modelName && !input.status;
+        if (shouldFetchOptions) {
+            // Fetch all tenant + sku ids (no paging) just to build dropdown options
+            const { data: allRaw } = await adminClient
+                .from('cat_price_dealer')
+                .select('tenant_id, vehicle_color_id')
+                .not('vehicle_color_id', 'is', null)
+                .limit(5000);
+
+            if (allRaw && allRaw.length > 0) {
+                const allTenantIds = Array.from(new Set(allRaw.map(r => String(r.tenant_id)).filter(Boolean)));
+                const allSkuIds = Array.from(new Set(allRaw.map(r => String(r.vehicle_color_id)).filter(Boolean)));
+
+                const [allTenantRes, allSkuRes] = await Promise.all([
+                    adminClient.from('id_tenants').select('id, name, type').in('id', allTenantIds),
+                    adminClient
+                        .from('cat_skus')
+                        .select('id, cat_brands:brand_id(name), cat_models:model_id(name)')
+                        .in('id', allSkuIds),
+                ]);
+
+                for (const t of allTenantRes.data || []) {
+                    if (String(t.type || '').toUpperCase() !== 'SUPER_ADMIN') {
+                        dealershipMap.set(t.id, String(t.name || t.id));
+                    }
+                }
+                for (const s of allSkuRes.data || []) {
+                    const brand = String((s as any)?.cat_brands?.name || '');
+                    const model = String((s as any)?.cat_models?.name || '');
+                    if (brand) brandMap.set(brand, brand);
+                    if (model) modelMap.set(model, model);
+                }
+            }
         }
 
         return {
             success: true,
             rows,
+            totalCount,
+            page,
+            pageSize,
             dealerships: Array.from(dealershipMap.entries())
                 .map(([id, label]) => ({ id, label }))
                 .sort((a, b) => a.label.localeCompare(b.label)),
@@ -252,16 +375,34 @@ export async function getAllDealerOffersForAdmin(): Promise<GetAllDealerOffersRe
                 .sort((a, b) => a.label.localeCompare(b.label)),
         };
     } catch (error) {
-        return {
-            success: false,
-            message: getErrorMessage(error) || 'Unexpected error while fetching dealer offers',
-            rows: [],
-            dealerships: [],
-            brands: [],
-            models: [],
-        };
+        return empty(getErrorMessage(error) || 'Unexpected error while fetching dealer offers');
     }
 }
+
+/**
+ * Full filtered export — no pagination, returns all matching rows across the filtered dataset.
+ * Capped at 5000 rows. Used for "Export All (filtered)" CSV download.
+ */
+export async function getAllDealerOffersForExport(
+    input: Omit<GetAllDealerOffersInput, 'page' | 'pageSize'>
+): Promise<{ success: boolean; message?: string; rows: AdminDealerOfferRow[] }> {
+    try {
+        const auth = await ensureAumsAdmin();
+        if (!auth.ok) return { success: false, message: auth.message, rows: [] };
+
+        const { data: rawAll, error } = await buildOfferQuery(input).limit(5000);
+        if (error) return { success: false, message: `Export failed: ${getErrorMessage(error)}`, rows: [] };
+
+        const { rows, error: enrichError } = await enrichOfferRows(rawAll || [], input);
+        if (enrichError) return { success: false, message: `Export enrichment failed: ${enrichError}`, rows: [] };
+
+        return { success: true, rows };
+    } catch (error) {
+        return { success: false, message: getErrorMessage(error) || 'Unexpected export error', rows: [] };
+    }
+}
+
+// ─── History ──────────────────────────────────────────────────────────────────
 
 function actionLabel(action: string) {
     if (action === 'SUPER_ADMIN_DEALER_OFFER_BULK_OVERRIDE') return 'Bulk Override';
@@ -279,18 +420,11 @@ export async function getDealerOfferOverrideHistory(
 ): Promise<{ success: boolean; message?: string; rows: DealerOfferOverrideHistoryRow[] }> {
     try {
         const user = await getAuthUser();
-        if (!user?.id) {
-            return { success: false, message: 'Authentication required', rows: [] };
-        }
+        if (!user?.id) return { success: false, message: 'Authentication required', rows: [] };
 
         const allowed = await isAumsAdmin(user.id);
-        if (!allowed) {
-            return {
-                success: false,
-                message: 'Only AUMS super admins can access override history.',
-                rows: [],
-            };
-        }
+        if (!allowed)
+            return { success: false, message: 'Only AUMS super admins can access override history.', rows: [] };
 
         const { data, error } = await adminClient
             .from('audit_logs')
@@ -299,9 +433,7 @@ export async function getDealerOfferOverrideHistory(
             .order('created_at', { ascending: false })
             .limit(Math.min(Math.max(limit, 1), 100));
 
-        if (error) {
-            return { success: false, message: `Failed to fetch history: ${getErrorMessage(error)}`, rows: [] };
-        }
+        if (error) return { success: false, message: `Failed to fetch history: ${getErrorMessage(error)}`, rows: [] };
 
         const safeRows = data || [];
         const tenantIds = new Set<string>();
@@ -313,8 +445,7 @@ export async function getDealerOfferOverrideHistory(
             const meta = (row.metadata || {}) as Record<string, unknown>;
             const tenantId = String(meta.tenant_id || '').trim();
             if (tenantId) tenantIds.add(tenantId);
-            const bulkIds = asStringArray(meta.tenant_ids);
-            for (const id of bulkIds) tenantIds.add(id);
+            for (const id of asStringArray(meta.tenant_ids)) tenantIds.add(id);
             const skuId = String(meta.sku_id || '').trim();
             if (skuId) skuIds.add(skuId);
         }
@@ -332,13 +463,13 @@ export async function getDealerOfferOverrideHistory(
         ]);
 
         const tenantMap = new Map<string, string>(
-            (tenantRes.data || []).map((row: any) => [String(row.id), String(row.name || row.id)])
+            (tenantRes.data || []).map((r: any) => [String(r.id), String(r.name || r.id)])
         );
         const skuMap = new Map<string, string>(
-            (skuRes.data || []).map((row: any) => [String(row.id), String(row.name || row.id)])
+            (skuRes.data || []).map((r: any) => [String(r.id), String(r.name || r.id)])
         );
         const memberMap = new Map<string, string>(
-            (memberRes.data || []).map((row: any) => [String(row.id), String(row.full_name || 'Unknown Admin')])
+            (memberRes.data || []).map((r: any) => [String(r.id), String(r.full_name || 'Unknown Admin')])
         );
 
         const rows: DealerOfferOverrideHistoryRow[] = safeRows.map(row => {
@@ -346,28 +477,24 @@ export async function getDealerOfferOverrideHistory(
             const tenantId = String(meta.tenant_id || '').trim();
             const bulkTenantIds = asStringArray(meta.tenant_ids);
             const skuId = String(meta.sku_id || '').trim();
-            const actorName = String(memberMap.get(String(row.user_id || '')) || 'Unknown Admin');
+            const actorName = memberMap.get(String(row.user_id || '')) || 'Unknown Admin';
 
-            let dealerLabel = 'Unknown Dealership';
-            if (bulkTenantIds.length > 0) {
-                const named = bulkTenantIds.map(id => tenantMap.get(id) || id);
-                dealerLabel =
-                    named.length <= 3 ? named.join(', ') : `${named.slice(0, 3).join(', ')} +${named.length - 3} more`;
-            } else if (tenantId) {
-                dealerLabel = tenantMap.get(tenantId) || tenantId;
-            }
+            const dealerLabel =
+                bulkTenantIds.length > 1
+                    ? `${bulkTenantIds.length} dealerships`
+                    : (tenantMap.get(tenantId) ?? tenantId ?? '—');
 
-            const skuLabel = String(skuMap.get(skuId) || skuId || 'Unknown SKU');
-
+            const action = String(row.action || '');
             return {
-                id: String(row.id),
-                action: String(row.action || 'UNKNOWN'),
-                actionLabel: actionLabel(String(row.action || 'UNKNOWN')),
+                id: row.id,
+                action,
+                actionLabel: actionLabel(action),
                 actorName,
                 dealerLabel,
-                skuLabel,
-                offerDelta: Number.isFinite(Number(meta.offer_delta)) ? Number(meta.offer_delta) : null,
-                updatedCount: Number.isFinite(Number(meta.updated_count)) ? Number(meta.updated_count) : null,
+                skuLabel: skuMap.get(skuId) ?? skuId ?? '—',
+                offerDelta:
+                    meta.offer_delta !== undefined && meta.offer_delta !== null ? Number(meta.offer_delta) : null,
+                updatedCount: meta.updated_count !== undefined ? Number(meta.updated_count) : null,
                 createdAt: String(row.created_at || ''),
             };
         });
@@ -376,7 +503,7 @@ export async function getDealerOfferOverrideHistory(
     } catch (error) {
         return {
             success: false,
-            message: getErrorMessage(error) || 'Unexpected error while loading override history',
+            message: getErrorMessage(error) || 'Unexpected error fetching history',
             rows: [],
         };
     }
