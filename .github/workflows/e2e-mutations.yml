@@ -24,7 +24,7 @@ concurrency:
 
 jobs:
   e2e-mutations:
-    name: AUMS Offer Override — Mutations (Playwright)
+    name: e2e-mutations
     runs-on: ubuntu-latest
     timeout-minutes: 20
     # Non-blocking: failures notify but do not prevent merges.
