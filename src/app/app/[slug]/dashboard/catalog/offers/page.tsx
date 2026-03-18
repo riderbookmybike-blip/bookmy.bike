@@ -255,6 +255,7 @@ export default function AumsDealerOffersPage() {
                             Dealership
                         </span>
                         <select
+                            data-testid="filter-dealership"
                             value={dealershipFilter}
                             onChange={e => onFilterChange(setDealershipFilter)(e.target.value)}
                             className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-900"
@@ -274,6 +275,7 @@ export default function AumsDealerOffersPage() {
                             Brand
                         </span>
                         <select
+                            data-testid="filter-brand"
                             value={brandFilter}
                             onChange={e => onFilterChange(setBrandFilter)(e.target.value)}
                             className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-900"
@@ -293,6 +295,7 @@ export default function AumsDealerOffersPage() {
                             Model
                         </span>
                         <select
+                            data-testid="filter-model"
                             value={modelFilter}
                             onChange={e => onFilterChange(setModelFilter)(e.target.value)}
                             className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-900"
@@ -312,6 +315,7 @@ export default function AumsDealerOffersPage() {
                             Status
                         </span>
                         <select
+                            data-testid="filter-status"
                             value={statusFilter}
                             onChange={e => onFilterChange(setStatusFilter)(e.target.value as DealerOfferStatus)}
                             className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-900"

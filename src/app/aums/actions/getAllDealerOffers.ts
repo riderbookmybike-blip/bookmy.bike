@@ -323,7 +323,11 @@ export async function getAllDealerOffersForAdmin(
         // If this is the first page with no filters, build option lists from current enriched rows.
         // For a comprehensive options list, we do a lightweight separate fetch if needed.
         const shouldFetchOptions =
-            page === 1 && !input.tenantId && !input.brandName && !input.modelName && !input.status;
+            page === 1 &&
+            (!input.tenantId || input.tenantId === 'ALL') &&
+            (!input.brandName || input.brandName === 'ALL') &&
+            (!input.modelName || input.modelName === 'ALL') &&
+            (!input.status || input.status === 'ALL');
         if (shouldFetchOptions) {
             // Fetch all tenant + sku ids (no paging) just to build dropdown options
             const { data: allRaw } = await adminClient

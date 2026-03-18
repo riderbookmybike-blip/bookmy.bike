@@ -122,7 +122,7 @@ test.describe('AUMS — Dealer Offer Override Page', () => {
         }
 
         // Status is always the 4th select (nth=3) in the filter panel — Dealership, Brand, Model, Status
-        const statusSelect = page.locator('label').nth(3).locator('select');
+        const statusSelect = page.getByTestId('filter-status');
         await expect(statusSelect).toBeVisible({ timeout: 5_000 });
         // Verify it's the Status select by checking its option values
         const optionValues = await statusSelect.evaluate((el: HTMLSelectElement) =>
@@ -298,7 +298,7 @@ test.describe('AUMS — Dealer Offer Override Page', () => {
 
         if (hasRows) {
             // Status is the 4th select (nth=3) in the filter panel
-            const statusSelect = page.locator('label').nth(3).locator('select');
+            const statusSelect = page.getByTestId('filter-status');
             await statusSelect.selectOption('INACTIVE');
             await page.waitForTimeout(400);
             await page
