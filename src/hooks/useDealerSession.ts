@@ -3,6 +3,7 @@ import { useSearchParams } from 'next/navigation';
 import { getResolvedPricingContextAction } from '@/actions/pricingActions';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { shouldSkipDealerContextUpdate, shouldSkipFinanceContextUpdate } from '@/lib/marketplace/dealerSessionGuards';
+import { resolveSessionLocally, buildSessionFromServerContext } from '@/lib/marketplace/dealerSessionResolver';
 
 export interface DealerSession {
     dealerId: string | null;
@@ -61,6 +62,7 @@ export function useDealerSession() {
         const urlLeadId = searchParams?.get('lead_id');
         const urlDealerId = searchParams?.get('dealer_id');
         const urlStudio = searchParams?.get('studio');
+        const urlParams = { leadId: urlLeadId, dealerId: urlDealerId, studio: urlStudio };
 
         // 2. Check Storage/Local Context
         let storedContext: any = null;
@@ -70,6 +72,22 @@ export function useDealerSession() {
         } catch (e) {
             console.error('[useDealerSession] Error parsing storage:', e);
         }
+
+        // ── MANUAL SELECTION PERSISTENCE ─────────────────────────────────
+        // Delegate to the pure helper. Returns a resolved session when the
+        // stored context is sufficient (no URL overrides), otherwise null.
+        const localResult = resolveSessionLocally(storedContext, urlParams);
+        if (localResult) {
+            const { shortCircuit: _sc, ...restored } = localResult;
+            setSession(restored);
+            writeDealerSessionCookie({
+                activeDealerTenantId: restored.dealerId,
+                activeFinanceTenantId: restored.financeId,
+            });
+            setIsLoaded(true);
+            return;
+        }
+        // ─────────────────────────────────────────────────────────────────
 
         // 3. Check Location (Pincode/District)
         let district: string | null = null;
@@ -81,7 +99,7 @@ export function useDealerSession() {
             } catch {}
         }
 
-        // 4. Call Server Action to resolve the "truth"
+        // 4. Call Server Action to resolve the "truth" (only when URL overrides present)
         try {
             const context = (await getResolvedPricingContextAction({
                 leadId: urlLeadId,
@@ -96,22 +114,11 @@ export function useDealerSession() {
                 source: string;
             };
 
-            const newSession: DealerSession = {
-                dealerId: context.dealerId,
-                financeId: storedContext?.financeId || null,
-                studioId: null, // Resolution happens by dealerId now
-                tenantName: context.tenantName,
-                district: context.district,
-                locked: !!urlLeadId,
-                source:
-                    context.source === 'EXPLICIT' || context.source.startsWith('PRIMARY')
-                        ? context.source === 'EXPLICIT'
-                            ? 'URL'
-                            : 'PRIMARY'
-                        : storedContext && !urlLeadId && !urlDealerId
-                          ? 'STORAGE'
-                          : 'DEFAULT',
-            };
+            const { shortCircuit: _sc, ...newSession } = buildSessionFromServerContext(
+                context,
+                storedContext,
+                urlParams
+            );
 
             // 5. Persistence
             localStorage.setItem(STORAGE_KEY, JSON.stringify(newSession));
