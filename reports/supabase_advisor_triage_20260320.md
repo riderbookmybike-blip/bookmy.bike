@@ -25,27 +25,28 @@
 - **Effort**: 15 min
 - **Ref**: [Supabase lint 0010](https://supabase.com/docs/guides/database/database-linter?lint=0010_security_definer_view)
 
-### E2: 6 tables — RLS disabled in public schema
-Tables exposed to PostgREST with **no RLS** at all:
+### E2: 6 tables — RLS disabled in public schema ✅ RESOLVED `20260320201000`
 
-| Table | Risk |
-|-------|------|
-| `recompute_queue` | Internal queue — anon/authenticated users could read/mutate |
-| `price_snapshot_sku` | Pricing data — full read by anon undesirable |
-| `market_winner_price` | Pricing winner data |
-| `market_winner_finance` | Finance winner data |
-| `shadow_compare_log` | Shadow metrics |
-| `winner_cache_invalidation_log` | Operational log |
-| `sku_accessory_matrix` | Accessory pricing matrix |
-| `shadow_metrics_hourly` | Analytics |
-| `cat_service_packages` | Catalog service data |
-| `cat_service_scope` | Catalog service data |
-| `cat_service_entries` | Catalog service data |
+**Migration**: `20260320201000_e2_rls_enable_11_public_tables.sql`  
+**Result**: Advisor ERROR count 11 → **0** (re-run confirmed)
 
-- **Fix**: Enable RLS + add `USING (true)` public SELECT policy for read-only tables; add `service_role` bypass for queue/log tables
-- **Owner**: Backend / DB
-- **Effort**: 30 min migration
-- **Ref**: [Supabase lint 0013](https://supabase.com/docs/guides/database/database-linter?lint=0013_rls_disabled_in_public)
+#### Policy Matrix (Verified)
+
+| Table | Group | RLS | Policy | Role |
+|-------|-------|-----|--------|------|
+| `market_winner_price` | A — Pricing read | ✅ | SELECT | `authenticated` |
+| `market_winner_finance` | A — Pricing read | ✅ | SELECT | `authenticated` |
+| `sku_accessory_matrix` | A — Pricing read | ✅ | SELECT | `authenticated` |
+| `cat_service_packages` | A — Catalog read | ✅ | SELECT | `authenticated` |
+| `cat_service_scope` | A — Catalog read | ✅ | SELECT | `authenticated` |
+| `cat_service_entries` | A — Catalog read | ✅ | SELECT | `authenticated` |
+| `recompute_queue` | B — Internal queue | ✅ | None (service_role bypass) | — |
+| `price_snapshot_sku` | B — Internal snapshot | ✅ | None (service_role bypass) | — |
+| `shadow_compare_log` | B — Internal log | ✅ | None (service_role bypass) | — |
+| `shadow_metrics_hourly` | B — Internal metrics | ✅ | None (service_role bypass) | — |
+| `winner_cache_invalidation_log` | B — Internal log | ✅ | None (service_role bypass) | — |
+
+
 
 ---
 
@@ -80,9 +81,10 @@ Tables allowing unrestricted INSERT/UPDATE/DELETE via `WITH CHECK (true)` for `a
 - **Effort**: 1–2 hours (high-risk tables first)
 - **Ref**: [Supabase lint 0024](https://supabase.com/docs/guides/database/database-linter?lint=0024_permissive_rls_policy)
 
-### W3: Auth — Leaked password protection disabled
-- **Fix**: Enable in Supabase Dashboard → Auth → Settings → Leaked password protection
-- **Owner**: Platform admin (5 min, no code change)
+### W3: Auth — Leaked password protection disabled ~~PLAN_LIMITATION~~
+- **Status**: ❌ **Not actionable** — toggle is hidden on the Free plan; requires Pro upgrade
+- **Impact**: Zero — primary auth is phone OTP via MSG91; email+password auth is not in use
+- **Fix**: Upgrade to Supabase Pro if email+password auth is ever enabled, then toggle in Auth → Providers → Email → Password Security
 - **Ref**: [Password security](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection)
 
 ---
