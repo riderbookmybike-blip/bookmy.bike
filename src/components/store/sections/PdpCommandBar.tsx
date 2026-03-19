@@ -483,7 +483,11 @@ function DesktopActionCluster({
                 title={isLoggedIn ? 'Download Quote' : 'Login required to download quote'}
             >
                 <Download size={18} strokeWidth={2.5} />
-                {!isLoggedIn && <Lock size={12} className="absolute -top-1.5 -right-1.5 text-amber-300" />}
+                {!isLoggedIn && (
+                    <span className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-amber-400 flex items-center justify-center shadow-md">
+                        <Lock size={10} className="text-slate-900" strokeWidth={2.5} />
+                    </span>
+                )}
             </motion.button>
 
             {/* Share Quote Button */}
@@ -495,7 +499,11 @@ function DesktopActionCluster({
                 title={isLoggedIn ? 'Share Quote' : 'Login required to share quote'}
             >
                 <Share2 size={18} strokeWidth={2.5} />
-                {!isLoggedIn && <Lock size={12} className="absolute -top-1.5 -right-1.5 text-amber-300" />}
+                {!isLoggedIn && (
+                    <span className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-amber-400 flex items-center justify-center shadow-md">
+                        <Lock size={10} className="text-slate-900" strokeWidth={2.5} />
+                    </span>
+                )}
             </motion.button>
 
             {/* Main Action Button (Save) */}
@@ -800,7 +808,9 @@ export function PdpCommandBar({
         if (typeof window === 'undefined') return;
         const next = `${window.location.pathname}${window.location.search || ''}`;
         localStorage.setItem(LOGIN_NEXT_STORAGE_KEY, next);
-        window.location.href = `/login?next=${encodeURIComponent(next)}`;
+        // StoreLayoutClient listens for 'openLogin' and opens LoginSidebar in-place.
+        window.dispatchEvent(new CustomEvent('openLogin'));
+        setShowAuthGateModal(false);
     };
 
     const runWithAuthGate = (action?: () => void) => {
