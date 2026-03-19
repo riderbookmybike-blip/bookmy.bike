@@ -13,6 +13,7 @@ import {
     Coins,
     MessageCircle,
     Send,
+    Download,
     UserSearch,
     Sparkles,
     UserCircle2,
@@ -48,6 +49,7 @@ type LeadStep = 'PHONE' | 'PHONE_CONFIRM' | 'DETAILS';
 
 let crmActionsPromise: Promise<typeof import('@/actions/crm')> | null = null;
 const LOGIN_NEXT_STORAGE_KEY = 'bkmb_login_next';
+const BOOKMYBIKE_WHATSAPP_NUMBER = '917447403491';
 
 function getCrmActions() {
     if (!crmActionsPromise) {
@@ -231,6 +233,33 @@ export function LeadCaptureModal({
         localStorage.setItem(LOGIN_NEXT_STORAGE_KEY, next);
         window.location.href = `/login?next=${encodeURIComponent(next)}`;
     }, []);
+
+    const getDossierPath = useCallback(() => {
+        const displayId = String(quoteId || '').trim();
+        if (!displayId) return null;
+        return `/q/${encodeURIComponent(displayId)}`;
+    }, [quoteId]);
+
+    const handleDownloadDossier = useCallback(() => {
+        const path = getDossierPath();
+        if (!path) {
+            toast.info('Dossier link will be ready right after quote save.');
+            return;
+        }
+        window.open(path, '_blank', 'noopener,noreferrer');
+    }, [getDossierPath]);
+
+    const handleReachUsOnWhatsApp = useCallback(() => {
+        const path = getDossierPath();
+        const dossierUrl = path ? `${window.location.origin}${path}` : window.location.href;
+        const firstName = (name || '').trim().split(/\s+/)[0] || 'Hi';
+        const msg =
+            `${firstName}, I reviewed my personalised dossier for ${productName} (${variant || model}).\n` +
+            `Dossier: ${dossierUrl}\n` +
+            `Please help me with booking confirmation and next steps.`;
+        const waUrl = `https://wa.me/${BOOKMYBIKE_WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`;
+        window.open(waUrl, '_blank', 'noopener,noreferrer');
+    }, [getDossierPath, model, name, productName, variant]);
 
     if (!isOpen) return null;
 
@@ -552,7 +581,7 @@ export function LeadCaptureModal({
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-in fade-in duration-300">
-            <div className="bg-white dark:bg-slate-900 w-full max-w-5xl rounded-[2rem] md:rounded-[3rem] shadow-[0_25px_60px_rgba(15,23,42,0.15),0_4px_20px_rgba(15,23,42,0.08)] border border-slate-200/80 dark:border-white/10 flex flex-col md:flex-row relative overflow-hidden">
+            <div className="bg-white dark:bg-slate-900 w-full max-w-6xl rounded-[2rem] md:rounded-[3rem] shadow-[0_25px_60px_rgba(15,23,42,0.15),0_4px_20px_rgba(15,23,42,0.08)] border border-slate-200/80 dark:border-white/10 flex flex-col md:flex-row relative overflow-hidden">
                 {/* Dossier Left Side (Desktop Only) */}
                 <div className="hidden md:flex w-5/12 bg-slate-50 dark:bg-[#0a0a0a] border-r border-slate-200 dark:border-white/5 p-8 flex-col relative overflow-hidden">
                     <div className="absolute top-0 right-0 p-8 opacity-5">
@@ -618,7 +647,7 @@ export function LeadCaptureModal({
                     </button>
 
                     {success ? (
-                        <div className="text-center py-8 space-y-6 animate-in zoom-in-95 duration-500">
+                        <div className="text-center py-6 space-y-5 animate-in zoom-in-95 duration-500">
                             <div className="relative w-24 h-24 mx-auto">
                                 <div className="absolute inset-0 bg-emerald-500/20 rounded-full animate-ping" />
                                 <div className="relative w-24 h-24 bg-emerald-50 dark:bg-emerald-950/30 rounded-full flex items-center justify-center text-emerald-600 dark:text-emerald-400 border-4 border-emerald-500/30">
@@ -639,6 +668,28 @@ export function LeadCaptureModal({
                                         {smsFeedback}
                                     </p>
                                 )}
+                                <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed max-w-xl mx-auto">
+                                    {(name || 'There').split(/\s+/)[0]}, we have generated a personalised dossier
+                                    tailored for you. Please review it carefully and reach us for booking confirmation
+                                    or any query.
+                                </p>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <button
+                                    onClick={handleDownloadDossier}
+                                    className="py-3.5 bg-slate-900 hover:bg-slate-800 text-white font-black uppercase tracking-[0.12em] rounded-2xl transition-all shadow-lg shadow-slate-900/20 flex items-center justify-center gap-2 text-xs"
+                                >
+                                    <Download className="w-4 h-4" />
+                                    Download Dossier
+                                </button>
+                                <button
+                                    onClick={handleReachUsOnWhatsApp}
+                                    className="py-3.5 bg-[#25D366] hover:bg-[#20BD5A] text-white font-black uppercase tracking-[0.12em] rounded-2xl transition-all shadow-lg shadow-[#25D366]/20 flex items-center justify-center gap-2 text-xs"
+                                >
+                                    <MessageCircle className="w-4 h-4" />
+                                    Reach Us on WhatsApp
+                                </button>
                             </div>
 
                             {/* Share Buttons */}

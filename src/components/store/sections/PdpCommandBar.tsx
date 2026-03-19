@@ -61,6 +61,7 @@ export interface PdpCommandBarProps {
     handleShareQuote: () => void;
     handleSaveQuote: () => void;
     handleDownloadQuote?: () => void;
+    handleReachUsQuote?: () => void;
     handleBookingRequest: () => void;
     serviceability?: any;
     isGated: boolean;
@@ -267,6 +268,7 @@ interface DesktopActionClusterProps {
     primaryAction: () => void;
     handleShareQuote?: () => void;
     handleDownloadQuote?: () => void;
+    handleReachUsQuote?: () => void;
 }
 
 function compactInr(value: number, sign: '+' | '-' | '' = '') {
@@ -473,6 +475,7 @@ function DesktopActionCluster({
     primaryAction,
     handleShareQuote,
     handleDownloadQuote,
+    handleReachUsQuote,
 }: DesktopActionClusterProps) {
     const lockButtonClasses = !isLoggedIn ? 'border-amber-300/50 bg-amber-400/10 text-amber-200' : '';
     const quoteActionsDisabledClasses = !quoteActionsEnabled
@@ -527,6 +530,18 @@ function DesktopActionCluster({
                         <Lock size={10} className="text-slate-900" strokeWidth={2.5} />
                     </span>
                 )}
+            </motion.button>
+
+            {/* Reach Us (WhatsApp) Button */}
+            <motion.button
+                onClick={quoteActionsEnabled ? handleReachUsQuote : undefined}
+                disabled={!quoteActionsEnabled}
+                whileHover={{ scale: 1.05, backgroundColor: '#1f1f1f' }}
+                whileTap={{ scale: 0.95 }}
+                className={`relative w-[50px] lg:w-[60px] h-full rounded-[18px] bg-[#0f0f0f] border border-[#2a2a2a] flex items-center justify-center text-white/70 hover:text-white transition-colors shrink-0 shadow-[0_4px_12px_rgba(0,0,0,0.5)] ${quoteActionsDisabledClasses}`}
+                title={quoteActionsEnabled ? 'Reach Us on WhatsApp' : 'Save quote first'}
+            >
+                <MessageCircle size={18} strokeWidth={2.5} />
             </motion.button>
 
             {/* Main Action Button (Save) */}
@@ -786,6 +801,7 @@ export function PdpCommandBar({
     handleShareQuote,
     handleSaveQuote,
     handleDownloadQuote,
+    handleReachUsQuote,
     serviceability,
     isGated,
     accessoriesCount = 0,
@@ -865,6 +881,7 @@ export function PdpCommandBar({
 
     const authAwareShare = () => runWithAuthGate(handleShareQuote);
     const authAwareDownload = () => runWithAuthGate(handleDownloadQuote || (() => console.log('Download clicked')));
+    const authAwareReachUs = () => runWithAuthGate(handleReachUsQuote);
     const authAwarePrimaryAction = () => runWithAuthGate(primaryAction);
 
     return (
@@ -945,6 +962,7 @@ export function PdpCommandBar({
                                         primaryAction={authAwarePrimaryAction}
                                         handleShareQuote={authAwareShare}
                                         handleDownloadQuote={authAwareDownload}
+                                        handleReachUsQuote={authAwareReachUs}
                                     />
                                 </div>
                             </div>

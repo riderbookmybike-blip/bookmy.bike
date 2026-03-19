@@ -23,6 +23,7 @@ import { InsuranceRule } from '@/types/insurance';
 
 const SKU_UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const MIN_DWELL_TRACKING_MS = 1500;
+const BOOKMYBIKE_WHATSAPP_NUMBER = '917447403491';
 
 function hasResolvedLocationSignal(value: any): boolean {
     if (!value || typeof value !== 'object') return false;
@@ -724,6 +725,32 @@ export default function ProductClient({
         }
     };
 
+    const handleReachUsQuote = () => {
+        const dossierId = savedQuoteDisplayId || leadMeta?.displayId;
+        if (!dossierId) {
+            toast.info('Save your quote first, then we can open WhatsApp with your dossier.');
+            return;
+        }
+        const dossierUrl = `${window.location.origin}/q/${encodeURIComponent(dossierId)}`;
+        const customerName =
+            String(leadMeta?.customerName || '')
+                .trim()
+                .split(/\s+/)[0] || 'Hi';
+        const msg =
+            `${customerName}, I reviewed my personalised dossier.\n` +
+            `Dossier: ${dossierUrl}\n` +
+            `Please help me with booking confirmation and next steps.`;
+        window.open(
+            `https://wa.me/${BOOKMYBIKE_WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`,
+            '_blank',
+            'noopener,noreferrer'
+        );
+        trackEvent('INTENT_SIGNAL', 'pdp_reach_us_whatsapp', {
+            ...buildPdpIntentMetadata(),
+            dossier_id: dossierId,
+        });
+    };
+
     const buildCommercials = () => {
         const resolvedColor =
             data.colors?.find(
@@ -1224,6 +1251,7 @@ export default function ProductClient({
               : handleBookingRequest,
         handleWaSend,
         handleDownloadQuote,
+        handleReachUsQuote,
         toggleAccessory,
         toggleInsuranceAddon,
         toggleService,
