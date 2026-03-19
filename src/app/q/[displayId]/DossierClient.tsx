@@ -1419,14 +1419,22 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                                 );
                             }
 
+                            // SOT: use snapshot values, not recomputed from offerOnRoad
                             const downPayment = toNumber(quote.finance.downPayment, 0);
-                            const loanAmount = Math.max(0, offerOnRoad - downPayment);
+                            const loanAmount = toNumber(
+                                quote.finance.loanAmount,
+                                Math.max(0, offerOnRoad - downPayment)
+                            );
                             const selectedTenure = Number(quote.finance.tenureMonths || quote.finance.tenure || 36);
-                            const TENURES = Object.keys(EMI_FACTORS)
-                                .map(Number)
-                                .sort((a, b) => a - b);
+                            // SOT EMI: from snapshot, not flat-factor recompute
+                            const sotEmi = toNumber(quote.finance.emi, 0);
+                            // Tenure grid: EMI_FACTORS keys + always include selected tenure
+                            const TENURES = Array.from(
+                                new Set([...Object.keys(EMI_FACTORS).map(Number), selectedTenure])
+                            ).sort((a, b) => a - b);
                             const selectedFactor = EMI_FACTORS[selectedTenure] ?? EMI_FACTORS[36];
-                            const selectedEmi = Math.round(loanAmount * selectedFactor);
+                            // For tenure grid rows, use factor-based EMI (indicative) but anchor loan to SOT
+                            const selectedEmi = sotEmi > 0 ? sotEmi : Math.round(loanAmount * selectedFactor);
                             const selectedTotal = selectedEmi * selectedTenure;
                             const selectedInterest = Math.max(0, selectedTotal - loanAmount);
 
