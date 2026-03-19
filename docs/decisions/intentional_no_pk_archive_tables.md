@@ -40,10 +40,10 @@ All tables in this schema are **point-in-time backup snapshots**, created 2026-0
 
 ## `public.cat_item_hierarchy_archive` (2 columns)
 
-**Assessment**: 2-column table, likely a migration artifact or append-only log.  
-**Decision**: If actively queried or joined, add a surrogate `id uuid DEFAULT gen_random_uuid() PRIMARY KEY`. If read-only archive with no joins, treat same as `sys_archived` — intentional.
-
-**Action**: Verify in next schema audit whether it is actively queried. If yes, add PK via migration. If no, document as intentional and suppress.
+**Columns**: `parent_id uuid`, `child_id uuid`  
+**Assessment**: ✅ Confirmed — zero references in any `*.ts`/`*.tsx` source. Only appears in auto-generated `supabase.ts` types (passive declaration). Migration artifact from a hierarchy restructure.  
+**Decision**: Intentional no-PK. Same treatment as `sys_archived.*` — never queried, never joined, no client access.  
+**Action**: None required. Suppress advisor warning.
 
 ---
 
