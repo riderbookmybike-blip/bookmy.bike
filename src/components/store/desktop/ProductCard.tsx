@@ -40,7 +40,7 @@ export const ProductCard = ({
     downpayment,
     tenure,
     serviceability,
-    onLocationClick: _onLocationClick,
+    onLocationClick,
     onColorChange,
     onExplodeColors,
     isTv = false,
@@ -615,18 +615,27 @@ export const ProductCard = ({
     const displayVariant = scriptText(v.variant);
     const displayColor = scriptText(v.color || 'Standard Color');
 
-    const handleGetQuoteClick = (e: React.MouseEvent) => {
+    const blockForUnserviceable = (e: React.MouseEvent) => {
         if (isUnserviceable) {
             e.preventDefault();
+            e.stopPropagation();
             toast.error(`Your area ${safeServiceability.location || ''} is not serviceable`, {
-                description: 'We will update you once we are live in your area.',
+                description: 'Please change pincode to continue.',
                 duration: 5000,
             });
+            onLocationClick?.();
+            return true;
         }
+        return false;
+    };
+
+    const handleGetQuoteClick = (e: React.MouseEvent) => {
+        blockForUnserviceable(e);
     };
 
     const handleExploreClick = (e: React.MouseEvent<HTMLButtonElement>) => {
         e.stopPropagation();
+        if (blockForUnserviceable(e)) return;
         if (isNavigating || isPending || !onExplore) return;
 
         setIsNavigating(true);
@@ -943,7 +952,8 @@ export const ProductCard = ({
                                                       basePath,
                                                   }).url
                                         }
-                                        onClick={() =>
+                                        onClick={e => {
+                                            if (blockForUnserviceable(e)) return;
                                             trackEvent('INTENT_SIGNAL', 'catalog_vehicle_click', {
                                                 lead_id: leadId || undefined,
                                                 sku_id: v.availableColors?.[0]?.id || undefined,
@@ -951,8 +961,8 @@ export const ProductCard = ({
                                                 model_slug: slugify(v.model || ''),
                                                 variant_slug: slugify(v.variant || ''),
                                                 source: 'STORE_CATALOG',
-                                            })
-                                        }
+                                            });
+                                        }}
                                         className="relative overflow-hidden px-10 py-4 bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-[0_0_20px_rgba(244,176,0,0.3)] hover:shadow-[0_0_30px_rgba(244,176,0,0.5)] hover:-translate-y-1 transition-all"
                                     >
                                         <div aria-hidden className="shimmer-bar" />
@@ -1635,7 +1645,10 @@ export const ProductCard = ({
                                                 basePath,
                                             }).url
                                         }
-                                        onClick={() => setIsNavigating(true)}
+                                        onClick={e => {
+                                            if (blockForUnserviceable(e)) return;
+                                            setIsNavigating(true);
+                                        }}
                                         className={`group/btn relative overflow-hidden w-full ${isTv ? 'h-8 text-[9px]' : 'h-10 md:h-11 text-[10px]'} bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-xl font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(244,176,0,0.3)] hover:shadow-[0_6px_20px_rgba(244,176,0,0.4)] hover:-translate-y-0.5 active:scale-[0.99] transition-all`}
                                     >
                                         <motion.div
