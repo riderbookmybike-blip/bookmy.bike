@@ -5,9 +5,8 @@ import dynamic from 'next/dynamic';
 import { useSystemPDPLogic } from '@/hooks/SystemPDPLogic';
 import { LeadCaptureModal } from '@/components/leads/LeadCaptureModal';
 import { EmailUpdateModal } from '@/components/auth/EmailUpdateModal';
-import { PincodeGateModal } from '@/components/store/Personalize/PincodeGateModal';
+import { PdpLocationGate } from '@/components/store/Personalize/PdpLocationGate';
 import { LocationPicker } from '@/components/store/LocationPicker';
-import { buildPdpGuardRedirectUrl, isPdpGuardRedirected } from '@/lib/store/isLocationResolved';
 import { createClient } from '@/lib/supabase/client';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -527,30 +526,10 @@ export default function ProductClient({
         };
     }, [initialLocation]);
 
-    // ── PDP Route Guard ──────────────────────────────────────────────────────
-    // Redirect to catalog if no location context on mount.
-    // Source order: 1) initialLocation (SSR cookie/member) → skip
-    //               2) localStorage bkmb_user_pincode → check
-    //               3) redirected=1 param present → skip (prevent loop)
-    useEffect(() => {
-        if (typeof window === 'undefined') return;
-        // If SSR resolved location (from cookie or member profile), no redirect needed
-        if (hasResolvedLocationSignal(initialLocation)) return;
-        // If this page was already redirected once (loop guard), don't redirect again
-        if (isPdpGuardRedirected()) return;
-        // Check localStorage
-        if (readLocationResolvedFromCache()) return;
-        // No location found — redirect to catalog with loop guard flag
-        const redirectUrl = buildPdpGuardRedirectUrl(product?.make, product?.model);
-        router.replace(redirectUrl);
-        trackEvent('INTENT_SIGNAL', 'pdp_location_guard_redirect', {
-            make: product?.make || '',
-            model: product?.model || '',
-            reason: 'no_location_context',
-        });
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []); // mount-only — intentionally stable
-    // ────────────────────────────────────────────────────────────────────────
+    // ── PDP Location Gate (moved to PdpLocationGate component) ──────────────
+    // PdpLocationGate now wraps the entire render tree and blocks children
+    // from rendering until location is confirmed. No redirect needed here.
+    // ─────────────────────────────────────────────────────────────────────────
 
     // Note: Do NOT disable when hasResolvedDealer — the hook must still run to fetch
     // the actual offer_amount via its overrideDealerId path (no lat/lng needed).
@@ -1394,18 +1373,7 @@ export default function ProductClient({
                 <DesktopPDP {...commonProps} />
             )}
 
-            {/* Mandatory pincode gate modal — auto-opens when no location resolved.
-                Non-dismissable: no X, no backdrop click. Blocks interaction. */}
-            <PincodeGateModal
-                isOpen={pdpGateReason === 'LOCATION_REQUIRED'}
-                onResolved={(_confidence, _pincode) => {
-                    // Modal persists + fires locationChanged itself (via persistAndFire).
-                    // locationChanged event causes UniversalCatalog/hook to re-run,
-                    // which resolves hasResolvedLocation → pdpGateReason becomes READY.
-                    // Trigger explicit re-check via retrySignal bump:
-                    setDealerRetryCount(c => c + 1);
-                }}
-            />
+            {/* Location gate is handled by PdpLocationGate wrapper in page.tsx */}
             <LocationPicker
                 isOpen={showLocationPicker}
                 onClose={() => setShowLocationPicker(false)}
