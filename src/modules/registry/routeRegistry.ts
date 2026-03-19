@@ -31,7 +31,6 @@ export const ROUTE_REGISTRY: Record<string, RegisteredRoute> = {
     'catalog-vehicles': { path: '/dashboard/catalog/products', label: 'Vehicle Catalog', icon: Box },
     'catalog-accessories': { path: '/dashboard/catalog/accessories', label: 'Accessories', icon: ShoppingBag },
     'catalog-pricing': { path: '/dashboard/catalog/pricing', label: 'Pricing Engine', icon: Calculator },
-    'catalog-offers': { path: '/dashboard/catalog/offers', label: 'Dealer Offer Override', icon: Tags },
     'catalog-registration': { path: '/dashboard/catalog/registration', label: 'RTO / Registration', icon: FileCheck },
     'catalog-insurance': { path: '/dashboard/catalog/insurance', label: 'Insurance Logic', icon: ShieldCheck },
     'catalog-audit': { path: '/dashboard/catalog/audit', label: 'Catalog Audit', icon: History },

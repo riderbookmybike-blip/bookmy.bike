@@ -17,7 +17,6 @@ export const AUMS_SUPERADMIN_SIDEBAR: SidebarConfig = {
                 { id: 'catalog-vehicles' },
                 { id: 'catalog-accessories' },
                 { id: 'catalog-pricing' },
-                { id: 'catalog-offers' },
                 { id: 'catalog-registration' },
                 { id: 'catalog-insurance' },
                 { id: 'admin-service-area' },

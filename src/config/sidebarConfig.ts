@@ -513,15 +513,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                 allowedRoles: ['OWNER', 'ADMIN', 'SUPER_ADMIN', 'MARKETPLACE_ADMIN', 'DEALERSHIP_ADMIN'],
                 permissions: ['read'],
             },
-            {
-                title: 'Dealer Offer Override',
-                href: '/dashboard/catalog/offers',
-                icon: Tags,
-                color: 'text-rose-500',
-                allowedTenants: ['AUMS'],
-                allowedRoles: ['OWNER', 'ADMIN', 'SUPER_ADMIN', 'MARKETPLACE_ADMIN'],
-                permissions: ['read'],
-            },
+
             {
                 title: 'Audit Trail',
                 href: '/dashboard/catalog/audit',

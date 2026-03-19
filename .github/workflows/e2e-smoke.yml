@@ -1,6 +1,7 @@
 name: E2E Smoke (Required)
 
-# Read-only AUMS Dealer Offer Override spec — no secrets required.
+# Lightweight quality gate: lint + build.
+# Replaces the Dealer Offer Override Playwright spec (removed 2026-03-19).
 # PR merge is BLOCKED until this passes.
 on:
   pull_request:
@@ -19,7 +20,6 @@ jobs:
     timeout-minutes: 15
 
     env:
-      PLAYWRIGHT_BASE_URL: http://localhost:3000
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
 
@@ -36,32 +36,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install Playwright browsers
-        run: npx playwright install chromium --with-deps
+      - name: Lint
+        run: npm run lint
 
-      - name: Build Next.js app
+      - name: Build
         run: npm run build
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
 
-      - name: Start server (background)
-        run: npm start &
-        env:
-          PORT: 3000
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-
-      - name: Wait for server
-        run: npx wait-on http://localhost:3000 --timeout 60000
-
-      - name: Run smoke tests (required gate)
-        run: npx playwright test tests/aums-dealer-offer-override.spec.ts --project=desktop-chrome --reporter=list
-
-      - name: Upload Playwright report on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: e2e-smoke-report
-          path: playwright-report/
-          retention-days: 7
+      - name: Playwright spec list (no missing files)
+        run: npx playwright test --list
