@@ -232,6 +232,46 @@ export function LeadCaptureModal({
 
     if (!isOpen) return null;
 
+    // ── Hard boundary: staff must use CRM lead flow, not marketplace PDP ──
+    // Rule: source === 'STORE_PDP' && isStaff → block, show CRM redirect panel.
+    // Staff Referral Mode is only allowed when source === 'LEADS' (CRM entry point).
+    if (isStaff && source === 'STORE_PDP') {
+        return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-in fade-in duration-300">
+                <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl shadow-2xl border border-slate-200/80 dark:border-white/10 overflow-hidden">
+                    {/* Header */}
+                    <div className="bg-blue-600 p-6 text-white text-center">
+                        <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center mx-auto mb-4">
+                            <Briefcase size={28} />
+                        </div>
+                        <h3 className="text-xl font-black uppercase tracking-tight">Team Member Detected</h3>
+                        <p className="text-blue-100 text-sm mt-1 font-medium">Quote creation via CRM only</p>
+                    </div>
+                    {/* Body */}
+                    <div className="p-6 space-y-4">
+                        <p className="text-slate-600 dark:text-slate-400 text-sm text-center leading-relaxed">
+                            As a team member, please create quotes through the <strong>CRM Lead Flow</strong> — this
+                            ensures proper lead ownership, audit trail, and dealer attribution.
+                        </p>
+                        <a
+                            href="/app"
+                            className="w-full flex items-center justify-center gap-2 py-4 bg-blue-600 hover:bg-blue-700 text-white font-black text-xs uppercase tracking-[0.12em] rounded-2xl transition-all shadow-lg shadow-blue-600/20 active:scale-95"
+                        >
+                            <Briefcase size={16} />
+                            Open CRM Lead Flow
+                        </a>
+                        <button
+                            onClick={onClose}
+                            className="w-full py-3 text-slate-400 font-bold text-xs uppercase tracking-wider hover:text-slate-600 transition-colors"
+                        >
+                            Close
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     const toUiError = (err: unknown, fallback: string) =>
         err instanceof Error ? err.message || fallback : typeof err === 'string' ? err : fallback;
 

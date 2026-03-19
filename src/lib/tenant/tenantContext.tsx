@@ -183,6 +183,39 @@ export const TenantProvider = ({ children }: { children: ReactNode }) => {
                     }
                 })();
             }
+
+            // Guard: clear membership cache if user is not authenticated.
+            // Prevents cross-user localStorage pollution (isTeamMember false-positive).
+            const supabaseForGuard = createClient();
+            (async () => {
+                const {
+                    data: { user },
+                } = await supabaseForGuard.auth.getUser();
+                if (!user) {
+                    localStorage.removeItem('user_memberships');
+                    localStorage.removeItem('tenant_type');
+                    localStorage.removeItem('tenant_id');
+                    localStorage.removeItem('tenant_name');
+                    localStorage.removeItem('tenant_slug');
+                    setMembershipsState([]);
+                }
+            })();
+
+            // Subscribe to auth events — clear membership cache immediately on logout.
+            const supabaseForSub = createClient();
+            const {
+                data: { subscription },
+            } = supabaseForSub.auth.onAuthStateChange(event => {
+                if (event === 'SIGNED_OUT') {
+                    localStorage.removeItem('user_memberships');
+                    localStorage.removeItem('tenant_type');
+                    localStorage.removeItem('tenant_id');
+                    localStorage.removeItem('tenant_name');
+                    localStorage.removeItem('tenant_slug');
+                    setMembershipsState([]);
+                }
+            });
+            return () => subscription.unsubscribe();
         }
     }, []);
 
