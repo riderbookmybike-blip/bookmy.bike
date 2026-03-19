@@ -693,7 +693,7 @@ export default function TechSpecsSection({ specs, modelName, variantName }: Tech
                                 <div
                                     className={`flex flex-col transition-all duration-500 ${isActive ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-4 absolute'}`}
                                 >
-                                    <span className="text-xs font-black uppercase tracking-[0.2em] text-brand-primary">
+                                    <span className="text-xs font-black tracking-[0.05em] text-brand-primary">
                                         {cat.label}
                                     </span>
                                     <span className="text-[10px] text-slate-500 font-bold whitespace-nowrap">
@@ -726,7 +726,7 @@ export default function TechSpecsSection({ specs, modelName, variantName }: Tech
                                             exit={{ opacity: 0 }}
                                             className="absolute inset-0 flex items-center justify-center pointer-events-none"
                                         >
-                                            <span className="text-2xl font-black uppercase tracking-[0.3em] text-slate-400/60 -rotate-90 whitespace-nowrap">
+                                            <span className="text-[22px] font-bold normal-case tracking-[0.06em] text-slate-400/55 -rotate-90 whitespace-nowrap">
                                                 {cat.label}
                                             </span>
                                         </motion.div>

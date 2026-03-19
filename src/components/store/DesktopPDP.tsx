@@ -120,6 +120,7 @@ interface DesktopPDPProps {
         setUserDownPayment: (amount: number) => void;
         handleWaSend?: (phone: string) => Promise<void>;
         handleDownloadQuote?: () => void;
+        handleReachUsQuote?: () => void;
     };
     initialLocation?: any;
     bestOffer?: any;
@@ -289,6 +290,7 @@ export function DesktopPDP({
         setEmiTenure,
         setUserDownPayment,
         handleDownloadQuote,
+        handleReachUsQuote,
     } = handlers;
 
     // Smooth DP slider animation (click = slow animate, drag = instant)
@@ -961,7 +963,7 @@ export function DesktopPDP({
                                                 exit={{ opacity: 0 }}
                                                 className="absolute inset-0 flex items-center justify-center pointer-events-none"
                                             >
-                                                <span className="text-[28px] font-extrabold uppercase tracking-[0.16em] text-slate-400/75 -rotate-90 whitespace-nowrap">
+                                                <span className="text-[24px] font-bold normal-case tracking-[0.06em] text-slate-400/60 -rotate-90 whitespace-nowrap">
                                                     {card.label}
                                                 </span>
                                             </motion.div>
@@ -1214,7 +1216,7 @@ export function DesktopPDP({
                                                 className="absolute inset-0 pointer-events-none"
                                             >
                                                 <div className="absolute inset-0 flex items-center justify-center">
-                                                    <span className="text-[28px] font-extrabold uppercase tracking-[0.16em] text-slate-400/50 -rotate-90 whitespace-nowrap">
+                                                    <span className="text-[24px] font-bold normal-case tracking-[0.06em] text-slate-400/50 -rotate-90 whitespace-nowrap">
                                                         {category.label}
                                                     </span>
                                                 </div>
@@ -1283,6 +1285,7 @@ export function DesktopPDP({
                 deliveryByLabel={deliveryByLabel}
                 studioIdLabel={studioIdLabel}
                 handleDownloadQuote={handleDownloadQuote}
+                handleReachUsQuote={handleReachUsQuote}
                 quoteState={quoteState}
             />
         </div>
