@@ -3055,6 +3055,7 @@ export async function createLeadAction(data: {
     const authUser = await getAuthUser();
     let actorIsStaff = false;
     let actorActiveTenantId: string | null = null;
+    const selectedDealerId = (data.selected_dealer_id || '').trim() || null;
 
     // Strict sanitation
     const strictPhone = toAppStorageFormat(data.customer_phone);
@@ -3066,7 +3067,7 @@ export async function createLeadAction(data: {
 
     try {
         // Handle owner_tenant_id fallback
-        let effectiveOwnerId = data.owner_tenant_id;
+        let effectiveOwnerId = (data.owner_tenant_id || '').trim() || null;
         let isStrict = true; // Default to strict
 
         const { data: settings } = await (adminClient
@@ -3092,7 +3093,7 @@ export async function createLeadAction(data: {
         // When a BANK tenant creates a lead and selects a dealer,
         // the DEALER becomes the owner and the BANK gets shared access.
         let financeTenantId: string | null = null;
-        if (data.selected_dealer_id && effectiveOwnerId !== data.selected_dealer_id) {
+        if (selectedDealerId && effectiveOwnerId !== selectedDealerId) {
             const { data: creatorTenant } = await adminClient
                 .from('id_tenants')
                 .select('type')
@@ -3102,12 +3103,12 @@ export async function createLeadAction(data: {
             if (creatorTenant?.type === 'BANK') {
                 // console.log('[DEBUG] Finance partner lead swap: dealer becomes owner, bank gets shared access');
                 financeTenantId = effectiveOwnerId; // store bank as shared partner
-                effectiveOwnerId = data.selected_dealer_id; // dealer becomes owner
+                effectiveOwnerId = selectedDealerId; // dealer becomes owner
             }
         }
 
         // Hardening: Enforce dealer selection for finance simulation
-        const validation = validateFinanceLeadDealer(data.source, data.selected_dealer_id, {
+        const validation = validateFinanceLeadDealer(data.source, selectedDealerId || undefined, {
             unified_context_strict_mode: isStrict,
         });
         if (!validation.success) {
@@ -3134,7 +3135,7 @@ export async function createLeadAction(data: {
         }
 
         // For finance-team users, dealership context must be explicitly granted by dealership.
-        if (authUser?.id && actorIsStaff && data.selected_dealer_id) {
+        if (authUser?.id && actorIsStaff && selectedDealerId) {
             const financeTenantForAccess = financeTenantId || effectiveOwnerId || null;
             if (financeTenantForAccess) {
                 const { data: financeTenant } = await adminClient
@@ -3148,7 +3149,7 @@ export async function createLeadAction(data: {
                         .from('dealer_finance_user_access')
                         .select('dealer_tenant_id')
                         .eq('finance_tenant_id', financeTenantForAccess)
-                        .eq('dealer_tenant_id', data.selected_dealer_id)
+                        .eq('dealer_tenant_id', selectedDealerId)
                         .eq('user_id', authUser.id)
                         .eq('crm_access', true)
                         .maybeSingle();
@@ -3276,7 +3277,7 @@ export async function createLeadAction(data: {
         let defaultDealerReferralName: string | null = null;
 
         if (isInternalTeamCrmLead && !hasExplicitReferralInput) {
-            const referralTenantId = actorActiveTenantId || data.selected_dealer_id || effectiveOwnerId || null;
+            const referralTenantId = actorActiveTenantId || selectedDealerId || effectiveOwnerId || null;
             if (referralTenantId) {
                 const { data: referralDealer } = await adminClient
                     .from('id_tenants')
@@ -3357,10 +3358,8 @@ export async function createLeadAction(data: {
             utm_data: any;
         }>;
 
-        const existingLead = data.selected_dealer_id
-            ? candidateLeads.find(l => l.selected_dealer_tenant_id === data.selected_dealer_id) ||
-              candidateLeads[0] ||
-              null
+        const existingLead = selectedDealerId
+            ? candidateLeads.find(l => l.selected_dealer_tenant_id === selectedDealerId) || candidateLeads[0] || null
             : candidateLeads[0] || null;
 
         if (existingLead) {
@@ -3406,8 +3405,8 @@ export async function createLeadAction(data: {
                     : {}),
             };
             // Backfill dealer lock on legacy leads when reusing under an explicit dealer context.
-            if (data.selected_dealer_id && !existingLead.selected_dealer_tenant_id) {
-                duplicateUpdatePayload.selected_dealer_tenant_id = data.selected_dealer_id;
+            if (selectedDealerId && !existingLead.selected_dealer_tenant_id) {
+                duplicateUpdatePayload.selected_dealer_tenant_id = selectedDealerId;
             }
             const duplicateUpdateResult = await updateCrmLeadCompat(existingLead.id, duplicateUpdatePayload, nowIso);
             if (!duplicateUpdateResult.success) {
@@ -3472,12 +3471,13 @@ export async function createLeadAction(data: {
             };
         }
 
+        const customerIdForInsert = String(customerId);
         const { data: lead, error } = await adminClient
             .from('crm_leads')
             .insert({
                 // required non-nullable per schema
-                created_by: customerId,
-                customer_id: customerId,
+                created_by: customerIdForInsert,
+                customer_id: customerIdForInsert,
                 customer_name: data.customer_name,
                 customer_phone: strictPhone,
                 customer_pincode: normalizedPincode.length === 6 ? normalizedPincode : null,
@@ -3487,8 +3487,9 @@ export async function createLeadAction(data: {
                 interest_text: interestText || interestModel,
                 interest_variant: data.model === 'GENERAL_ENQUIRY' ? null : null,
                 owner_tenant_id: effectiveOwnerId,
-                selected_dealer_tenant_id: financeTenantId || data.selected_dealer_id || null,
-                referred_by_id: resolvedReferrer?.memberId || '',
+                selected_dealer_tenant_id: financeTenantId || selectedDealerId || null,
+                // Column is non-nullable UUID; fallback to self to avoid invalid '' UUID writes.
+                referred_by_id: resolvedReferrer?.memberId || customerIdForInsert,
                 referred_by_name:
                     resolvedReferrer?.name ||
                     referredByNameInput ||
@@ -3823,7 +3824,8 @@ export async function createQuoteAction(data: {
     source?: 'STORE_PDP' | 'LEADS';
 }): Promise<{ success: boolean; data?: any; message?: string; smsStatus?: QuoteSmsStatus }> {
     const user = await getAuthUser();
-    const isGuestMarketplaceQuote = !user && data.source === 'STORE_PDP' && !!data.lead_id;
+    const safeLeadId = (data.lead_id || '').trim() || null;
+    const isGuestMarketplaceQuote = !user && data.source === 'STORE_PDP' && !!safeLeadId;
     if (!user && !isGuestMarketplaceQuote) {
         return {
             success: false,
@@ -3851,21 +3853,21 @@ export async function createQuoteAction(data: {
     const actorIsStaff = !!createdBy && !isEndCustomerRole(actorMember?.role);
 
     // Prefer explicit member_id or lead-linked customer_id (avoid using staff auth IDs)
-    let memberId: string | null = data.member_id || null;
+    let memberId: string | null = (data.member_id || '').trim() || null;
     let leadReferrerId: string | null = null;
     let leadCustomerPhone: string | null = null;
     let leadCustomerName: string | null = null;
 
     const comms: any = normalizeCommercialsPayload(data.commercials);
 
-    if (data.lead_id) {
+    if (safeLeadId) {
         const { data: lead } = await supabase
             .from('crm_leads')
             .select(
                 'customer_id, customer_name, customer_phone, referred_by_id, selected_dealer_tenant_id, owner_tenant_id'
             )
             .eq('is_deleted', false)
-            .eq('id', data.lead_id)
+            .eq('id', safeLeadId)
             .maybeSingle();
 
         if (lead) {
@@ -3876,14 +3878,9 @@ export async function createQuoteAction(data: {
             }
 
             // Hardening: Enforce dealer context matching
-            const contextValidation = await validateQuoteDealerContext(
-                supabase,
-                data.lead_id!,
-                resolvedTenantId || '',
-                {
-                    unified_context_strict_mode: isStrict,
-                }
-            );
+            const contextValidation = await validateQuoteDealerContext(supabase, safeLeadId, resolvedTenantId || '', {
+                unified_context_strict_mode: isStrict,
+            });
             if (!contextValidation.success) {
                 return contextValidation;
             }
@@ -3989,7 +3986,7 @@ export async function createQuoteAction(data: {
         .from('crm_quotes')
         .insert({
             tenant_id: resolvedTenantId,
-            lead_id: data.lead_id || null,
+            lead_id: safeLeadId,
             member_id: memberId,
             lead_referrer_id: leadReferrerId,
             quote_owner_id: createdBy || null,
@@ -4025,7 +4022,7 @@ export async function createQuoteAction(data: {
             message: getErrorMessage(error),
             details: error.details,
             hint: error.hint,
-            context: { tenant_id: resolvedTenantId, lead_id: data.lead_id, sku: data.variant_id },
+            context: { tenant_id: resolvedTenantId, lead_id: safeLeadId, sku: data.variant_id },
         });
         return { success: false, message: getErrorMessage(error) };
     }
@@ -4039,11 +4036,11 @@ export async function createQuoteAction(data: {
     });
 
     // Supersede older quotes for same Lead + SKU (one SKU = one active quote per lead)
-    if (data.lead_id && vehicleSkuId) {
+    if (safeLeadId && vehicleSkuId) {
         await adminClient
             .from('crm_quotes')
             .update({ status: 'SUPERSEDED', updated_at: new Date().toISOString() })
-            .eq('lead_id', data.lead_id)
+            .eq('lead_id', safeLeadId)
             .eq('vehicle_sku_id', vehicleSkuId)
             .neq('id', quote.id)
             .not('status', 'in', '("CONVERTED","BOOKING","BOOKED")');
