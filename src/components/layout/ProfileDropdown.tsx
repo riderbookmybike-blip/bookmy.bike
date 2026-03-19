@@ -102,6 +102,7 @@ export function ProfileDropdown({
     const [walletData, setWalletData] = useState<WalletData | null>(null);
     const [referralCopied, setReferralCopied] = useState(false);
     // WA Quick Welcome state
+    const [waOpen, setWaOpen] = useState(false);
     const [waPhone, setWaPhone] = useState('');
     const [waLang, setWaLang] = useState<'en_GB' | 'hi' | 'mr' | ''>('');
     const [waStatus, setWaStatus] = useState<'idle' | 'sending' | 'done' | 'error'>('idle');
@@ -136,7 +137,7 @@ export function ProfileDropdown({
 
     // O'Circle vs Business mode toggle (persisted)
     const [businessMode, setBusinessMode] = useState(() => {
-        if (typeof window === 'undefined') return false;
+        if (typeof window === 'undefined') return true;
         const savedMode = localStorage.getItem('bkmb_sidebar_mode');
         if (!savedMode) return true;
         return savedMode === 'business';
@@ -148,6 +149,10 @@ export function ProfileDropdown({
             return next;
         });
     };
+
+    // CRM section collapse state
+    const [dealerCrmOpen, setDealerCrmOpen] = useState(false);
+    const [financerCrmOpen, setFinancerCrmOpen] = useState(false);
 
     // Dealer Session Hook
     const { activeTenantId, setDealerContext, clearDealerContext, financeId, setFinanceContext } = useDealerSession();
@@ -1708,141 +1713,6 @@ ${referralUrl}`;
 
                                                             return (
                                                                 <div className="space-y-2">
-                                                                    {/* WA Quick Welcome — MSG91 API with language selection */}
-                                                                    <div className="rounded-2xl border border-[#25D366]/30 bg-[#25D366]/5 dark:bg-[#25D366]/[0.04] p-3 space-y-3">
-                                                                        {/* Title */}
-                                                                        <div className="flex items-center gap-2">
-                                                                            <div className="w-6 h-6 rounded-lg bg-[#25D366]/15 flex items-center justify-center shrink-0">
-                                                                                {/* WhatsApp Business icon */}
-                                                                                <svg
-                                                                                    viewBox="0 0 24 24"
-                                                                                    width="14"
-                                                                                    height="14"
-                                                                                    fill="#25D366"
-                                                                                    xmlns="http://www.w3.org/2000/svg"
-                                                                                >
-                                                                                    <path d="M12 0C5.374 0 0 5.374 0 12c0 2.13.558 4.122 1.528 5.847L0 24l6.336-1.524A11.939 11.939 0 0012 24c6.626 0 12-5.374 12-12 0-6.627-5.374-12-12-12zm0 21.818a9.818 9.818 0 01-5.007-1.374l-.36-.213-3.724.896.939-3.619-.234-.372A9.817 9.817 0 012.182 12C2.182 6.585 6.585 2.182 12 2.182c5.415 0 9.818 4.403 9.818 9.818 0 5.416-4.403 9.818-9.818 9.818zM9 7h3.5c1.38 0 2.5 1.175 2.5 2.625 0 .98-.527 1.82-1.307 2.25C14.611 12.3 15.5 13.35 15.5 14.625c0 1.6-1.232 2.875-2.875 2.875H9V7zm1.5 1.5v2.25h1.875c.62 0 1.125-.56 1.125-1.125C13.5 9.06 12.995 8.5 12.375 8.5H10.5zm0 3.75V14.5h2c.69 0 1.25-.56 1.25-1.25 0-.69-.56-1-1.25-1H10.5z" />
-                                                                                </svg>
-                                                                            </div>
-                                                                            <p className="text-[9px] font-black uppercase tracking-[0.14em] text-[#25D366]">
-                                                                                Quick Welcome
-                                                                            </p>
-                                                                        </div>
-
-                                                                        {waStatus === 'done' ? (
-                                                                            <div className="flex items-center justify-center gap-2 py-3">
-                                                                                <Check
-                                                                                    size={16}
-                                                                                    className="text-[#25D366]"
-                                                                                />
-                                                                                <span className="text-[10px] font-black text-[#25D366] uppercase tracking-wide">
-                                                                                    Sent!
-                                                                                </span>
-                                                                            </div>
-                                                                        ) : (
-                                                                            <>
-                                                                                {/* Phone input */}
-                                                                                <div className="flex items-center gap-2 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] px-3 py-2 focus-within:border-[#25D366] transition-all">
-                                                                                    <span className="text-[10px] font-bold text-slate-400 shrink-0">
-                                                                                        +91
-                                                                                    </span>
-                                                                                    <div className="w-px h-3.5 bg-slate-200 dark:bg-white/10" />
-                                                                                    <input
-                                                                                        type="tel"
-                                                                                        inputMode="numeric"
-                                                                                        maxLength={10}
-                                                                                        value={waPhone
-                                                                                            .replace(/\D/g, '')
-                                                                                            .slice(-10)}
-                                                                                        onChange={e => {
-                                                                                            setWaPhone(e.target.value);
-                                                                                            setWaError('');
-                                                                                        }}
-                                                                                        onKeyDown={e =>
-                                                                                            e.key === 'Enter' &&
-                                                                                            sendWelcomeWa()
-                                                                                        }
-                                                                                        placeholder="Recipient 10-digit number"
-                                                                                        className="flex-1 bg-transparent text-[11px] font-mono font-bold text-slate-900 dark:text-white placeholder:text-slate-300 outline-none"
-                                                                                    />
-                                                                                </div>
-
-                                                                                {/* Language buttons */}
-                                                                                <div className="flex gap-1.5">
-                                                                                    {(
-                                                                                        ['en_GB', 'hi', 'mr'] as const
-                                                                                    ).map(lang => {
-                                                                                        const labels: Record<
-                                                                                            string,
-                                                                                            string
-                                                                                        > = {
-                                                                                            en_GB: 'EN',
-                                                                                            hi: 'हि',
-                                                                                            mr: 'मर',
-                                                                                        };
-                                                                                        const full: Record<
-                                                                                            string,
-                                                                                            string
-                                                                                        > = {
-                                                                                            en_GB: 'English',
-                                                                                            hi: 'Hindi',
-                                                                                            mr: 'Marathi',
-                                                                                        };
-                                                                                        return (
-                                                                                            <button
-                                                                                                key={lang}
-                                                                                                type="button"
-                                                                                                onClick={() => {
-                                                                                                    setWaLang(lang);
-                                                                                                    setWaError('');
-                                                                                                }}
-                                                                                                className={`flex-1 flex flex-col items-center py-1.5 rounded-xl border transition-all ${
-                                                                                                    waLang === lang
-                                                                                                        ? 'border-[#25D366] bg-[#25D366]/10 ring-1 ring-[#25D366]/30'
-                                                                                                        : 'border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.03] hover:border-[#25D366]/40'
-                                                                                                }`}
-                                                                                            >
-                                                                                                <span
-                                                                                                    className={`text-[12px] font-black ${waLang === lang ? 'text-[#25D366]' : 'text-slate-500 dark:text-slate-400'}`}
-                                                                                                >
-                                                                                                    {labels[lang]}
-                                                                                                </span>
-                                                                                                <span
-                                                                                                    className={`text-[7px] font-semibold ${waLang === lang ? 'text-[#25D366]' : 'text-slate-400'}`}
-                                                                                                >
-                                                                                                    {full[lang]}
-                                                                                                </span>
-                                                                                            </button>
-                                                                                        );
-                                                                                    })}
-                                                                                </div>
-
-                                                                                {waError && (
-                                                                                    <p className="text-[8px] text-rose-500 font-semibold">
-                                                                                        {waError}
-                                                                                    </p>
-                                                                                )}
-
-                                                                                {/* Send button */}
-                                                                                <button
-                                                                                    type="button"
-                                                                                    onClick={sendWelcomeWa}
-                                                                                    disabled={waStatus === 'sending'}
-                                                                                    className={`w-full h-8 rounded-xl flex items-center justify-center gap-1.5 text-[9px] font-black uppercase tracking-[0.14em] transition-all ${
-                                                                                        waStatus === 'sending'
-                                                                                            ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                                                                                            : 'bg-[#25D366] text-white hover:bg-[#22c55e]'
-                                                                                    }`}
-                                                                                >
-                                                                                    <Send size={11} />
-                                                                                    {waStatus === 'sending'
-                                                                                        ? 'Sending…'
-                                                                                        : 'Send Welcome'}
-                                                                                </button>
-                                                                            </>
-                                                                        )}
-                                                                    </div>
-
                                                                     {/* ─── ACTIVE GROUP ─── */}
                                                                     <div className="rounded-2xl border border-slate-100 dark:border-white/8 overflow-hidden">
                                                                         {/* Group Header */}
@@ -1879,99 +1749,36 @@ ${referralUrl}`;
                                                                             </div>
                                                                         )}
 
-                                                                        {/* Active Dealership */}
-                                                                        <div className="flex items-center justify-between px-3 py-2.5 border-b border-slate-100 dark:border-white/5 bg-emerald-50/60 dark:bg-emerald-500/5">
-                                                                            <div className="min-w-0">
-                                                                                <p className="text-[8px] font-black uppercase tracking-widest text-emerald-500 dark:text-emerald-400">
-                                                                                    Active Dealership
-                                                                                </p>
-                                                                                <p className="text-[11px] font-black text-slate-900 dark:text-white truncate">
-                                                                                    {activeDealerName || (
-                                                                                        <span className="text-slate-400 font-medium italic">
-                                                                                            None selected
-                                                                                        </span>
-                                                                                    )}
-                                                                                </p>
-                                                                            </div>
-                                                                            {activeDealerSlug && (
-                                                                                <a
-                                                                                    href={getWorkspaceDashboardHref(
-                                                                                        activeDealerSlug
-                                                                                    )}
-                                                                                    target="_blank"
-                                                                                    rel="noopener noreferrer"
-                                                                                    onClick={() => setIsOpen(false)}
-                                                                                    className="ml-2 shrink-0 px-3 py-1.5 rounded-full bg-emerald-500 text-white text-[8px] font-black uppercase tracking-wider hover:bg-emerald-600 transition-colors"
-                                                                                >
-                                                                                    Open
-                                                                                </a>
-                                                                            )}
-                                                                        </div>
-
-                                                                        {/* Active Financer */}
-                                                                        <div className="flex items-center justify-between px-3 py-2.5 bg-indigo-50/60 dark:bg-indigo-500/5">
-                                                                            <div className="min-w-0">
-                                                                                <p className="text-[8px] font-black uppercase tracking-widest text-indigo-500 dark:text-indigo-400">
-                                                                                    Active Financer
-                                                                                </p>
-                                                                                <p className="text-[11px] font-black text-slate-900 dark:text-white truncate">
-                                                                                    {activeFinancerName || (
-                                                                                        <span className="text-slate-400 font-medium italic">
-                                                                                            None selected
-                                                                                        </span>
-                                                                                    )}
-                                                                                </p>
-                                                                            </div>
-                                                                            {activeFinancerSlug && (
-                                                                                <a
-                                                                                    href={getWorkspaceDashboardHref(
-                                                                                        activeFinancerSlug
-                                                                                    )}
-                                                                                    target="_blank"
-                                                                                    rel="noopener noreferrer"
-                                                                                    onClick={() => setIsOpen(false)}
-                                                                                    className="ml-2 shrink-0 px-3 py-1.5 rounded-full bg-indigo-500 text-white text-[8px] font-black uppercase tracking-wider hover:bg-indigo-600 transition-colors"
-                                                                                >
-                                                                                    Open
-                                                                                </a>
-                                                                            )}
-                                                                        </div>
-                                                                    </div>
-
-                                                                    {/* ─── STUDIOS (DEALERSHIPS) GROUP ─── */}
-                                                                    {inactiveDealers.length > 0 && (
-                                                                        <div className="rounded-2xl border border-slate-100 dark:border-white/8 overflow-hidden">
-                                                                            {/* Collapsible Header */}
+                                                                        {/* Dealership CRMs — collapsible */}
+                                                                        <div className="rounded-2xl border border-emerald-200/60 dark:border-emerald-500/20 bg-emerald-50/40 dark:bg-emerald-500/5 overflow-hidden">
                                                                             <button
                                                                                 type="button"
                                                                                 onClick={() =>
-                                                                                    setStudiosSectionOpen(p => !p)
+                                                                                    setDealerCrmOpen(v => !v)
                                                                                 }
-                                                                                className="w-full flex items-center justify-between px-3 py-2.5 bg-slate-50 dark:bg-white/[0.03] hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors"
+                                                                                className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-colors"
                                                                             >
                                                                                 <div className="flex items-center gap-2">
                                                                                     <Store
                                                                                         size={12}
-                                                                                        className="text-slate-400"
+                                                                                        className="text-emerald-500 dark:text-emerald-400"
                                                                                     />
-                                                                                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                                                                                        Studios
+                                                                                    <p className="text-[8px] font-black uppercase tracking-widest text-emerald-500 dark:text-emerald-400">
+                                                                                        Dealership CRMs{' '}
+                                                                                        <span className="opacity-60">
+                                                                                            ({dealerMemberships.length})
+                                                                                        </span>
                                                                                     </p>
-                                                                                    <span className="px-1.5 py-0.5 rounded-full bg-slate-200 dark:bg-white/10 text-[8px] font-black text-slate-500 dark:text-slate-400">
-                                                                                        {inactiveDealers.length}
-                                                                                    </span>
                                                                                 </div>
                                                                                 <ChevronDown
-                                                                                    size={14}
-                                                                                    className={`text-slate-400 transition-transform duration-200 ${studiosSectionOpen ? 'rotate-180' : ''}`}
+                                                                                    size={13}
+                                                                                    className={`text-emerald-400 transition-transform duration-200 ${dealerCrmOpen ? 'rotate-180' : ''}`}
                                                                                 />
                                                                             </button>
-
-                                                                            {/* Items */}
                                                                             <AnimatePresence initial={false}>
-                                                                                {studiosSectionOpen && (
+                                                                                {dealerCrmOpen && (
                                                                                     <motion.div
-                                                                                        key="studios-list"
+                                                                                        key="dealer-crm-list"
                                                                                         initial={{
                                                                                             height: 0,
                                                                                             opacity: 0,
@@ -1981,42 +1788,29 @@ ${referralUrl}`;
                                                                                             opacity: 1,
                                                                                         }}
                                                                                         exit={{ height: 0, opacity: 0 }}
-                                                                                        transition={{
-                                                                                            duration: 0.22,
-                                                                                            ease: 'easeInOut',
-                                                                                        }}
+                                                                                        transition={{ duration: 0.2 }}
                                                                                         className="overflow-hidden"
                                                                                     >
-                                                                                        {inactiveDealers.map(
-                                                                                            (d: any, idx: number) => (
-                                                                                                <div
-                                                                                                    key={d.id}
-                                                                                                    className={`flex items-center justify-between px-3 py-2.5 bg-white dark:bg-white/[0.02] ${
-                                                                                                        idx <
-                                                                                                        inactiveDealers.length -
-                                                                                                            1
-                                                                                                            ? 'border-b border-slate-100 dark:border-white/5'
-                                                                                                            : ''
-                                                                                                    }`}
-                                                                                                >
-                                                                                                    <p className="text-[11px] font-black text-slate-800 dark:text-slate-200 truncate min-w-0 pr-2">
-                                                                                                        {d.name}
-                                                                                                    </p>
-                                                                                                    <div className="flex items-center gap-1.5 shrink-0">
-                                                                                                        <button
-                                                                                                            onClick={() => {
-                                                                                                                handleWorkspaceLogin(
-                                                                                                                    d.id
-                                                                                                                );
-                                                                                                            }}
-                                                                                                            className="px-2.5 py-1 rounded-full border border-slate-300 dark:border-white/15 text-slate-600 dark:text-slate-300 text-[8px] font-black uppercase tracking-wider hover:border-emerald-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-all"
-                                                                                                        >
-                                                                                                            Activate
-                                                                                                        </button>
-                                                                                                        {d.slug && (
+                                                                                        <div className="px-2 pb-2 space-y-1 max-h-60 overflow-y-auto">
+                                                                                            {dealerMemberships.length >
+                                                                                            0 ? (
+                                                                                                dealerMemberships.map(
+                                                                                                    m => {
+                                                                                                        const slug =
+                                                                                                            m.tenants
+                                                                                                                ?.slug ||
+                                                                                                            null;
+                                                                                                        const name =
+                                                                                                            m.tenants
+                                                                                                                ?.name ||
+                                                                                                            'Dealership';
+                                                                                                        return slug ? (
                                                                                                             <a
+                                                                                                                key={String(
+                                                                                                                    m.tenant_id
+                                                                                                                )}
                                                                                                                 href={getWorkspaceDashboardHref(
-                                                                                                                    d.slug
+                                                                                                                    slug
                                                                                                                 )}
                                                                                                                 target="_blank"
                                                                                                                 rel="noopener noreferrer"
@@ -2025,55 +1819,102 @@ ${referralUrl}`;
                                                                                                                         false
                                                                                                                     )
                                                                                                                 }
-                                                                                                                className="px-2.5 py-1 rounded-full border border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400 text-[8px] font-black uppercase tracking-wider hover:text-slate-900 dark:hover:text-white transition-colors"
+                                                                                                                className="flex items-center justify-between gap-2 rounded-xl border border-emerald-200/60 dark:border-emerald-500/20 bg-white/80 dark:bg-white/[0.03] px-2.5 py-2 hover:border-emerald-400 dark:hover:border-emerald-500/40 transition-all group"
                                                                                                             >
-                                                                                                                Open
+                                                                                                                <div className="flex items-center gap-2 min-w-0">
+                                                                                                                    <Store
+                                                                                                                        size={
+                                                                                                                            13
+                                                                                                                        }
+                                                                                                                        className="text-emerald-600 dark:text-emerald-400 shrink-0"
+                                                                                                                    />
+                                                                                                                    <p className="text-[11px] font-semibold text-slate-800 dark:text-slate-100 truncate">
+                                                                                                                        {
+                                                                                                                            name
+                                                                                                                        }
+                                                                                                                    </p>
+                                                                                                                </div>
+                                                                                                                <ExternalLink
+                                                                                                                    size={
+                                                                                                                        12
+                                                                                                                    }
+                                                                                                                    className="text-emerald-400 shrink-0 group-hover:text-emerald-600 dark:group-hover:text-emerald-300 transition-colors"
+                                                                                                                />
                                                                                                             </a>
-                                                                                                        )}
-                                                                                                    </div>
+                                                                                                        ) : (
+                                                                                                            <div
+                                                                                                                key={String(
+                                                                                                                    m.tenant_id
+                                                                                                                )}
+                                                                                                                title="No CRM linked"
+                                                                                                                className="flex items-center justify-between gap-2 rounded-xl border border-slate-100 dark:border-white/5 px-2.5 py-2 opacity-50 cursor-not-allowed"
+                                                                                                            >
+                                                                                                                <div className="flex items-center gap-2 min-w-0">
+                                                                                                                    <Store
+                                                                                                                        size={
+                                                                                                                            13
+                                                                                                                        }
+                                                                                                                        className="text-slate-400 shrink-0"
+                                                                                                                    />
+                                                                                                                    <p className="text-[11px] font-semibold text-slate-400 truncate">
+                                                                                                                        {
+                                                                                                                            name
+                                                                                                                        }
+                                                                                                                    </p>
+                                                                                                                </div>
+                                                                                                                <ExternalLink
+                                                                                                                    size={
+                                                                                                                        12
+                                                                                                                    }
+                                                                                                                    className="text-slate-300 dark:text-white/20 shrink-0"
+                                                                                                                />
+                                                                                                            </div>
+                                                                                                        );
+                                                                                                    }
+                                                                                                )
+                                                                                            ) : (
+                                                                                                <div className="px-2.5 py-2 text-[11px] font-semibold text-slate-400">
+                                                                                                    No dealer
+                                                                                                    memberships
                                                                                                 </div>
-                                                                                            )
-                                                                                        )}
+                                                                                            )}
+                                                                                        </div>
                                                                                     </motion.div>
                                                                                 )}
                                                                             </AnimatePresence>
                                                                         </div>
-                                                                    )}
 
-                                                                    {/* ─── FINANCERS GROUP ─── */}
-                                                                    {inactiveFinancers.length > 0 && (
-                                                                        <div className="rounded-2xl border border-slate-100 dark:border-white/8 overflow-hidden">
-                                                                            {/* Collapsible Header */}
+                                                                        {/* Financer CRMs — collapsible */}
+                                                                        <div className="rounded-2xl border border-indigo-200/60 dark:border-indigo-500/20 bg-indigo-50/40 dark:bg-indigo-500/5 overflow-hidden">
                                                                             <button
                                                                                 type="button"
                                                                                 onClick={() =>
-                                                                                    setFinancersSectionOpen(p => !p)
+                                                                                    setFinancerCrmOpen(v => !v)
                                                                                 }
-                                                                                className="w-full flex items-center justify-between px-3 py-2.5 bg-slate-50 dark:bg-white/[0.03] hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors"
+                                                                                className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-colors"
                                                                             >
                                                                                 <div className="flex items-center gap-2">
                                                                                     <Landmark
                                                                                         size={12}
-                                                                                        className="text-slate-400"
+                                                                                        className="text-indigo-500 dark:text-indigo-400"
                                                                                     />
-                                                                                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-                                                                                        Financers
+                                                                                    <p className="text-[8px] font-black uppercase tracking-widest text-indigo-500 dark:text-indigo-400">
+                                                                                        Financer CRMs{' '}
+                                                                                        <span className="opacity-60">
+                                                                                            ({financeMemberships.length}
+                                                                                            )
+                                                                                        </span>
                                                                                     </p>
-                                                                                    <span className="px-1.5 py-0.5 rounded-full bg-slate-200 dark:bg-white/10 text-[8px] font-black text-slate-500 dark:text-slate-400">
-                                                                                        {inactiveFinancers.length}
-                                                                                    </span>
                                                                                 </div>
                                                                                 <ChevronDown
-                                                                                    size={14}
-                                                                                    className={`text-slate-400 transition-transform duration-200 ${financersSectionOpen ? 'rotate-180' : ''}`}
+                                                                                    size={13}
+                                                                                    className={`text-indigo-400 transition-transform duration-200 ${financerCrmOpen ? 'rotate-180' : ''}`}
                                                                                 />
                                                                             </button>
-
-                                                                            {/* Items */}
                                                                             <AnimatePresence initial={false}>
-                                                                                {financersSectionOpen && (
+                                                                                {financerCrmOpen && (
                                                                                     <motion.div
-                                                                                        key="financers-list"
+                                                                                        key="financer-crm-list"
                                                                                         initial={{
                                                                                             height: 0,
                                                                                             opacity: 0,
@@ -2083,42 +1924,29 @@ ${referralUrl}`;
                                                                                             opacity: 1,
                                                                                         }}
                                                                                         exit={{ height: 0, opacity: 0 }}
-                                                                                        transition={{
-                                                                                            duration: 0.22,
-                                                                                            ease: 'easeInOut',
-                                                                                        }}
+                                                                                        transition={{ duration: 0.2 }}
                                                                                         className="overflow-hidden"
                                                                                     >
-                                                                                        {inactiveFinancers.map(
-                                                                                            (f, idx) => (
-                                                                                                <div
-                                                                                                    key={f.id}
-                                                                                                    className={`flex items-center justify-between px-3 py-2.5 bg-white dark:bg-white/[0.02] ${
-                                                                                                        idx <
-                                                                                                        inactiveFinancers.length -
-                                                                                                            1
-                                                                                                            ? 'border-b border-slate-100 dark:border-white/5'
-                                                                                                            : ''
-                                                                                                    }`}
-                                                                                                >
-                                                                                                    <p className="text-[11px] font-black text-slate-800 dark:text-slate-200 truncate min-w-0 pr-2">
-                                                                                                        {f.name}
-                                                                                                    </p>
-                                                                                                    <div className="flex items-center gap-1.5 shrink-0">
-                                                                                                        <button
-                                                                                                            onClick={() =>
-                                                                                                                handleFinanceLogin(
-                                                                                                                    f.id
-                                                                                                                )
-                                                                                                            }
-                                                                                                            className="px-2.5 py-1 rounded-full border border-slate-300 dark:border-white/15 text-slate-600 dark:text-slate-300 text-[8px] font-black uppercase tracking-wider hover:border-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-all"
-                                                                                                        >
-                                                                                                            Activate
-                                                                                                        </button>
-                                                                                                        {f.slug && (
+                                                                                        <div className="px-2 pb-2 space-y-1 max-h-60 overflow-y-auto">
+                                                                                            {financeMemberships.length >
+                                                                                            0 ? (
+                                                                                                financeMemberships.map(
+                                                                                                    m => {
+                                                                                                        const slug =
+                                                                                                            m.tenants
+                                                                                                                ?.slug ||
+                                                                                                            null;
+                                                                                                        const name =
+                                                                                                            m.tenants
+                                                                                                                ?.name ||
+                                                                                                            'Financer';
+                                                                                                        return slug ? (
                                                                                                             <a
+                                                                                                                key={String(
+                                                                                                                    m.tenant_id
+                                                                                                                )}
                                                                                                                 href={getWorkspaceDashboardHref(
-                                                                                                                    f.slug
+                                                                                                                    slug
                                                                                                                 )}
                                                                                                                 target="_blank"
                                                                                                                 rel="noopener noreferrer"
@@ -2127,20 +1955,71 @@ ${referralUrl}`;
                                                                                                                         false
                                                                                                                     )
                                                                                                                 }
-                                                                                                                className="px-2.5 py-1 rounded-full border border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400 text-[8px] font-black uppercase tracking-wider hover:text-slate-900 dark:hover:text-white transition-colors"
+                                                                                                                className="flex items-center justify-between gap-2 rounded-xl border border-indigo-200/60 dark:border-indigo-500/20 bg-white/80 dark:bg-white/[0.03] px-2.5 py-2 hover:border-indigo-400 dark:hover:border-indigo-500/40 transition-all group"
                                                                                                             >
-                                                                                                                Open
+                                                                                                                <div className="flex items-center gap-2 min-w-0">
+                                                                                                                    <Landmark
+                                                                                                                        size={
+                                                                                                                            13
+                                                                                                                        }
+                                                                                                                        className="text-indigo-600 dark:text-indigo-400 shrink-0"
+                                                                                                                    />
+                                                                                                                    <p className="text-[11px] font-semibold text-slate-800 dark:text-slate-100 truncate">
+                                                                                                                        {
+                                                                                                                            name
+                                                                                                                        }
+                                                                                                                    </p>
+                                                                                                                </div>
+                                                                                                                <ExternalLink
+                                                                                                                    size={
+                                                                                                                        12
+                                                                                                                    }
+                                                                                                                    className="text-indigo-400 shrink-0 group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition-colors"
+                                                                                                                />
                                                                                                             </a>
-                                                                                                        )}
-                                                                                                    </div>
+                                                                                                        ) : (
+                                                                                                            <div
+                                                                                                                key={String(
+                                                                                                                    m.tenant_id
+                                                                                                                )}
+                                                                                                                title="No CRM linked"
+                                                                                                                className="flex items-center justify-between gap-2 rounded-xl border border-slate-100 dark:border-white/5 px-2.5 py-2 opacity-50 cursor-not-allowed"
+                                                                                                            >
+                                                                                                                <div className="flex items-center gap-2 min-w-0">
+                                                                                                                    <Landmark
+                                                                                                                        size={
+                                                                                                                            13
+                                                                                                                        }
+                                                                                                                        className="text-slate-400 shrink-0"
+                                                                                                                    />
+                                                                                                                    <p className="text-[11px] font-semibold text-slate-400 truncate">
+                                                                                                                        {
+                                                                                                                            name
+                                                                                                                        }
+                                                                                                                    </p>
+                                                                                                                </div>
+                                                                                                                <ExternalLink
+                                                                                                                    size={
+                                                                                                                        12
+                                                                                                                    }
+                                                                                                                    className="text-slate-300 dark:text-white/20 shrink-0"
+                                                                                                                />
+                                                                                                            </div>
+                                                                                                        );
+                                                                                                    }
+                                                                                                )
+                                                                                            ) : (
+                                                                                                <div className="px-2.5 py-2 text-[11px] font-semibold text-slate-400">
+                                                                                                    No financer
+                                                                                                    memberships
                                                                                                 </div>
-                                                                                            )
-                                                                                        )}
+                                                                                            )}
+                                                                                        </div>
                                                                                     </motion.div>
                                                                                 )}
                                                                             </AnimatePresence>
                                                                         </div>
-                                                                    )}
+                                                                    </div>
                                                                 </div>
                                                             );
                                                         })()}
@@ -2151,6 +2030,114 @@ ${referralUrl}`;
 
                                     {/* Compact Footer */}
                                     <div className="flex-none p-5 z-10 border-t border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-[#0F172A]/50">
+                                        {/* WA Quick Welcome Panel */}
+                                        <AnimatePresence initial={false}>
+                                            {waOpen && (
+                                                <motion.div
+                                                    key="wa-panel"
+                                                    initial={{ height: 0, opacity: 0 }}
+                                                    animate={{ height: 'auto', opacity: 1 }}
+                                                    exit={{ height: 0, opacity: 0 }}
+                                                    transition={{ duration: 0.2 }}
+                                                    className="overflow-hidden mb-3"
+                                                >
+                                                    <div className="rounded-2xl border border-[#25D366]/30 bg-[#25D366]/5 dark:bg-[#25D366]/[0.04] p-3 space-y-3">
+                                                        {/* Title */}
+                                                        <p className="text-[9px] font-black uppercase tracking-[0.14em] text-[#25D366]">
+                                                            Quick Welcome
+                                                        </p>
+                                                        {waStatus === 'done' ? (
+                                                            <div className="flex items-center justify-center gap-2 py-3">
+                                                                <Check size={16} className="text-[#25D366]" />
+                                                                <span className="text-[10px] font-black text-[#25D366] uppercase tracking-wide">
+                                                                    Sent!
+                                                                </span>
+                                                            </div>
+                                                        ) : (
+                                                            <>
+                                                                <div className="flex items-center gap-2 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] px-3 py-2 focus-within:border-[#25D366] transition-all">
+                                                                    <span className="text-[10px] font-bold text-slate-400 shrink-0">
+                                                                        +91
+                                                                    </span>
+                                                                    <div className="w-px h-3.5 bg-slate-200 dark:bg-white/10" />
+                                                                    <input
+                                                                        type="tel"
+                                                                        inputMode="numeric"
+                                                                        maxLength={10}
+                                                                        value={waPhone.replace(/\D/g, '').slice(-10)}
+                                                                        onChange={e => {
+                                                                            setWaPhone(e.target.value);
+                                                                            setWaError('');
+                                                                        }}
+                                                                        onKeyDown={e =>
+                                                                            e.key === 'Enter' && sendWelcomeWa()
+                                                                        }
+                                                                        placeholder="Recipient 10-digit number"
+                                                                        className="flex-1 bg-transparent text-[11px] font-mono font-bold text-slate-900 dark:text-white placeholder:text-slate-300 outline-none"
+                                                                    />
+                                                                </div>
+                                                                <div className="flex gap-1.5">
+                                                                    {(['en_GB', 'hi', 'mr'] as const).map(lang => {
+                                                                        const labels: Record<string, string> = {
+                                                                            en_GB: 'EN',
+                                                                            hi: 'हि',
+                                                                            mr: 'मर',
+                                                                        };
+                                                                        const full: Record<string, string> = {
+                                                                            en_GB: 'English',
+                                                                            hi: 'Hindi',
+                                                                            mr: 'Marathi',
+                                                                        };
+                                                                        return (
+                                                                            <button
+                                                                                key={lang}
+                                                                                type="button"
+                                                                                onClick={() => {
+                                                                                    setWaLang(lang);
+                                                                                    setWaError('');
+                                                                                }}
+                                                                                className={`flex-1 flex flex-col items-center py-1.5 rounded-xl border transition-all ${
+                                                                                    waLang === lang
+                                                                                        ? 'border-[#25D366] bg-[#25D366]/10 ring-1 ring-[#25D366]/30'
+                                                                                        : 'border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.03] hover:border-[#25D366]/40'
+                                                                                }`}
+                                                                            >
+                                                                                <span
+                                                                                    className={`text-[12px] font-black ${waLang === lang ? 'text-[#25D366]' : 'text-slate-500 dark:text-slate-400'}`}
+                                                                                >
+                                                                                    {labels[lang]}
+                                                                                </span>
+                                                                                <span
+                                                                                    className={`text-[7px] font-semibold ${waLang === lang ? 'text-[#25D366]' : 'text-slate-400'}`}
+                                                                                >
+                                                                                    {full[lang]}
+                                                                                </span>
+                                                                            </button>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                                {waError && (
+                                                                    <p className="text-[8px] text-rose-500 font-semibold">
+                                                                        {waError}
+                                                                    </p>
+                                                                )}
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={sendWelcomeWa}
+                                                                    disabled={waStatus === 'sending'}
+                                                                    className={`w-full h-8 rounded-xl flex items-center justify-center gap-1.5 text-[9px] font-black uppercase tracking-[0.14em] transition-all ${waStatus === 'sending' ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-[#25D366] text-white hover:bg-[#22c55e]'}`}
+                                                                >
+                                                                    <Send size={11} />
+                                                                    {waStatus === 'sending'
+                                                                        ? 'Sending…'
+                                                                        : 'Send Welcome'}
+                                                                </button>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
                                         <div className="flex items-center gap-3">
                                             <a
                                                 href="/help"
@@ -2161,6 +2148,21 @@ ${referralUrl}`;
                                                 <HelpCircle size={14} />
                                                 Help
                                             </a>
+                                            {/* WA Quick Welcome Toggle */}
+                                            <button
+                                                type="button"
+                                                onClick={() => setWaOpen(o => !o)}
+                                                title="Send Quick Welcome"
+                                                className={`flex items-center justify-center w-10 h-10 rounded-2xl border transition-all flex-shrink-0 ${
+                                                    waOpen
+                                                        ? 'border-[#25D366] bg-[#25D366]/10 text-[#25D366]'
+                                                        : 'border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.03] text-slate-400 hover:border-[#25D366]/40 hover:text-[#25D366]'
+                                                }`}
+                                            >
+                                                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                                                    <path d="M12 0C5.374 0 0 5.374 0 12c0 2.13.558 4.122 1.528 5.847L0 24l6.336-1.524A11.939 11.939 0 0012 24c6.626 0 12-5.374 12-12 0-6.627-5.374-12-12-12zm0 21.818a9.818 9.818 0 01-5.007-1.374l-.36-.213-3.724.896.939-3.619-.234-.372A9.817 9.817 0 012.182 12C2.182 6.585 6.585 2.182 12 2.182c5.415 0 9.818 4.403 9.818 9.818 0 5.416-4.403 9.818-9.818 9.818zM9 7h3.5c1.38 0 2.5 1.175 2.5 2.625 0 .98-.527 1.82-1.307 2.25C14.611 12.3 15.5 13.35 15.5 14.625c0 1.6-1.232 2.875-2.875 2.875H9V7zm1.5 1.5v2.25h1.875c.62 0 1.125-.56 1.125-1.125C13.5 9.06 12.995 8.5 12.375 8.5H10.5zm0 3.75V14.5h2c.69 0 1.25-.56 1.25-1.25 0-.69-.56-1-1.25-1H10.5z" />
+                                                </svg>
+                                            </button>
                                             {user && (
                                                 <button
                                                     onClick={handleLogout}
