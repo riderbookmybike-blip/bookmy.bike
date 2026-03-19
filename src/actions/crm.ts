@@ -6827,9 +6827,24 @@ async function fetchQuoteForShare(identifier: string) {
     return null;
 }
 
-async function canUserShareQuote(userId: string, quote: { tenant_id?: string | null; created_by?: string | null }) {
+async function canUserShareQuote(
+    userId: string,
+    quote: { tenant_id?: string | null; created_by?: string | null; member_id?: string | null }
+) {
     if (!userId) return false;
+    // Creator of the quote can always share it
     if (quote?.created_by && String(quote.created_by) === userId) return true;
+
+    // Consumer who owns the quote by member_id — look up their member record
+    if (quote?.member_id) {
+        const { data: member } = await adminClient
+            .from('id_members')
+            .select('id')
+            .eq('user_id', userId)
+            .eq('id', quote.member_id)
+            .maybeSingle();
+        if (member?.id) return true;
+    }
 
     const tenantId = String(quote?.tenant_id || '').trim();
     if (!tenantId) return false;

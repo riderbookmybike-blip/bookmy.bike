@@ -198,18 +198,18 @@ export default function FinanceCard({
                                         onClick={() => {
                                             setEmiTenure && setEmiTenure(t);
                                         }}
-                                        className={`w-full py-2.5 px-2 flex items-center justify-center transition-all duration-300 relative
-                                        ${isSelected ? 'bg-brand-primary/10 relative z-10' : 'hover:bg-slate-50/60'}`}
+                                        className={`w-full py-2.5 px-2 flex items-center justify-center transition-all duration-200 relative
+                                        ${isSelected ? 'bg-amber-50' : 'hover:bg-slate-50/60'}`}
                                     >
                                         {/* Row sync hover highlight hack */}
                                         <div className="absolute inset-x-0 inset-y-0 opacity-0 group-hover/row:opacity-100 peer-hover:bg-slate-50/60 pointer-events-none" />
 
-                                        {/* Selection Indicators (Left/Right borders on active cell to act like a connected row) */}
+                                        {/* Selection Indicator: gold left-bar on EMI col, right-bar on Total col */}
                                         {isSelected && col.key === 'emi' && (
-                                            <div className="absolute left-0 inset-y-0 w-[5px] bg-brand-primary rounded-r-md" />
+                                            <div className="absolute left-0 inset-y-0 w-[4px] bg-amber-400 rounded-r-full" />
                                         )}
                                         {isSelected && col.key === 'total' && (
-                                            <div className="absolute right-0 inset-y-0 w-[3px] bg-brand-primary" />
+                                            <div className="absolute right-0 inset-y-0 w-[3px] bg-amber-400/60" />
                                         )}
 
                                         {valueNode}
