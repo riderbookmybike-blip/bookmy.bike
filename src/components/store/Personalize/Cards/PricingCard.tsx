@@ -81,10 +81,10 @@ export default function PricingCard({
             {/* Lead Name Banner */}
             {leadName && (
                 <div className="mb-4 p-3 bg-brand-primary/10 border border-brand-primary/20 rounded-2xl shrink-0">
-                    <p className="text-[9px] font-black uppercase text-brand-primary tracking-widest leading-none mb-1">
+                    <p className="text-[9px] font-black text-brand-primary tracking-[0.08em] leading-none mb-1">
                         Quoting for
                     </p>
-                    <p className="text-lg font-black text-slate-900 uppercase leading-none">{leadName}</p>
+                    <p className="text-lg font-black text-slate-900 leading-none">{leadName}</p>
                 </div>
             )}
 
@@ -108,7 +108,7 @@ export default function PricingCard({
                             >
                                 <div className="flex justify-between items-baseline gap-3">
                                     <div className="flex flex-col gap-0.5">
-                                        <span className="text-[10px] font-black uppercase tracking-[0.08em] text-slate-500 group-hover/item:text-brand-primary transition-colors leading-tight">
+                                        <span className="text-[10px] font-semibold tracking-[0.02em] text-slate-500 group-hover/item:text-brand-primary transition-colors leading-tight">
                                             {item.label}
                                         </span>
                                         {item.caption && (
@@ -144,7 +144,7 @@ export default function PricingCard({
 
                                         <div className="space-y-3 relative z-10">
                                             <div className="pb-2 border-b border-white/5">
-                                                <p className="text-[9px] font-black uppercase tracking-widest text-brand-primary mb-0.5">
+                                                <p className="text-[9px] font-black tracking-[0.06em] text-brand-primary mb-0.5">
                                                     {item.label}
                                                 </p>
                                                 <p className="text-[9px] text-slate-500 font-medium">
@@ -161,7 +161,7 @@ export default function PricingCard({
                                                             className="bg-white/5 p-2 rounded-lg border border-white/5 flex items-center justify-between gap-4"
                                                         >
                                                             <div className="flex flex-col">
-                                                                <span className="text-[9px] font-bold text-white uppercase tracking-tighter">
+                                                                <span className="text-[9px] font-bold text-white tracking-tight">
                                                                     {opt.name.replace(' Registration', '')}
                                                                 </span>
                                                                 <span className="text-[8px] text-slate-400 max-w-[120px] truncate">
@@ -186,7 +186,7 @@ export default function PricingCard({
                                                                 key={bIdx}
                                                                 className="flex justify-between items-center text-[9px]"
                                                             >
-                                                                <span className="text-slate-600 font-bold uppercase tracking-tight">
+                                                                <span className="text-slate-400 font-semibold tracking-tight">
                                                                     {b.label}
                                                                 </span>
                                                                 <span className="text-white font-mono">

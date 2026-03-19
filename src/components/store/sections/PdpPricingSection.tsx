@@ -241,7 +241,7 @@ export function PdpPricingSection({
                                 {/* Net Offer Price — shown when any deduction present */}
                                 {totalDeduction > 0 && (
                                     <div className="flex justify-between items-center py-2.5 mt-1 border-t-2 border-brand-primary/30 bg-brand-primary/5 -mx-5 px-5 rounded-b-3xl">
-                                        <span className="uppercase tracking-widest text-[10px] font-black text-brand-primary">
+                                        <span className="tracking-[0.04em] text-[10px] font-black text-brand-primary">
                                             Net Offer Price
                                         </span>
                                         <span className="font-mono font-black text-lg text-brand-primary">
@@ -258,7 +258,7 @@ export function PdpPricingSection({
                                                 key={`info-${idx}`}
                                                 className="flex justify-between items-center text-xs py-1 text-slate-500"
                                             >
-                                                <span className="uppercase tracking-wider text-[9px] font-bold text-slate-400">
+                                                <span className="tracking-[0.04em] text-[9px] font-semibold text-slate-400">
                                                     {item.caption || item.label}
                                                 </span>
                                                 <span className="font-mono font-semibold text-slate-600 text-xs">

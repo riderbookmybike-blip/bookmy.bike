@@ -135,9 +135,7 @@ export default function FinanceCard({
                     >
                         {/* Header */}
                         <div className="bg-slate-50/80 w-full py-2.5 px-2 border-b border-slate-200 flex items-center justify-center shrink-0 h-[38px]">
-                            <span className="text-[8px] font-bold uppercase tracking-[0.15em] text-slate-500">
-                                {col.label}
-                            </span>
+                            <span className="text-[8px] font-bold tracking-[0.08em] text-slate-500">{col.label}</span>
                         </div>
                         {/* Vertical Cells */}
                         <div className="flex flex-col flex-1 divide-y divide-slate-100">
