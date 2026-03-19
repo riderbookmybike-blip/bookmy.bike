@@ -114,6 +114,7 @@ export function LeadCaptureModal({
     const bannerTenantId = sessionDealerId || quoteTenantId || tenantId;
     const primaryMembership = memberships?.find(m => m.tenant_id === bannerTenantId);
     const [autoPhoneLoaded, setAutoPhoneLoaded] = useState(false);
+    const [isAutoSubmitting, setIsAutoSubmitting] = useState(false);
 
     // Reset state when modal opens/closes
     useEffect(() => {
@@ -133,6 +134,7 @@ export function LeadCaptureModal({
             setShareStatus('idle');
             setSmsFeedback(null);
             setAutoPhoneLoaded(false);
+            setIsAutoSubmitting(false);
             setCustomerCoins(null);
             setIsNewCustomer(false);
             setReferredByPhone('');
@@ -167,6 +169,7 @@ export function LeadCaptureModal({
                 (user.user_metadata as any)?.mobile ||
                 '';
             if (isValidPhone(candidate)) {
+                setIsAutoSubmitting(true);
                 setPhone(normalizePhone(candidate));
                 await processPhoneNumber(normalizePhone(candidate));
             }
@@ -804,46 +807,56 @@ export function LeadCaptureModal({
                             )}
 
                             {step === 'PHONE' ? (
-                                <form onSubmit={handlePhoneSubmit} className="space-y-6">
-                                    <div className="space-y-3">
-                                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 px-2">
-                                            {isStaff ? "Customer's Mobile" : 'Your Mobile'}
+                                isAutoSubmitting ? (
+                                    // Logged-in user — phone being resolved silently; show spinner
+                                    <div className="flex flex-col items-center justify-center gap-4 py-10">
+                                        <Loader2 className="w-10 h-10 animate-spin text-brand-primary" />
+                                        <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
+                                            Generating your quote…
                                         </p>
-                                        <div className="relative group">
-                                            <span className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 font-black tracking-tighter text-lg select-none z-10">
-                                                +91
-                                            </span>
-                                            <input
-                                                type="tel"
-                                                required
-                                                value={phone}
-                                                onChange={e => setPhone(normalizeIndianPhone(e.target.value))}
-                                                placeholder="00000 00000"
-                                                maxLength={10}
-                                                className="w-full pl-16 pr-6 py-5 bg-white dark:bg-black/20 border border-slate-200 dark:border-slate-700 focus:border-brand-primary/60 dark:focus:border-brand-primary/40 focus:shadow-[0_0_0_4px_rgba(255,215,0,0.1)] rounded-2xl outline-none font-black text-xl text-slate-900 dark:text-white tracking-[0.1em] transition-all placeholder:text-slate-300 dark:placeholder:text-slate-700"
-                                                autoFocus
-                                            />
-                                        </div>
                                     </div>
+                                ) : (
+                                    <form onSubmit={handlePhoneSubmit} className="space-y-6">
+                                        <div className="space-y-3">
+                                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 px-2">
+                                                {isStaff ? "Customer's Mobile" : 'Your Mobile'}
+                                            </p>
+                                            <div className="relative group">
+                                                <span className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 font-black tracking-tighter text-lg select-none z-10">
+                                                    +91
+                                                </span>
+                                                <input
+                                                    type="tel"
+                                                    required
+                                                    value={phone}
+                                                    onChange={e => setPhone(normalizeIndianPhone(e.target.value))}
+                                                    placeholder="00000 00000"
+                                                    maxLength={10}
+                                                    className="w-full pl-16 pr-6 py-5 bg-white dark:bg-black/20 border border-slate-200 dark:border-slate-700 focus:border-brand-primary/60 dark:focus:border-brand-primary/40 focus:shadow-[0_0_0_4px_rgba(255,215,0,0.1)] rounded-2xl outline-none font-black text-xl text-slate-900 dark:text-white tracking-[0.1em] transition-all placeholder:text-slate-300 dark:placeholder:text-slate-700"
+                                                    autoFocus
+                                                />
+                                            </div>
+                                        </div>
 
-                                    <button
-                                        type="submit"
-                                        disabled={isSubmitting || !isValidPhone(phone)}
-                                        className="w-full group py-5 bg-[#FFD700] hover:bg-[#F4B000] disabled:bg-slate-100 dark:disabled:bg-slate-800 text-slate-900 disabled:text-slate-400 font-black text-xs uppercase tracking-[0.12em] rounded-2xl transition-all shadow-[0_4px_20px_rgba(255,215,0,0.3)] hover:shadow-[0_6px_28px_rgba(255,215,0,0.45)] disabled:shadow-none flex items-center justify-center gap-3 active:scale-[0.98] hover:-translate-y-0.5"
-                                    >
-                                        {isSubmitting ? (
-                                            <>
-                                                <Loader2 className="w-5 h-5 animate-spin" />
-                                                <span>{submitStage || 'Processing'}</span>
-                                            </>
-                                        ) : (
-                                            <>
-                                                Continue
-                                                <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                                            </>
-                                        )}
-                                    </button>
-                                </form>
+                                        <button
+                                            type="submit"
+                                            disabled={isSubmitting || !isValidPhone(phone)}
+                                            className="w-full group py-5 bg-[#FFD700] hover:bg-[#F4B000] disabled:bg-slate-100 dark:disabled:bg-slate-800 text-slate-900 disabled:text-slate-400 font-black text-xs uppercase tracking-[0.12em] rounded-2xl transition-all shadow-[0_4px_20px_rgba(255,215,0,0.3)] hover:shadow-[0_6px_28px_rgba(255,215,0,0.45)] disabled:shadow-none flex items-center justify-center gap-3 active:scale-[0.98] hover:-translate-y-0.5"
+                                        >
+                                            {isSubmitting ? (
+                                                <>
+                                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                                    <span>{submitStage || 'Processing'}</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    Continue
+                                                    <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                                                </>
+                                            )}
+                                        </button>
+                                    </form>
+                                )
                             ) : step === 'PHONE_CONFIRM' ? (
                                 <form
                                     onSubmit={handlePhoneConfirmSubmit}
