@@ -483,8 +483,10 @@ const getSafeAccentColor = (hex: string | undefined | null, fallback = '#F4B000'
 export default function DossierClient({ quote, wallet, ledger }: DossierClientProps) {
     const pricing = quote.pricing || {};
     const accessories = pricing.accessories || [];
+    const allAccessories = pricing.allAccessories || accessories || [];
     const services = pricing.services || [];
     const insuranceAddons = pricing.insuranceAddons || [];
+    const allInsuranceAddons = pricing.allInsuranceAddons || insuranceAddons || [];
     const insuranceRequired = pricing.insuranceRequired || [];
     const warrantyItems = pricing.warrantyItems || [];
     const rtoOptions = pricing.rtoOptions || [];
@@ -1341,37 +1343,6 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                                     </div>
                                 </div>
                             </div>
-
-                            {isLoanQuote && (
-                                <div className="p-6 bg-indigo-50 rounded-[2rem] border border-indigo-100 flex items-center justify-between">
-                                    <div>
-                                        <div className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">
-                                            Estimated Finance Summary
-                                        </div>
-                                        <div className="text-sm font-black text-slate-900">
-                                            {quote.finance.bank || 'Standard Finance Scheme'}
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-6">
-                                        <div className="text-right">
-                                            <div className="text-[8px] font-bold text-slate-400 uppercase">
-                                                Monthly EMI
-                                            </div>
-                                            <div className="text-lg font-black text-slate-900">
-                                                ₹{quote.finance.emi?.toLocaleString() || '0'}/mo
-                                            </div>
-                                        </div>
-                                        <div className="text-right">
-                                            <div className="text-[8px] font-bold text-slate-400 uppercase">
-                                                Down Payment
-                                            </div>
-                                            <div className="text-lg font-black text-slate-900">
-                                                ₹{quote.finance.downPayment?.toLocaleString() || '0'}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
                         </div>
                     </div>{' '}
                     <div className="a4-footer">
@@ -1421,9 +1392,25 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                     </div>
                     <div className="a4-body">
                         {(() => {
-                            const downPayment = toNumber(quote.finance?.downPayment, 0);
+                            if (!isLoanQuote || !quote.finance) {
+                                return (
+                                    <div className="h-full flex items-center justify-center border-4 border-dashed border-slate-100 rounded-[3rem]">
+                                        <div className="text-center">
+                                            <CreditCard size={48} className="mx-auto text-slate-200 mb-4" />
+                                            <div className="text-sm font-black text-slate-400 uppercase tracking-widest">
+                                                Finance Not Selected
+                                            </div>
+                                            <div className="text-[10px] text-slate-300 uppercase tracking-widest mt-2">
+                                                Select a finance plan on PDP to view scheme comparison
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            }
+
+                            const downPayment = toNumber(quote.finance.downPayment, 0);
                             const loanAmount = Math.max(0, offerOnRoad - downPayment);
-                            const selectedTenure = Number(quote.finance?.tenureMonths || quote.finance?.tenure || 36);
+                            const selectedTenure = Number(quote.finance.tenureMonths || quote.finance.tenure || 36);
                             const TENURES = Object.keys(EMI_FACTORS)
                                 .map(Number)
                                 .sort((a, b) => a - b);
@@ -1431,9 +1418,40 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                             const selectedEmi = Math.round(loanAmount * selectedFactor);
                             const selectedTotal = selectedEmi * selectedTenure;
                             const selectedInterest = Math.max(0, selectedTotal - loanAmount);
+
                             return (
                                 <div className="space-y-4">
-                                    {/* Selected Plan — accent hero card matching DossierGroup style */}
+                                    <div className="p-6 bg-indigo-50 rounded-[2rem] border border-indigo-100 flex items-center justify-between">
+                                        <div>
+                                            <div className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">
+                                                Estimated Finance Summary
+                                            </div>
+                                            <div className="text-sm font-black text-slate-900">
+                                                {quote.finance.bankName ||
+                                                    quote.finance.bank ||
+                                                    'Standard Finance Scheme'}
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-6">
+                                            <div className="text-right">
+                                                <div className="text-[8px] font-bold text-slate-400 uppercase">
+                                                    Monthly EMI
+                                                </div>
+                                                <div className="text-lg font-black text-slate-900">
+                                                    {formatCurrency(toNumber(quote.finance.emi, selectedEmi))}/mo
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <div className="text-[8px] font-bold text-slate-400 uppercase">
+                                                    Down Payment
+                                                </div>
+                                                <div className="text-lg font-black text-slate-900">
+                                                    {formatCurrency(downPayment)}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     <div
                                         className="rounded-2xl border overflow-hidden"
                                         style={{
@@ -1493,14 +1511,12 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                                         </div>
                                     </div>
 
-                                    {/* All Tenure Options — using DossierGroup */}
                                     <DossierGroup
                                         quote={quote}
                                         title="All Tenure Options"
                                         icon={TrendingUp}
                                         iconColor="#6366f1"
                                     >
-                                        {/* Column Headers */}
                                         <div className="flex items-center justify-between py-2 px-6 border-b-2 border-zinc-200 mb-1">
                                             <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 w-[70px]">
                                                 EMI
@@ -1570,7 +1586,6 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                                         })}
                                     </DossierGroup>
 
-                                    {/* Footnote */}
                                     <div className="px-6 py-2">
                                         <div className="text-[8px] text-slate-300 tracking-widest italic">
                                             * Indicative EMI based on standard flat-rate factors. Actual EMI may vary
@@ -1886,7 +1901,7 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                     <div className="a4-body">
                         <div className="space-y-2">
                             {(() => {
-                                const allItems = [...accessories];
+                                const allItems = [...allAccessories];
                                 if (allItems.length === 0) return null;
 
                                 // Extract product group key from name
@@ -1924,10 +1939,14 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
 
                                 // Sort: groups with selected items first
                                 const sortedGroups = [...groups.entries()].sort(([, aItems], [, bItems]) => {
-                                    const aHasSelected = aItems.some((i: any) => selectedAccessoryIds.has(String(i.id)))
+                                    const aHasSelected = aItems.some(
+                                        (i: any) => selectedAccessoryIds.has(String(i.id)) || Boolean(i.selected)
+                                    )
                                         ? 0
                                         : 1;
-                                    const bHasSelected = bItems.some((i: any) => selectedAccessoryIds.has(String(i.id)))
+                                    const bHasSelected = bItems.some(
+                                        (i: any) => selectedAccessoryIds.has(String(i.id)) || Boolean(i.selected)
+                                    )
                                         ? 0
                                         : 1;
                                     return aHasSelected - bHasSelected;
@@ -1938,8 +1957,9 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                                 return (
                                     <div className="space-y-4 p-2">
                                         {sortedGroups.map(([groupKey, items]) => {
-                                            const hasSelected = items.some((i: any) =>
-                                                selectedAccessoryIds.has(String(i.id))
+                                            const hasSelected = items.some(
+                                                (i: any) =>
+                                                    selectedAccessoryIds.has(String(i.id)) || Boolean(i.selected)
                                             );
                                             return (
                                                 <div
@@ -1960,9 +1980,9 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                                                     {/* Variants */}
                                                     <div className="divide-y divide-slate-50">
                                                         {items.map((item: any, idx: number) => {
-                                                            const isSelected = selectedAccessoryIds.has(
-                                                                String(item.id)
-                                                            );
+                                                            const isSelected =
+                                                                selectedAccessoryIds.has(String(item.id)) ||
+                                                                Boolean(item.selected);
                                                             const isSwap =
                                                                 !isSelected && hasSelected && items.length > 1;
                                                             return (
@@ -2118,8 +2138,8 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
 
                             <DossierGroup quote={quote} title="Add-ons" icon={Sparkles} iconColor="#f59e0b">
                                 <div className="space-y-2 p-2">
-                                    {insuranceAddons.length > 0 ? (
-                                        insuranceAddons.map((addon: any, idx: number) => (
+                                    {allInsuranceAddons.length > 0 ? (
+                                        allInsuranceAddons.map((addon: any, idx: number) => (
                                             <OptionRow
                                                 key={addon.id || idx}
                                                 label={addon.name || addon.label}
