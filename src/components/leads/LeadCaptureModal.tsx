@@ -540,7 +540,8 @@ export function LeadCaptureModal({
                     {/* Close Button */}
                     <button
                         onClick={onClose}
-                        className="absolute top-6 right-6 z-10 p-2.5 rounded-2xl bg-slate-100/80 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 transition-all active:scale-95 border border-slate-200/50"
+                        className="absolute top-6 right-6 z-30 pointer-events-auto p-2.5 rounded-2xl bg-slate-100/80 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 transition-all active:scale-95 border border-slate-200/50"
+                        aria-label="Close quote modal"
                     >
                         <X className="w-4 h-4 text-slate-500" />
                     </button>
