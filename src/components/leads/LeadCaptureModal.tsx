@@ -183,6 +183,39 @@ export function LeadCaptureModal({
         hydratePhone();
     }, [isOpen, autoPhoneLoaded, hasResolvedRole, isStaff]);
 
+    const tryShareWithFallback = useCallback(
+        async (
+            channel: 'wa' | 'sms',
+            primaryRef: string | null,
+            displayRef: string | null
+        ): Promise<{ success: boolean; error?: string }> => {
+            const refs = Array.from(new Set([primaryRef, displayRef].map(v => String(v || '').trim()).filter(Boolean)));
+            if (refs.length === 0) {
+                return { success: false, error: 'Missing quote reference for sharing' };
+            }
+
+            const actions = await getCrmActions();
+            const sender = channel === 'wa' ? actions.shareQuoteViaWhatsApp : actions.shareQuoteViaSms;
+
+            let lastError = '';
+            for (const ref of refs) {
+                const result = await sender(ref);
+                if (result.success) return result;
+
+                const errMsg = String(result.error || '').trim();
+                lastError = errMsg || lastError;
+
+                // Retry on alternate reference only for not-found-like misses.
+                if (!/quote not found/i.test(errMsg)) {
+                    return result;
+                }
+            }
+
+            return { success: false, error: lastError || 'Share failed' };
+        },
+        []
+    );
+
     if (!isOpen) return null;
 
     const toUiError = (err: unknown, fallback: string) =>
@@ -547,8 +580,11 @@ export function LeadCaptureModal({
                                             onClick={async () => {
                                                 try {
                                                     setShareStatus('sending-wa');
-                                                    const { shareQuoteViaWhatsApp } = await getCrmActions();
-                                                    const result = await shareQuoteViaWhatsApp(quoteUuid);
+                                                    const result = await tryShareWithFallback(
+                                                        'wa',
+                                                        quoteUuid,
+                                                        quoteId || null
+                                                    );
                                                     if (result.success) {
                                                         setShareStatus('sent');
                                                         setSmsFeedback('Shared via WhatsApp ✅');
@@ -581,8 +617,11 @@ export function LeadCaptureModal({
                                             onClick={async () => {
                                                 try {
                                                     setShareStatus('sending-sms');
-                                                    const { shareQuoteViaSms } = await getCrmActions();
-                                                    const result = await shareQuoteViaSms(quoteUuid);
+                                                    const result = await tryShareWithFallback(
+                                                        'sms',
+                                                        quoteUuid,
+                                                        quoteId || null
+                                                    );
                                                     if (result.success) {
                                                         setShareStatus('sent');
                                                         setSmsFeedback('Shared via SMS ✅');
