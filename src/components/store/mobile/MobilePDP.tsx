@@ -55,6 +55,7 @@ export interface MobilePDPProps {
     otherOffers?: any[];
     walletCoins?: number | null;
     showOClubPrompt?: boolean;
+    isLoggedIn?: boolean;
     isGated?: boolean;
     forceMobileLayout?: boolean;
     // Pincode-first: LOGIN_REQUIRED removed.
@@ -88,6 +89,7 @@ export const MobilePDP = ({
     otherOffers = [],
     walletCoins = null,
     showOClubPrompt = false,
+    isLoggedIn = false,
     isGated = false,
     gateReason = 'LEGACY_MODE',
     dealerFetchState = 'IDLE',
@@ -501,6 +503,7 @@ export const MobilePDP = ({
                 totalSurge={data.totalSurge ?? 0}
                 coinPricing={coinPricing}
                 showOClubPrompt={showOClubPrompt ?? false}
+                isLoggedIn={isLoggedIn}
                 footerEmi={commandBarState.footerEmi}
                 emiTenure={emiTenure}
                 handleShareQuote={handleShareQuote}

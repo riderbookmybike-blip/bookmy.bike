@@ -125,6 +125,7 @@ interface DesktopPDPProps {
     otherOffers?: any[];
     walletCoins?: number | null;
     showOClubPrompt?: boolean;
+    isLoggedIn?: boolean;
     isGated?: boolean;
     forceMobileLayout?: boolean;
     // Pincode-first: LOGIN_REQUIRED removed; gate is LOCATION_REQUIRED only.
@@ -179,6 +180,7 @@ export function DesktopPDP({
     otherOffers = [],
     walletCoins = null,
     showOClubPrompt = false,
+    isLoggedIn = false,
     isGated = false,
     forceMobileLayout = false,
     gateReason = 'LEGACY_MODE',
@@ -1254,6 +1256,7 @@ export function DesktopPDP({
                 totalSurge={totalSurge}
                 coinPricing={coinPricing}
                 showOClubPrompt={showOClubPrompt}
+                isLoggedIn={isLoggedIn}
                 footerEmi={footerEmi}
                 emiTenure={emiTenure}
                 handleShareQuote={handleShareQuote}

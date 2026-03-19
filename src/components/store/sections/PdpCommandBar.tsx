@@ -34,11 +34,14 @@ import {
     Edit2,
     Share2,
     Download,
+    Lock,
 } from 'lucide-react';
 import { Logo } from '@/components/brand/Logo';
 import { OCircleLogo } from '@/components/common/OCircleLogo';
 import { coinsNeededForPrice } from '@/lib/oclub/coin';
 import { buildCommandBarState } from '../Personalize/pdpComputations';
+
+const LOGIN_NEXT_STORAGE_KEY = 'bkmb_login_next';
 
 export interface PdpCommandBarProps {
     layout: 'desktop' | 'mobile';
@@ -78,6 +81,7 @@ export interface PdpCommandBarProps {
     onEditLocation?: () => void;
     deliveryByLabel?: string | null;
     studioIdLabel?: string | null;
+    isLoggedIn?: boolean;
 }
 
 // ── WhatsApp Phone Modal ─────────────────────────────────────────────────────
@@ -256,6 +260,7 @@ interface DesktopCommercialClusterProps {
 interface DesktopActionClusterProps {
     primaryLabel: string;
     isDisabled: boolean;
+    isLoggedIn: boolean;
     primaryAction: () => void;
     handleShareQuote?: () => void;
     handleDownloadQuote?: () => void;
@@ -460,10 +465,13 @@ function DesktopFinalOutcome({ displayOnRoad, bCoinEquivalent }: DesktopFinalOut
 function DesktopActionCluster({
     primaryLabel,
     isDisabled,
+    isLoggedIn,
     primaryAction,
     handleShareQuote,
     handleDownloadQuote,
 }: DesktopActionClusterProps) {
+    const lockButtonClasses = !isLoggedIn ? 'border-amber-300/50 bg-amber-400/10 text-amber-200' : '';
+
     return (
         <div className="h-full flex items-center justify-end w-full gap-2">
             {/* Download Quote Button */}
@@ -471,10 +479,11 @@ function DesktopActionCluster({
                 onClick={handleDownloadQuote || (() => console.log('Download clicked'))}
                 whileHover={{ scale: 1.05, backgroundColor: '#1f1f1f' }}
                 whileTap={{ scale: 0.95 }}
-                className="w-[50px] lg:w-[60px] h-full rounded-[18px] bg-[#0f0f0f] border border-[#2a2a2a] flex items-center justify-center text-white/70 hover:text-white transition-colors shrink-0 shadow-[0_4px_12px_rgba(0,0,0,0.5)]"
-                title="Download Quote"
+                className={`relative w-[50px] lg:w-[60px] h-full rounded-[18px] bg-[#0f0f0f] border border-[#2a2a2a] flex items-center justify-center text-white/70 hover:text-white transition-colors shrink-0 shadow-[0_4px_12px_rgba(0,0,0,0.5)] ${lockButtonClasses}`}
+                title={isLoggedIn ? 'Download Quote' : 'Login required to download quote'}
             >
                 <Download size={18} strokeWidth={2.5} />
+                {!isLoggedIn && <Lock size={12} className="absolute -top-1.5 -right-1.5 text-amber-300" />}
             </motion.button>
 
             {/* Share Quote Button */}
@@ -482,10 +491,11 @@ function DesktopActionCluster({
                 onClick={handleShareQuote}
                 whileHover={{ scale: 1.05, backgroundColor: '#1f1f1f' }}
                 whileTap={{ scale: 0.95 }}
-                className="w-[50px] lg:w-[60px] h-full rounded-[18px] bg-[#0f0f0f] border border-[#2a2a2a] flex items-center justify-center text-white/70 hover:text-white transition-colors shrink-0 shadow-[0_4px_12px_rgba(0,0,0,0.5)]"
-                title="Share Quote"
+                className={`relative w-[50px] lg:w-[60px] h-full rounded-[18px] bg-[#0f0f0f] border border-[#2a2a2a] flex items-center justify-center text-white/70 hover:text-white transition-colors shrink-0 shadow-[0_4px_12px_rgba(0,0,0,0.5)] ${lockButtonClasses}`}
+                title={isLoggedIn ? 'Share Quote' : 'Login required to share quote'}
             >
                 <Share2 size={18} strokeWidth={2.5} />
+                {!isLoggedIn && <Lock size={12} className="absolute -top-1.5 -right-1.5 text-amber-300" />}
             </motion.button>
 
             {/* Main Action Button (Save) */}
@@ -517,7 +527,45 @@ function DesktopActionCluster({
                 )}
 
                 <span className="relative z-10">{primaryLabel}</span>
+                {!isLoggedIn && !isDisabled && <Lock size={12} className="relative z-10" />}
             </motion.button>
+        </div>
+    );
+}
+
+interface AuthGateModalProps {
+    onClose: () => void;
+    onLogin: () => void;
+}
+
+function AuthGateModal({ onClose, onLogin }: AuthGateModalProps) {
+    return (
+        <div className="fixed inset-0 z-[210] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <div className="w-full max-w-sm rounded-2xl border border-white/15 bg-[#111319] p-5 text-white shadow-2xl">
+                <div className="flex items-center justify-between">
+                    <p className="text-sm font-black uppercase tracking-[0.14em] text-amber-300">Login Required</p>
+                    <button onClick={onClose} className="text-white/60 hover:text-white" aria-label="Close">
+                        <X size={16} />
+                    </button>
+                </div>
+                <p className="mt-3 text-sm text-white/80">
+                    Quote save, share aur download continue karne ke liye pehle login karein.
+                </p>
+                <div className="mt-5 flex items-center gap-2">
+                    <button
+                        onClick={onClose}
+                        className="flex-1 h-10 rounded-xl border border-white/20 text-xs font-black uppercase tracking-[0.12em] text-white/80"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={onLogin}
+                        className="flex-1 h-10 rounded-xl bg-[#F4B000] text-xs font-black uppercase tracking-[0.12em] text-[#0a0a0a]"
+                    >
+                        Login
+                    </button>
+                </div>
+            </div>
         </div>
     );
 }
@@ -718,6 +766,7 @@ export function PdpCommandBar({
     onEditLocation,
     deliveryByLabel,
     studioIdLabel,
+    isLoggedIn = false,
 }: PdpCommandBarProps) {
     const isDesktop = layout === 'desktop';
 
@@ -745,6 +794,26 @@ export function PdpCommandBar({
 
     // ── WhatsApp popup state (desktop only) ──
     const [showWaModal, setShowWaModal] = useState(false);
+    const [showAuthGateModal, setShowAuthGateModal] = useState(false);
+
+    const redirectToLogin = () => {
+        if (typeof window === 'undefined') return;
+        const next = `${window.location.pathname}${window.location.search || ''}`;
+        localStorage.setItem(LOGIN_NEXT_STORAGE_KEY, next);
+        window.location.href = `/login?next=${encodeURIComponent(next)}`;
+    };
+
+    const runWithAuthGate = (action?: () => void) => {
+        if (!isLoggedIn) {
+            setShowAuthGateModal(true);
+            return;
+        }
+        action?.();
+    };
+
+    const authAwareShare = () => runWithAuthGate(handleShareQuote);
+    const authAwareDownload = () => runWithAuthGate(handleDownloadQuote || (() => console.log('Download clicked')));
+    const authAwarePrimaryAction = () => runWithAuthGate(primaryAction);
 
     return (
         <div
@@ -819,9 +888,10 @@ export function PdpCommandBar({
                                     <DesktopActionCluster
                                         primaryLabel={primaryLabel}
                                         isDisabled={isDisabled}
-                                        primaryAction={primaryAction}
-                                        handleShareQuote={handleShareQuote}
-                                        handleDownloadQuote={handleDownloadQuote}
+                                        isLoggedIn={isLoggedIn}
+                                        primaryAction={authAwarePrimaryAction}
+                                        handleShareQuote={authAwareShare}
+                                        handleDownloadQuote={authAwareDownload}
                                     />
                                 </div>
                             </div>
@@ -848,7 +918,7 @@ export function PdpCommandBar({
                             </div>
 
                             <button
-                                onClick={primaryAction}
+                                onClick={authAwarePrimaryAction}
                                 disabled={isDisabled}
                                 className={`h-10 px-4.5 font-black text-[11px] uppercase tracking-[0.12em] rounded-full shadow-xl flex items-center gap-2 transition-all group shrink-0
                                     ${
@@ -858,6 +928,7 @@ export function PdpCommandBar({
                                     }`}
                             >
                                 {primaryLabel}
+                                {!isLoggedIn && !isDisabled && <Lock size={12} />}
                                 <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
                             </button>
                         </div>
@@ -874,6 +945,9 @@ export function PdpCommandBar({
                         setShowWaModal(false);
                     }}
                 />
+            )}
+            {showAuthGateModal && (
+                <AuthGateModal onClose={() => setShowAuthGateModal(false)} onLogin={redirectToLogin} />
             )}
         </div>
     );

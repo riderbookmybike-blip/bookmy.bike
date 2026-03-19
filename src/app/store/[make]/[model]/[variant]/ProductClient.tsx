@@ -1313,6 +1313,7 @@ export default function ProductClient({
         serverPricing, // SSPP v1: Server-calculated pricing breakdown
         walletCoins: !walletLoading ? (isLoggedIn ? availableCoins : OCLUB_SIGNUP_BONUS) : null,
         showOClubPrompt: !walletLoading && !isLoggedIn,
+        isLoggedIn: Boolean(isLoggedIn),
         isGated,
         forceMobileLayout,
         gateReason: pdpGateReason,
