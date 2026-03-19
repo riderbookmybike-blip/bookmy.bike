@@ -60,7 +60,12 @@ describe('Display ID Generator', () => {
 
     test('rejects invalid checksum', () => {
         const id = generateDisplayId();
-        const tampered = id.substring(0, 8) + 'X'; // Change checksum
+        // Append an alphabet char that won't match the real checksum:
+        // For each possible char, find one that differs from id[8]
+        const ALPHABET = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
+        const realChecksum = id[8];
+        const fakeChecksum = ALPHABET.split('').find(c => c !== realChecksum)!;
+        const tampered = id.substring(0, 8) + fakeChecksum;
         expect(validateDisplayId(tampered)).toBe(false);
     });
 
