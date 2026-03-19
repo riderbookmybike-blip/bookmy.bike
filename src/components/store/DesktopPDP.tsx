@@ -144,6 +144,8 @@ interface DesktopPDPProps {
         pincode?: string;
         taluka?: string;
     };
+    /** IDLE = not saved; SAVED = quote saved, CTA becomes Download Dossier */
+    quoteState?: 'IDLE' | 'SAVED';
 }
 
 // FullLayoutDebugger extracted to ./Personalize/FullLayoutDebugger.tsx
@@ -192,6 +194,7 @@ export function DesktopPDP({
     cachedPincode,
     onWaSend,
     serviceability,
+    quoteState = 'IDLE',
 }: DesktopPDPProps) {
     const params = useSearchParams();
     const { language } = useI18n();
@@ -1280,6 +1283,7 @@ export function DesktopPDP({
                 deliveryByLabel={deliveryByLabel}
                 studioIdLabel={studioIdLabel}
                 handleDownloadQuote={handleDownloadQuote}
+                quoteState={quoteState}
             />
         </div>
     );

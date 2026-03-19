@@ -1324,6 +1324,7 @@ export default function ProductClient({
         onWaSend: handleWaSend,
         cachedPincode: cachedLocationHint?.pincode || undefined,
         serviceability: derivedServiceability,
+        quoteState: (savedQuoteDisplayId || leadMeta?.displayId ? 'SAVED' : 'IDLE') as 'IDLE' | 'SAVED',
     };
     const leadDealerMismatch = Boolean(
         leadMeta?.leadDealerId && sessionDealerId && leadMeta.leadDealerId !== sessionDealerId
