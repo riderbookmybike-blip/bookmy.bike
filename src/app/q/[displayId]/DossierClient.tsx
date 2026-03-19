@@ -548,6 +548,12 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
     const warrantyHasSelection = selectedWarrantyIds.size > 0;
     const selectedRtoType = pricing.rtoType || pricing.rto_type || 'STATE';
     const warrantyOptions = warrantyItems;
+    const financeModeNormalized = String(quote.financeMode || quote.finance?.mode || '').toUpperCase();
+    const hasLoanTerms =
+        toNumber(quote.finance?.loanAmount, 0) > 0 ||
+        toNumber(quote.finance?.emi, 0) > 0 ||
+        Number(quote.finance?.tenureMonths || quote.finance?.tenure || 0) > 0;
+    const isLoanQuote = Boolean(quote.finance && (financeModeNormalized === 'LOAN' || hasLoanTerms));
 
     // Resolve dealership location (district, state) from available sources
     const dealerLocation = {
@@ -1336,7 +1342,7 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                                 </div>
                             </div>
 
-                            {quote.financeMode === 'LOAN' && quote.finance && (
+                            {isLoanQuote && (
                                 <div className="p-6 bg-indigo-50 rounded-[2rem] border border-indigo-100 flex items-center justify-between">
                                     <div>
                                         <div className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">
@@ -1800,13 +1806,14 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                         </div>
                     </div>
                     <div className="a4-body overflow-hidden">
-                        {quote.finance && quote.financeMode === 'LOAN' ? (
+                        {isLoanQuote ? (
                             <AmortizationPanel
                                 initialFinance={{
                                     bank: { name: quote.finance.bankName || quote.finance.bank || '' },
                                     scheme: {
                                         interestRate: quote.finance.roi ? quote.finance.roi / 100 : 0,
-                                        interestType: pricing.financeInterestType || 'REDUCING',
+                                        interestType:
+                                            quote.finance?.interestType || pricing.financeInterestType || 'REDUCING',
                                     },
                                 }}
                                 displayOnRoad={offerOnRoad}
@@ -1817,7 +1824,7 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                                 )}
                                 totalOnRoad={offerOnRoad}
                                 emiTenure={Number(quote.finance.tenureMonths || quote.finance.tenure || 36)}
-                                disbursementDate={null}
+                                disbursementDate={quote.created_at || null}
                             />
                         ) : (
                             <div className="h-full flex items-center justify-center border-4 border-dashed border-slate-100 rounded-[3rem]">
