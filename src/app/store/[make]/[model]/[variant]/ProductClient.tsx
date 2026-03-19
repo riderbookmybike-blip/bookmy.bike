@@ -1435,7 +1435,10 @@ export default function ProductClient({
                 displayOnRoadEstimate={modalDisplayOnRoadEstimate}
                 source={leadIdFromUrl ? 'LEADS' : 'STORE_PDP'}
                 forceStaffMode={isTeamMember}
-                onQuoteSaved={displayId => setSavedQuoteDisplayId(displayId)}
+                onQuoteSaved={displayId => {
+                    setSavedQuoteDisplayId(displayId);
+                    setQuotePhase('SAVED');
+                }}
             />
 
             <EmailUpdateModal
