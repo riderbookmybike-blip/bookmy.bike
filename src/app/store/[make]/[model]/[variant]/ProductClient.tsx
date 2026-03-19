@@ -17,7 +17,7 @@ import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { useAnalytics } from '@/components/analytics/AnalyticsProvider';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { isHandheldPhoneUserAgent, isTvUserAgent } from '@/lib/utils/deviceUserAgent';
-import { computeOClubPricing, OCLUB_SIGNUP_BONUS } from '@/lib/oclub/coin';
+import { computeOClubPricing, OCLUB_SIGNUP_BONUS, coinsNeededForPrice } from '@/lib/oclub/coin';
 
 import { InsuranceRule } from '@/types/insurance';
 
@@ -904,6 +904,9 @@ export default function ProductClient({
                 insurance_addons_surge: data.insuranceAddonsSurge || 0,
                 total_savings: data.totalSavings || 0,
                 total_surge: data.totalSurge || 0,
+                coin_effective_onroad: modalDisplayOnRoadEstimate || totalOnRoad,
+                coin_discount: Math.max(0, Number(totalOnRoad || 0) - Number(modalDisplayOnRoadEstimate || 0)),
+                coin_used: walletCoinsForDisplay > 0 ? coinsNeededForPrice(Number(modalDisplayOnRoadEstimate || 0)) : 0,
                 accessories: selectedAccessories,
                 accessory_items: selectedAccessoryItems,
                 services: selectedServices,

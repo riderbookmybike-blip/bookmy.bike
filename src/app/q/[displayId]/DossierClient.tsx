@@ -481,17 +481,10 @@ const getSafeAccentColor = (hex: string | undefined | null, fallback = '#F4B000'
 
 export default function DossierClient({ quote, wallet, ledger }: DossierClientProps) {
     const pricing = quote.pricing || {};
-    const pdpOptions = quote.pdpOptions || {};
     const accessories = pricing.accessories || [];
     const services = pricing.services || [];
     const insuranceAddons = pricing.insuranceAddons || [];
     const insuranceRequired = pricing.insuranceRequired || [];
-    const optionAccessories = pdpOptions.accessories || [];
-    const optionServices = pdpOptions.services || [];
-    const optionInsuranceAddons = pdpOptions.insuranceAddons || [];
-    const optionInsuranceRequired = pdpOptions.insuranceRequiredItems || [];
-    const optionRtoList = pdpOptions.rtoOptions || pricing.rtoOptions || [];
-    const optionWarrantyItems = pdpOptions.warrantyItems || quote.vehicle?.specs?.warranty || [];
     const warrantyItems = pricing.warrantyItems || [];
     const rtoOptions = pricing.rtoOptions || [];
     const shareUrl = `https://bookmy.bike/dossier/${formatDisplayId(quote.display_id)}`;
@@ -534,7 +527,7 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
         pricing.totalSavings !== undefined && pricing.totalSavings !== null
             ? toNumber(pricing.totalSavings, 0)
             : savingsFromDeltas;
-    const offerOnRoad = toNumber(pricing.onRoadTotal ?? pricing.finalTotal, 0);
+    const offerOnRoad = toNumber(pricing.coinEffectiveOnRoad ?? pricing.onRoadTotal ?? pricing.finalTotal, 0);
     const totalSurge =
         pricing.totalSurge !== undefined && pricing.totalSurge !== null ? toNumber(pricing.totalSurge, 0) : 0;
     const baseOnRoad = offerOnRoad + totalSavings;
@@ -553,7 +546,7 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
     const selectedWarrantyIds = new Set(extractIds(warrantyItems));
     const warrantyHasSelection = selectedWarrantyIds.size > 0;
     const selectedRtoType = pricing.rtoType || pricing.rto_type || 'STATE';
-    const warrantyOptions = optionWarrantyItems.length > 0 ? optionWarrantyItems : warrantyItems;
+    const warrantyOptions = warrantyItems;
 
     // Resolve dealership location (district, state) from available sources
     const dealerLocation = {
@@ -1808,7 +1801,7 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                     <div className="a4-body">
                         <div className="space-y-2">
                             {(() => {
-                                const allItems = [...(optionAccessories.length > 0 ? optionAccessories : accessories)];
+                                const allItems = [...accessories];
                                 if (allItems.length === 0) return null;
 
                                 // Extract product group key from name
@@ -2017,12 +2010,8 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                                 total={pricing.insuranceTotal}
                             >
                                 <div className="space-y-2 p-2">
-                                    {(optionInsuranceRequired.length > 0 ? optionInsuranceRequired : insuranceRequired)
-                                        .length > 0 ? (
-                                        (optionInsuranceRequired.length > 0
-                                            ? optionInsuranceRequired
-                                            : insuranceRequired
-                                        ).map((item: any, idx: number) => (
+                                    {insuranceRequired.length > 0 ? (
+                                        insuranceRequired.map((item: any, idx: number) => (
                                             <OptionRow
                                                 key={item.id || idx}
                                                 label={item.name || item.label}
@@ -2044,12 +2033,8 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
 
                             <DossierGroup quote={quote} title="Add-ons" icon={Sparkles} iconColor="#f59e0b">
                                 <div className="space-y-2 p-2">
-                                    {(optionInsuranceAddons.length > 0 ? optionInsuranceAddons : insuranceAddons)
-                                        .length > 0 ? (
-                                        (optionInsuranceAddons.length > 0
-                                            ? optionInsuranceAddons
-                                            : insuranceAddons
-                                        ).map((addon: any, idx: number) => (
+                                    {insuranceAddons.length > 0 ? (
+                                        insuranceAddons.map((addon: any, idx: number) => (
                                             <OptionRow
                                                 key={addon.id || idx}
                                                 label={addon.name || addon.label}
@@ -2117,7 +2102,7 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                     </div>
                     <div className="a4-body">
                         {(() => {
-                            const allItems = optionRtoList.length > 0 ? optionRtoList : rtoOptions;
+                            const allItems = rtoOptions;
                             if (allItems.length === 0) {
                                 return (
                                     <div className="h-full flex items-center justify-center border-4 border-dashed border-slate-100 rounded-[3rem]">
@@ -2323,8 +2308,8 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                             <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">
                                 Service Packages
                             </div>
-                            {(optionServices.length > 0 ? optionServices : services).length > 0 ? (
-                                (optionServices.length > 0 ? optionServices : services).map((svc: any, idx: number) => (
+                            {services.length > 0 ? (
+                                services.map((svc: any, idx: number) => (
                                     <OptionRow
                                         key={svc.id || idx}
                                         label={svc.name}

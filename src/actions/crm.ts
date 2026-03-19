@@ -5210,6 +5210,7 @@ export async function getQuoteById(
 
     const commercials: any = q.commercials || {};
     const pricingSnapshot: any = commercials.pricing_snapshot || {};
+    const shouldHydrateFromCatalog = !pricingSnapshot || Object.keys(pricingSnapshot).length === 0;
     const dealerFromPricing = pricingSnapshot?.dealer || commercials?.dealer || null;
 
     // Fetch high-fidelity pricing from canonical state pricing table
@@ -5219,7 +5220,7 @@ export async function getQuoteById(
     const stateCode = commercials.location?.state_code || pricingSnapshot?.location?.state_code;
     const district = commercials.location?.district || pricingSnapshot?.location?.district;
 
-    if (colorId && stateCode) {
+    if (shouldHydrateFromCatalog && colorId && stateCode) {
         const { data: priceRow } = await pricingClient
             .from('cat_price_state_mh')
             .select(
@@ -7103,6 +7104,7 @@ export async function getQuoteByDisplayId(
     // Map to a unified format for the dossier
     const commercials: any = (quote.commercials as any) || {};
     const pricingSnapshot: any = commercials.pricing_snapshot || {};
+    const shouldHydrateFromCatalog = !pricingSnapshot || Object.keys(pricingSnapshot).length === 0;
 
     // Fetch high-fidelity pricing from canonical state pricing table
     let highFidelityPricing = null;
@@ -7115,7 +7117,7 @@ export async function getQuoteByDisplayId(
         commercials?.location?.state_code ||
         commercials?.location?.stateCode;
 
-    if (colorId && stateCode) {
+    if (shouldHydrateFromCatalog && colorId && stateCode) {
         const { data: priceRow } = await supabase
             .from('cat_price_state_mh')
             .select(
@@ -8101,6 +8103,9 @@ export async function getQuoteByDisplayId(
                 offersDelta: pricingSnapshot?.offers_delta || 0,
                 totalSavings: pricingSnapshot?.total_savings || 0,
                 totalSurge: pricingSnapshot?.total_surge || 0,
+                coinEffectiveOnRoad: pricingSnapshot?.coin_effective_onroad || null,
+                coinDiscount: pricingSnapshot?.coin_discount || 0,
+                coinUsed: pricingSnapshot?.coin_used || 0,
                 managerDiscount: quote.manager_discount || 0,
                 referralApplied: pricingSnapshot?.referral_applied || false,
                 referralBonus: pricingSnapshot?.referral_bonus || 0,
