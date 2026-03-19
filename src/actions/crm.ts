@@ -6776,49 +6776,112 @@ export async function sendQuoteToCustomer(quoteId: string): Promise<{ success: b
     return { success: true };
 }
 
+const QUOTE_UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+async function fetchQuoteForShare(identifier: string) {
+    const normalized = String(identifier || '').trim();
+    if (!normalized) return null;
+
+    const baseSelect = `
+        *, display_id, commercials,
+        customer:customer_id(full_name, primary_phone, whatsapp),
+        lead:lead_id(customer_name, customer_phone)
+    `;
+
+    if (QUOTE_UUID_REGEX.test(normalized)) {
+        const { data } = await adminClient
+            .from('crm_quotes')
+            .select(baseSelect)
+            .eq('is_deleted', false)
+            .eq('id', normalized)
+            .maybeSingle();
+        if (data) return data as any;
+    }
+
+    const displayCandidates = Array.from(
+        new Set(
+            [
+                normalized,
+                normalized.toUpperCase(),
+                normalized.replace(/[^A-Z0-9]/gi, '').toUpperCase(),
+                normalized
+                    .replace(/^QT[-_ ]?/i, '')
+                    .replace(/[^A-Z0-9]/gi, '')
+                    .toUpperCase(),
+            ].filter(Boolean)
+        )
+    );
+
+    if (displayCandidates.length > 0) {
+        const { data } = await adminClient
+            .from('crm_quotes')
+            .select(baseSelect)
+            .eq('is_deleted', false)
+            .in('display_id', displayCandidates)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+        if (data) return data as any;
+    }
+
+    return null;
+}
+
+async function canUserShareQuote(userId: string, quote: { tenant_id?: string | null; created_by?: string | null }) {
+    if (!userId) return false;
+    if (quote?.created_by && String(quote.created_by) === userId) return true;
+
+    const tenantId = String(quote?.tenant_id || '').trim();
+    if (!tenantId) return false;
+
+    const { data: membership } = await adminClient
+        .from('id_team')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('tenant_id', tenantId)
+        .eq('status', 'ACTIVE')
+        .maybeSingle();
+
+    return Boolean(membership?.id);
+}
+
 /**
  * Share a quote via SMS (explicit user action).
  * Sends the dossier link via MSG91 SMS Flow API.
  */
 export async function shareQuoteViaSms(quoteId: string): Promise<{ success: boolean; error?: string }> {
-    const supabase = await createClient();
-
     try {
-        const { data: quoteData } = await supabase
-            .from('crm_quotes')
-            .select(
-                `
-                *, display_id, commercials,
-                customer:customer_id(full_name, primary_phone, whatsapp),
-                lead:lead_id(customer_name, customer_phone)
-            `
-            )
-            .eq('id', quoteId)
-            .single();
+        const user = await getAuthUser();
+        if (!user?.id) return { success: false, error: 'Authentication required' };
 
+        const quoteData = await fetchQuoteForShare(quoteId);
         if (!quoteData) return { success: false, error: 'Quote not found' };
 
+        const authorized = await canUserShareQuote(user.id, quoteData as any);
+        if (!authorized) return { success: false, error: 'Not authorized to share this quote' };
+
         const q = quoteData as any;
+        const resolvedQuoteId = String(q.id || quoteId);
         const phone = q.customer?.primary_phone || q.customer?.whatsapp || q.lead?.customer_phone;
         const name = q.customer?.full_name || q.lead?.customer_name || 'Customer';
 
         if (!phone) return { success: false, error: 'No recipient phone number' };
 
-        const displayId = q.display_id ? formatDisplayId(q.display_id) : quoteId.slice(0, 8);
+        const displayId = q.display_id ? formatDisplayId(q.display_id) : resolvedQuoteId.slice(0, 8);
         const dossierUrl = `https://www.bookmy.bike/dossier/${q.display_id || displayId}`;
 
         const result = await sendStoreVisitSms({ phone, name, storeUrl: dossierUrl });
 
         if (result.success) {
-            await logQuoteEvent(quoteId, 'Quote SMS Sent', 'Team Member', 'team', {
+            await logQuoteEvent(resolvedQuoteId, 'Quote SMS Sent', 'Team Member', 'team', {
                 source: 'MSG91_SMS',
                 phone,
             });
             // Update status to SENT if still DRAFT
-            await supabase
+            await adminClient
                 .from('crm_quotes')
                 .update({ status: 'SENT', updated_at: new Date().toISOString() })
-                .eq('id', quoteId)
+                .eq('id', resolvedQuoteId)
                 .in('status', ['DRAFT']);
 
             revalidatePath('/app/[slug]/quotes');
@@ -6837,27 +6900,20 @@ export async function shareQuoteViaSms(quoteId: string): Promise<{ success: bool
  * Sends the bike_quote_summary template via MSG91 WhatsApp API.
  */
 export async function shareQuoteViaWhatsApp(quoteId: string): Promise<{ success: boolean; error?: string }> {
-    const supabase = await createClient();
-
     try {
+        const user = await getAuthUser();
+        if (!user?.id) return { success: false, error: 'Authentication required' };
+
         const { sendQuoteDossierWhatsApp } = await import('@/lib/sms/msg91-whatsapp');
 
-        const { data: quoteData } = await supabase
-            .from('crm_quotes')
-            .select(
-                `
-                *, display_id, on_road_price, ex_showroom_price, rto_amount, insurance_amount, accessories_amount,
-                manager_discount, commercials,
-                customer:customer_id(full_name, primary_phone, whatsapp),
-                lead:lead_id(customer_name, customer_phone)
-            `
-            )
-            .eq('id', quoteId)
-            .single();
-
+        const quoteData = await fetchQuoteForShare(quoteId);
         if (!quoteData) return { success: false, error: 'Quote not found' };
 
+        const authorized = await canUserShareQuote(user.id, quoteData as any);
+        if (!authorized) return { success: false, error: 'Not authorized to share this quote' };
+
         const q = quoteData as any;
+        const resolvedQuoteId = String(q.id || quoteId);
         const commercials = q.commercials || {};
         const pricingSnapshot = commercials.pricing_snapshot || {};
         const phone = q.customer?.primary_phone || q.customer?.whatsapp || q.lead?.customer_phone;
@@ -6865,7 +6921,7 @@ export async function shareQuoteViaWhatsApp(quoteId: string): Promise<{ success:
         if (!phone) return { success: false, error: 'No recipient phone number' };
 
         const fmt = (n: number) => `₹${Math.round(n || 0).toLocaleString('en-IN')}`;
-        const displayId = q.display_id ? formatDisplayId(q.display_id) : quoteId.slice(0, 8);
+        const displayId = q.display_id ? formatDisplayId(q.display_id) : resolvedQuoteId.slice(0, 8);
         const exShowroom = q.ex_showroom_price || commercials.base_price || 0;
         const rto = q.rto_amount || pricingSnapshot.rto_total || 0;
         const insurance = q.insurance_amount || pricingSnapshot.insurance_total || 0;
@@ -6900,16 +6956,16 @@ export async function shareQuoteViaWhatsApp(quoteId: string): Promise<{ success:
         });
 
         if (result.success) {
-            await logQuoteEvent(quoteId, 'Quote WhatsApp Sent', 'Team Member', 'team', {
+            await logQuoteEvent(resolvedQuoteId, 'Quote WhatsApp Sent', 'Team Member', 'team', {
                 source: 'MSG91_WHATSAPP',
                 template: 'bike_quote_summary',
                 phone,
             });
             // Update status to SENT if still DRAFT
-            await supabase
+            await adminClient
                 .from('crm_quotes')
                 .update({ status: 'SENT', updated_at: new Date().toISOString() })
-                .eq('id', quoteId)
+                .eq('id', resolvedQuoteId)
                 .in('status', ['DRAFT']);
 
             revalidatePath('/app/[slug]/quotes');
