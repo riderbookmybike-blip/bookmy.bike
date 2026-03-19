@@ -34,7 +34,7 @@ const Row = ({
     <div className={`flex justify-between items-start py-1 ${indent ? 'pl-4' : ''}`}>
         <div className="flex flex-col">
             <span
-                className={`text-[11px] font-semibold uppercase tracking-[0.09em] ${indent ? 'text-slate-400' : 'text-slate-500'}`}
+                className={`text-[11px] font-semibold tracking-[0.03em] ${indent ? 'text-slate-400' : 'text-slate-500'}`}
             >
                 {label}
             </span>
