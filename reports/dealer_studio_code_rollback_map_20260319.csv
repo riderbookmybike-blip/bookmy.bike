@@ -1,0 +1,12 @@
+tenant_id,slug,old_studio_id,new_studio_id,change_reason
+d684e712-aca6-45c7-8106-6399b771c915,aher,A42-HAH-13E,HON-05K-AHE,Format normalized; brand HONDA→HON; RTO MH05→05; taluka Kalyan→K; dealer slug aher→AHE
+9f744201-3ef6-43fa-8ab1-14991a1b2499,arni-tvs,T40-VAR-12N,TVS-48V-ARN,Primary branch set to Nalasopara West (401203); taluka Vasai→V; dealer slug arni-tvs→ARN
+a63882c6-fb5d-401c-b2ac-889589f834a2,autorace,T40-VAU-01T,TVS-47G-AUT,Primary branch at Goregaon West (400104); taluka Goregaon West→G; dealer slug autorace→AUT
+f004a6ea-d982-4f13-9a3f-c13bb694bb74,automiles-hero,H40-EAU-00T,HER-47M-AUT,Primary branch Malad East SHOWROOM (400097); taluka Malad East→M; dealer slug automiles-hero→AUT; tenant pincode updated 400064→400097
+d895676c-25ce-4ed8-84e2-d51c2bcb529e,dream-suzuki,S40-UDR-00E,SUZ-02M-DRE,Official site pincode 400058 (Andheri West); taluka Mumbai→M; dealer slug dream-suzuki→DRE; SHOWROOM pincode updated 400060→400058
+f0665ec1-1f45-42b8-9786-d4376092133f,udan,U40-DUD-10A,SUZ-48V-UDA,Critical fix: tenant pincode 401028→401208 (Vasai East); RTO now resolvable MH48; taluka Vasai→V; dealer slug udan→UDA
+fc60e78b-68fb-4cfd-bd50-4389cdffca19,sahil-yamaha,Y40-ASA-15H,YAM-48D-SAH,Primary branch Boisar (401501); taluka Dahanu→D; dealer slug sahil-yamaha→SAH; SHOWROOM pincode updated 401404→401501
+deb54b06-6bf9-4fb8-ad74-8418b1faab8f,suryodaya-bajaj,B40-ASU-12R,BAJ-48V-SUR,Primary branch Vasai East SHOWROOM (401208); taluka Vasai→V; dealer slug suryodaya-bajaj→SUR; tenant pincode updated 401202→401208
+20bf9a30-117d-43cf-b23a-ce53ba63c0ef,myscooty,M40-YMY-12S,APR-48V-MYS,Brand APRILIA→APR; primary branch (401209) taluka Vasai→V; dealer slug myscooty→MYS
+c18b4df2-75c2-421a-88c3-1317137a993d,aapli,S40-TAA-12P,APR-48V-STU,Brand APRILIA→APR; primary branch HEAD_OFFICE (401203) taluka Vasai→V; dealer slug aapli→STU; HEAD_OFFICE activated
+8df35296-1cb6-4597-b0e6-a63e0722a0b6,automax-yamaha,Y40-AAU-12T,YAM-48B-AUT,FINAL LOCK: Primary = Vasai registered office (401202/MH48/Bassein→B). Goregaon West = branch only. Tenant pincode 401202 must not change.
