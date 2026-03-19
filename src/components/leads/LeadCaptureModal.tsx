@@ -41,6 +41,7 @@ interface LeadCaptureModalProps {
     displayOnRoadEstimate?: number;
     source?: 'STORE_PDP' | 'LEADS';
     forceStaffMode?: boolean;
+    onQuoteSaved?: (displayId: string) => void;
 }
 
 type LeadStep = 'PHONE' | 'PHONE_CONFIRM' | 'DETAILS';
@@ -77,6 +78,7 @@ export function LeadCaptureModal({
     displayOnRoadEstimate,
     source = 'LEADS',
     forceStaffMode = false,
+    onQuoteSaved,
 }: LeadCaptureModalProps) {
     const { tenantId, userRole, memberships } = useTenant();
     const { dealerId: sessionDealerId, locked: sessionLocked } = useDealerSession();
@@ -523,6 +525,8 @@ export function LeadCaptureModal({
                 setQuoteUuid(uuid);
                 setError(null);
                 setSuccess(true);
+                // Bubble display_id up to parent so download button can use it immediately
+                if (displayId) onQuoteSaved?.(displayId);
             } else {
                 console.error('Server reported failure creating quote in modal:', result);
                 setSubmitStage(null);

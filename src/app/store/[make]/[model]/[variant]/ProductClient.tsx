@@ -468,6 +468,9 @@ export default function ProductClient({
     }, [emitDwellForActiveSku]);
 
     const [showQuoteSuccess, setShowQuoteSuccess] = useState(false);
+    // Stores the quote display_id (e.g. RGEA47BE4) after LeadCaptureModal saves a quote.
+    // This is the canonical ID for the /q/[displayId] dossier route.
+    const [savedQuoteDisplayId, setSavedQuoteDisplayId] = useState<string | null>(null);
     const [showEmailModal, setShowEmailModal] = useState(false);
     const [showReferralModal, setShowReferralModal] = useState(false);
     const [showLocationPicker, setShowLocationPicker] = useState(false);
@@ -700,9 +703,10 @@ export default function ProductClient({
     };
 
     // Open the saved Quote Dossier in a new tab.
-    // Priority: leadMeta.displayId (pre-existing) → leadContext.id fetched after save → fallback toast.
+    // Priority: freshly saved quote display_id (from modal) > leadMeta.displayId (pre-loaded).
+    // NEVER use leadContext.id or leadIdFromUrl — those are lead UUIDs, not quote display IDs.
     const handleDownloadQuote = () => {
-        const dossierId = leadMeta?.displayId || leadContext?.id || leadIdFromUrl;
+        const dossierId = savedQuoteDisplayId || leadMeta?.displayId;
         if (dossierId) {
             window.open(`/q/${dossierId}`, '_blank', 'noopener,noreferrer');
             trackEvent('INTENT_SIGNAL', 'pdp_download_dossier', {
@@ -1425,6 +1429,7 @@ export default function ProductClient({
                 displayOnRoadEstimate={modalDisplayOnRoadEstimate}
                 source={leadIdFromUrl ? 'LEADS' : 'STORE_PDP'}
                 forceStaffMode={isTeamMember}
+                onQuoteSaved={displayId => setSavedQuoteDisplayId(displayId)}
             />
 
             <EmailUpdateModal
