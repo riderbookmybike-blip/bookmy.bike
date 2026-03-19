@@ -462,8 +462,10 @@ export function LeadCaptureModal({
             const result = await createQuoteAction({
                 tenant_id: effectiveTenantId,
                 lead_id: lId,
-                variant_id: variantId,
-                color_id: colorId,
+                // Guard at line 427 ensures variantId is non-empty; trim strips accidental whitespace.
+                variant_id: variantId!.trim(),
+                // color_id is optional UUID; normalize "" → undefined so Postgres never sees empty string.
+                color_id: colorId?.trim() || undefined,
                 commercials: enrichedCommercials,
                 store_url: storeUrl,
                 source,

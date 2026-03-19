@@ -3980,18 +3980,21 @@ export async function createQuoteAction(data: {
     );
     const accessoriesAmount = Math.round(Number(pricingSnapshot?.accessories_total ?? comms.accessories_total ?? 0));
 
-    const vehicleSkuId = data.color_id || data.variant_id;
+    // Sanitize UUID fields — empty string "" is invalid for Postgres uuid columns.
+    const safeVariantId = data.variant_id?.trim() || null;
+    const safeColorId = data.color_id?.trim() || null;
+    const vehicleSkuId = safeColorId || safeVariantId;
 
     const { data: quote, error } = await adminClient
         .from('crm_quotes')
         .insert({
             tenant_id: resolvedTenantId,
-            lead_id: data.lead_id,
+            lead_id: data.lead_id || null,
             member_id: memberId,
             lead_referrer_id: leadReferrerId,
             quote_owner_id: createdBy || null,
-            variant_id: data.variant_id,
-            color_id: data.color_id,
+            variant_id: safeVariantId,
+            color_id: safeColorId,
             vehicle_sku_id: vehicleSkuId, // Use SKU (color) when available
             vehicle_image: comms.image_url || comms.image || null,
 
