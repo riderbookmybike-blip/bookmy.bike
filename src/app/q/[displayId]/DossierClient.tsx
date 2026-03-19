@@ -1428,9 +1428,17 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                             const selectedTenure = Number(quote.finance.tenureMonths || quote.finance.tenure || 36);
                             // SOT EMI: from snapshot, not flat-factor recompute
                             const sotEmi = toNumber(quote.finance.emi, 0);
-                            // Tenure grid: EMI_FACTORS keys + always include selected tenure
+                            // Tenure grid: scheme allowedTenures (SOT) → EMI_FACTORS → always include selected
+                            const schemeAllowedTenures: number[] = Array.isArray(quote.finance.allowedTenures)
+                                ? (quote.finance.allowedTenures as number[]).map(Number).filter(Boolean)
+                                : [];
                             const TENURES = Array.from(
-                                new Set([...Object.keys(EMI_FACTORS).map(Number), selectedTenure])
+                                new Set([
+                                    ...(schemeAllowedTenures.length > 0
+                                        ? schemeAllowedTenures
+                                        : Object.keys(EMI_FACTORS).map(Number)),
+                                    selectedTenure,
+                                ])
                             ).sort((a, b) => a - b);
                             const selectedFactor = EMI_FACTORS[selectedTenure] ?? EMI_FACTORS[36];
                             // For tenure grid rows, use factor-based EMI (indicative) but anchor loan to SOT

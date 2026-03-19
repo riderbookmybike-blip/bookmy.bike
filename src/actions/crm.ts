@@ -8138,6 +8138,10 @@ export async function getQuoteByDisplayId(
                       roi: activeFinance.roi ?? commercials.finance?.roi ?? null,
                       tenure: activeFinance.tenure_months ?? commercials.finance?.tenure_months ?? null,
                       tenureMonths: activeFinance.tenure_months ?? commercials.finance?.tenure_months ?? null,
+                      allowedTenures:
+                          (commercials.finance?.scheme_allowed_tenures as number[] | undefined) ||
+                          (commercials.pricing_snapshot?.finance_allowed_tenures as number[] | undefined) ||
+                          [],
                       emi: activeFinance.emi ?? commercials.finance?.emi ?? null,
                       downPayment: activeFinance.down_payment ?? commercials.finance?.down_payment ?? null,
                       loanAmount: activeFinance.loan_amount ?? commercials.finance?.loan_amount ?? null,
