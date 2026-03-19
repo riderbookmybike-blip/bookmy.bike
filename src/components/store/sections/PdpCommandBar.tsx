@@ -263,6 +263,7 @@ interface DesktopActionClusterProps {
     primaryLabel: string;
     isDisabled: boolean;
     isLoggedIn: boolean;
+    quoteActionsEnabled: boolean;
     primaryAction: () => void;
     handleShareQuote?: () => void;
     handleDownloadQuote?: () => void;
@@ -468,21 +469,34 @@ function DesktopActionCluster({
     primaryLabel,
     isDisabled,
     isLoggedIn,
+    quoteActionsEnabled,
     primaryAction,
     handleShareQuote,
     handleDownloadQuote,
 }: DesktopActionClusterProps) {
     const lockButtonClasses = !isLoggedIn ? 'border-amber-300/50 bg-amber-400/10 text-amber-200' : '';
+    const quoteActionsDisabledClasses = !quoteActionsEnabled
+        ? 'opacity-45 cursor-not-allowed hover:!bg-[#0f0f0f] hover:!text-white/70'
+        : '';
 
     return (
         <div className="h-full flex items-center justify-end w-full gap-2">
             {/* Download Quote Button */}
             <motion.button
-                onClick={handleDownloadQuote || (() => console.log('Download clicked'))}
+                onClick={
+                    quoteActionsEnabled ? handleDownloadQuote || (() => console.log('Download clicked')) : undefined
+                }
+                disabled={!quoteActionsEnabled}
                 whileHover={{ scale: 1.05, backgroundColor: '#1f1f1f' }}
                 whileTap={{ scale: 0.95 }}
-                className={`relative w-[50px] lg:w-[60px] h-full rounded-[18px] bg-[#0f0f0f] border border-[#2a2a2a] flex items-center justify-center text-white/70 hover:text-white transition-colors shrink-0 shadow-[0_4px_12px_rgba(0,0,0,0.5)] ${lockButtonClasses}`}
-                title={isLoggedIn ? 'Download Quote' : 'Login required to download quote'}
+                className={`relative w-[50px] lg:w-[60px] h-full rounded-[18px] bg-[#0f0f0f] border border-[#2a2a2a] flex items-center justify-center text-white/70 hover:text-white transition-colors shrink-0 shadow-[0_4px_12px_rgba(0,0,0,0.5)] ${lockButtonClasses} ${quoteActionsDisabledClasses}`}
+                title={
+                    !quoteActionsEnabled
+                        ? 'Save quote first'
+                        : isLoggedIn
+                          ? 'Download Quote'
+                          : 'Login required to download quote'
+                }
             >
                 <Download size={18} strokeWidth={2.5} />
                 {!isLoggedIn && (
@@ -494,11 +508,18 @@ function DesktopActionCluster({
 
             {/* Share Quote Button */}
             <motion.button
-                onClick={handleShareQuote}
+                onClick={quoteActionsEnabled ? handleShareQuote : undefined}
+                disabled={!quoteActionsEnabled}
                 whileHover={{ scale: 1.05, backgroundColor: '#1f1f1f' }}
                 whileTap={{ scale: 0.95 }}
-                className={`relative w-[50px] lg:w-[60px] h-full rounded-[18px] bg-[#0f0f0f] border border-[#2a2a2a] flex items-center justify-center text-white/70 hover:text-white transition-colors shrink-0 shadow-[0_4px_12px_rgba(0,0,0,0.5)] ${lockButtonClasses}`}
-                title={isLoggedIn ? 'Share Quote' : 'Login required to share quote'}
+                className={`relative w-[50px] lg:w-[60px] h-full rounded-[18px] bg-[#0f0f0f] border border-[#2a2a2a] flex items-center justify-center text-white/70 hover:text-white transition-colors shrink-0 shadow-[0_4px_12px_rgba(0,0,0,0.5)] ${lockButtonClasses} ${quoteActionsDisabledClasses}`}
+                title={
+                    !quoteActionsEnabled
+                        ? 'Save quote first'
+                        : isLoggedIn
+                          ? 'Share Quote'
+                          : 'Login required to share quote'
+                }
             >
                 <Share2 size={18} strokeWidth={2.5} />
                 {!isLoggedIn && (
@@ -797,6 +818,7 @@ export function PdpCommandBar({
     // State machine: IDLE → SAVE QUOTE, SAVED → DOWNLOAD DOSSIER, DOWNLOADED → SHARE QUOTE
     const isSaved = quoteState === 'SAVED';
     const isDownloaded = quoteState === 'DOWNLOADED';
+    const quoteActionsEnabled = quoteState !== 'IDLE';
     const primaryAction = isTeamView
         ? handleShareQuote
         : isDownloaded
@@ -919,6 +941,7 @@ export function PdpCommandBar({
                                         primaryLabel={primaryLabel}
                                         isDisabled={isDisabled}
                                         isLoggedIn={isLoggedIn}
+                                        quoteActionsEnabled={quoteActionsEnabled}
                                         primaryAction={authAwarePrimaryAction}
                                         handleShareQuote={authAwareShare}
                                         handleDownloadQuote={authAwareDownload}
