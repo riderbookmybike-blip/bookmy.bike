@@ -119,6 +119,7 @@ interface DesktopPDPProps {
         ) => void;
         setUserDownPayment: (amount: number) => void;
         handleWaSend?: (phone: string) => Promise<void>;
+        handleDownloadQuote?: () => void;
     };
     initialLocation?: any;
     bestOffer?: any;
@@ -284,6 +285,7 @@ export function DesktopPDP({
         setRegType,
         setEmiTenure,
         setUserDownPayment,
+        handleDownloadQuote,
     } = handlers;
 
     // Smooth DP slider animation (click = slow animate, drag = instant)
@@ -1277,6 +1279,7 @@ export function DesktopPDP({
                 insuranceAddonsCost={(insuranceAddonsPrice ?? 0) + (insuranceAddonsDiscount ?? 0)}
                 deliveryByLabel={deliveryByLabel}
                 studioIdLabel={studioIdLabel}
+                handleDownloadQuote={handleDownloadQuote}
             />
         </div>
     );

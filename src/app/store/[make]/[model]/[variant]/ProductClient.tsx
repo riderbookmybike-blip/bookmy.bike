@@ -699,6 +699,22 @@ export default function ProductClient({
         }
     };
 
+    // Open the saved Quote Dossier in a new tab.
+    // Priority: leadMeta.displayId (pre-existing) → leadContext.id fetched after save → fallback toast.
+    const handleDownloadQuote = () => {
+        const dossierId = leadMeta?.displayId || leadContext?.id || leadIdFromUrl;
+        if (dossierId) {
+            window.open(`/q/${dossierId}`, '_blank', 'noopener,noreferrer');
+            trackEvent('INTENT_SIGNAL', 'pdp_download_dossier', {
+                ...buildPdpIntentMetadata(),
+                dossier_id: dossierId,
+            });
+        } else {
+            // Quote not saved yet — prompt user to save first
+            toast.info('Save your quote first to download the dossier.');
+        }
+    };
+
     const buildCommercials = () => {
         const resolvedColor =
             data.colors?.find(
@@ -1198,6 +1214,7 @@ export default function ProductClient({
               ? handleConfirmQuote
               : handleBookingRequest,
         handleWaSend,
+        handleDownloadQuote,
         toggleAccessory,
         toggleInsuranceAddon,
         toggleService,
