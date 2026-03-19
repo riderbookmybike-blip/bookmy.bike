@@ -18,7 +18,7 @@ import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { useAnalytics } from '@/components/analytics/AnalyticsProvider';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { isHandheldPhoneUserAgent, isTvUserAgent } from '@/lib/utils/deviceUserAgent';
-import { OCLUB_SIGNUP_BONUS } from '@/lib/oclub/coin';
+import { computeOClubPricing, OCLUB_SIGNUP_BONUS } from '@/lib/oclub/coin';
 
 import { InsuranceRule } from '@/types/insurance';
 
@@ -295,6 +295,14 @@ export default function ProductClient({
         isReferralActive,
         baseExShowroom,
     } = data;
+    const walletCoinsForDisplay =
+        !walletLoading && Number.isFinite(Number(isLoggedIn ? availableCoins : OCLUB_SIGNUP_BONUS))
+            ? Number(isLoggedIn ? availableCoins : OCLUB_SIGNUP_BONUS)
+            : 0;
+    const modalDisplayOnRoadEstimate =
+        walletCoinsForDisplay > 0
+            ? computeOClubPricing(Number(totalOnRoad || 0), walletCoinsForDisplay).effectivePrice
+            : Number(totalOnRoad || 0);
     // SSPP v1: Enforce canonical SKU UUID for all persistence actions.
     const colorSkuId = SKU_UUID_REGEX.test(String(selectedSkuId || '')) ? String(selectedSkuId) : null;
 
@@ -1428,6 +1436,7 @@ export default function ProductClient({
                 colorId={colorSkuId || undefined}
                 commercials={buildCommercials()}
                 quoteTenantId={quoteTenantId}
+                displayOnRoadEstimate={modalDisplayOnRoadEstimate}
                 source={leadIdFromUrl ? 'LEADS' : 'STORE_PDP'}
                 forceStaffMode={isTeamMember}
             />

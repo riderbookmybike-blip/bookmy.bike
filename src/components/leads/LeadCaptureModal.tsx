@@ -38,6 +38,7 @@ interface LeadCaptureModalProps {
     colorId?: string;
     commercials?: any;
     quoteTenantId?: string;
+    displayOnRoadEstimate?: number;
     source?: 'STORE_PDP' | 'LEADS';
     forceStaffMode?: boolean;
 }
@@ -71,6 +72,7 @@ export function LeadCaptureModal({
     colorId,
     commercials,
     quoteTenantId,
+    displayOnRoadEstimate,
     source = 'LEADS',
     forceStaffMode = false,
 }: LeadCaptureModalProps) {
@@ -419,7 +421,12 @@ export function LeadCaptureModal({
         }
 
         // Build deterministic B-coin snapshot
-        const totalOnRoad = commercials?.pricing_snapshot?.final_on_road || commercials?.totalOnRoad || 0;
+        const totalOnRoad =
+            Number(commercials?.pricing_snapshot?.grand_total) ||
+            Number(commercials?.grand_total) ||
+            Number(commercials?.pricing_snapshot?.final_on_road) ||
+            Number(commercials?.totalOnRoad) ||
+            0;
         const coinPricing = computeOClubPricing(totalOnRoad, coins);
         const bcoinApplied = {
             coins: coinPricing.coinsUsed,
@@ -476,7 +483,13 @@ export function LeadCaptureModal({
 
     const image = commercials?.image_url || '';
     const colorName = commercials?.pricing_snapshot?.color_name || colorId || '';
-    const totalOnRoad = commercials?.pricing_snapshot?.grand_total || commercials?.grand_total || 0;
+    const totalOnRoad =
+        Number(displayOnRoadEstimate) ||
+        Number(commercials?.pricing_snapshot?.grand_total) ||
+        Number(commercials?.grand_total) ||
+        Number(commercials?.pricing_snapshot?.final_on_road) ||
+        Number(commercials?.totalOnRoad) ||
+        0;
     const exShowroom = commercials?.pricing_snapshot?.ex_showroom || commercials?.ex_showroom || 0;
 
     return (
