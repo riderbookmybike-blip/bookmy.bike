@@ -1310,6 +1310,17 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                                 total={platformDiscount + (pricing.managerDiscount || 0)}
                             ></DossierGroup>
 
+                            {(pricing.coinDiscount || 0) > 0 && (
+                                <DossierGroup
+                                    quote={quote}
+                                    title={`Bcoin Used${pricing.coinUsed ? ` — ${pricing.coinUsed}` : ''}`}
+                                    icon={Coins}
+                                    iconColor="#F4B000"
+                                    subtitle="O'Circle loyalty coins redeemed"
+                                    total={pricing.coinDiscount || 0}
+                                ></DossierGroup>
+                            )}
+
                             <DossierGroup
                                 quote={quote}
                                 title="Studio Surge Charges"
@@ -1338,7 +1349,7 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                                     </div>
                                     <div className="flex items-center gap-4">
                                         <span className="text-sm font-black text-slate-900 tabular-nums font-mono">
-                                            {formatCurrency(pricing.finalTotal || 0)}
+                                            {formatCurrency(offerOnRoad || pricing.finalTotal || 0)}
                                         </span>
                                     </div>
                                 </div>
