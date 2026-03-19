@@ -30,6 +30,14 @@ import { resolveLocation } from '@/utils/locationResolver';
 
 const REFERRAL_CODE_PATTERN = /^[A-Z0-9-]{4,32}$/;
 const REFERRAL_STORAGE_KEY = 'bkmb_referral_code';
+const LOGIN_NEXT_STORAGE_KEY = 'bkmb_login_next';
+
+const toSafeInternalPath = (value?: string | null): string | null => {
+    const v = String(value || '').trim();
+    if (!v.startsWith('/')) return null;
+    if (v.startsWith('//')) return null;
+    return v;
+};
 
 interface LoginSidebarProps {
     isOpen: boolean;
@@ -229,10 +237,13 @@ export default function LoginSidebar({
             const derivedSlug =
                 tenantSlugProp || searchParams.get('tenant') || redirectTo?.match(/^\/app\/([^/]+)/)?.[1];
             const isInTenantPath = pathname.startsWith('/app/') || !!derivedSlug;
+            const nextFromQuery = toSafeInternalPath(searchParams.get('next'));
+            const nextFromStorage = toSafeInternalPath(localStorage.getItem(LOGIN_NEXT_STORAGE_KEY));
+            const nextFromProps = toSafeInternalPath(redirectTo);
 
             setIsMarketplace(!isInTenantPath);
             setTenantSlug(derivedSlug ?? null);
-            setRedirectPath(redirectTo ?? searchParams.get('next') ?? null);
+            setRedirectPath(nextFromProps || nextFromQuery || nextFromStorage || null);
             setFallbackPath(pathname === '/login' ? '/' : `${pathname}${window.location.search}`);
 
             if (!isInTenantPath) detectLocation();
@@ -749,7 +760,10 @@ export default function LoginSidebar({
         }
 
         await new Promise(r => setTimeout(r, 800)); // Cookie Wait
-        window.location.href = redirectPath || fallbackPath || '/';
+        const persistedNext = toSafeInternalPath(localStorage.getItem(LOGIN_NEXT_STORAGE_KEY));
+        const target = toSafeInternalPath(redirectPath) || persistedNext || toSafeInternalPath(fallbackPath) || '/';
+        localStorage.removeItem(LOGIN_NEXT_STORAGE_KEY);
+        window.location.href = target;
         onClose();
     };
 

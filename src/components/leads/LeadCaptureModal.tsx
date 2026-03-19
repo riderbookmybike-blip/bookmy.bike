@@ -46,6 +46,8 @@ interface LeadCaptureModalProps {
 type LeadStep = 'PHONE' | 'PHONE_CONFIRM' | 'DETAILS';
 
 let crmActionsPromise: Promise<typeof import('@/actions/crm')> | null = null;
+const LOGIN_NEXT_STORAGE_KEY = 'bkmb_login_next';
+
 function getCrmActions() {
     if (!crmActionsPromise) {
         crmActionsPromise = import('@/actions/crm').catch(err => {
@@ -221,6 +223,7 @@ export function LeadCaptureModal({
     const redirectToLoginForShare = useCallback(() => {
         if (typeof window === 'undefined') return;
         const next = `${window.location.pathname}${window.location.search}`;
+        localStorage.setItem(LOGIN_NEXT_STORAGE_KEY, next);
         window.location.href = `/login?next=${encodeURIComponent(next)}`;
     }, []);
 
