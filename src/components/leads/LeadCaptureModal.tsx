@@ -218,6 +218,12 @@ export function LeadCaptureModal({
         []
     );
 
+    const redirectToLoginForShare = useCallback(() => {
+        if (typeof window === 'undefined') return;
+        const next = `${window.location.pathname}${window.location.search}`;
+        window.location.href = `/login?next=${encodeURIComponent(next)}`;
+    }, []);
+
     if (!isOpen) return null;
 
     const toUiError = (err: unknown, fallback: string) =>
@@ -605,6 +611,13 @@ export function LeadCaptureModal({
                                                         toast.success('Quote sent via WhatsApp!');
                                                     } else {
                                                         setShareStatus('idle');
+                                                        if (
+                                                            /authentication required/i.test(String(result.error || ''))
+                                                        ) {
+                                                            toast.error('Please login to share this quote');
+                                                            redirectToLoginForShare();
+                                                            return;
+                                                        }
                                                         toast.error(result.error || 'WhatsApp send failed');
                                                     }
                                                 } catch (err) {
@@ -642,6 +655,13 @@ export function LeadCaptureModal({
                                                         toast.success('Quote sent via SMS!');
                                                     } else {
                                                         setShareStatus('idle');
+                                                        if (
+                                                            /authentication required/i.test(String(result.error || ''))
+                                                        ) {
+                                                            toast.error('Please login to share this quote');
+                                                            redirectToLoginForShare();
+                                                            return;
+                                                        }
                                                         toast.error(result.error || 'SMS send failed');
                                                     }
                                                 } catch (err) {
