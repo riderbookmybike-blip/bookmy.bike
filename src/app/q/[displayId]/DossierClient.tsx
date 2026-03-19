@@ -2,6 +2,7 @@
 
 import React, { useCallback, useState } from 'react';
 import { Logo } from '@/components/brand/Logo';
+import AmortizationPanel from '@/components/store/Personalize/AmortizationPanel';
 import { OCircleMembershipCard } from '@/components/auth/OCircleMembershipCard';
 import { generatePremiumPDF } from '@/utils/pdfGenerator';
 import { getProxiedUrl } from '@/lib/utils/urlHelper';
@@ -78,7 +79,7 @@ interface DossierClientProps {
     ledger?: any[];
 }
 
-const TOTAL_PAGES = 14;
+const TOTAL_PAGES = 15;
 
 const formatCurrency = (val: number) =>
     new Intl.NumberFormat('en-IN', {
@@ -1774,8 +1775,85 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                 </div>
             </section>
 
-            {/* Page 6 - Accessories */}
+            {/* Page 6 - Amortization / EMI Calendar */}
             <section id="dossier-page-6" className="a4-page relative overflow-hidden bg-white">
+                <div
+                    className="absolute left-0 top-0 bottom-0 w-2"
+                    style={{ backgroundColor: quote?.vehicle?.hexCode || '#0b0d10' }}
+                />
+                <div
+                    className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none z-0"
+                    style={{
+                        background: `linear-gradient(to top, ${quote?.vehicle?.hexCode || '#F4B000'}22, transparent)`,
+                    }}
+                />
+                <div className="a4-grid flex-1 relative z-10 border-l border-zinc-200">
+                    <div className="a4-header">
+                        <PageHeader
+                            title="EMI Calendar"
+                            subtitle="Month-by-month repayment schedule."
+                            iconColor="#6366f1"
+                            icon={Activity}
+                        />
+                        <div className="text-right text-[10px] font-black uppercase tracking-widest text-slate-300">
+                            Quote: {formatDisplayId(quote.display_id)}
+                        </div>
+                    </div>
+                    <div className="a4-body overflow-hidden">
+                        {quote.finance && quote.financeMode === 'LOAN' ? (
+                            <AmortizationPanel
+                                initialFinance={{
+                                    bank: { name: quote.finance.bankName || quote.finance.bank || '' },
+                                    scheme: {
+                                        interestRate: quote.finance.roi ? quote.finance.roi / 100 : 0,
+                                        interestType: pricing.financeInterestType || 'REDUCING',
+                                    },
+                                }}
+                                displayOnRoad={offerOnRoad}
+                                userDownPayment={toNumber(quote.finance.downPayment, 0)}
+                                loanAmount={toNumber(
+                                    quote.finance.loanAmount,
+                                    offerOnRoad - toNumber(quote.finance.downPayment, 0)
+                                )}
+                                totalOnRoad={offerOnRoad}
+                                emiTenure={Number(quote.finance.tenureMonths || quote.finance.tenure || 36)}
+                                disbursementDate={null}
+                            />
+                        ) : (
+                            <div className="h-full flex items-center justify-center border-4 border-dashed border-slate-100 rounded-[3rem]">
+                                <div className="text-center">
+                                    <Activity size={48} className="mx-auto text-slate-200 mb-4" />
+                                    <div className="text-sm font-bold text-slate-400 tracking-wide">
+                                        Direct Liquid Purchase
+                                    </div>
+                                    <div className="text-[10px] text-slate-300 tracking-wide mt-2">
+                                        No EMI Schedule Applicable
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                    <div className="a4-footer">
+                        <div className="flex items-center gap-2">
+                            <span className="text-[10px] uppercase tracking-widest text-slate-400">
+                                Page 6 of {TOTAL_PAGES}
+                            </span>
+                            <div
+                                className="w-1 h-1 rounded-full"
+                                style={{ backgroundColor: quote?.vehicle?.hexCode || '#F4B000' }}
+                            />
+                            <span className="text-[10px] uppercase tracking-widest text-slate-400">EMI Calendar</span>
+                        </div>
+                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-300">
+                            {formatDisplayId(quote.display_id)}
+                        </div>
+                        <FooterPrintButton onClick={handlePrint} onWhatsApp={handleWhatsAppShare} />
+                    </div>
+                </div>
+            </section>
+
+            {/* Page 7 - Accessories */}
+            <section id="dossier-page-7" className="a4-page relative overflow-hidden bg-white">
                 <div
                     className="absolute left-0 top-0 bottom-0 w-2"
                     style={{ backgroundColor: quote?.vehicle?.hexCode || '#0b0d10' }}
@@ -1960,7 +2038,7 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                     <div className="a4-footer">
                         <div className="flex items-center gap-2">
                             <span className="text-[10px] uppercase tracking-widest text-slate-400">
-                                Page 6 of {TOTAL_PAGES}
+                                Page 7 of {TOTAL_PAGES}
                             </span>
                             <div
                                 className="w-1 h-1 rounded-full"
@@ -1977,7 +2055,7 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
             </section>
 
             {/* Page 7 - Insurance */}
-            <section id="dossier-page-7" className="a4-page relative overflow-hidden bg-white">
+            <section id="dossier-page-8" className="a4-page relative overflow-hidden bg-white">
                 <div
                     className="absolute left-0 top-0 bottom-0 w-2"
                     style={{ backgroundColor: quote?.vehicle?.hexCode || '#0b0d10' }}
@@ -2060,7 +2138,7 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                     <div className="a4-footer">
                         <div className="flex items-center gap-2">
                             <span className="text-[10px] uppercase tracking-widest text-slate-400">
-                                Page 7 of {TOTAL_PAGES}
+                                Page 8 of {TOTAL_PAGES}
                             </span>
                             <div
                                 className="w-1 h-1 rounded-full"
@@ -2077,7 +2155,7 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
             </section>
 
             {/* Page 8 - Registration (RTO) */}
-            <section id="dossier-page-8" className="a4-page relative overflow-hidden bg-white">
+            <section id="dossier-page-9" className="a4-page relative overflow-hidden bg-white">
                 <div
                     className="absolute left-0 top-0 bottom-0 w-2"
                     style={{ backgroundColor: quote?.vehicle?.hexCode || '#0b0d10' }}
@@ -2262,7 +2340,7 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                     <div className="a4-footer">
                         <div className="flex items-center gap-2">
                             <span className="text-[10px] uppercase tracking-widest text-slate-400">
-                                Page 8 of {TOTAL_PAGES}
+                                Page 9 of {TOTAL_PAGES}
                             </span>
                             <div
                                 className="w-1 h-1 rounded-full"
@@ -2279,7 +2357,7 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
             </section>
 
             {/* Page 9 - Service & Warranty */}
-            <section id="dossier-page-9" className="a4-page relative overflow-hidden bg-white">
+            <section id="dossier-page-10" className="a4-page relative overflow-hidden bg-white">
                 <div
                     className="absolute left-0 top-0 bottom-0 w-2"
                     style={{ backgroundColor: quote?.vehicle?.hexCode || '#0b0d10' }}
@@ -2356,7 +2434,7 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                     <div className="a4-footer">
                         <div className="flex items-center gap-2">
                             <span className="text-[10px] uppercase tracking-widest text-slate-400">
-                                Page 9 of {TOTAL_PAGES}
+                                Page 10 of {TOTAL_PAGES}
                             </span>
                             <div
                                 className="w-1 h-1 rounded-full"
@@ -2375,7 +2453,7 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
             </section>
 
             {/* Page 10 - Engine & Performance */}
-            <section id="dossier-page-10" className="a4-page relative overflow-hidden bg-white">
+            <section id="dossier-page-11" className="a4-page relative overflow-hidden bg-white">
                 <div
                     className="absolute left-0 top-0 bottom-0 w-2"
                     style={{ backgroundColor: quote?.vehicle?.hexCode || '#0b0d10' }}
@@ -2440,7 +2518,7 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                     <div className="a4-footer">
                         <div className="flex items-center gap-2">
                             <span className="text-[10px] uppercase tracking-widest text-slate-400">
-                                Page 10 of {TOTAL_PAGES}
+                                Page 11 of {TOTAL_PAGES}
                             </span>
                             <div
                                 className="w-1 h-1 rounded-full"
@@ -2457,7 +2535,7 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
             </section>
 
             {/* Page 11 - Dimension & Chassis */}
-            <section id="dossier-page-11" className="a4-page relative overflow-hidden bg-white">
+            <section id="dossier-page-12" className="a4-page relative overflow-hidden bg-white">
                 <div
                     className="absolute left-0 top-0 bottom-0 w-2"
                     style={{ backgroundColor: quote?.vehicle?.hexCode || '#0b0d10' }}
@@ -2527,7 +2605,7 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                     <div className="a4-footer">
                         <div className="flex items-center gap-2">
                             <span className="text-[10px] uppercase tracking-widest text-slate-400">
-                                Page 11 of {TOTAL_PAGES}
+                                Page 12 of {TOTAL_PAGES}
                             </span>
                             <div
                                 className="w-1 h-1 rounded-full"
@@ -2544,7 +2622,7 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
             </section>
 
             {/* Page 12 - Brakes & Safety */}
-            <section id="dossier-page-12" className="a4-page relative overflow-hidden bg-white">
+            <section id="dossier-page-13" className="a4-page relative overflow-hidden bg-white">
                 <div
                     className="absolute left-0 top-0 bottom-0 w-2"
                     style={{ backgroundColor: quote?.vehicle?.hexCode || '#0b0d10' }}
@@ -2600,7 +2678,7 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                     <div className="a4-footer">
                         <div className="flex items-center gap-2">
                             <span className="text-[10px] uppercase tracking-widest text-slate-400">
-                                Page 12 of {TOTAL_PAGES}
+                                Page 13 of {TOTAL_PAGES}
                             </span>
                             <div
                                 className="w-1 h-1 rounded-full"
@@ -2617,7 +2695,7 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
             </section>
 
             {/* Page 13 - Features & Tech */}
-            <section id="dossier-page-13" className="a4-page relative overflow-hidden bg-white">
+            <section id="dossier-page-14" className="a4-page relative overflow-hidden bg-white">
                 <div
                     className="absolute left-0 top-0 bottom-0 w-2"
                     style={{ backgroundColor: quote?.vehicle?.hexCode || '#0b0d10' }}
@@ -2662,7 +2740,7 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                     <div className="a4-footer">
                         <div className="flex items-center gap-2">
                             <span className="text-[10px] uppercase tracking-widest text-slate-400">
-                                Page 13 of {TOTAL_PAGES}
+                                Page 14 of {TOTAL_PAGES}
                             </span>
                             <div
                                 className="w-1 h-1 rounded-full"
@@ -2680,7 +2758,7 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
 
             {/* Page 14 - Reach Us */}
             <section
-                id="dossier-page-14"
+                id="dossier-page-15"
                 className="a4-page relative overflow-hidden"
                 style={{ backgroundColor: '#FAFAFA' }}
             >
@@ -2756,7 +2834,7 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                         </div>
                         <div className="flex items-center gap-3">
                             <div className="text-[10px] uppercase tracking-widest text-slate-400">
-                                Page 14 of {TOTAL_PAGES}
+                                Page 15 of {TOTAL_PAGES}
                             </div>
                             <FooterPrintButton onClick={handlePrint} />
                         </div>
