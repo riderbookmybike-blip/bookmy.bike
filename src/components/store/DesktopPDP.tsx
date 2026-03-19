@@ -393,9 +393,6 @@ export function DesktopPDP({
         studioDistanceKm,
         winnerTatDays,
     } = commonState;
-    const winningDealerName =
-        (bestOffer as any)?.dealer?.business_name || (bestOffer as any)?.dealer || (bestOffer as any)?.dealer_name;
-
     // R2: Canonical price breakup — single source, no drift risk
     const { breakup: priceBreakupData } = buildPriceBreakup(
         data,
@@ -878,11 +875,7 @@ export function DesktopPDP({
                                                                     showOClubPrompt={showOClubPrompt}
                                                                     priceBreakup={priceBreakupData}
                                                                     productImage={getProductImage()}
-                                                                    pricingSource={
-                                                                        [studioIdLabel, winningDealerName]
-                                                                            .filter(Boolean)
-                                                                            .join(' • ') || data.pricingSource
-                                                                    }
+                                                                    pricingSource={studioIdLabel || undefined}
                                                                     leadName={leadContext?.name}
                                                                     isGated={isGated}
                                                                     deliveryByLabel={deliveryByLabel}
@@ -967,10 +960,7 @@ export function DesktopPDP({
                                                     </span>
                                                 </div>
                                                 {(() => {
-                                                    const src =
-                                                        [studioIdLabel, winningDealerName]
-                                                            .filter(Boolean)
-                                                            .join(' • ') || data.pricingSource;
+                                                    const src = studioIdLabel || null;
                                                     return src ? (
                                                         <span className="text-[8px] font-bold text-slate-600 uppercase tracking-widest leading-none">
                                                             ({src})
