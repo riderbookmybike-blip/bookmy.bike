@@ -339,6 +339,17 @@ export function DesktopPDP({
 
     const [cardPricingMode, setCardPricingMode] = useState<'cash' | 'finance'>('finance');
     const [isFlipping, setIsFlipping] = useState(false);
+    const [promoTimeLeftMs, setPromoTimeLeftMs] = useState(15 * 60 * 1000);
+
+    useEffect(() => {
+        const promoEndsAt = Date.now() + 15 * 60 * 1000;
+        const timer = setInterval(() => {
+            const left = Math.max(0, promoEndsAt - Date.now());
+            setPromoTimeLeftMs(left);
+            if (left <= 0) clearInterval(timer);
+        }, 1000);
+        return () => clearInterval(timer);
+    }, []);
 
     const handleFlip = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -372,6 +383,8 @@ export function DesktopPDP({
     const displayModel = scriptText(modelParam);
     const displayVariant = scriptText(variantParam);
     const displayColor = scriptText(activeColorConfig?.name);
+    const promoMinutes = String(Math.floor(promoTimeLeftMs / 60000)).padStart(2, '0');
+    const promoSeconds = String(Math.floor((promoTimeLeftMs % 60000) / 1000)).padStart(2, '0');
 
     const totalMRP =
         (product.mrp || Math.round(baseExShowroom * 1.06)) + // 6% markup if no MRP set
@@ -988,9 +1001,14 @@ export function DesktopPDP({
                                                     </span>
                                                 )}
                                                 {!coinPricing && showOClubPrompt && (
-                                                    <span className="mt-1 text-[10px] font-black uppercase tracking-widest text-indigo-600">
-                                                        Signup & get 13 O' Circle coins
-                                                    </span>
+                                                    <div className="mt-1 text-right">
+                                                        <span className="block text-[10px] font-black uppercase tracking-widest text-indigo-600">
+                                                            Abhi signup karo • 13 BCoins = ₹1,000 wallet value
+                                                        </span>
+                                                        <span className="mt-0.5 inline-block rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[9px] font-black tabular-nums tracking-wider text-indigo-700">
+                                                            Offer ends in {promoMinutes}:{promoSeconds}
+                                                        </span>
+                                                    </div>
                                                 )}
                                             </div>
                                         </div>

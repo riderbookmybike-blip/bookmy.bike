@@ -2,7 +2,7 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 import { ChevronLeft, Share2, Heart, MapPin, Calendar, ChevronDown } from 'lucide-react';
@@ -98,8 +98,22 @@ export const MobilePDP = ({
     serviceability,
 }: MobilePDPProps) => {
     const { language } = useI18n();
+    const [promoTimeLeftMs, setPromoTimeLeftMs] = useState(15 * 60 * 1000);
+
+    useEffect(() => {
+        const promoEndsAt = Date.now() + 15 * 60 * 1000;
+        const timer = setInterval(() => {
+            const left = Math.max(0, promoEndsAt - Date.now());
+            setPromoTimeLeftMs(left);
+            if (left <= 0) clearInterval(timer);
+        }, 1000);
+        return () => clearInterval(timer);
+    }, []);
+
     const shouldDevanagari = language === 'hi' || language === 'mr';
     const scriptText = (value?: string) => (shouldDevanagari ? toDevanagariScript(value || '') : value || '');
+    const promoMinutes = String(Math.floor(promoTimeLeftMs / 60000)).padStart(2, '0');
+    const promoSeconds = String(Math.floor((promoTimeLeftMs % 60000) / 1000)).padStart(2, '0');
 
     const { colors = [], selectedColor, totalOnRoad = 0, emi = 0, emiTenure = 0, isReferralActive } = data;
 
@@ -263,11 +277,16 @@ export const MobilePDP = ({
             {/* bCoin nudge when offer IS unlocked */}
             {gateReason !== 'LOCATION_REQUIRED' && showOClubPrompt && (
                 <div className="px-5 mb-3">
-                    <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 w-fit">
-                        <span className="text-xs">🪙</span>
-                        <span className="text-[9px] font-black uppercase tracking-[0.12em] text-amber-800">
-                            Sign in for 13 bCoins · ₹1,000 value
-                        </span>
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 w-fit">
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs">🪙</span>
+                            <span className="text-[9px] font-black uppercase tracking-[0.12em] text-amber-800">
+                                Abhi signup karo • 13 BCoins = ₹1,000 wallet value
+                            </span>
+                        </div>
+                        <div className="mt-1 text-[9px] font-black tabular-nums tracking-wider text-amber-700">
+                            Offer ends in {promoMinutes}:{promoSeconds}
+                        </div>
                     </div>
                 </div>
             )}
