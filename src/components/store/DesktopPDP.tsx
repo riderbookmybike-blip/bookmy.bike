@@ -144,8 +144,8 @@ interface DesktopPDPProps {
         pincode?: string;
         taluka?: string;
     };
-    /** IDLE = not saved; SAVED = quote saved, CTA becomes Download Dossier */
-    quoteState?: 'IDLE' | 'SAVED';
+    /** IDLE = not saved; SAVED = quote saved, CTA becomes Download Dossier; DOWNLOADED = dossier opened, CTA becomes Share */
+    quoteState?: 'IDLE' | 'SAVED' | 'DOWNLOADED';
 }
 
 // FullLayoutDebugger extracted to ./Personalize/FullLayoutDebugger.tsx

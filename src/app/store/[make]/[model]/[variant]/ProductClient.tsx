@@ -471,6 +471,9 @@ export default function ProductClient({
     // Stores the quote display_id (e.g. RGEA47BE4) after LeadCaptureModal saves a quote.
     // This is the canonical ID for the /q/[displayId] dossier route.
     const [savedQuoteDisplayId, setSavedQuoteDisplayId] = useState<string | null>(null);
+    // 3-step bottom bar state machine: IDLE → SAVED → DOWNLOADED
+    type QuotePhase = 'IDLE' | 'SAVED' | 'DOWNLOADED';
+    const [quotePhase, setQuotePhase] = useState<QuotePhase>(() => (leadMeta?.displayId ? 'SAVED' : 'IDLE'));
     const [showEmailModal, setShowEmailModal] = useState(false);
     const [showReferralModal, setShowReferralModal] = useState(false);
     const [showLocationPicker, setShowLocationPicker] = useState(false);
@@ -709,6 +712,8 @@ export default function ProductClient({
         const dossierId = savedQuoteDisplayId || leadMeta?.displayId;
         if (dossierId) {
             window.open(`/q/${dossierId}`, '_blank', 'noopener,noreferrer');
+            // Advance state machine: SAVED → DOWNLOADED (CTA becomes SHARE QUOTE)
+            setQuotePhase('DOWNLOADED');
             trackEvent('INTENT_SIGNAL', 'pdp_download_dossier', {
                 ...buildPdpIntentMetadata(),
                 dossier_id: dossierId,
@@ -1324,7 +1329,7 @@ export default function ProductClient({
         onWaSend: handleWaSend,
         cachedPincode: cachedLocationHint?.pincode || undefined,
         serviceability: derivedServiceability,
-        quoteState: (savedQuoteDisplayId || leadMeta?.displayId ? 'SAVED' : 'IDLE') as 'IDLE' | 'SAVED',
+        quoteState: quotePhase,
     };
     const leadDealerMismatch = Boolean(
         leadMeta?.leadDealerId && sessionDealerId && leadMeta.leadDealerId !== sessionDealerId

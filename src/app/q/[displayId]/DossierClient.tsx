@@ -694,7 +694,7 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                                         Official Digital Dossier
                                     </span>
                                 </div>
-                                <h1 className="text-6xl font-black text-slate-900 uppercase tracking-tighter leading-[0.9]">
+                                <h1 className="text-4xl sm:text-6xl font-black text-slate-900 uppercase tracking-tighter leading-[0.9]">
                                     {quote.customer?.name?.split(' ')[0] || 'नमस्ते'}!
                                 </h1>
                                 <p className="text-xl text-slate-500 font-medium max-w-md">
@@ -710,7 +710,7 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                             </div>
 
                             {/* Dramatic Hero Visual */}
-                            <div className="relative flex-1 flex flex-col items-center justify-center py-12">
+                            <div className="relative flex-1 flex flex-col items-center justify-center py-6 sm:py-12">
                                 <div
                                     className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] aspect-square blur-[100px] rounded-full pointer-events-none"
                                     style={{
@@ -739,7 +739,7 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                                     <div className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">
                                         {quote.vehicle?.brand}
                                     </div>
-                                    <h2 className="text-4xl font-black text-slate-900 uppercase tracking-tighter italic leading-tight">
+                                    <h2 className="text-2xl sm:text-4xl font-black text-slate-900 uppercase tracking-tighter italic leading-tight">
                                         {quote.vehicle?.model}{' '}
                                         <span className="text-lg font-black text-slate-400 uppercase tracking-widest">
                                             {quote.vehicle?.variant}
@@ -762,9 +762,9 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
 
                             {/* Unified Premium Ribbon */}
                             <div className="pb-10">
-                                <div className="bg-white/70 backdrop-blur-xl rounded-[2.5rem] border border-white p-1 shadow-2xl shadow-slate-200/50 flex items-stretch">
+                                <div className="bg-white/70 backdrop-blur-xl rounded-[2.5rem] border border-white p-1 shadow-2xl shadow-slate-200/50 flex items-stretch flex-wrap">
                                     {/* On-Road Section */}
-                                    <div className="flex-1 px-8 py-6 flex flex-col items-center justify-center text-center">
+                                    <div className="flex-1 min-w-[100px] px-4 sm:px-8 py-4 sm:py-6 flex flex-col items-center justify-center text-center">
                                         <div className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">
                                             On-Road
                                         </div>
@@ -784,12 +784,12 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                                     />
 
                                     {/* Our Offer Section (The Centerpiece) */}
-                                    <div className="flex-1 flex px-8 py-6 flex flex-col items-center justify-center text-center relative">
+                                    <div className="flex-1 min-w-[100px] px-4 sm:px-8 py-4 sm:py-6 flex flex-col items-center justify-center text-center relative">
                                         <div className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">
                                             Our Offer
                                         </div>
                                         <div
-                                            className="text-4xl font-black italic tracking-tighter"
+                                            className="text-2xl sm:text-4xl font-black italic tracking-tighter"
                                             style={{ color: getSafeAccentColor(quote?.vehicle?.hexCode) }}
                                         >
                                             {formatCurrency(offerOnRoad)}
@@ -816,7 +816,7 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                                     />
 
                                     {/* Delta Section */}
-                                    <div className="flex-1 px-8 py-6 flex flex-col items-center justify-center text-center">
+                                    <div className="flex-1 min-w-[100px] px-4 sm:px-8 py-4 sm:py-6 flex flex-col items-center justify-center text-center">
                                         <div className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">
                                             {deltaIsSaving ? 'You Save' : 'Surge'}
                                         </div>

@@ -82,8 +82,8 @@ export interface PdpCommandBarProps {
     deliveryByLabel?: string | null;
     studioIdLabel?: string | null;
     isLoggedIn?: boolean;
-    /** IDLE = not saved yet; SAVED = quote saved, show Download Dossier CTA */
-    quoteState?: 'IDLE' | 'SAVED';
+    /** IDLE = not saved yet; SAVED = quote saved, show Download Dossier CTA; DOWNLOADED = dossier opened, show Share CTA */
+    quoteState?: 'IDLE' | 'SAVED' | 'DOWNLOADED';
 }
 
 // ── WhatsApp Phone Modal ─────────────────────────────────────────────────────
@@ -794,20 +794,25 @@ export function PdpCommandBar({
     });
     const isDisabled = barState.isDisabled;
     const isTeamView = Boolean(onWaSend);
-    // State machine: IDLE → SAVE QUOTE, SAVED → DOWNLOAD DOSSIER
+    // State machine: IDLE → SAVE QUOTE, SAVED → DOWNLOAD DOSSIER, DOWNLOADED → SHARE QUOTE
     const isSaved = quoteState === 'SAVED';
+    const isDownloaded = quoteState === 'DOWNLOADED';
     const primaryAction = isTeamView
         ? handleShareQuote
-        : isSaved
-          ? (handleDownloadQuote ?? handleSaveQuote)
-          : handleSaveQuote;
+        : isDownloaded
+          ? handleShareQuote
+          : isSaved
+            ? (handleDownloadQuote ?? handleSaveQuote)
+            : handleSaveQuote;
     const primaryLabel = isDisabled
         ? barState.primaryLabel
         : isTeamView
           ? 'SHARE QUOTE'
-          : isSaved
-            ? 'DOWNLOAD DOSSIER'
-            : 'SAVE QUOTE';
+          : isDownloaded
+            ? 'SHARE QUOTE'
+            : isSaved
+              ? 'DOWNLOAD DOSSIER'
+              : 'SAVE QUOTE';
     const bCoinEquivalent = coinsNeededForPrice(displayOnRoad);
     const onRoadBase = barState.strikethroughPrice;
     const locationHeadline = locationInfo?.area || locationInfo?.taluka || locationInfo?.district || 'Set location';
