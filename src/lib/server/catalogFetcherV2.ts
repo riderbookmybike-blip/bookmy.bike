@@ -8,7 +8,7 @@
  */
 
 import { withCache } from '../cache/cache';
-import { CACHE_TAGS } from '../cache/tags';
+import { CACHE_TAGS, stateTag } from '../cache/tags';
 import { adminClient } from '../supabase/admin';
 import type { ProductVariant, VehicleSpecifications } from '@/types/productMaster';
 import { getCatalogSnapshot } from '@/lib/server/storeSot';
@@ -639,16 +639,21 @@ function mapV2ToProductVariants(rows: RawProductRow[]): ProductVariant[] {
 // ============================================================
 
 export async function fetchCatalogV2(stateCode: string = 'MH'): Promise<ProductVariant[]> {
+    const normalizedState = stateCode.toUpperCase();
     return withCache(
         async () => {
-            const rawRows = await fetchCatalogV2Raw(stateCode);
+            const rawRows = await fetchCatalogV2Raw(normalizedState);
             if (!rawRows || rawRows.length === 0) return [];
             return mapV2ToProductVariants(rawRows);
         },
-        ['catalog-v2-mapped-v2', stateCode],
+        ['catalog-v2-mapped-v2', normalizedState],
         {
             revalidate: false, // Cache indefinitely — invalidated via revalidateTag() on price/catalog writes
-            tags: [CACHE_TAGS.catalog, CACHE_TAGS.catalog_global],
+            tags: [
+                CACHE_TAGS.catalog,
+                CACHE_TAGS.catalog_global,
+                stateTag(normalizedState), // e.g. 'catalog:state:MH' — selective per-state invalidation
+            ],
         }
     );
 }

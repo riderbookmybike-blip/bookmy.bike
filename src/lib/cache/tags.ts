@@ -1,5 +1,10 @@
 /**
  * Canonical Cache Tags for BookMyBike
+ *
+ * Layer model:
+ *   Next.js Data Cache (unstable_cache): invalidated by revalidateTag()
+ *   Vercel Edge CDN (Cache-Control s-maxage): NOT invalidated by revalidateTag()
+ *                                             — use short TTL (60s) + rely on data cache
  */
 
 export const CACHE_TAGS = {
@@ -12,7 +17,23 @@ export const CACHE_TAGS = {
     offers: 'offers',
     catalog: 'catalog',
     referral_hot_picks: 'catalog:referral-hot-picks',
+
+    // PDP global (invalidate all PDP data caches)
+    pdp_global: 'pdp:global',
 };
+
+/**
+ * Generates a tag for a specific state catalog.
+ * Use alongside CACHE_TAGS.catalog for selective state-level invalidation.
+ * e.g. revalidateTag(stateTag('MH')) invalidates only MH catalog data cache.
+ */
+export const stateTag = (stateCode: string) => `catalog:state:${stateCode.toUpperCase()}`;
+
+/**
+ * Generates a tag for a specific variant's PDP data.
+ * e.g. revalidateTag(variantTag(variantId)) invalidates only that variant's PDP cache.
+ */
+export const variantTag = (variantId: string) => `pdp:variant:${variantId}`;
 
 /**
  * Generates a tag for a specific district

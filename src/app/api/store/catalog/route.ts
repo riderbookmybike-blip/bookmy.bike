@@ -45,17 +45,25 @@ export async function GET(request: NextRequest) {
             },
         });
 
-        // Cache strategy:
-        // - Generic requests (no district, no leadId) → public edge cache.
-        //   Vercel CDN serves subsequent hits without touching the Supabase layer,
-        //   eliminating TTFB variance on the 3-second background refresh.
-        //   fetchCatalogV2 already holds the canonical data in tagged server cache;
-        //   the edge s-maxage is a short-lived CDN layer on top.
-        // - User-specific requests (district or leadId present) → private, no-store.
-        //   Personalised pricing must never be served from a shared cache key.
+        // Cache-Control strategy for the Route Handler HTTP response:
+        //
+        // IMPORTANT: This Cache-Control header lives in Vercel's Edge CDN layer.
+        // It is NOT tied to Next.js revalidateTag() — those only invalidate the
+        // Next.js Data Cache (unstable_cache) layer inside fetchCatalogV2.
+        //
+        // Two-layer invalidation model:
+        //   Layer 1 — Next.js Data Cache (fetchCatalogV2 / withCache):
+        //     revalidate: false + tags:[catalog, catalog_global, catalog:state:MH]
+        //     Invalidated by: revalidateTag(stateTag('MH')) etc. → immediate
+        //   Layer 2 — Vercel Edge CDN (this header):
+        //     Small s-maxage so the CDN entry expires naturally within 60s
+        //     after a Layer 1 invalidation. Not tag-invalidated.
+        //
+        // Generic requests (no district, no leadId): short public CDN cache.
+        // User-specific requests: never shared, always private/no-store.
         const isGeneric = !district && !leadId;
         if (isGeneric) {
-            response.headers.set('Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=86400');
+            response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=60');
         } else {
             response.headers.set('Cache-Control', 'private, no-store');
         }
