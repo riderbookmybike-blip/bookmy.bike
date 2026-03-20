@@ -27,8 +27,8 @@ interface PincodeGateModalProps {
     onResolved: (confidence: PincodeSourceConfidence, pincode: string) => void;
 }
 
-// Cities we actively serve — shown in the modal footer
-const SERVED_CITIES = ['Pune', 'Mumbai', 'Nashik', 'Nagpur', 'Aurangabad', 'Kolhapur', 'Solapur'];
+// Active covered districts — sourced from id_primary_dealer_districts (is_active = true)
+const SERVED_CITIES = ['Pune', 'Mumbai', 'Thane', 'Nashik', 'Palghar', 'Raigad', 'Ratnagiri', 'Ahmednagar'];
 
 type ModalState =
     | 'AUTO_GPS' // silently detecting GPS on mount
@@ -66,6 +66,16 @@ export function PincodeGateModal({ isOpen, onResolved }: PincodeGateModalProps) 
                 document.body.style.overflow = '';
             };
         }
+    }, [isOpen]);
+
+    // Reset transient state when modal closes so auto-GPS runs on every re-open.
+    useEffect(() => {
+        if (isOpen) return;
+        autoGpsFired.current = false;
+        setModalState('AUTO_GPS');
+        setPincode('');
+        setErrorMsg('');
+        setDetectedLocation(null);
     }, [isOpen]);
 
     // Auto-trigger GPS silently on open
