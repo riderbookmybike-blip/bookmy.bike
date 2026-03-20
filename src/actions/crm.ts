@@ -3954,17 +3954,14 @@ export async function createQuoteAction(data: {
 
     data.commercials = comms;
 
-    if (!memberId && actorMember && isEndCustomerRole(actorMember.role)) {
+    // Assign memberId from logged-in user if not yet resolved.
+    // Staff shopping for themselves on marketplace → their own ID is correct here.
+    if (!memberId && actorMember) {
         memberId = actorMember.id;
     }
 
-    // Final hard guard: team users cannot create quotes for themselves in any flow.
-    if (actorIsStaff && createdBy && memberId && memberId === createdBy) {
-        return {
-            success: false,
-            message: 'Quote creation blocked: team members cannot generate quotes for their own account.',
-        };
-    }
+    // Guard removed: staff can create quotes for themselves when shopping on marketplace.
+    // CRM lead-self-quote guard is handled earlier at line ~3894 (lead.customer_id === createdBy).
 
     // Extract flat fields for analytics - handling Multiple naming conventions
     // Note: comms is already defined above

@@ -265,10 +265,9 @@ export function LeadCaptureModal({
 
     if (!isOpen) return null;
 
-    // ── Hard boundary: staff must use CRM lead flow, not marketplace PDP ──
-    // Rule: source === 'STORE_PDP' && isStaff → block, show CRM redirect panel.
-    // Staff Referral Mode is only allowed when source === 'LEADS' (CRM entry point).
-    if (isStaff && source === 'STORE_PDP') {
+    // ── Hard boundary: only block staff in CRM/LEADS mode (creating quote for a customer)
+    // Direct marketplace visit (source=STORE_PDP, no lead) → allow self-shopping as normal user
+    if (isStaff && source === 'LEADS') {
         return (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-in fade-in duration-300">
                 <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl shadow-2xl border border-slate-200/80 dark:border-white/10 overflow-hidden">
