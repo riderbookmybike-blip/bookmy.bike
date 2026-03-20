@@ -63,6 +63,7 @@ export const ProductCard = ({
     offerMode: propOfferMode,
     onOfferModeChange: propOnOfferModeChange,
     locationLabel,
+    prioritizeImage = false,
     ...props
 }: {
     v: ProductVariant;
@@ -117,6 +118,8 @@ export const ProductCard = ({
     onOfferModeChange?: (mode: 'BEST_OFFER' | 'FAST_DELIVERY') => void;
     /** Taluka/state label shown below on-road price. SSR default: 'Maharashtra'. After location: taluka name. */
     locationLabel?: string;
+    /** Mark only the first above-the-fold card image as high priority. */
+    prioritizeImage?: boolean;
 }) => {
     const { isFavorite, toggleFavorite } = useFavorites();
     const { trackEvent } = useAnalytics();
@@ -698,8 +701,9 @@ export const ProductCard = ({
                                 : '/images/categories/motorcycle_nobg.png')
                         }
                         alt={v.model}
-                        loading="lazy"
-                        decoding="async"
+                        fetchPriority={prioritizeImage ? 'high' : 'auto'}
+                        loading={prioritizeImage ? 'eager' : 'lazy'}
+                        decoding={prioritizeImage ? 'sync' : 'async'}
                         className="w-[85%] h-[85%] object-contain z-10 transition-transform duration-700 group-hover/card:scale-110"
                     />
 
@@ -1193,6 +1197,9 @@ export const ProductCard = ({
                                 : '/images/categories/motorcycle_nobg.png')
                         }
                         alt={v.model}
+                        fetchPriority={prioritizeImage ? 'high' : 'auto'}
+                        loading={prioritizeImage ? 'eager' : 'lazy'}
+                        decoding={prioritizeImage ? 'sync' : 'async'}
                         className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 ${isTv ? 'w-[80%] h-[80%]' : 'w-full h-full'} object-contain z-10`}
                     />
 

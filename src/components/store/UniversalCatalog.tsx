@@ -1291,6 +1291,7 @@ export const UniversalCatalog = ({
                                         <CatalogCardAdapter
                                             key={`inner-${key}`}
                                             variant={dv}
+                                            prioritizeImage={idx === 0 && !isAmbient}
                                             viewMode={viewMode}
                                             downpayment={downpayment}
                                             tenure={tenure}

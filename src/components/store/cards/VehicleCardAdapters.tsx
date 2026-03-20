@@ -46,6 +46,7 @@ interface BaseVehicleCardAdapterProps {
         bundlePrice?: number;
         delivery_tat_days?: number | null;
     } | null;
+    prioritizeImage?: boolean;
 }
 
 function BaseVehicleCardAdapter({
@@ -73,6 +74,7 @@ function BaseVehicleCardAdapter({
     offerMode,
     onOfferModeChange,
     bestOffer,
+    prioritizeImage,
 }: BaseVehicleCardAdapterProps) {
     const resolvedViewMode = getSafeViewMode(mode, viewMode);
 
@@ -101,6 +103,7 @@ function BaseVehicleCardAdapter({
             offerMode={offerMode}
             onOfferModeChange={onOfferModeChange}
             bestOffer={bestOffer}
+            prioritizeImage={prioritizeImage}
         />
     );
 }
