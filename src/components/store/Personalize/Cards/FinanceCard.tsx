@@ -6,7 +6,7 @@ import { HelpCircle, Clock, CheckCircle2, SlidersHorizontal, Edit2 } from 'lucid
 import { formatDisplayIdForUI, unformatDisplayId } from '@/lib/displayId';
 import { formatInterestRate } from '@/utils/formatVehicleSpec';
 
-const FINANCE_TENURES: number[] = [3, 6, 9, 12, 18, 24, 30, 36, 42, 48, 54, 60];
+const FALLBACK_TENURES: number[] = [12, 24, 36, 48, 60];
 
 interface FinanceCardProps {
     emi: number;
@@ -85,7 +85,32 @@ export default function FinanceCard({
               ? [{ bank, scheme }]
               : [];
 
-    const tenures = FINANCE_TENURES;
+    const tenures = useMemo(() => {
+        const set = new Set<number>();
+
+        for (const candidate of activeCandidates) {
+            const s = candidate?.scheme || {};
+            const allowed = Array.isArray(s?.allowedTenures) ? s.allowedTenures.map((t: any) => Number(t)) : [];
+            const normalizedAllowed = allowed.filter((t: number) => Number.isFinite(t) && t > 0);
+
+            if (normalizedAllowed.length > 0) {
+                normalizedAllowed.forEach((t: number) => set.add(t));
+                continue;
+            }
+
+            const minT = Number(s?.minTenure || 0);
+            const maxT = Number(s?.maxTenure || 0);
+            if (Number.isFinite(minT) && Number.isFinite(maxT) && minT > 0 && maxT >= minT) {
+                for (let t = minT; t <= maxT; t += 1) set.add(t);
+            }
+        }
+
+        if (set.size === 0) {
+            FALLBACK_TENURES.forEach(t => set.add(t));
+        }
+
+        return Array.from(set).sort((a, b) => a - b);
+    }, [activeCandidates]);
 
     type WinnerRow = {
         bankName: string;
@@ -294,7 +319,7 @@ export default function FinanceCard({
                                                 setEmiTenure && setEmiTenure(t);
                                             }
                                         }}
-                                        className={`w-full py-2.5 px-2 flex items-center justify-center transition-all duration-200 relative
+                                        className={`w-full h-10 px-2 flex items-center justify-center transition-all duration-200 relative
                                         ${isSelected ? 'bg-amber-50' : isSelectable ? 'hover:bg-slate-50/60' : 'bg-slate-50/40 cursor-not-allowed'}`}
                                     >
                                         {/* Row sync hover highlight hack */}

@@ -1419,50 +1419,74 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                                 );
                             }
 
-                            // SOT: use snapshot values, not recomputed from offerOnRoad
+                            // SOT: use saved quote snapshot values directly.
                             const downPayment = toNumber(quote.finance.downPayment, 0);
-                            const loanAmount = toNumber(
+                            const netLoanAmount = toNumber(
                                 quote.finance.loanAmount,
                                 Math.max(0, offerOnRoad - downPayment)
                             );
+                            const grossLoanAmount = toNumber(
+                                quote.finance.grossLoanAmount,
+                                Math.max(
+                                    0,
+                                    netLoanAmount +
+                                        toNumber(quote.finance.loanAddons, 0) +
+                                        toNumber(quote.finance.upfrontCharges, 0)
+                                )
+                            );
                             const selectedTenure = Number(quote.finance.tenureMonths || quote.finance.tenure || 36);
-                            // SOT EMI: from snapshot, not flat-factor recompute
                             const sotEmi = toNumber(quote.finance.emi, 0);
-                            // Tenure grid: scheme allowedTenures (SOT) → EMI_FACTORS → always include selected
+                            const tenureRows: Array<any> = Array.isArray(quote.finance.tenureRows)
+                                ? quote.finance.tenureRows
+                                : [];
+                            const rowByTenure = new Map<number, any>(
+                                tenureRows
+                                    .map(row => ({ ...row, tenure: Number(row?.tenure) }))
+                                    .filter(row => Number.isFinite(row.tenure) && row.tenure > 0)
+                                    .map(row => [row.tenure, row])
+                            );
+                            // Legacy fallback for old quotes that don't have tenure_rows snapshot.
                             const schemeAllowedTenures: number[] = Array.isArray(quote.finance.allowedTenures)
                                 ? (quote.finance.allowedTenures as number[]).map(Number).filter(Boolean)
                                 : [];
                             const TENURES = Array.from(
                                 new Set([
-                                    ...(schemeAllowedTenures.length > 0
-                                        ? schemeAllowedTenures
-                                        : Object.keys(EMI_FACTORS).map(Number)),
+                                    ...(tenureRows.length > 0
+                                        ? tenureRows.map(row => Number(row?.tenure)).filter(Boolean)
+                                        : schemeAllowedTenures.length > 0
+                                          ? schemeAllowedTenures
+                                          : Object.keys(EMI_FACTORS).map(Number)),
                                     selectedTenure,
                                 ])
                             ).sort((a, b) => a - b);
                             const selectedFactor = EMI_FACTORS[selectedTenure] ?? EMI_FACTORS[36];
-                            // For tenure grid rows, use factor-based EMI (indicative) but anchor loan to SOT
-                            const selectedEmi = sotEmi > 0 ? sotEmi : Math.round(loanAmount * selectedFactor);
+                            const selectedRow = rowByTenure.get(selectedTenure);
+                            const selectedEmi =
+                                toNumber(selectedRow?.emi, 0) > 0
+                                    ? toNumber(selectedRow?.emi, 0)
+                                    : sotEmi > 0
+                                      ? sotEmi
+                                      : Math.round(grossLoanAmount * selectedFactor);
                             const interestType = String(
                                 quote.finance?.interestType || pricing.financeInterestType || 'REDUCING'
                             ).toUpperCase();
                             const roiRaw = toNumber(quote.finance?.roi, 0);
                             const annualRate = roiRaw > 1 ? roiRaw / 100 : roiRaw;
                             const calculateIndicativeEmi = (tenure: number) => {
-                                if (loanAmount <= 0 || tenure <= 0) return 0;
+                                if (grossLoanAmount <= 0 || tenure <= 0) return 0;
                                 const factor = EMI_FACTORS[tenure];
-                                if (typeof factor === 'number') return Math.round(loanAmount * factor);
+                                if (typeof factor === 'number') return Math.round(grossLoanAmount * factor);
 
-                                if (annualRate <= 0) return Math.round(loanAmount / tenure);
+                                if (annualRate <= 0) return Math.round(grossLoanAmount / tenure);
                                 if (interestType === 'FLAT') {
-                                    const totalInterest = loanAmount * annualRate * (tenure / 12);
-                                    return Math.round((loanAmount + totalInterest) / tenure);
+                                    const totalInterest = grossLoanAmount * annualRate * (tenure / 12);
+                                    return Math.round((grossLoanAmount + totalInterest) / tenure);
                                 }
 
                                 const monthlyRate = annualRate / 12;
-                                if (monthlyRate <= 0) return Math.round(loanAmount / tenure);
+                                if (monthlyRate <= 0) return Math.round(grossLoanAmount / tenure);
                                 const growth = Math.pow(1 + monthlyRate, tenure);
-                                return Math.round((loanAmount * monthlyRate * growth) / (growth - 1));
+                                return Math.round((grossLoanAmount * monthlyRate * growth) / (growth - 1));
                             };
 
                             return (
@@ -1500,7 +1524,7 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                                                     Net Loan Amount
                                                 </div>
                                                 <div className="text-[15px] font-black text-slate-800">
-                                                    {formatCurrency(loanAmount)}
+                                                    {formatCurrency(netLoanAmount)}
                                                 </div>
                                             </div>
                                             <div
@@ -1543,6 +1567,9 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                                         iconColor="#6366f1"
                                     >
                                         <div className="flex items-center justify-between py-2 px-6 border-b-2 border-zinc-200 mb-1">
+                                            <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 w-[45px]">
+                                                Fin
+                                            </span>
                                             <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 w-[70px]">
                                                 EMI
                                             </span>
@@ -1561,9 +1588,26 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                                         </div>
                                         {TENURES.map(t => {
                                             const isSelected = t === selectedTenure;
-                                            const emi = isSelected ? selectedEmi : calculateIndicativeEmi(t);
-                                            const totalPaid = emi * t;
-                                            const interest = Math.max(0, totalPaid - loanAmount);
+                                            const row = rowByTenure.get(t);
+                                            const emi =
+                                                toNumber(row?.emi, 0) > 0
+                                                    ? toNumber(row?.emi, 0)
+                                                    : isSelected
+                                                      ? selectedEmi
+                                                      : calculateIndicativeEmi(t);
+                                            const rowGrossLoan =
+                                                toNumber(row?.gross_loan, 0) > 0
+                                                    ? toNumber(row?.gross_loan, 0)
+                                                    : grossLoanAmount;
+                                            const totalPaid =
+                                                toNumber(row?.total, 0) > 0
+                                                    ? toNumber(row?.total, 0)
+                                                    : Math.round(emi * t + downPayment);
+                                            const interest =
+                                                toNumber(row?.interest, 0) > 0
+                                                    ? toNumber(row?.interest, 0)
+                                                    : Math.max(0, totalPaid - downPayment - rowGrossLoan);
+                                            const finCode = String(row?.bank_short_code || row?.bankShortCode || '--');
                                             return (
                                                 <div
                                                     key={t}
@@ -1583,6 +1627,12 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                                                     }
                                                 >
                                                     <span
+                                                        className={`text-[10px] w-[45px] ${isSelected ? 'font-black text-slate-900' : 'font-semibold text-slate-600'}`}
+                                                        title={row?.bank_name || row?.bankName || 'Financier'}
+                                                    >
+                                                        {finCode}
+                                                    </span>
+                                                    <span
                                                         className={`text-[10px] tabular-nums font-mono w-[70px] ${isSelected ? 'font-black text-slate-900 text-[11px]' : 'font-bold text-slate-700'}`}
                                                     >
                                                         {formatCurrency(emi)}
@@ -1595,7 +1645,7 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                                                     <span
                                                         className={`text-[10px] tabular-nums font-mono w-[70px] text-right ${isSelected ? 'font-semibold text-slate-800' : 'text-slate-500'}`}
                                                     >
-                                                        {formatCurrency(loanAmount)}
+                                                        {formatCurrency(rowGrossLoan)}
                                                     </span>
                                                     <span
                                                         className={`text-[9px] tabular-nums font-mono w-[70px] text-right ${isSelected ? 'text-emerald-700' : 'text-red-400'}`}
@@ -1614,8 +1664,9 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
 
                                     <div className="px-6 py-2">
                                         <div className="text-[8px] text-slate-300 tracking-widest italic">
-                                            * Indicative EMI based on standard flat-rate factors. Actual EMI may vary
-                                            based on financier terms.
+                                            {tenureRows.length > 0
+                                                ? '* Values captured from PDP at quote save time (snapshot SOT).'
+                                                : '* Indicative EMI based on legacy factors for old quotes without tenure snapshots.'}
                                         </div>
                                     </div>
                                 </div>
@@ -1731,7 +1782,12 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                                             quote.finance.loanAmount ??
                                             toNumber(pricing.finalTotal, 0) - toNumber(quote.finance.downPayment, 0);
                                         const addOns = quote.finance.loanAddons ?? quote.finance.fundedAddons ?? 0;
-                                        const grossLoan = toNumber(netLoan, 0) + toNumber(addOns, 0);
+                                        const grossLoan = toNumber(
+                                            quote.finance.grossLoanAmount,
+                                            toNumber(netLoan, 0) +
+                                                toNumber(addOns, 0) +
+                                                toNumber(quote.finance.upfrontCharges, 0)
+                                        );
                                         return (
                                             <>
                                                 <DossierRow

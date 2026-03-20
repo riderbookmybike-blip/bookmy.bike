@@ -820,17 +820,92 @@ export default function ProductClient({
         const offersDelta = data.offersDiscount || 0;
         const referralBonus = data.isReferralActive ? 5000 : 0;
 
-        const financeChargesDetailed = (data.financeCharges || []).map((c: any) => ({
-            id: c.id,
-            label: c.label,
-            amount: Number(c.value || 0),
+        const financeOnRoad = Number(modalDisplayOnRoadEstimate || totalOnRoad || 0);
+        const financeDownPayment = Number(data.userDownPayment || data.downPayment || 0);
+        const financeTenure = Number(data.emiTenure || 0);
+        const financeBaseLoan = Math.max(0, Math.round(financeOnRoad - financeDownPayment));
+        const schemeCandidates: Array<{ bank: any; scheme: any }> = Array.isArray(data.initialFinance?.candidateSchemes)
+            ? data.initialFinance.candidateSchemes
+            : [];
+
+        const isTenureSupported = (scheme: any, tenure: number) => {
+            const allowed = Array.isArray(scheme?.allowedTenures)
+                ? scheme.allowedTenures.map((t: any) => Number(t))
+                : [];
+            if (allowed.length > 0) return allowed.includes(tenure);
+            const minT = Number(scheme?.minTenure || 0);
+            const maxT = Number(scheme?.maxTenure || 0);
+            if (Number.isFinite(minT) && Number.isFinite(maxT) && minT > 0 && maxT >= minT) {
+                return tenure >= minT && tenure <= maxT;
+            }
+            return true;
+        };
+
+        const calcChargeAmount = (charge: any, baseLoan: number, onRoad: number) => {
+            const type = String(charge?.type || charge?.valueType || 'FIXED').toUpperCase();
+            if (type === 'PERCENTAGE') {
+                const basisKey = String(charge?.calculationBasis || 'ON_ROAD').toUpperCase();
+                const basis = basisKey === 'LOAN_AMOUNT' ? baseLoan : onRoad;
+                return Math.round(Number(basis || 0) * (Number(charge?.value || 0) / 100));
+            }
+            return Number(charge?.value || 0);
+        };
+
+        let financeWinner: { bank: any; scheme: any; emi: number; grossLoan: number } | null = null;
+        if (financeTenure > 0 && schemeCandidates.length > 0) {
+            for (const candidate of schemeCandidates) {
+                const candidateScheme = candidate?.scheme || {};
+                if (!isTenureSupported(candidateScheme, financeTenure)) continue;
+
+                const charges: any[] = Array.isArray(candidateScheme?.charges) ? candidateScheme.charges : [];
+                const upfront = charges
+                    .filter(c => String(c?.impact || '').toUpperCase() === 'UPFRONT')
+                    .reduce((sum, c) => sum + calcChargeAmount(c, financeBaseLoan, financeOnRoad), 0);
+                const funded = charges
+                    .filter(c => String(c?.impact || '').toUpperCase() === 'FUNDED')
+                    .reduce((sum, c) => sum + calcChargeAmount(c, financeBaseLoan, financeOnRoad), 0);
+                const grossLoan = Math.max(0, Math.round(financeBaseLoan + funded + upfront));
+                if (grossLoan <= 0) continue;
+
+                const annualRate = Number(candidateScheme?.interestRate || 0) / 100;
+                const iType = String(candidateScheme?.interestType || 'REDUCING').toUpperCase();
+                const emiRaw =
+                    iType === 'FLAT'
+                        ? (grossLoan + grossLoan * annualRate * (financeTenure / 12)) / financeTenure
+                        : (() => {
+                              const monthlyRate = annualRate / 12;
+                              if (monthlyRate === 0) return grossLoan / financeTenure;
+                              return (
+                                  (grossLoan * monthlyRate * Math.pow(1 + monthlyRate, financeTenure)) /
+                                  (Math.pow(1 + monthlyRate, financeTenure) - 1)
+                              );
+                          })();
+                const emi = Math.round(emiRaw);
+                if (!financeWinner || emi < financeWinner.emi) {
+                    financeWinner = { bank: candidate?.bank, scheme: candidateScheme, emi, grossLoan };
+                }
+            }
+        }
+
+        const effectiveFinanceBank = financeWinner?.bank || data.initialFinance?.bank || null;
+        const effectiveFinanceScheme = financeWinner?.scheme || data.initialFinance?.scheme || null;
+        const effectiveFinanceCharges: any[] = Array.isArray(effectiveFinanceScheme?.charges)
+            ? effectiveFinanceScheme.charges
+            : [];
+        const financeChargesDetailed = effectiveFinanceCharges.map((c: any, idx: number) => ({
+            id: c.id || `charge-${idx}`,
+            label: c.label || c.name || 'Charge',
+            amount: calcChargeAmount(c, financeBaseLoan, financeOnRoad),
             impact: c.impact || 'UPFRONT',
-            type: c.type,
-            calculationBasis: c.calculationBasis,
+            type: c.type || c.valueType || 'FIXED',
+            calculationBasis: c.calculationBasis || 'ON_ROAD',
             taxStatus: c.taxStatus,
             taxRate: c.taxRate,
-            rawValue: c.rawValue,
-            basisAmount: c.basisAmount,
+            rawValue: c.value,
+            basisAmount:
+                String(c?.calculationBasis || 'ON_ROAD').toUpperCase() === 'LOAN_AMOUNT'
+                    ? financeBaseLoan
+                    : financeOnRoad,
             helpText: c.helpText,
         }));
         const upfrontChargesTotal = financeChargesDetailed
@@ -839,7 +914,129 @@ export default function ProductClient({
         const fundedChargesTotal = financeChargesDetailed
             .filter(c => (c.impact || 'UPFRONT') === 'FUNDED')
             .reduce((sum, c) => sum + (c.amount || 0), 0);
-        const grossLoanAmount = (data.loanAmount || 0) + fundedChargesTotal;
+        const grossLoanAmount =
+            financeWinner?.grossLoan ||
+            Math.max(0, Math.round(financeBaseLoan + fundedChargesTotal + upfrontChargesTotal));
+        const marketTenures = Array.from(
+            new Set(
+                schemeCandidates.flatMap(candidate => {
+                    const s = candidate?.scheme || {};
+                    const allowed = Array.isArray(s?.allowedTenures)
+                        ? s.allowedTenures.map((t: any) => Number(t)).filter((t: number) => Number.isFinite(t) && t > 0)
+                        : [];
+                    if (allowed.length > 0) return allowed;
+                    const minT = Number(s?.minTenure || 0);
+                    const maxT = Number(s?.maxTenure || 0);
+                    if (Number.isFinite(minT) && Number.isFinite(maxT) && minT > 0 && maxT >= minT) {
+                        return Array.from({ length: maxT - minT + 1 }, (_, i) => minT + i);
+                    }
+                    return [];
+                })
+            )
+        ).sort((a, b) => a - b);
+        const getBankShortCode = (name: string) => {
+            const key = String(name || '').toLowerCase();
+            return (
+                (key.includes('home credit') && 'HC') ||
+                (key.includes('shriram') && 'SF') ||
+                (key.includes('kotak') && 'KP') ||
+                (key.includes('bajaj') && 'BF') ||
+                (key.includes('bandhan') && 'BB') ||
+                ((key.includes('l&t') || key.includes('lt finance')) && 'LT') ||
+                String(name || '')
+                    .split(/[\s&/-]+/)
+                    .map(token => token.trim())
+                    .filter(Boolean)
+                    .slice(0, 2)
+                    .map(token => token.charAt(0).toUpperCase())
+                    .join('') ||
+                'FIN'
+            );
+        };
+        const financeTenureRows = marketTenures
+            .map(tenure => {
+                let best: {
+                    bankName: string;
+                    bankShortCode: string;
+                    schemeCode: string | null;
+                    emi: number;
+                    grossLoan: number;
+                    interest: number;
+                    total: number;
+                } | null = null;
+                for (const candidate of schemeCandidates) {
+                    const candidateScheme = candidate?.scheme || {};
+                    if (!isTenureSupported(candidateScheme, tenure)) continue;
+
+                    const charges: any[] = Array.isArray(candidateScheme?.charges) ? candidateScheme.charges : [];
+                    const upfront = charges
+                        .filter(c => String(c?.impact || '').toUpperCase() === 'UPFRONT')
+                        .reduce((sum, c) => sum + calcChargeAmount(c, financeBaseLoan, financeOnRoad), 0);
+                    const funded = charges
+                        .filter(c => String(c?.impact || '').toUpperCase() === 'FUNDED')
+                        .reduce((sum, c) => sum + calcChargeAmount(c, financeBaseLoan, financeOnRoad), 0);
+                    const grossLoan = Math.max(0, Math.round(financeBaseLoan + funded + upfront));
+                    if (grossLoan <= 0) continue;
+
+                    const annualRate = Number(candidateScheme?.interestRate || 0) / 100;
+                    const iType = String(candidateScheme?.interestType || 'REDUCING').toUpperCase();
+                    const emiRaw =
+                        iType === 'FLAT'
+                            ? (grossLoan + grossLoan * annualRate * (tenure / 12)) / tenure
+                            : (() => {
+                                  const monthlyRate = annualRate / 12;
+                                  if (monthlyRate === 0) return grossLoan / tenure;
+                                  return (
+                                      (grossLoan * monthlyRate * Math.pow(1 + monthlyRate, tenure)) /
+                                      (Math.pow(1 + monthlyRate, tenure) - 1)
+                                  );
+                              })();
+                    const emi = Math.round(emiRaw);
+                    const totalPaidViaEmi = emi * tenure;
+                    const interest = Math.max(0, Math.round(totalPaidViaEmi - grossLoan));
+                    const total = Math.round(totalPaidViaEmi + financeDownPayment);
+                    const bankName = String(
+                        candidate?.bank?.name ||
+                            candidate?.bank?.identity?.display_name ||
+                            candidate?.bank?.identity?.displayName ||
+                            candidate?.bank?.identity?.name ||
+                            'Financier'
+                    );
+                    const row = {
+                        bankName,
+                        bankShortCode: getBankShortCode(bankName),
+                        schemeCode: candidateScheme?.id || candidateScheme?.name || null,
+                        emi,
+                        grossLoan,
+                        interest,
+                        total,
+                    };
+                    if (!best || row.emi < best.emi) best = row;
+                }
+                if (!best) return null;
+                return {
+                    tenure,
+                    bank_name: best.bankName,
+                    bank_short_code: best.bankShortCode,
+                    scheme_code: best.schemeCode,
+                    emi: best.emi,
+                    net_loan: financeBaseLoan,
+                    gross_loan: best.grossLoan,
+                    interest: best.interest,
+                    total: best.total,
+                };
+            })
+            .filter(Boolean);
+        const effectiveAnnualRatePct = Number(effectiveFinanceScheme?.interestRate || (data.annualInterest || 0) * 100);
+        const effectiveInterestType = effectiveFinanceScheme?.interestType || data.interestType || null;
+        const effectiveFinanceEmi = financeWinner?.emi || data.emi || 0;
+        const financeWinnerMeta = {
+            winner_source: financeWinner ? 'UI_RECOMPUTE' : 'SERVER_INITIAL',
+            winner_bank: effectiveFinanceBank?.name || null,
+            winner_scheme_code: effectiveFinanceScheme?.id || null,
+            candidate_count: schemeCandidates.length,
+            computed_at: new Date().toISOString(),
+        };
 
         return {
             brand: product.make,
@@ -853,26 +1050,29 @@ export default function ProductClient({
             ex_showroom: baseExShowroom,
             grand_total: totalOnRoad,
             finance: {
-                bank_id: data.initialFinance?.bank?.id || null,
-                bank_name: data.initialFinance?.bank?.name || null,
-                scheme_id: data.initialFinance?.scheme?.id || null,
-                scheme_code: data.initialFinance?.scheme?.name || null,
-                scheme_name: data.initialFinance?.scheme?.name || null,
-                scheme_interest_rate: data.initialFinance?.scheme?.interestRate || null,
-                scheme_interest_type: data.initialFinance?.scheme?.interestType || null,
-                scheme_allowed_tenures: data.initialFinance?.scheme?.allowedTenures || [],
+                bank_id: effectiveFinanceBank?.id || null,
+                bank_name: effectiveFinanceBank?.name || null,
+                scheme_id: effectiveFinanceScheme?.id || null,
+                scheme_code: effectiveFinanceScheme?.name || null,
+                scheme_name: effectiveFinanceScheme?.name || null,
+                scheme_interest_rate: effectiveFinanceScheme?.interestRate || null,
+                scheme_interest_type: effectiveInterestType,
+                scheme_allowed_tenures: effectiveFinanceScheme?.allowedTenures || [],
+                scheme_market_tenures: marketTenures,
+                tenure_rows: financeTenureRows,
                 selection_logic: data.initialFinance?.logic || null,
-                ltv: data.initialFinance?.scheme?.maxLTV || null,
-                roi: (data.annualInterest || 0) * 100,
-                tenure_months: data.emiTenure || null,
-                down_payment: data.userDownPayment || data.downPayment || 0,
-                loan_amount: data.loanAmount || 0,
+                ltv: effectiveFinanceScheme?.maxLTV || null,
+                roi: effectiveAnnualRatePct,
+                tenure_months: financeTenure || null,
+                down_payment: financeDownPayment,
+                loan_amount: financeBaseLoan,
                 loan_addons: fundedChargesTotal,
                 gross_loan_amount: grossLoanAmount,
                 processing_fee: upfrontChargesTotal,
                 charges_breakup: financeChargesDetailed,
-                emi: data.emi || 0,
+                emi: effectiveFinanceEmi,
                 status: 'IN_PROCESS',
+                _meta: financeWinnerMeta,
             },
             delivery: {
                 serviceable: bestOffer?.isServiceable ?? serverPricing?.dealer?.is_serviceable ?? null,
@@ -939,20 +1139,23 @@ export default function ProductClient({
                 referral_bonus: referralBonus,
                 rto_options: data.rtoOptions || [],
                 // Finance Integration
-                finance_scheme_id: data.initialFinance?.scheme?.id || null,
-                finance_scheme_name: data.initialFinance?.scheme?.name || null,
-                finance_bank_id: data.initialFinance?.bank?.id || null,
-                finance_bank_name: data.initialFinance?.bank?.name || null,
-                finance_emi: data.emi || 0,
-                finance_roi: (data.annualInterest || 0) * 100,
-                finance_interest_type: data.initialFinance?.scheme?.interestType || null,
-                finance_allowed_tenures: data.initialFinance?.scheme?.allowedTenures || [],
-                finance_loan_amount: data.loanAmount || 0,
+                finance_scheme_id: effectiveFinanceScheme?.id || null,
+                finance_scheme_name: effectiveFinanceScheme?.name || null,
+                finance_bank_id: effectiveFinanceBank?.id || null,
+                finance_bank_name: effectiveFinanceBank?.name || null,
+                finance_emi: effectiveFinanceEmi,
+                finance_roi: effectiveAnnualRatePct,
+                finance_interest_type: effectiveInterestType,
+                finance_allowed_tenures: effectiveFinanceScheme?.allowedTenures || [],
+                finance_market_tenures: marketTenures,
+                finance_tenure_rows: financeTenureRows,
+                finance_loan_amount: financeBaseLoan,
                 finance_gross_loan_amount: grossLoanAmount,
                 finance_funded_addons: fundedChargesTotal,
                 finance_upfront_charges: upfrontChargesTotal,
                 finance_charges_breakup: financeChargesDetailed,
                 finance_processing_fees: upfrontChargesTotal,
+                finance_meta: financeWinnerMeta,
             },
         };
     };

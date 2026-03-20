@@ -4032,6 +4032,34 @@ export async function createQuoteAction(data: {
                 : 'CASH',
     });
 
+    // Non-blocking audit trail for finance winner selection at quote-save time.
+    try {
+        const financeMeta = (data.commercials as any)?.finance?._meta || {};
+        const financePayload = (data.commercials as any)?.finance || {};
+        await adminClient.from('audit_logs').insert({
+            tenant_id: resolvedTenantId,
+            actor_id: createdBy,
+            action: 'QUOTE_FINANCE_WINNER_CAPTURED',
+            entity_type: 'CRM_QUOTE',
+            entity_id: quote.id,
+            metadata: {
+                source: data.source || 'CRM',
+                lead_id: safeLeadId,
+                variant_id: safeVariantId,
+                color_id: safeColorId,
+                winner_source: financeMeta?.winner_source || null,
+                winner_bank: financeMeta?.winner_bank || financePayload?.bank_name || null,
+                winner_scheme_code: financeMeta?.winner_scheme_code || financePayload?.scheme_code || null,
+                candidate_count: financeMeta?.candidate_count || null,
+                computed_at: financeMeta?.computed_at || null,
+                emi: financePayload?.emi || null,
+                tenure_months: financePayload?.tenure_months || null,
+            },
+        });
+    } catch (auditErr) {
+        console.warn('Quote finance audit log failed:', auditErr);
+    }
+
     // Supersede older quotes for same Lead + SKU (one SKU = one active quote per lead)
     if (safeLeadId && vehicleSkuId) {
         await adminClient
@@ -8136,12 +8164,22 @@ export async function getQuoteByDisplayId(
                       tenure: activeFinance.tenure_months ?? commercials.finance?.tenure_months ?? null,
                       tenureMonths: activeFinance.tenure_months ?? commercials.finance?.tenure_months ?? null,
                       allowedTenures:
+                          (commercials.finance?.scheme_market_tenures as number[] | undefined) ||
+                          (commercials.pricing_snapshot?.finance_market_tenures as number[] | undefined) ||
                           (commercials.finance?.scheme_allowed_tenures as number[] | undefined) ||
                           (commercials.pricing_snapshot?.finance_allowed_tenures as number[] | undefined) ||
+                          [],
+                      tenureRows:
+                          (commercials.finance?.tenure_rows as any[] | undefined) ||
+                          (commercials.pricing_snapshot?.finance_tenure_rows as any[] | undefined) ||
                           [],
                       emi: activeFinance.emi ?? commercials.finance?.emi ?? null,
                       downPayment: activeFinance.down_payment ?? commercials.finance?.down_payment ?? null,
                       loanAmount: activeFinance.loan_amount ?? commercials.finance?.loan_amount ?? null,
+                      grossLoanAmount:
+                          commercials.finance?.gross_loan_amount ??
+                          commercials.pricing_snapshot?.finance_gross_loan_amount ??
+                          null,
                       loanAddons: activeFinance.loan_addons ?? commercials.finance?.loan_addons ?? null,
                       processingFee: activeFinance.processing_fee ?? commercials.finance?.processing_fee ?? null,
                       upfrontCharges:

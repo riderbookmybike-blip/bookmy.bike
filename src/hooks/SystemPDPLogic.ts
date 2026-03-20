@@ -55,6 +55,7 @@ export function useSystemPDPLogic({
         bank: Partial<BankPartner>;
         scheme: BankScheme;
         logic?: string;
+        candidateSchemes?: Array<{ bank: any; scheme: BankScheme }>;
     };
     // SSPP v2: Server-calculated pricing (SOT JSON structure)
     serverPricing?: {

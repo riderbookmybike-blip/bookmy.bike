@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { computeFinanceMetrics } from './pdpComputations';
 
@@ -253,139 +253,49 @@ export default function AmortizationPanel({
         return rows;
     }, [disbursementDate, emiTenure, metrics, policy]);
 
-    const yearlySchedules = useMemo(() => {
-        const years = [];
-        for (let i = 0; i < schedule.length; i += 12) {
-            years.push({
-                year: Math.floor(i / 12) + 1,
-                months: schedule.slice(i, i + 12),
-            });
-        }
-        return years;
-    }, [schedule]);
-
-    const [expandedYear, setExpandedYear] = useState<number | null>(1);
-
     return (
         <div className="flex flex-col h-full cursor-default [&_*]:cursor-default relative overflow-hidden pb-4">
-            <div className="w-full flex-1 flex flex-col gap-3 overflow-y-auto max-w-[800px] mr-auto hide-scrollbar select-none pr-2 pb-4 pt-1">
-                {yearlySchedules.map(ys => {
-                    const isExpanded = expandedYear === ys.year;
-                    return (
-                        <div
-                            key={ys.year}
-                            className="flex flex-col border border-slate-200/80 rounded-2xl overflow-hidden bg-white/50 shadow-sm shrink-0"
-                        >
-                            {/* Accordion Header */}
-                            <button
-                                onClick={() => setExpandedYear(isExpanded ? null : ys.year)}
-                                className={`flex items-center justify-between w-full px-5 py-4 transition-colors ${isExpanded ? 'bg-slate-50/80' : 'bg-white hover:bg-slate-50/60'}`}
-                            >
-                                <div className="flex items-center gap-3">
-                                    <div
-                                        className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all ${isExpanded ? 'bg-brand-primary/10 border-brand-primary/20' : 'bg-slate-100 border-slate-200'}`}
+            <div className="w-full flex-1 overflow-y-auto max-w-[800px] mr-auto hide-scrollbar select-none pr-2 pb-4 pt-1">
+                <div className="w-full overflow-x-auto hide-scrollbar">
+                    <table className="w-full min-w-[620px] border-collapse border border-slate-200/80 rounded-xl overflow-hidden">
+                        <thead className="sticky top-0 z-10">
+                            <tr className="bg-slate-50">
+                                {['Month', 'EMI', 'Principal', 'Interest', 'Balance'].map(label => (
+                                    <th
+                                        key={label}
+                                        className="h-[38px] px-2 text-center text-[8px] font-bold uppercase tracking-[0.15em] text-slate-500 border-b border-slate-200 bg-slate-50"
                                     >
-                                        <span
-                                            className={`text-xs font-bold ${isExpanded ? 'text-brand-primary' : 'text-slate-500'}`}
-                                        >
-                                            Y{ys.year}
-                                        </span>
-                                    </div>
-                                    <div className="flex flex-col text-left">
-                                        <span className="text-sm font-bold text-slate-800">Year {ys.year}</span>
-                                        <span className="text-[10px] text-slate-500 font-semibold tracking-wide">
-                                            Months {ys.months[0].month} - {ys.months[ys.months.length - 1].month}
-                                        </span>
-                                    </div>
-                                </div>
-                                <div
-                                    className={`w-8 h-8 flex items-center justify-center rounded-full transition-all duration-300 ${isExpanded ? 'rotate-180 bg-brand-primary/10 text-brand-primary border border-brand-primary/20' : 'bg-slate-100 text-slate-400 border border-transparent'}`}
+                                        {label}
+                                    </th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {schedule.map((r, idx) => (
+                                <tr
+                                    key={`m-${r.month}`}
+                                    className={`h-[36px] transition-colors hover:bg-slate-50/80 ${idx % 2 !== 0 ? 'bg-slate-50/30' : 'bg-white'}`}
                                 >
-                                    <ChevronDown size={18} />
-                                </div>
-                            </button>
-
-                            {/* Expandable Content */}
-                            <div
-                                className={`transition-all duration-500 ease-[cubic-bezier(0.25,1,0.5,1)] overflow-hidden ${isExpanded ? 'max-h-[850px] opacity-100' : 'max-h-0 opacity-0'}`}
-                            >
-                                <div className="p-3 pt-0 border-t border-slate-100/60 bg-slate-50/30">
-                                    <div className="w-full flex gap-2 lg:gap-3 overflow-x-auto hide-scrollbar pt-3">
-                                        {/* Independent Vertical Cards for this Year */}
-                                        {[
-                                            { key: 'month', label: 'Month', align: 'text-left' },
-                                            { key: 'emi', label: 'EMI', align: 'text-center' },
-                                            { key: 'principal', label: 'Principal', align: 'text-center' },
-                                            { key: 'interest', label: 'Interest', align: 'text-center' },
-                                            { key: 'balance', label: 'Balance', align: 'text-right' },
-                                        ].map(col => (
-                                            <div
-                                                key={col.key}
-                                                className="flex-1 min-w-[70px] flex flex-col rounded-xl border border-slate-200/80 bg-white shadow-sm !h-max"
-                                            >
-                                                {/* Header */}
-                                                <div className="bg-slate-50 w-full py-2.5 px-2 border-b border-slate-200 flex items-center justify-center shrink-0 h-[38px] rounded-t-xl">
-                                                    <span className="text-[8px] font-bold uppercase tracking-[0.15em] text-slate-500">
-                                                        {col.label}
-                                                    </span>
-                                                </div>
-                                                {/* Vertical Cells */}
-                                                <div className="flex flex-col flex-1 divide-y divide-slate-100">
-                                                    {ys.months.map((r, idx) => {
-                                                        let valueNode = <></>;
-
-                                                        if (col.key === 'month') {
-                                                            valueNode = (
-                                                                <div className="flex items-center gap-1.5 justify-center w-full">
-                                                                    <span className="text-[11px] lg:text-[12px] font-bold text-slate-600 w-4 text-center">
-                                                                        {r.month}
-                                                                    </span>
-                                                                </div>
-                                                            );
-                                                        } else if (col.key === 'emi') {
-                                                            valueNode = (
-                                                                <span className="text-[10px] lg:text-[11px] font-bold font-mono tracking-tight text-slate-700">
-                                                                    ₹{r.emi.toLocaleString('en-IN')}
-                                                                </span>
-                                                            );
-                                                        } else if (col.key === 'principal') {
-                                                            valueNode = (
-                                                                <span className="text-[10px] lg:text-[11px] font-semibold font-mono tracking-tight text-emerald-600">
-                                                                    ₹{r.principal.toLocaleString('en-IN')}
-                                                                </span>
-                                                            );
-                                                        } else if (col.key === 'interest') {
-                                                            valueNode = (
-                                                                <span className="text-[10px] lg:text-[11px] font-semibold font-mono tracking-tight text-rose-500">
-                                                                    ₹{r.interest.toLocaleString('en-IN')}
-                                                                </span>
-                                                            );
-                                                        } else if (col.key === 'balance') {
-                                                            valueNode = (
-                                                                <span className="text-[10px] lg:text-[11px] font-bold font-mono tracking-tight text-slate-800">
-                                                                    ₹{r.balance.toLocaleString('en-IN')}
-                                                                </span>
-                                                            );
-                                                        }
-
-                                                        return (
-                                                            <div
-                                                                key={`${col.key}-${r.month}`}
-                                                                className={`w-full py-2.5 px-2 flex items-center justify-center relative transition-colors group/row h-[36px] hover:bg-slate-50/80 ${idx % 2 !== 0 ? 'bg-slate-50/30' : 'bg-white'}`}
-                                                            >
-                                                                {valueNode}
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    );
-                })}
+                                    <td className="px-2 text-center text-[11px] lg:text-[12px] font-bold text-slate-600 border-t border-slate-100">
+                                        {r.month}
+                                    </td>
+                                    <td className="px-2 text-center text-[10px] lg:text-[11px] font-bold font-mono tracking-tight text-slate-700 border-t border-slate-100">
+                                        ₹{r.emi.toLocaleString('en-IN')}
+                                    </td>
+                                    <td className="px-2 text-center text-[10px] lg:text-[11px] font-semibold font-mono tracking-tight text-emerald-600 border-t border-slate-100">
+                                        ₹{r.principal.toLocaleString('en-IN')}
+                                    </td>
+                                    <td className="px-2 text-center text-[10px] lg:text-[11px] font-semibold font-mono tracking-tight text-rose-500 border-t border-slate-100">
+                                        ₹{r.interest.toLocaleString('en-IN')}
+                                    </td>
+                                    <td className="px-2 text-center text-[10px] lg:text-[11px] font-bold font-mono tracking-tight text-slate-800 border-t border-slate-100">
+                                        ₹{r.balance.toLocaleString('en-IN')}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     );

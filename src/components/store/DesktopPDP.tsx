@@ -263,6 +263,83 @@ export function DesktopPDP({
         walletCoins,
     });
     const { coinPricing, displayOnRoad, bCoinEquivalent, totalSavings, footerEmi, financeMetrics } = commonState;
+    const financeCandidates: Array<{ bank: any; scheme: any }> = Array.isArray(initialFinance?.candidateSchemes)
+        ? initialFinance.candidateSchemes
+        : [];
+    const effectiveDownPayment = userDownPayment || 0;
+
+    const tenureWinnerFinance = useMemo(() => {
+        if (!financeCandidates.length) return null;
+
+        const isTenureSupported = (scheme: any, tenure: number) => {
+            const allowed = Array.isArray(scheme?.allowedTenures)
+                ? scheme.allowedTenures.map((t: any) => Number(t))
+                : [];
+            if (allowed.length > 0) return allowed.includes(tenure);
+            const minT = Number(scheme?.minTenure || 0);
+            const maxT = Number(scheme?.maxTenure || 0);
+            if (Number.isFinite(minT) && Number.isFinite(maxT) && minT > 0 && maxT >= minT) {
+                return tenure >= minT && tenure <= maxT;
+            }
+            return true;
+        };
+
+        const calcChargeAmt = (charge: any, baseLoan: number) => {
+            const type = String(charge?.type || charge?.valueType || 'FIXED').toUpperCase();
+            if (type === 'PERCENTAGE') {
+                const basisKey = String(charge?.calculationBasis || 'ON_ROAD').toUpperCase();
+                const basis = basisKey === 'LOAN_AMOUNT' ? baseLoan : totalOnRoad;
+                return Math.round(Number(basis || 0) * (Number(charge?.value || 0) / 100));
+            }
+            return Number(charge?.value || 0);
+        };
+
+        const baseLoan = Math.max(0, Math.round(displayOnRoad - effectiveDownPayment));
+        let best: { bank: any; scheme: any; emi: number } | null = null;
+        for (const candidate of financeCandidates) {
+            const scheme = candidate?.scheme || {};
+            if (!isTenureSupported(scheme, Number(emiTenure))) continue;
+            const charges: any[] = Array.isArray(scheme?.charges) ? scheme.charges : [];
+            const totalUpfront = charges
+                .filter(c => String(c?.impact || '').toUpperCase() === 'UPFRONT')
+                .reduce((s, c) => s + calcChargeAmt(c, baseLoan), 0);
+            const totalFunded = charges
+                .filter(c => String(c?.impact || '').toUpperCase() === 'FUNDED')
+                .reduce((s, c) => s + calcChargeAmt(c, baseLoan), 0);
+            const grossLoan = Math.max(0, Math.round(baseLoan + totalFunded + totalUpfront));
+            if (grossLoan <= 0) continue;
+
+            const annualRate = Number(scheme?.interestRate || 0) / 100;
+            const iType = String(scheme?.interestType || 'REDUCING').toUpperCase();
+            const emiRaw =
+                iType === 'FLAT'
+                    ? (grossLoan + grossLoan * annualRate * (Number(emiTenure) / 12)) / Number(emiTenure)
+                    : (() => {
+                          const monthlyRate = annualRate / 12;
+                          if (monthlyRate === 0) return grossLoan / Number(emiTenure);
+                          return (
+                              (grossLoan * monthlyRate * Math.pow(1 + monthlyRate, Number(emiTenure))) /
+                              (Math.pow(1 + monthlyRate, Number(emiTenure)) - 1)
+                          );
+                      })();
+            const emiValue = Math.round(emiRaw);
+            if (!best || emiValue < best.emi) best = { bank: candidate?.bank, scheme, emi: emiValue };
+        }
+        return best;
+    }, [financeCandidates, emiTenure, displayOnRoad, effectiveDownPayment, totalOnRoad]);
+
+    const effectiveFinanceForSummary =
+        tenureWinnerFinance?.scheme && tenureWinnerFinance?.bank
+            ? { ...initialFinance, bank: tenureWinnerFinance.bank, scheme: tenureWinnerFinance.scheme }
+            : initialFinance;
+    const effectiveFinanceMetrics = computeFinanceMetrics({
+        scheme: effectiveFinanceForSummary?.scheme,
+        displayOnRoad,
+        userDownPayment: effectiveDownPayment,
+        loanAmount,
+        totalOnRoad,
+        emiTenure,
+    });
 
     // ── Command bar compute (shared with PdpCommandBar via same fn) ──
     const commandBarState = buildCommandBarState({
@@ -925,28 +1002,31 @@ export function DesktopPDP({
                                                                     financeCharges={financeCharges}
                                                                     bank={initialFinance?.bank}
                                                                     scheme={initialFinance?.scheme}
+                                                                    schemeCandidates={
+                                                                        initialFinance?.candidateSchemes || []
+                                                                    }
                                                                 />
                                                             </div>
                                                         )}
                                                         {card.id === 'FINANCE_SUMMARY' && (
                                                             <FinanceSummaryPanel
-                                                                initialFinance={initialFinance}
+                                                                initialFinance={effectiveFinanceForSummary}
                                                                 displayOnRoad={displayOnRoad}
-                                                                userDownPayment={userDownPayment || 0}
+                                                                userDownPayment={effectiveDownPayment}
                                                                 loanAmount={loanAmount}
                                                                 totalOnRoad={totalOnRoad}
                                                                 totalSavings={totalSavings}
                                                                 coinPricing={coinPricing}
                                                                 emiTenure={emiTenure}
-                                                                annualInterest={financeMetrics.annualInterest}
-                                                                interestType={financeMetrics.interestType}
+                                                                annualInterest={effectiveFinanceMetrics.annualInterest}
+                                                                interestType={effectiveFinanceMetrics.interestType}
                                                             />
                                                         )}
                                                         {card.id === 'AMORTIZATION' && (
                                                             <AmortizationPanel
-                                                                initialFinance={initialFinance}
+                                                                initialFinance={effectiveFinanceForSummary}
                                                                 displayOnRoad={displayOnRoad}
-                                                                userDownPayment={userDownPayment || 0}
+                                                                userDownPayment={effectiveDownPayment}
                                                                 loanAmount={loanAmount}
                                                                 totalOnRoad={totalOnRoad}
                                                                 emiTenure={emiTenure}
@@ -1046,7 +1126,7 @@ export function DesktopPDP({
                                             </div>
                                             <div className="text-right flex flex-col items-end">
                                                 <span className="text-4xl font-black tracking-tight text-slate-900 font-mono tabular-nums leading-none">
-                                                    ₹{footerEmi.toLocaleString()}
+                                                    ₹{effectiveFinanceMetrics.monthlyEmi.toLocaleString()}
                                                 </span>
                                                 <span className="mt-1 text-[10px] font-black uppercase tracking-widest text-emerald-600">
                                                     / {emiTenure}mo
