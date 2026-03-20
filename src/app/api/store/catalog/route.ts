@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
         //   Personalised pricing must never be served from a shared cache key.
         const isGeneric = !district && !leadId;
         if (isGeneric) {
-            response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300');
+            response.headers.set('Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=86400');
         } else {
             response.headers.set('Cache-Control', 'private, no-store');
         }
