@@ -10,12 +10,56 @@ function normalizeDisplayIdParam(value: string | null): string {
         .toUpperCase();
 }
 
+/** Known first-path-segments that belong to Next.js app routes. */
+const KNOWN_ROUTES = new Set([
+    'store',
+    'app',
+    'api',
+    'dashboard',
+    'auth',
+    'login',
+    'logout',
+    '_next',
+    '_vercel',
+    'favicon.ico',
+    'images',
+    'media',
+    'static',
+    'robots.txt',
+    'sitemap.xml',
+    'dossier',
+    'q',
+    'profile',
+    'invite',
+]);
+
 export async function proxy(request: NextRequest) {
     const { pathname } = request.nextUrl;
     const host = request.headers.get('host') || '';
     const isHttps = request.nextUrl.protocol === 'https:';
     const cookieDomain = resolveCookieDomain(host, process.env.NEXT_PUBLIC_COOKIE_DOMAIN);
     const userAgent = request.headers.get('user-agent') || '';
+
+    // ── AAPLI.IN LEGACY REDIRECT ────────────────────────────────────────────────
+    // Only runs on bookmy.bike — host-guarded so aapli.in is unaffected.
+    // Old aapli.in PDP format: /{Make}/{Model}/{Variant}/{Color}
+    // → 301 to /store on bookmy.bike so users don't hit a blank 404.
+    const isBookmyBike = host === 'bookmy.bike' || host === 'www.bookmy.bike';
+    if (isBookmyBike) {
+        let decodedPath: string;
+        try {
+            decodedPath = decodeURIComponent(pathname.slice(1)); // strip leading /
+        } catch {
+            decodedPath = pathname.slice(1); // malformed %-sequence — use raw
+        }
+        const firstSegment = decodedPath.split('/')[0];
+        if (firstSegment && !KNOWN_ROUTES.has(firstSegment.toLowerCase()) && /^[A-Z]/.test(firstSegment)) {
+            const newUrl = request.nextUrl.clone();
+            newUrl.pathname = '/store';
+            return NextResponse.redirect(newUrl, { status: 301 });
+        }
+    }
+    // ────────────────────────────────────────────────────────────────────────────
 
     // A. BOT PROTECTION FOR API
     const IS_BOT_REGEX =
