@@ -28,7 +28,7 @@ import { createClient } from '@/lib/supabase/server';
 import { adminClient } from '@/lib/supabase/admin';
 import { v4 as uuid } from 'uuid';
 import { revalidateTag } from 'next/cache';
-import { CACHE_TAGS, tenantTag } from '@/lib/cache/tags';
+import { CACHE_TAGS, stateTag, tenantTag } from '@/lib/cache/tags';
 import { calculateRegistrationCharges } from '@/lib/aums/registrationEngine';
 import { RegistrationRule, CalculationContext, RegistrationType } from '@/types/registration';
 import { calculateInsurance as engineCalculateInsurance } from '@/lib/aums/insuranceEngine';
@@ -742,6 +742,7 @@ export async function publishPrices(skuIds: string[], stateCode: string): Promis
     // Push Invalidation: Global Catalog
     if (results.some(r => r.success)) {
         revalidateTag(CACHE_TAGS.catalog_global, 'max');
+        revalidateTag(stateTag(stateCode), 'max');
     }
 
     // Push Invalidation: Affected Tenants

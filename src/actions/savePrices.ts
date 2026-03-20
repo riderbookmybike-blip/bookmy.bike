@@ -3,7 +3,7 @@
 import { adminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 import { revalidateTag } from 'next/cache';
-import { CACHE_TAGS, districtTag } from '@/lib/cache/tags';
+import { CACHE_TAGS, districtTag, stateTag } from '@/lib/cache/tags';
 import { getAuthUser } from '@/lib/auth/resolver';
 import { getErrorMessage } from '@/lib/utils/errorMessage';
 import { sot_price_seed } from '@/actions/sot_price_seed';
@@ -86,6 +86,12 @@ export async function savePrices(
             const uniqueDistricts = Array.from(new Set(prices.map(p => p.district || 'ALL')));
             for (const district of uniqueDistricts) {
                 revalidateTag(districtTag(district), 'max');
+            }
+            const uniqueStates = Array.from(
+                new Set(prices.map(p => String(p.state_code || '').toUpperCase()).filter(Boolean))
+            );
+            for (const stateCode of uniqueStates) {
+                revalidateTag(stateTag(stateCode), 'max');
             }
             // Fix #1 (Phase 6D audit): referral hot-picks cache must be purged on
             // any dealer offer/price write — it surfaces winner pricing directly.
