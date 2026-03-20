@@ -3,7 +3,7 @@
 import { adminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 import { revalidateTag } from 'next/cache';
-import { CACHE_TAGS, districtTag, stateTag } from '@/lib/cache/tags';
+import { CACHE_TAGS, districtTag, stateTag, variantTag } from '@/lib/cache/tags';
 import { getAuthUser } from '@/lib/auth/resolver';
 import { getErrorMessage } from '@/lib/utils/errorMessage';
 import { sot_price_seed } from '@/actions/sot_price_seed';
@@ -96,6 +96,12 @@ export async function savePrices(
             // Fix #1 (Phase 6D audit): referral hot-picks cache must be purged on
             // any dealer offer/price write — it surfaces winner pricing directly.
             revalidateTag(CACHE_TAGS.referral_hot_picks, 'max');
+
+            // Per-SKU variant tag: selective invalidation of per-variant PDP data caches.
+            const uniqueSkuIds = Array.from(new Set(prices.map(p => p.vehicle_color_id).filter(Boolean)));
+            for (const skuId of uniqueSkuIds) {
+                revalidateTag(variantTag(skuId), 'max');
+            }
         } // end: if (prices.length > 0)
 
         // Update statuses using adminClient
