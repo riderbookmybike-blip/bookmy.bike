@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useTransition, useDeferredValue } from 'react';
 import type { ProductVariant } from '@/types/productMaster';
 import { getEmiFactor } from '@/lib/constants/pricingConstants';
 import { useSearchParams, usePathname, useRouter } from 'next/navigation';
@@ -14,6 +14,14 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
     const pathname = usePathname();
     const router = useRouter();
     const { pricingMode, setPricingMode, offerMode, setOfferMode, searchQuery, setSearchQuery } = useDiscovery();
+    const [, startTransition] = useTransition();
+
+    // Gate URL sync to after hydration — prevents router.replace on first render
+    // which creates an extra navigation task that blocks TBT.
+    const [isHydrated, setIsHydrated] = useState(false);
+    useEffect(() => {
+        setIsHydrated(true);
+    }, []);
 
     // We no longer manage searchQuery local state here, we use the DiscoveryContext
     const [debouncedSearch, setDebouncedSearch] = useState(searchQuery);
@@ -141,63 +149,68 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
         return () => clearTimeout(timer);
     }, [downpayment, maxPrice, maxEMI]);
 
-    // Update URL when filters change
+    // Defer URL update to post-hydration & wrap in startTransition so
+    // the router.replace doesn't create a synchronous long task on first render.
     useEffect(() => {
-        const params = new URLSearchParams(searchParams.toString());
+        if (!isHydrated) return; // Never run during SSR or hydration render
 
-        if (debouncedSearch) params.set('q', debouncedSearch);
-        else params.delete('q');
+        startTransition(() => {
+            const params = new URLSearchParams(searchParams.toString());
 
-        // Only set brand if it's not the full brands list (default)
-        const selectedMakeSet = new Set(selectedMakes.map(m => m.toUpperCase()));
-        const isAllMakesSelected =
-            selectedMakes.length === 0 ||
-            (availableMakes.length > 0 && availableMakes.every(m => selectedMakeSet.has(m.toUpperCase()))) ||
-            (brands.length > 0 && brands.every(m => selectedMakeSet.has(m.toUpperCase())));
+            if (debouncedSearch) params.set('q', debouncedSearch);
+            else params.delete('q');
 
-        if (isAllMakesSelected) {
-            params.delete('brand');
-        } else {
-            params.set('brand', selectedMakes.join(','));
-        }
+            // Only set brand if it's not the full brands list (default)
+            const selectedMakeSet = new Set(selectedMakes.map(m => m.toUpperCase()));
+            const isAllMakesSelected =
+                selectedMakes.length === 0 ||
+                (availableMakes.length > 0 && availableMakes.every(m => selectedMakeSet.has(m.toUpperCase()))) ||
+                (brands.length > 0 && brands.every(m => selectedMakeSet.has(m.toUpperCase())));
 
-        if (selectedFuels.length > 0) params.set('fuel', selectedFuels.join(','));
-        else params.delete('fuel');
-        if (selectedSegments.length > 0) params.set('segment', selectedSegments.join(','));
-        else params.delete('segment');
-        if (selectedBodyTypes.length > 0) params.set('category', selectedBodyTypes.join(','));
-        else params.delete('category');
-        if (selectedCC.length > 0) params.set('cc', selectedCC.join(','));
-        else params.delete('cc');
-        if (selectedFinishes.length > 0) params.set('finish', selectedFinishes.join(','));
-        else params.delete('finish');
-
-        // Use debounced values for URL to prevent spamming history/analytics
-        if (debouncedDownpayment !== 0) params.set('dp', debouncedDownpayment.toString());
-        else params.delete('dp');
-        if (tenure !== 36) params.set('tenure', tenure.toString());
-        else params.delete('tenure');
-        if (debouncedMaxPrice < 1000000) params.set('maxPrice', debouncedMaxPrice.toString());
-        else params.delete('maxPrice');
-        if (debouncedMaxEMI < 20000) params.set('maxEMI', debouncedMaxEMI.toString());
-        else params.delete('maxEMI');
-        if (showOClubOnly) params.set('oclub', '1');
-        else params.delete('oclub');
-        if (pricingMode !== 'cash') params.set('mode', pricingMode);
-        else params.delete('mode');
-
-        if (offerMode !== 'BEST_OFFER') params.set('offer', offerMode);
-        else params.delete('offer');
-
-        const queryString = params.toString();
-        if (queryString !== searchParams.toString()) {
-            if (process.env.NODE_ENV !== 'production') {
-                console.log('[useCatalogFilters] Updating URL:', queryString);
+            if (isAllMakesSelected) {
+                params.delete('brand');
+            } else {
+                params.set('brand', selectedMakes.join(','));
             }
-            const url = queryString ? `${pathname}?${queryString}` : pathname;
-            router.replace(url, { scroll: false });
-        }
+
+            if (selectedFuels.length > 0) params.set('fuel', selectedFuels.join(','));
+            else params.delete('fuel');
+            if (selectedSegments.length > 0) params.set('segment', selectedSegments.join(','));
+            else params.delete('segment');
+            if (selectedBodyTypes.length > 0) params.set('category', selectedBodyTypes.join(','));
+            else params.delete('category');
+            if (selectedCC.length > 0) params.set('cc', selectedCC.join(','));
+            else params.delete('cc');
+            if (selectedFinishes.length > 0) params.set('finish', selectedFinishes.join(','));
+            else params.delete('finish');
+
+            if (debouncedDownpayment !== 0) params.set('dp', debouncedDownpayment.toString());
+            else params.delete('dp');
+            if (tenure !== 36) params.set('tenure', tenure.toString());
+            else params.delete('tenure');
+            if (debouncedMaxPrice < 1000000) params.set('maxPrice', debouncedMaxPrice.toString());
+            else params.delete('maxPrice');
+            if (debouncedMaxEMI < 20000) params.set('maxEMI', debouncedMaxEMI.toString());
+            else params.delete('maxEMI');
+            if (showOClubOnly) params.set('oclub', '1');
+            else params.delete('oclub');
+            if (pricingMode !== 'cash') params.set('mode', pricingMode);
+            else params.delete('mode');
+
+            if (offerMode !== 'BEST_OFFER') params.set('offer', offerMode);
+            else params.delete('offer');
+
+            const queryString = params.toString();
+            if (queryString !== searchParams.toString()) {
+                if (process.env.NODE_ENV !== 'production') {
+                    console.log('[useCatalogFilters] Updating URL:', queryString);
+                }
+                const url = queryString ? `${pathname}?${queryString}` : pathname;
+                router.replace(url, { scroll: false });
+            }
+        });
     }, [
+        isHydrated,
         debouncedSearch,
         selectedMakes,
         selectedFuels,
@@ -215,30 +228,50 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
         offerMode,
     ]);
 
-    const filteredVehicles = useMemo(() => {
-        const normalizedSearch = debouncedSearch.toLowerCase();
-        const selectedMakeSet = new Set(selectedMakes.map(m => m.toUpperCase()));
-        const isAllMakesSelected =
-            selectedMakes.length === 0 ||
-            (availableMakes.length > 0 && availableMakes.every(m => selectedMakeSet.has(m.toUpperCase())));
+    // Deferred filter dependencies — React computes these in a low-priority frame
+    // so the main thread yields to the browser between paint and filter compute.
+    const deferredSearch = useDeferredValue(debouncedSearch);
+    const deferredMakes = useDeferredValue(selectedMakes);
+    const deferredFuels = useDeferredValue(selectedFuels);
+    const deferredSegments = useDeferredValue(selectedSegments);
+    const deferredBodyTypes = useDeferredValue(selectedBodyTypes);
+    const deferredCC = useDeferredValue(selectedCC);
+    const deferredBrakes = useDeferredValue(selectedBrakes);
+    const deferredWheels = useDeferredValue(selectedWheels);
+    const deferredConsole = useDeferredValue(selectedConsole);
+    const deferredSeatHeight = useDeferredValue(selectedSeatHeight);
+    const deferredWeights = useDeferredValue(selectedWeights);
+    const deferredFinishes = useDeferredValue(selectedFinishes);
+    const deferredMaxPrice = useDeferredValue(maxPrice);
+    const deferredMaxEMI = useDeferredValue(maxEMI);
+    const deferredDownpayment = useDeferredValue(downpayment);
+    const deferredAvailableMakes = useDeferredValue(availableMakes);
 
-        return initialVehicles.filter((v: ProductVariant) => {
+    const filteredVehicles = useMemo(() => {
+        const t0 = typeof performance !== 'undefined' ? performance.now() : 0;
+
+        const normalizedSearch = deferredSearch.toLowerCase();
+        const selectedMakeSet = new Set(deferredMakes.map(m => m.toUpperCase()));
+        const isAllMakesSelected =
+            deferredMakes.length === 0 ||
+            (deferredAvailableMakes.length > 0 &&
+                deferredAvailableMakes.every(m => selectedMakeSet.has(m.toUpperCase())));
+
+        const result = initialVehicles.filter((v: ProductVariant) => {
             const matchesSearch = (v.make + ' ' + v.model + ' ' + v.variant).toLowerCase().includes(normalizedSearch);
             const normalizedMake = (v.make || '').toUpperCase();
             const matchesMake = isAllMakesSelected || selectedMakeSet.has(normalizedMake);
 
             const isElectric = v.model.toLowerCase().includes('electric') || v.fuelType === 'EV';
             const fuelType = v.fuelType === 'CNG' ? 'CNG' : isElectric ? 'Electric' : 'Petrol';
-            const matchesFuel = selectedFuels.length === 0 || selectedFuels.includes(fuelType);
+            const matchesFuel = deferredFuels.length === 0 || deferredFuels.includes(fuelType);
 
             const segment = v.segment || 'Commuter';
-            const matchesSegment = selectedSegments.length === 0 || selectedSegments.includes(segment);
+            const matchesSegment = deferredSegments.length === 0 || deferredSegments.includes(segment);
 
             const isVehicle = v.bodyType !== 'ACCESSORY' && v.bodyType !== 'SERVICE';
-
-            // Default: hide accessories/services unless explicitly filtered in body type
             const matchesBodyType =
-                selectedBodyTypes.length === 0 ? isVehicle : v.bodyType && selectedBodyTypes.includes(v.bodyType);
+                deferredBodyTypes.length === 0 ? isVehicle : v.bodyType && deferredBodyTypes.includes(v.bodyType);
 
             const displacement = v.displacement || 0;
             const ccTag =
@@ -249,7 +282,7 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
                       : displacement < 500
                         ? '250-500cc'
                         : '> 500cc';
-            const matchesCC = selectedCC.length === 0 || selectedCC.includes(ccTag);
+            const matchesCC = deferredCC.length === 0 || deferredCC.includes(ccTag);
 
             const frontBrake = (v.specifications as any)?.brakes?.front?.toLowerCase?.() || '';
             const rearBrake = (v.specifications as any)?.brakes?.rear?.toLowerCase?.() || '';
@@ -269,22 +302,22 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
             } else if (hasFrontDisc && !hasRearDisc) {
                 brakeTag = 'Front Disc Rear Drum';
             }
-            const matchesBrakes = selectedBrakes.length === 0 || selectedBrakes.includes(brakeTag);
+            const matchesBrakes = deferredBrakes.length === 0 || deferredBrakes.includes(brakeTag);
 
             const wheelType = (v.specifications as any)?.wheels?.front?.toLowerCase?.().includes('alloy')
                 ? 'Alloy'
                 : 'Spoke';
-            const matchesWheels = selectedWheels.length === 0 || selectedWheels.includes(wheelType);
+            const matchesWheels = deferredWheels.length === 0 || deferredWheels.includes(wheelType);
 
             const consoleType = (v.specifications as any)?.console?.toLowerCase?.().includes('digital')
                 ? 'Full Digital'
                 : 'Analog';
-            const matchesConsole = selectedConsole.length === 0 || selectedConsole.includes(consoleType);
+            const matchesConsole = deferredConsole.length === 0 || deferredConsole.includes(consoleType);
 
             const seatHeight = parseInt(v.specifications?.dimensions?.seatHeight || '0');
             const seatHeightTag =
                 seatHeight < 780 ? '< 780mm' : seatHeight >= 780 && seatHeight <= 810 ? '780-810mm' : '> 810mm';
-            const matchesSeatHeight = selectedSeatHeight.length === 0 || selectedSeatHeight.includes(seatHeightTag);
+            const matchesSeatHeight = deferredSeatHeight.length === 0 || deferredSeatHeight.includes(seatHeightTag);
 
             const weightRaw = parseInt(
                 (v.specifications?.dimensions?.kerbWeight || v.specifications?.dimensions?.curbWeight || '0')
@@ -299,17 +332,17 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
                       : weightRaw > 140
                         ? '> 140kg'
                         : 'Unknown';
-            const matchesWeight = selectedWeights.length === 0 || selectedWeights.includes(weightTag);
+            const matchesWeight = deferredWeights.length === 0 || deferredWeights.includes(weightTag);
 
             const matchesFinish =
-                selectedFinishes.length === 0 ||
-                v.availableColors?.some(c => c.finish && selectedFinishes.includes(c.finish));
+                deferredFinishes.length === 0 ||
+                v.availableColors?.some(c => c.finish && deferredFinishes.includes(c.finish));
 
             const basePrice = v.price?.offerPrice || v.price?.onRoad || v.price?.exShowroom || 0;
-            const matchesPrice = basePrice <= maxPrice;
+            const matchesPrice = basePrice <= deferredMaxPrice;
 
-            const calculatedEMI = Math.max(0, Math.round((basePrice - downpayment) * getEmiFactor(tenure)));
-            const matchesEMI = calculatedEMI <= maxEMI;
+            const calculatedEMI = Math.max(0, Math.round((basePrice - deferredDownpayment) * getEmiFactor(tenure)));
+            const matchesEMI = calculatedEMI <= deferredMaxEMI;
 
             return (
                 matchesSearch &&
@@ -326,28 +359,39 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
                 matchesFinish &&
                 matchesPrice &&
                 matchesEMI &&
-                (!showOClubOnly || (v.price?.offerPrice || 0) > 0) // Example logic: O' Circle items usually have offers
+                (!showOClubOnly || (v.price?.offerPrice || 0) > 0)
             );
         });
+
+        if (process.env.NODE_ENV !== 'production' && t0) {
+            const elapsed = performance.now() - t0;
+            if (elapsed > 5)
+                console.log(
+                    `[useCatalogFilters] filteredVehicles: ${elapsed.toFixed(1)}ms (${initialVehicles.length} → ${result.length})`
+                );
+        }
+
+        return result;
     }, [
         initialVehicles,
-        debouncedSearch,
-        selectedMakes,
-        selectedFuels,
-        selectedSegments,
-        selectedBodyTypes,
-        selectedCC,
-        selectedBrakes,
-        selectedWheels,
-        selectedConsole,
-        selectedSeatHeight,
-        selectedWeights,
-        selectedFinishes,
-        maxPrice,
-        maxEMI,
+        deferredSearch,
+        deferredMakes,
+        deferredFuels,
+        deferredSegments,
+        deferredBodyTypes,
+        deferredCC,
+        deferredBrakes,
+        deferredWheels,
+        deferredConsole,
+        deferredSeatHeight,
+        deferredWeights,
+        deferredFinishes,
+        deferredMaxPrice,
+        deferredMaxEMI,
         showOClubOnly,
-        downpayment, // Added dependency for EMI calculation
-        availableMakes,
+        deferredDownpayment,
+        deferredAvailableMakes,
+        tenure,
     ]);
 
     const toggleFilter = (setter: React.Dispatch<React.SetStateAction<string[]>>, value: string) => {
