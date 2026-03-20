@@ -6,6 +6,8 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useFavorites } from '@/lib/favorites/favoritesContext';
 import { resolveCompareTab, type CompareTab } from '@/components/store/cards/vehicleModeConfig';
+import { PincodeGateModal } from '@/components/store/Personalize/PincodeGateModal';
+import { useSystemCatalogLogic } from '@/hooks/SystemCatalogLogic';
 
 const DesktopCompare = dynamic(() => import('@/components/store/desktop/DesktopCompare'), {
     loading: () => (
@@ -44,9 +46,23 @@ const CompareStudio = dynamic(() => import('./ComparePageClient').then(m => ({ d
 export function SystemCompareRouter({ forcedTab }: { forcedTab?: CompareTab } = {}) {
     const searchParams = useSearchParams();
     const { favorites } = useFavorites();
+    const { needsLocation } = useSystemCatalogLogic(undefined, { allowStateOnly: true });
     const tabParam = searchParams.get('tab');
     const hasModelContext = Boolean(searchParams.get('make') && searchParams.get('model'));
     const activeTab: CompareTab = forcedTab ?? resolveCompareTab(tabParam, favorites.length > 0);
+
+    if (needsLocation) {
+        return (
+            <div className="min-h-screen bg-slate-50">
+                <PincodeGateModal
+                    isOpen
+                    onResolved={() => {
+                        window.dispatchEvent(new Event('locationChanged'));
+                    }}
+                />
+            </div>
+        );
+    }
 
     return (
         <div className="pb-6">
