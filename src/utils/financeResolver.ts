@@ -25,6 +25,58 @@ export interface FinanceCandidateScheme {
     scheme: BankScheme;
 }
 
+export async function getFinanceCandidateSchemes(make: string, model: string): Promise<FinanceCandidateScheme[]> {
+    const supabase = adminClient;
+
+    const { data: rawBanks } = await supabase
+        .from('id_tenants')
+        .select('id, name, config')
+        .eq('type', 'BANK')
+        .eq('status', 'ACTIVE');
+
+    if (!rawBanks || rawBanks.length === 0) return [];
+
+    const bankIds = rawBanks.map(b => b.id);
+    const { data: schemeRows } = await supabase
+        .from('fin_marketplace_schemes')
+        .select('*')
+        .in('lender_tenant_id', bankIds)
+        .eq('is_marketplace_active', true)
+        .eq('status', 'ACTIVE');
+
+    const schemesByBank = new Map<string, BankScheme[]>();
+    for (const s of schemeRows || []) {
+        const mapped: BankScheme = {
+            id: s.scheme_code,
+            name: s.scheme_code,
+            interestRate: Number(s.roi),
+            interestType: (s as any).interest_type || 'REDUCING',
+            maxLTV: Number(s.ltv),
+            payout: Number(s.processing_fee),
+            payoutType: s.processing_fee_type as any,
+            minLoanAmount: Number(s.min_loan_amount),
+            maxLoanAmount: Number(s.max_loan_amount),
+            minTenure: s.min_tenure,
+            maxTenure: s.max_tenure,
+            allowedTenures: s.allowed_tenures || [],
+            isActive: true,
+            isPrimary: false,
+            validFrom: s.valid_from,
+            validTo: s.valid_until,
+            charges: (s as any).charges_jsonb || [],
+            applicability: { brands: 'ALL', models: 'ALL', dealerships: 'ALL' },
+        } as any;
+        const tid = s.lender_tenant_id;
+        if (tid) {
+            if (!schemesByBank.has(tid)) schemesByBank.set(tid, []);
+            schemesByBank.get(tid)!.push(mapped);
+        }
+    }
+
+    const allBanks = rawBanks.map(b => ({ ...b, schemes: schemesByBank.get(b.id) || [] }));
+    return collectEligibleSchemes(allBanks, make, model);
+}
+
 export async function resolveFinanceScheme(
     make: string,
     model: string,

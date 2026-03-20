@@ -8,7 +8,7 @@ import { slugify } from '@/utils/slugs';
 import ProductClient from './ProductClient';
 import { isMobileDevice } from '@/lib/utils/device';
 import { cookies } from 'next/headers';
-import { resolveFinanceScheme, ViewerContext } from '@/utils/financeResolver';
+import { getFinanceCandidateSchemes, resolveFinanceScheme, ViewerContext } from '@/utils/financeResolver';
 import { BankScheme } from '@/types/bankPartner';
 import { getSitemapData } from '@/lib/server/sitemapFetcher';
 import { isAccessoryCompatible } from '@/lib/catalog/accessoryCompatibility';
@@ -1284,6 +1284,7 @@ export default async function Page({ params, searchParams }: Props) {
     }
     // Marketplace always uses CUSTOMER persona. DEALER/BANKER context only applies in CRM app.
     const resolvedFinance = await resolveFinanceScheme(product.make, product.model, leadId ?? undefined, viewerContext);
+    const financeCandidates = await getFinanceCandidateSchemes(product.make, product.model);
 
     const tenantIdsForMeta = Array.from(
         new Set(
@@ -1379,7 +1380,10 @@ export default async function Page({ params, searchParams }: Props) {
                               },
                               scheme: resolvedFinance.scheme,
                               logic: resolvedFinance.logic, // Trace logic
-                              candidateSchemes: resolvedFinance.candidateSchemes || [],
+                              candidateSchemes:
+                                  financeCandidates.length > 0
+                                      ? financeCandidates
+                                      : resolvedFinance.candidateSchemes || [],
                           }
                         : undefined
                 }
