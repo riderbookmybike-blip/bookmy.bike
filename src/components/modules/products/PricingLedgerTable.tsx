@@ -37,6 +37,7 @@ import {
     Lock,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -2220,6 +2221,20 @@ export default function PricingLedgerTable({
                                                                             ? sku.onRoad || 0
                                                                             : sku.exShowroom
                                                                     );
+                                                                    if (
+                                                                        activeCategory === 'vehicles' &&
+                                                                        enteredPrice > 0 &&
+                                                                        base > 0 &&
+                                                                        enteredPrice >= base * 0.9
+                                                                    ) {
+                                                                        toast.warning(
+                                                                            'Entered price is very close to on-road',
+                                                                            {
+                                                                                description:
+                                                                                    'Please confirm this is intentional and not a full on-road value entered as offer.',
+                                                                            }
+                                                                        );
+                                                                    }
                                                                     const newDelta = enteredPrice - base;
                                                                     onUpdateOffer(sku.id, newDelta);
                                                                     setEditingOfferSkuId(null);

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback, useTransition, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
 import {
     Heart,
@@ -170,10 +170,32 @@ export const ProductCard = ({
     const [cardPricingMode, setCardPricingMode] = useState<'cash' | 'finance'>(globalPricingMode);
     const [isFlipping, setIsFlipping] = useState(false);
     const [isNavigating, setIsNavigating] = useState(false);
-    const [isPending, startTransition] = useTransition();
+    const navFeedbackTimerRef = useRef<number | null>(null);
     const pathname = usePathname();
     const currentMonth = new Intl.DateTimeFormat('en-US', { month: 'long' }).format(new Date());
     const offerCtaText = `Check ${currentMonth} Offers`;
+
+    const triggerNavigationFeedback = useCallback(() => {
+        setIsNavigating(true);
+        if (typeof window === 'undefined') return;
+        if (navFeedbackTimerRef.current !== null) {
+            window.clearTimeout(navFeedbackTimerRef.current);
+        }
+        // Keep CTA responsive: show short feedback, never long "Opening..." hangs.
+        navFeedbackTimerRef.current = window.setTimeout(() => {
+            setIsNavigating(false);
+            navFeedbackTimerRef.current = null;
+        }, 1800);
+    }, []);
+
+    useEffect(() => {
+        return () => {
+            if (typeof window !== 'undefined' && navFeedbackTimerRef.current !== null) {
+                window.clearTimeout(navFeedbackTimerRef.current);
+                navFeedbackTimerRef.current = null;
+            }
+        };
+    }, []);
 
     // 3D tilt effect
     const cardRef = useRef<HTMLDivElement>(null);
@@ -641,22 +663,17 @@ export const ProductCard = ({
     const handleExploreClick = (e: React.MouseEvent<HTMLButtonElement>) => {
         e.stopPropagation();
         if (blockForUnserviceable(e)) return;
-        if (isNavigating || isPending || !onExplore) return;
+        if (isNavigating || !onExplore) return;
 
-        setIsNavigating(true);
-
-        // If navigation does not change route (or errors), avoid getting stuck in "Opening..."
-        window.setTimeout(() => setIsNavigating(false), 15000);
-        startTransition(() => {
-            try {
-                const maybePromise = onExplore();
-                if (maybePromise && typeof (maybePromise as Promise<void>).catch === 'function') {
-                    (maybePromise as Promise<void>).catch(() => setIsNavigating(false));
-                }
-            } catch {
-                setIsNavigating(false);
+        triggerNavigationFeedback();
+        try {
+            const maybePromise = onExplore();
+            if (maybePromise && typeof (maybePromise as Promise<void>).catch === 'function') {
+                (maybePromise as Promise<void>).catch(() => setIsNavigating(false));
             }
-        });
+        } catch {
+            setIsNavigating(false);
+        }
     };
 
     // Force Grid View for consistency if requested or stick to logic
@@ -1036,7 +1053,7 @@ export const ProductCard = ({
                     transformStyle: 'flat',
                     transformOrigin: 'center center',
                 }}
-                className={`group bg-white border border-black/[0.04] rounded-[2rem] overflow-hidden flex flex-col shadow-[0_1px_2px_rgba(0,0,0,0.02),0_4px_12px_rgba(0,0,0,0.03),0_12px_24px_-4px_rgba(0,0,0,0.08)] hover:shadow-[0_20px_40px_-12px_rgba(244,176,0,0.15)] hover:border-brand-primary/30 transition-[border-color,box-shadow,opacity] duration-700 ${isTvCompact ? 'min-h-[270px]' : isTv ? 'h-[400px]' : 'min-h-[580px] md:min-h-[660px]'} ${isNavigating || isPending ? 'opacity-80' : ''}`}
+                className={`group bg-white border border-black/[0.04] rounded-[2rem] overflow-hidden flex flex-col shadow-[0_1px_2px_rgba(0,0,0,0.02),0_4px_12px_rgba(0,0,0,0.03),0_12px_24px_-4px_rgba(0,0,0,0.08)] hover:shadow-[0_20px_40px_-12px_rgba(244,176,0,0.15)] hover:border-brand-primary/30 transition-[border-color,box-shadow,opacity] duration-700 ${isTvCompact ? 'min-h-[270px]' : isTv ? 'h-[400px]' : 'min-h-[580px] md:min-h-[660px]'} ${isNavigating ? 'opacity-80' : ''}`}
             >
                 {/* Glare overlay */}
                 <motion.div
@@ -1655,12 +1672,12 @@ export const ProductCard = ({
                                 <>
                                     <button
                                         onClick={handleExploreClick}
-                                        disabled={isNavigating || isPending}
+                                        disabled={isNavigating}
                                         className={`group/btn relative overflow-hidden w-full ${isTv ? 'h-8 text-[9px]' : 'h-10 md:h-11 text-[10px]'} bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-xl font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(244,176,0,0.3)] hover:shadow-[0_6px_20px_rgba(244,176,0,0.4)] hover:-translate-y-0.5 active:scale-[0.99] transition-all disabled:opacity-70 disabled:pointer-events-none`}
                                     >
                                         <div aria-hidden className="shimmer-bar" />
                                         <span className="relative z-10">
-                                            {isNavigating || isPending ? 'Opening...' : 'Know More'}
+                                            {isNavigating ? 'Opening...' : 'Know More'}
                                         </span>
                                         <ArrowRight
                                             size={12}
@@ -1688,7 +1705,7 @@ export const ProductCard = ({
                                         }
                                         onClick={e => {
                                             if (blockForUnserviceable(e)) return;
-                                            setIsNavigating(true);
+                                            triggerNavigationFeedback();
                                         }}
                                         className={`group/btn relative overflow-hidden w-full ${isTv ? 'h-8 text-[9px]' : 'h-10 md:h-11 text-[10px]'} bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-xl font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 shadow-[0_4px_14px_rgba(244,176,0,0.3)] hover:shadow-[0_6px_20px_rgba(244,176,0,0.4)] hover:-translate-y-0.5 active:scale-[0.99] transition-all`}
                                     >
@@ -1699,7 +1716,7 @@ export const ProductCard = ({
                                             transition={{ duration: 2.2, repeat: Infinity, ease: 'linear' }}
                                         />
                                         <span className="relative z-10">
-                                            {isNavigating || isPending ? 'Opening...' : offerCtaText}
+                                            {isNavigating ? 'Opening...' : offerCtaText}
                                         </span>
                                         <ArrowRight
                                             size={12}
