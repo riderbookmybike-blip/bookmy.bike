@@ -1139,13 +1139,76 @@ export default function PricingPage() {
                 }
 
                 let saveError: unknown = null;
-                const { error: rpcError } = await supabase.rpc('upsert_dealer_offers', { offers: offerPayload });
-                if (rpcError) {
-                    // Fallback for environments where RPC is missing/denied or out-of-sync.
-                    const { error: upsertError } = await supabase
-                        .from('cat_price_dealer')
-                        .upsert(offerPayload, { onConflict: 'tenant_id,vehicle_color_id,state_code' });
-                    saveError = upsertError || rpcError;
+                const vehicleRows = changedDealerRows.filter(s => String(s.category || '').toUpperCase() === 'VEHICLE');
+                const nonVehicleRows = changedDealerRows.filter(
+                    s => String(s.category || '').toUpperCase() !== 'VEHICLE'
+                );
+
+                if (vehicleRows.length > 0) {
+                    const missingOnRoadRows = vehicleRows.filter(s => Number(s.onRoad || 0) <= 0);
+                    if (missingOnRoadRows.length > 0) {
+                        toast.error(
+                            `Cannot save ${missingOnRoadRows.length} vehicle offer(s): on-road price not published by AUMS.`
+                        );
+                        return;
+                    }
+
+                    const vehicleSaveResults = await Promise.all(
+                        vehicleRows.map(s =>
+                            supabase.rpc('set_dealer_offer_on_road', {
+                                p_tenant_id: tenantId,
+                                p_vehicle_color_id: s.id,
+                                p_state_code: activeStateCode,
+                                p_offer_on_road: Math.round(Number(s.onRoad || 0) + Number(s.offerAmount || 0)),
+                                p_inclusion_type: s.inclusionType || 'OPTIONAL',
+                                p_is_active: s.localIsActive,
+                            })
+                        )
+                    );
+                    const vehicleRpcError = vehicleSaveResults.find(r => r.error)?.error;
+                    if (vehicleRpcError) {
+                        saveError = vehicleRpcError;
+                    }
+
+                    // Keep TAT updates intact until set_dealer_offer_on_road supports TAT payload.
+                    if (!saveError) {
+                        const tatChangedRows = vehicleRows.filter(s => s.tatDaysInput !== s.originalTatDaysInput);
+                        if (tatChangedRows.length > 0) {
+                            const tatPayload = tatChangedRows.map(s => ({
+                                tenant_id: tenantId,
+                                vehicle_color_id: s.id,
+                                state_code: activeStateCode,
+                                offer_amount: normalizeOfferDelta(s.offerAmount),
+                                inclusion_type: s.inclusionType,
+                                is_active: s.localIsActive,
+                                tat_days: s.tatDaysInput ?? 0,
+                                tat_source: s.tatSource || 'MANUAL',
+                            }));
+                            const { error: tatRpcError } = await supabase.rpc('upsert_dealer_offers', {
+                                offers: tatPayload,
+                            });
+                            if (tatRpcError) saveError = tatRpcError;
+                        }
+                    }
+                }
+
+                if (!saveError && nonVehicleRows.length > 0) {
+                    const nonVehiclePayload = nonVehicleRows.map(s => ({
+                        tenant_id: tenantId,
+                        vehicle_color_id: s.id,
+                        state_code: activeStateCode,
+                        offer_amount: normalizeOfferDelta(s.offerAmount),
+                        inclusion_type: s.inclusionType,
+                        is_active: s.localIsActive,
+                        tat_days: s.tatDaysInput ?? 0,
+                        tat_source: s.tatSource || 'MANUAL',
+                    }));
+                    const { error: nonVehicleRpcError } = await supabase.rpc('upsert_dealer_offers', {
+                        offers: nonVehiclePayload,
+                    });
+                    if (nonVehicleRpcError) {
+                        saveError = nonVehicleRpcError;
+                    }
                 }
 
                 if (saveError) {

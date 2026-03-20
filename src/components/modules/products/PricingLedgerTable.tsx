@@ -1398,6 +1398,12 @@ export default function PricingLedgerTable({
                                         sku.exShowroom !== sku.originalExShowroom;
                                     const isSelected = selectedSkuIds.has(sku.id);
                                     const canEdit = isSelected;
+                                    const hasOnRoadBaseForOffer =
+                                        sku.onRoad !== null && sku.onRoad !== undefined && Number(sku.onRoad) > 0;
+                                    const canEditOffer =
+                                        isSelected &&
+                                        !isAums &&
+                                        (activeCategory !== 'vehicles' || hasOnRoadBaseForOffer);
                                     const updatedAt = sku.updatedAt || sku.publishedAt;
                                     const updatedLabel = (() => {
                                         if (!updatedAt) return '—';
@@ -2179,80 +2185,89 @@ export default function PricingLedgerTable({
                                                     </div>
                                                 ) : (
                                                     <div className="flex items-center justify-center gap-1">
-                                                        <input
-                                                            type="number"
-                                                            step={1}
-                                                            value={
-                                                                editingOfferSkuId === sku.id
-                                                                    ? editingOfferValue
-                                                                    : Math.round(
-                                                                          activeCategory === 'vehicles'
-                                                                              ? (sku.onRoad || 0) + offerDelta
-                                                                              : sku.exShowroom + offerDelta
-                                                                      )
-                                                            }
-                                                            readOnly={!canEdit}
-                                                            title={
-                                                                activeCategory === 'vehicles'
-                                                                    ? "Dealer's Offer On Road price to customer."
-                                                                    : "Dealer's Final Price for this item."
-                                                            }
-                                                            onFocus={() => {
-                                                                const displayVal = Math.round(
+                                                        {activeCategory === 'vehicles' && !hasOnRoadBaseForOffer ? (
+                                                            <span
+                                                                className="inline-flex w-24 justify-center rounded-lg px-2 py-1 text-[10px] font-bold text-slate-400 bg-transparent border border-transparent cursor-not-allowed"
+                                                                title="On-road price not published by AUMS"
+                                                            >
+                                                                —
+                                                            </span>
+                                                        ) : (
+                                                            <input
+                                                                type="number"
+                                                                step={1}
+                                                                value={
+                                                                    editingOfferSkuId === sku.id
+                                                                        ? editingOfferValue
+                                                                        : Math.round(
+                                                                              activeCategory === 'vehicles'
+                                                                                  ? (sku.onRoad || 0) + offerDelta
+                                                                                  : sku.exShowroom + offerDelta
+                                                                          )
+                                                                }
+                                                                readOnly={!canEditOffer}
+                                                                title={
                                                                     activeCategory === 'vehicles'
-                                                                        ? (sku.onRoad || 0) + offerDelta
-                                                                        : sku.exShowroom + offerDelta
-                                                                );
-                                                                setEditingOfferSkuId(sku.id);
-                                                                setEditingOfferValue(String(displayVal));
-                                                            }}
-                                                            onChange={e => {
-                                                                if (editingOfferSkuId === sku.id) {
-                                                                    setEditingOfferValue(e.target.value);
+                                                                        ? "Dealer's Offer On Road price to customer."
+                                                                        : "Dealer's Final Price for this item."
                                                                 }
-                                                            }}
-                                                            onBlur={() => {
-                                                                if (editingOfferSkuId === sku.id) {
-                                                                    const enteredPrice = Math.round(
-                                                                        Number(editingOfferValue)
-                                                                    );
-                                                                    const base = Math.round(
+                                                                onFocus={() => {
+                                                                    const displayVal = Math.round(
                                                                         activeCategory === 'vehicles'
-                                                                            ? sku.onRoad || 0
-                                                                            : sku.exShowroom
+                                                                            ? (sku.onRoad || 0) + offerDelta
+                                                                            : sku.exShowroom + offerDelta
                                                                     );
-                                                                    if (
-                                                                        activeCategory === 'vehicles' &&
-                                                                        enteredPrice > 0 &&
-                                                                        base > 0 &&
-                                                                        enteredPrice >= base * 0.9
-                                                                    ) {
-                                                                        toast.warning(
-                                                                            'Entered price is very close to on-road',
-                                                                            {
-                                                                                description:
-                                                                                    'Please confirm this is intentional and not a full on-road value entered as offer.',
-                                                                            }
-                                                                        );
+                                                                    setEditingOfferSkuId(sku.id);
+                                                                    setEditingOfferValue(String(displayVal));
+                                                                }}
+                                                                onChange={e => {
+                                                                    if (editingOfferSkuId === sku.id) {
+                                                                        setEditingOfferValue(e.target.value);
                                                                     }
-                                                                    const newDelta = enteredPrice - base;
-                                                                    onUpdateOffer(sku.id, newDelta);
-                                                                    setEditingOfferSkuId(null);
-                                                                }
-                                                            }}
-                                                            onKeyDown={e => {
-                                                                if (e.key === 'Enter') {
-                                                                    (e.target as HTMLInputElement).blur();
-                                                                }
-                                                            }}
-                                                            className={`w-24 rounded-lg px-2 py-1 text-[10px] font-bold text-center outline-none transition-all
-                                                                ${
-                                                                    !canEdit
-                                                                        ? 'bg-transparent border-transparent text-emerald-700 dark:text-emerald-400 cursor-default'
-                                                                        : 'bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 text-emerald-700 dark:text-emerald-400'
-                                                                }
-                                                            `}
-                                                        />
+                                                                }}
+                                                                onBlur={() => {
+                                                                    if (editingOfferSkuId === sku.id) {
+                                                                        const enteredPrice = Math.round(
+                                                                            Number(editingOfferValue)
+                                                                        );
+                                                                        const base = Math.round(
+                                                                            activeCategory === 'vehicles'
+                                                                                ? sku.onRoad || 0
+                                                                                : sku.exShowroom
+                                                                        );
+                                                                        if (
+                                                                            activeCategory === 'vehicles' &&
+                                                                            enteredPrice > 0 &&
+                                                                            base > 0 &&
+                                                                            enteredPrice >= base * 0.9
+                                                                        ) {
+                                                                            toast.warning(
+                                                                                'Entered price is very close to on-road',
+                                                                                {
+                                                                                    description:
+                                                                                        'Please confirm this is intentional and not a full on-road value entered as offer.',
+                                                                                }
+                                                                            );
+                                                                        }
+                                                                        const newDelta = enteredPrice - base;
+                                                                        onUpdateOffer(sku.id, newDelta);
+                                                                        setEditingOfferSkuId(null);
+                                                                    }
+                                                                }}
+                                                                onKeyDown={e => {
+                                                                    if (e.key === 'Enter') {
+                                                                        (e.target as HTMLInputElement).blur();
+                                                                    }
+                                                                }}
+                                                                className={`w-24 rounded-lg px-2 py-1 text-[10px] font-bold text-center outline-none transition-all
+                                                                    ${
+                                                                        !canEditOffer
+                                                                            ? 'bg-transparent border-transparent text-emerald-700 dark:text-emerald-400 cursor-default'
+                                                                            : 'bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                                                                    }
+                                                                `}
+                                                            />
+                                                        )}
                                                         {isSelected && selectedSkuIds.size > 1 && (
                                                             <button
                                                                 type="button"
