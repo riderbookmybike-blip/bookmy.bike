@@ -1,19 +1,20 @@
 'use client';
 
 /**
- * PincodeGateModal — Mandatory, non-dismissable pincode gate for PDP.
+ * PincodeGateModal — Mandatory, non-dismissable location gate.
  *
- * Policy (locked 2026-03-15):
- * - Auto-opens on PDP load if no cached pincode exists.
- * - NO dismiss/close without resolving pincode (X button and backdrop click are intentionally omitted).
- * - Supports manual 6-digit pincode entry AND GPS via get_nearest_pincode RPC.
- * - On resolve: writes localStorage + cookie + id_members + fires locationChanged.
- * - Analytics events: pincode_gate_shown, pincode_gate_gps_prompt, gps_resolve_success,
- *   gps_resolve_fail, pincode_resolved (same names as PincodeGateChip for unified funnel).
+ * Flow (updated):
+ * 1. Modal opens → auto-trigger GPS silently
+ * 2a. GPS resolves + serviceable → auto-close, proceed
+ * 2b. GPS resolves + NOT serviceable → show "We don't serve [State]" + manual pincode
+ * 2c. GPS fails / denied → show manual pincode input
+ * 3. Manual pincode → resolve → if serviceable → proceed
+ *
+ * Coverage callout: clearly shows Maharashtra cities we serve.
  */
 
-import React, { useState, useEffect } from 'react';
-import { MapPin, Loader2, Navigation, ArrowRight } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { MapPin, Loader2, Navigation, ArrowRight, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { resolveLocation } from '@/utils/locationResolver';
 import { setLocationCookie } from '@/actions/locationCookie';
 import { updateSelfMemberLocation } from '@/actions/members';
@@ -22,35 +23,42 @@ import { useAnalytics } from '@/components/analytics/AnalyticsProvider';
 import type { PincodeSourceConfidence } from './PincodeGateChip';
 
 interface PincodeGateModalProps {
-    /** Auto-open when true. Controlled by ProductClient (opens when !hasResolvedLocation). */
     isOpen: boolean;
-    /** Called on successful pincode resolve with confidence tag. */
     onResolved: (confidence: PincodeSourceConfidence, pincode: string) => void;
 }
 
-/**
- * Current month name helper for the offer copy.
- */
+// Cities we actively serve — shown in the modal footer
+const SERVED_CITIES = ['Pune', 'Mumbai', 'Nashik', 'Nagpur', 'Aurangabad', 'Kolhapur', 'Solapur'];
+
+type ModalState =
+    | 'AUTO_GPS' // silently detecting GPS on mount
+    | 'MANUAL' // show manual pincode input (GPS failed/denied or fallback)
+    | 'NOT_SERVICEABLE' // GPS resolved but location not serviceable
+    | 'LOADING' // manual pincode resolving
+    | 'GPS_LOADING'; // GPS resolving after user click
+
 const getCurrentMonthName = () => new Date().toLocaleString('en-IN', { month: 'long' });
 
 export function PincodeGateModal({ isOpen, onResolved }: PincodeGateModalProps) {
     const { trackEvent } = useAnalytics();
     const [pincode, setPincode] = useState('');
-    const [status, setStatus] = useState<'IDLE' | 'LOADING' | 'GPS_LOADING' | 'ERROR'>('IDLE');
+    const [modalState, setModalState] = useState<ModalState>('AUTO_GPS');
     const [errorMsg, setErrorMsg] = useState('');
+    const [detectedLocation, setDetectedLocation] = useState<string | null>(null); // e.g. "Price Strat, United States"
+    const autoGpsFired = useRef(false);
 
-    // Observability: fire gate_shown once modal opens
+    // Observability
     useEffect(() => {
         if (isOpen) {
             trackEvent('INTENT_SIGNAL', 'pincode_gate_shown', {
                 source: 'PincodeGateModal',
-                trigger: 'pdp_load',
+                trigger: 'catalog_load',
             });
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isOpen]);
 
-    // Prevent body scroll while modal is open
+    // Prevent body scroll
     useEffect(() => {
         if (isOpen) {
             document.body.style.overflow = 'hidden';
@@ -58,6 +66,91 @@ export function PincodeGateModal({ isOpen, onResolved }: PincodeGateModalProps) 
                 document.body.style.overflow = '';
             };
         }
+    }, [isOpen]);
+
+    // Auto-trigger GPS silently on open
+    useEffect(() => {
+        if (!isOpen || autoGpsFired.current) return;
+        autoGpsFired.current = true;
+
+        if (!navigator.geolocation) {
+            setModalState('MANUAL');
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+            async position => {
+                try {
+                    const supabase = createClient();
+                    const { data: nearestData } = await supabase.rpc('get_nearest_pincode', {
+                        p_lat: position.coords.latitude,
+                        p_lon: position.coords.longitude,
+                    });
+
+                    if (!nearestData || nearestData.length === 0) {
+                        setModalState('MANUAL');
+                        return;
+                    }
+
+                    const nearest = nearestData[0] as {
+                        pincode: string;
+                        district: string;
+                        taluka: string;
+                        state: string;
+                        rto_code: string;
+                        distance_km: number;
+                        is_serviceable?: boolean;
+                    };
+
+                    // Check serviceability
+                    const isServiceable =
+                        nearest.is_serviceable !== false &&
+                        String(nearest.state || '')
+                            .toLowerCase()
+                            .includes('maharashtra');
+
+                    if (!isServiceable) {
+                        // Show "we don't serve your location" with manual override
+                        const locationLabel = [nearest.district, nearest.state].filter(Boolean).join(', ');
+                        setDetectedLocation(locationLabel || 'your current location');
+                        setModalState('NOT_SERVICEABLE');
+                        trackEvent('INTENT_SIGNAL', 'gps_not_serviceable', {
+                            district: nearest.district,
+                            state: nearest.state,
+                            source: 'PincodeGateModal',
+                        });
+                        return;
+                    }
+
+                    // Serviceable → auto-resolve and close
+                    await persistAndFire(
+                        {
+                            pincode: nearest.pincode,
+                            district: nearest.district,
+                            taluka: nearest.taluka,
+                            state: nearest.state,
+                            stateCode: nearest.rto_code?.substring(0, 2) || null,
+                            lat: position.coords.latitude,
+                            lng: position.coords.longitude,
+                        },
+                        'GEO_RESOLVED'
+                    );
+                    trackEvent('INTENT_SIGNAL', 'gps_resolve_success', {
+                        pincode: nearest.pincode,
+                        district: nearest.district,
+                        source: 'PincodeGateModal_auto',
+                    });
+                } catch {
+                    setModalState('MANUAL');
+                }
+            },
+            () => {
+                // GPS denied or failed → show manual input silently
+                setModalState('MANUAL');
+            },
+            { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }
+        );
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isOpen]);
 
     if (!isOpen) return null;
@@ -87,10 +180,8 @@ export function PincodeGateModal({ isOpen, onResolved }: PincodeGateModalProps) 
             source: confidence,
         };
 
-        // 1. LocalStorage (sync, always first)
         localStorage.setItem('bkmb_user_pincode', JSON.stringify(payload));
 
-        // 2. Cookie (best-effort)
         try {
             await setLocationCookie({
                 pincode: payload.pincode,
@@ -104,7 +195,6 @@ export function PincodeGateModal({ isOpen, onResolved }: PincodeGateModalProps) 
             /* non-fatal */
         }
 
-        // 3. Profile update (best-effort, anonymous-safe)
         try {
             await updateSelfMemberLocation({
                 pincode: payload.pincode,
@@ -119,28 +209,25 @@ export function PincodeGateModal({ isOpen, onResolved }: PincodeGateModalProps) 
             /* non-fatal */
         }
 
-        // 4. Broadcast
         window.dispatchEvent(new Event('locationChanged'));
         window.dispatchEvent(new Event('storage'));
-
-        // 5. Notify parent → closes modal + unlocks PDP
         onResolved(confidence, payload.pincode);
     };
 
     const handleManualSubmit = async () => {
         const clean = pincode.trim();
         if (!/^\d{6}$/.test(clean)) {
-            setErrorMsg('Valid 6-digit pincode enter karo');
+            setErrorMsg('Please enter a valid 6-digit pincode');
             return;
         }
-        setStatus('LOADING');
+        setModalState('LOADING');
         setErrorMsg('');
 
         try {
             const resolved = await resolveLocation(clean);
             if (!resolved) {
-                setErrorMsg('Pincode resolve nahi hua. Doosra try karo.');
-                setStatus('ERROR');
+                setErrorMsg('Pincode not found. Please try another.');
+                setModalState(detectedLocation ? 'NOT_SERVICEABLE' : 'MANUAL');
                 return;
             }
             await persistAndFire(
@@ -161,23 +248,19 @@ export function PincodeGateModal({ isOpen, onResolved }: PincodeGateModalProps) 
                 district: resolved.district || null,
                 source: 'PincodeGateModal',
             });
-            setStatus('IDLE');
         } catch {
-            setErrorMsg('Something went wrong. Dobara try karo.');
-            setStatus('ERROR');
+            setErrorMsg('Something went wrong. Please try again.');
+            setModalState(detectedLocation ? 'NOT_SERVICEABLE' : 'MANUAL');
         }
     };
 
-    const handleGpsResolve = async () => {
+    const handleGpsClick = async () => {
         if (!navigator.geolocation) {
             setErrorMsg('GPS is not available on this device.');
             return;
         }
-        setStatus('GPS_LOADING');
+        setModalState('GPS_LOADING');
         setErrorMsg('');
-        trackEvent('INTENT_SIGNAL', 'pincode_gate_gps_prompt', {
-            source: 'PincodeGateModal',
-        });
 
         navigator.geolocation.getCurrentPosition(
             async position => {
@@ -189,8 +272,8 @@ export function PincodeGateModal({ isOpen, onResolved }: PincodeGateModalProps) 
                     });
 
                     if (!nearestData || nearestData.length === 0) {
-                        setErrorMsg('Location se pincode resolve nahi hua. Manually enter karo.');
-                        setStatus('ERROR');
+                        setErrorMsg('Could not detect location. Enter pincode manually.');
+                        setModalState('MANUAL');
                         return;
                     }
 
@@ -201,7 +284,21 @@ export function PincodeGateModal({ isOpen, onResolved }: PincodeGateModalProps) 
                         state: string;
                         rto_code: string;
                         distance_km: number;
+                        is_serviceable?: boolean;
                     };
+
+                    const isServiceable =
+                        nearest.is_serviceable !== false &&
+                        String(nearest.state || '')
+                            .toLowerCase()
+                            .includes('maharashtra');
+
+                    if (!isServiceable) {
+                        const locationLabel = [nearest.district, nearest.state].filter(Boolean).join(', ');
+                        setDetectedLocation(locationLabel || 'your current location');
+                        setModalState('NOT_SERVICEABLE');
+                        return;
+                    }
 
                     await persistAndFire(
                         {
@@ -215,53 +312,146 @@ export function PincodeGateModal({ isOpen, onResolved }: PincodeGateModalProps) 
                         },
                         'GEO_RESOLVED'
                     );
-                    trackEvent('INTENT_SIGNAL', 'gps_resolve_success', {
-                        pincode: nearest.pincode,
-                        source_confidence: 'GEO_RESOLVED',
-                        distance_km: nearest.distance_km,
-                        district: nearest.district || null,
-                        source: 'PincodeGateModal',
-                    });
-                    trackEvent('INTENT_SIGNAL', 'pincode_resolved', {
-                        pincode: nearest.pincode,
-                        source_confidence: 'GEO_RESOLVED',
-                        district: nearest.district || null,
-                        source: 'PincodeGateModal',
-                    });
-                    setStatus('IDLE');
                 } catch {
-                    trackEvent('INTENT_SIGNAL', 'gps_resolve_fail', {
-                        reason: 'rpc_error',
-                        source: 'PincodeGateModal',
-                    });
-                    setErrorMsg('GPS se resolve fail. Manually enter karo.');
-                    setStatus('ERROR');
+                    setErrorMsg('GPS resolve failed. Enter pincode manually.');
+                    setModalState('MANUAL');
                 }
             },
             err => {
-                trackEvent('INTENT_SIGNAL', 'gps_resolve_fail', {
-                    reason: err.code === 1 ? 'permission_denied' : err.code === 3 ? 'gps_timeout' : 'gps_unavailable',
-                    error_code: err.code,
-                    source: 'PincodeGateModal',
-                });
                 setErrorMsg(
-                    err.code === 1
-                        ? 'GPS permission denied. Enter pincode manually.'
-                        : 'GPS timeout. Enter pincode manually.'
+                    err.code === 1 ? 'GPS permission denied. Enter pincode below.' : 'GPS timeout. Enter pincode below.'
                 );
-                setStatus('ERROR');
+                setModalState('MANUAL');
             },
             { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
         );
     };
 
-    const isLoading = status === 'LOADING' || status === 'GPS_LOADING';
+    const isLoading = modalState === 'LOADING' || modalState === 'GPS_LOADING';
     const monthName = getCurrentMonthName();
 
+    // ── AUTO GPS STATE ── silently detecting, show spinner
+    if (modalState === 'AUTO_GPS') {
+        return (
+            <div className="fixed inset-0 z-[1200] flex items-center justify-center p-4 md:p-6">
+                <div className="absolute inset-0 bg-[#0b0d10]/95 backdrop-blur-3xl" />
+                <div className="relative w-full max-w-md bg-white rounded-[2.5rem] p-10 shadow-2xl border border-slate-200 animate-in zoom-in-95 duration-500 flex flex-col items-center gap-5 text-center">
+                    <div className="w-16 h-16 bg-blue-50 rounded-3xl flex items-center justify-center">
+                        <Navigation className="text-blue-500 animate-pulse" size={28} />
+                    </div>
+                    <div>
+                        <h2 className="text-xl font-black uppercase tracking-tight text-slate-900 mb-1">
+                            Detecting your location
+                        </h2>
+                        <p className="text-sm text-slate-500 font-medium">Getting the best offer for your area…</p>
+                    </div>
+                    <Loader2 className="animate-spin text-blue-400" size={24} />
+                </div>
+            </div>
+        );
+    }
+
+    // ── NOT SERVICEABLE STATE ── GPS resolved but outside coverage
+    if (modalState === 'NOT_SERVICEABLE') {
+        return (
+            <div className="fixed inset-0 z-[1200] flex items-center justify-center p-4 md:p-6">
+                <div className="absolute inset-0 bg-[#0b0d10]/95 backdrop-blur-3xl" />
+                <div className="relative w-full max-w-md bg-white rounded-[2.5rem] p-8 md:p-10 shadow-2xl border border-slate-200 animate-in zoom-in-95 slide-in-from-bottom-10 duration-500">
+                    {/* Not serviceable header */}
+                    <div className="space-y-4 mb-7">
+                        <div className="w-14 h-14 bg-amber-50 rounded-3xl flex items-center justify-center">
+                            <AlertCircle className="text-amber-500" size={28} />
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-black uppercase tracking-tight text-slate-900 leading-tight mb-2">
+                                We don&apos;t serve <span className="text-amber-500">{detectedLocation}</span> yet
+                            </h2>
+                            <p className="text-sm text-slate-500 font-medium leading-relaxed">
+                                If you&apos;re looking for a different delivery location, please enter the pincode
+                                below.
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Coverage callout */}
+                    <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 mb-6">
+                        <div className="flex items-center gap-2 mb-2">
+                            <CheckCircle2 className="text-emerald-500 shrink-0" size={16} />
+                            <span className="text-[11px] font-black uppercase tracking-widest text-emerald-700">
+                                Currently serving Maharashtra
+                            </span>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5 mt-1">
+                            {SERVED_CITIES.map(city => (
+                                <span
+                                    key={city}
+                                    className="text-[11px] font-bold bg-white text-emerald-700 border border-emerald-200 rounded-full px-2.5 py-0.5"
+                                >
+                                    {city}
+                                </span>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Manual pincode input */}
+                    <div className="space-y-3 mb-4">
+                        <div className="relative">
+                            <input
+                                autoFocus
+                                type="text"
+                                inputMode="numeric"
+                                maxLength={6}
+                                value={pincode}
+                                onChange={e => {
+                                    const val = e.target.value.replace(/\D/g, '');
+                                    setPincode(val);
+                                    if (errorMsg) setErrorMsg('');
+                                }}
+                                onKeyDown={e => {
+                                    if (e.key === 'Enter') void handleManualSubmit();
+                                }}
+                                placeholder="Enter delivery pincode"
+                                disabled={isLoading}
+                                className="w-full h-14 bg-slate-50 border-2 border-slate-200 rounded-2xl px-5 text-xl font-black tracking-[0.2em] outline-none focus:border-[#F4B000] transition-all text-slate-900 placeholder:text-slate-300 placeholder:text-sm placeholder:font-semibold placeholder:tracking-normal disabled:opacity-50"
+                            />
+                        </div>
+                        {errorMsg && (
+                            <p className="text-[10px] font-black uppercase tracking-widest text-rose-500 px-1">
+                                {errorMsg}
+                            </p>
+                        )}
+                    </div>
+
+                    <button
+                        type="button"
+                        onClick={() => void handleManualSubmit()}
+                        disabled={isLoading || pincode.length !== 6}
+                        className={`w-full h-14 rounded-2xl font-black uppercase tracking-[0.14em] text-[11px] flex items-center justify-center gap-3 transition-all ${
+                            pincode.length === 6 && !isLoading
+                                ? 'bg-[#F4B000] text-black shadow-[0_16px_32px_rgba(244,176,0,0.25)] hover:shadow-[0_20px_40px_rgba(244,176,0,0.35)] hover:-translate-y-0.5'
+                                : 'bg-slate-100 text-slate-400'
+                        }`}
+                    >
+                        {isLoading ? (
+                            <>
+                                <Loader2 size={14} className="animate-spin" />
+                                Checking…
+                            </>
+                        ) : (
+                            <>
+                                Check delivery availability
+                                <ArrowRight size={14} />
+                            </>
+                        )}
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    // ── MANUAL / GPS_LOADING STATE ── standard pincode input
     return (
-        // Intentionally no onClick on backdrop — modal is non-dismissable
         <div className="fixed inset-0 z-[1200] flex items-center justify-center p-4 md:p-6">
-            {/* Dark backdrop — no click handler (gate enforced) */}
             <div className="absolute inset-0 bg-[#0b0d10]/95 backdrop-blur-3xl" />
 
             <div className="relative w-full max-w-md bg-white rounded-[2.5rem] p-8 md:p-10 shadow-2xl border border-slate-200 animate-in zoom-in-95 slide-in-from-bottom-10 duration-500">
@@ -275,9 +465,17 @@ export function PincodeGateModal({ isOpen, onResolved }: PincodeGateModalProps) 
                             Unlock <span className="text-[#F4B000]">{monthName} Offer</span>
                         </h2>
                         <p className="text-sm font-semibold text-slate-500 leading-relaxed">
-                            To get {monthName} Month Current Offer in your area, please provide pincode.
+                            Enter your delivery pincode to see {monthName} pricing and best dealer offer in your area.
                         </p>
                     </div>
+                </div>
+
+                {/* Coverage badge */}
+                <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2 mb-5">
+                    <CheckCircle2 className="text-emerald-500 shrink-0" size={14} />
+                    <span className="text-[11px] font-bold text-emerald-700">
+                        Serving Maharashtra — {SERVED_CITIES.slice(0, 4).join(', ')} &amp; more
+                    </span>
                 </div>
 
                 {/* Pincode Input */}
@@ -301,7 +499,7 @@ export function PincodeGateModal({ isOpen, onResolved }: PincodeGateModalProps) 
                             disabled={isLoading}
                             className="w-full h-16 bg-slate-50 border-2 border-slate-200 rounded-2xl px-6 text-xl font-black tracking-[0.2em] outline-none focus:border-[#F4B000] transition-all text-slate-900 placeholder:text-slate-300 placeholder:text-base placeholder:font-semibold placeholder:tracking-normal disabled:opacity-50"
                         />
-                        {status === 'LOADING' && (
+                        {modalState === 'LOADING' && (
                             <div className="absolute right-5 top-1/2 -translate-y-1/2">
                                 <Loader2 className="animate-spin text-[#F4B000]" size={20} />
                             </div>
@@ -326,7 +524,7 @@ export function PincodeGateModal({ isOpen, onResolved }: PincodeGateModalProps) 
                             : 'bg-slate-100 text-slate-400'
                     }`}
                 >
-                    {status === 'LOADING' ? (
+                    {modalState === 'LOADING' ? (
                         <>
                             <Loader2 size={14} className="animate-spin" />
                             Resolving…
@@ -349,15 +547,15 @@ export function PincodeGateModal({ isOpen, onResolved }: PincodeGateModalProps) 
                 {/* GPS CTA */}
                 <button
                     type="button"
-                    onClick={() => void handleGpsResolve()}
+                    onClick={() => void handleGpsClick()}
                     disabled={isLoading}
                     className={`w-full h-12 rounded-2xl font-black uppercase tracking-[0.12em] text-[10px] flex items-center justify-center gap-2 border transition-all ${
-                        status === 'GPS_LOADING'
+                        modalState === 'GPS_LOADING'
                             ? 'border-blue-300 bg-blue-50 text-blue-500'
                             : 'border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50'
                     } disabled:opacity-50`}
                 >
-                    {status === 'GPS_LOADING' ? (
+                    {modalState === 'GPS_LOADING' ? (
                         <>
                             <Loader2 size={13} className="animate-spin" />
                             Detecting location…
@@ -365,12 +563,11 @@ export function PincodeGateModal({ isOpen, onResolved }: PincodeGateModalProps) 
                     ) : (
                         <>
                             <Navigation size={13} />
-                            Use my location
+                            Use my current location
                         </>
                     )}
                 </button>
 
-                {/* Footer note — no skip/close option */}
                 <p className="mt-5 text-center text-[9px] font-bold uppercase tracking-[0.14em] text-slate-300">
                     Pincode needed to show dealer pricing in your area
                 </p>
