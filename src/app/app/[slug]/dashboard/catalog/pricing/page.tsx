@@ -1155,7 +1155,8 @@ export default function PricingPage() {
 
                     const vehicleSaveResults = await Promise.all(
                         vehicleRows.map(s =>
-                            supabase.rpc('set_dealer_offer_on_road', {
+                            // Temporary cast until Supabase generated types include this RPC.
+                            (supabase as any).rpc('set_dealer_offer_on_road', {
                                 p_tenant_id: tenantId,
                                 p_vehicle_color_id: s.id,
                                 p_state_code: activeStateCode,
