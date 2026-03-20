@@ -44,15 +44,14 @@ function SmartCatalogRouter({ initialItems, basePath = '/store' }: SystemCatalog
     const leadId = searchParams.get('leadId');
     const { items: clientItems, isLoading: isClientLoading } = useSystemCatalogLogic(leadId || undefined, {
         allowStateOnly: true,
+        ssrItems: initialItems,
     });
+    // clientItems is pre-seeded with initialItems; once hook resolves, it has
+    // location-specific data. Fall back to initialItems if hook hasn't resolved yet.
     const currentItems = useMemo(
         () => selectLowestVariantPerModel(clientItems.length > 0 ? clientItems : initialItems),
         [clientItems, initialItems]
     );
-    // Only show loading skeleton when client fetch is in flight AND there are no items
-    // to show yet (neither from SSR initialItems nor from a previous client fetch).
-    // When initialItems are present from SSR, skip the skeleton entirely — cards are
-    // already in the HTML and visible before JS hydrates.
     const loading = isClientLoading && currentItems.length === 0;
     const filters = useCatalogFilters(currentItems);
 
@@ -75,7 +74,7 @@ function DefaultCatalogRouter({ initialItems, basePath = '/store' }: SystemCatal
         items: clientItems,
         isLoading: isClientLoading,
         needsLocation,
-    } = useSystemCatalogLogic(leadId || undefined, { allowStateOnly: true });
+    } = useSystemCatalogLogic(leadId || undefined, { allowStateOnly: true, ssrItems: initialItems });
     const currentItems = useMemo(
         () => selectLowestVariantPerModel(clientItems.length > 0 ? clientItems : initialItems),
         [clientItems, initialItems]

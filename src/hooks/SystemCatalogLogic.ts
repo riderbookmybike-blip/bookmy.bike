@@ -27,12 +27,21 @@ type CatalogSnapshotResponse = {
 
 const CATALOG_CACHE_TTL_MS = 60_000;
 
-export function useSystemCatalogLogic(leadId?: string, options?: { allowStateOnly?: boolean }) {
+export function useSystemCatalogLogic(
+    leadId?: string,
+    options?: { allowStateOnly?: boolean; ssrItems?: ProductVariant[] }
+) {
     const allowStateOnly = options?.allowStateOnly ?? true;
-    const [items, setItems] = useState<ProductVariant[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const ssrItems = options?.ssrItems ?? [];
+
+    // Seed from SSR immediately so first render shows cards without loading spinner.
+    // The background refresh below will overwrite with location-specific pricing.
+    const [items, setItems] = useState<ProductVariant[]>(() => ssrItems);
+    const [isLoading, setIsLoading] = useState(() => ssrItems.length === 0);
     const [error, setError] = useState<string | null>(null);
-    const [skuCount, setSkuCount] = useState<number>(0);
+    const [skuCount, setSkuCount] = useState<number>(() =>
+        ssrItems.reduce((sum, item) => sum + (item.skuIds?.length || 0), 0)
+    );
     const [locationVersion, setLocationVersion] = useState(0);
     const [needsLocation, setNeedsLocation] = useState(false);
 
@@ -146,7 +155,8 @@ export function useSystemCatalogLogic(leadId?: string, options?: { allowStateOnl
                 }
 
                 if (!hadWarmCache) {
-                    setIsLoading(true);
+                    // Only show spinner if we have no SSR data to display
+                    if (ssrItems.length === 0) setIsLoading(true);
                 }
 
                 const payload = await fetchJson<CatalogSnapshotResponse>(`/api/store/catalog?${params.toString()}`);
@@ -172,7 +182,8 @@ export function useSystemCatalogLogic(leadId?: string, options?: { allowStateOnl
                 }
                 if (!hadWarmCache) {
                     setError(err instanceof Error ? getErrorMessage(err) : 'Unknown error');
-                    setItems([]);
+                    // Only clear items if we have no SSR fallback
+                    if (ssrItems.length === 0) setItems([]);
                 }
             } finally {
                 if (!wasAborted) {
@@ -181,8 +192,28 @@ export function useSystemCatalogLogic(leadId?: string, options?: { allowStateOnl
             }
         };
 
-        fetchItems();
-        return () => controller.abort();
+        // Check whether we can defer the initial client fetch:
+        // If SSR data is present AND the user has no location-specific context
+        // (no leadId, no district in localStorage), the SSR payload is already
+        // sufficient for first paint. Defer the background refresh so it doesn't
+        // compete with LCP rendering.
+        const cachedLocation = resolveLocationFromCache();
+        const hasUserContext = leadId || cachedLocation.district;
+        const hasSsrCover = ssrItems.length > 0 && !hasUserContext;
+
+        let timerId: ReturnType<typeof setTimeout> | undefined;
+        if (hasSsrCover) {
+            // Defer background refresh 3s — SSR cards are visible at LCP time.
+            // After 3s the refresh silently updates with any location-specific pricing.
+            timerId = setTimeout(fetchItems, 3000);
+        } else {
+            fetchItems();
+        }
+
+        return () => {
+            if (timerId !== undefined) clearTimeout(timerId);
+            controller.abort();
+        };
     }, [leadId, locationVersion, allowStateOnly]);
 
     return {
