@@ -291,21 +291,13 @@ export default async function Page({ params, searchParams }: Props) {
     const resolvedParams = await params;
     const resolvedSearchParams = await searchParams;
 
-    // Hard Gate: PDP requires login for all users.
+    // Soft Gate: PDP is public. Commercial actions are gated client-side via isAuthenticated prop.
+    // Server resolves user only to pass auth state — no redirect for unauthenticated users.
     const authClient = await createClient();
     const {
         data: { user },
     } = await authClient.auth.getUser();
-    if (!user) {
-        const currentPath = `/store/${resolvedParams.make}/${resolvedParams.model}/${resolvedParams.variant}`;
-        const query = new URLSearchParams();
-        Object.entries(resolvedSearchParams || {}).forEach(([k, v]) => {
-            if (v) query.set(k, String(v));
-        });
-        const qs = query.toString();
-        const returnUrl = encodeURIComponent(currentPath + (qs ? `?${qs}` : ''));
-        redirect(`/login?next=${returnUrl}`);
-    }
+    const isAuthenticated = !!user;
 
     const supabase = adminClient;
     const cookieStore = await cookies(); // Access cookies
@@ -1375,6 +1367,7 @@ export default async function Page({ params, searchParams }: Props) {
                 registrationRule={effectiveRule} // Passing registration rule for client side calc
                 initialAccessories={accessories}
                 initialServices={services}
+                isAuthenticated={isAuthenticated}
                 initialFinance={
                     resolvedFinance
                         ? {

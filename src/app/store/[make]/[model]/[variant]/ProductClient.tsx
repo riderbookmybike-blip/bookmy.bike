@@ -4,6 +4,7 @@ import React, { useMemo, useState, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { useSystemPDPLogic } from '@/hooks/SystemPDPLogic';
 import { LeadCaptureModal } from '@/components/leads/LeadCaptureModal';
+import LoginSidebar from '@/components/auth/LoginSidebar';
 import { EmailUpdateModal } from '@/components/auth/EmailUpdateModal';
 import { LocationPicker } from '@/components/store/LocationPicker';
 import { createClient } from '@/lib/supabase/client';
@@ -109,6 +110,8 @@ interface ProductClientProps {
         leadFinancerName?: string | null;
     };
     initialDevice?: 'phone' | 'desktop' | 'tv';
+    /** Server-resolved auth state. Used to gate commercial CTAs without a redirect. */
+    isAuthenticated?: boolean;
 }
 
 export default function ProductClient({
@@ -126,6 +129,7 @@ export default function ProductClient({
     initialDealerId = null,
     leadMeta,
     initialDevice = 'desktop',
+    isAuthenticated = false,
 }: ProductClientProps) {
     const [clientAccessories, setClientAccessories] = useState(initialAccessories);
     const [clientColors, setClientColors] = useState(product.colors);
@@ -146,6 +150,20 @@ export default function ProductClient({
     const { memberships } = useTenant();
     const [forceMobileLayout, setForceMobileLayout] = useState(false);
     const { trackEvent } = useAnalytics();
+    const [showPdpLogin, setShowPdpLogin] = useState(false);
+
+    /**
+     * requireAuth — call this as the first line of any commercial action handler.
+     * If the user is not authenticated, opens the login sidebar and fires the
+     * pdp_auth_gate_opened analytics event. Returns true if the action should abort.
+     */
+    const requireAuth = (actionLabel: string): boolean => {
+        if (isAuthenticated || isLoggedIn) return false; // already logged in
+        trackEvent('INTENT_SIGNAL', 'pdp_auth_gate_opened', { action: actionLabel, path: window.location.pathname });
+        setShowPdpLogin(true);
+        return true; // caller should early-return
+    };
+
     // Deterministic PDP mode:
     // - Default to BEST_OFFER on all devices
     // - Allow explicit override only via URL (?offer=FAST_DELIVERY)
@@ -955,6 +973,7 @@ export default function ProductClient({
     };
 
     const handleConfirmQuote = async () => {
+        if (requireAuth('save_quote')) return;
         if (!leadContext) return;
         if (!quoteTenantId) {
             toast.error(dealerFetchNotice || 'Best offer dealer abhi resolve nahi hua. Thodi der baad retry karein.');
@@ -1005,6 +1024,7 @@ export default function ProductClient({
     };
 
     const handleBookingRequest = async () => {
+        if (requireAuth('book_now')) return;
         if (!quoteTenantId) {
             toast.error(dealerFetchNotice || 'Best offer dealer abhi resolve nahi hua. Thodi der baad retry karein.');
             return;
@@ -1117,6 +1137,7 @@ export default function ProductClient({
     };
 
     const handleWaSend = async (recipientPhone: string, language: 'en_GB' | 'hi' | 'mr' = 'en_GB') => {
+        if (requireAuth('whatsapp_send')) return;
         if (waInFlight) return;
         setWaInFlight(true);
         try {
@@ -1381,6 +1402,14 @@ export default function ProductClient({
 
     return (
         <>
+            {/* PDP Auth Gate — login sidebar for unauthenticated commercial actions */}
+            <LoginSidebar
+                isOpen={showPdpLogin}
+                onClose={() => setShowPdpLogin(false)}
+                redirectTo={
+                    typeof window !== 'undefined' ? window.location.pathname + window.location.search : undefined
+                }
+            />
             {showLeadContextAlert && (
                 <div className="mx-auto w-full max-w-7xl px-4 pt-3">
                     <div className="rounded-2xl border border-amber-300/70 bg-amber-50 px-4 py-3 text-amber-900">
