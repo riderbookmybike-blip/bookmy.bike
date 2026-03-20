@@ -179,8 +179,11 @@ export default function ProductClient({
     const activeSkuStartedAtRef = useRef<number | null>(null);
     const lastImmediateDwellFlushRef = useRef<number>(0);
 
-    // Authority: Determine if team member is gated (Marketplace without lead context)
-    const isGated = isTeamMember && !leadIdFromUrl;
+    // Authority: CRM mode = team member arrived via a lead link (?lead=xxx)
+    // Direct marketplace visit by team member → treat as regular shopper (not gated)
+    // CRM visit (lead in URL) → staff mode, force phone capture for customer's number
+    const isCrmMode = isTeamMember && !!leadIdFromUrl;
+    const isGated = false; // Never gate on marketplace — team members shop freely
 
     useEffect(() => {
         if (typeof window === 'undefined') return;
@@ -511,7 +514,7 @@ export default function ProductClient({
     const [showLocationPicker, setShowLocationPicker] = useState(false);
     const [dealerRetryCount, setDealerRetryCount] = useState(0);
     const [waInFlight, setWaInFlight] = useState(false);
-    const shouldForcePhoneCapture = isTeamMember;
+    const shouldForcePhoneCapture = isCrmMode; // Only force phone capture in CRM/lead context
     const pdpGateEnabled = process.env.NEXT_PUBLIC_PDP_GATE_ENABLED === 'true';
     const [cachedLocationHint, setCachedLocationHint] = useState<{ district?: string; pincode?: string } | null>(null);
 
