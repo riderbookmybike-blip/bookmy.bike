@@ -17,6 +17,7 @@ import {
     Youtube,
     X,
 } from 'lucide-react';
+import Image from 'next/image';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { createPortal } from 'react-dom';
@@ -692,8 +693,12 @@ export const ProductCard = ({
                 >
                     {/* Vignette for depth */}
                     <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-slate-100/50 z-0" />
-
-                    <img
+                    {/*
+                     * next/image with fill: generates a proper width-based srcset so mobile browsers
+                     * can fetch a 320-640px candidate instead of the full-res asset.
+                     * Container has aspectRatio+position:relative, so fill works without extra wrapper.
+                     */}
+                    <Image
                         src={
                             v.imageUrl ||
                             (v.bodyType === 'SCOOTER'
@@ -701,11 +706,12 @@ export const ProductCard = ({
                                 : '/images/categories/motorcycle_nobg.png')
                         }
                         alt={v.model}
+                        fill
                         fetchPriority={prioritizeImage ? 'high' : 'auto'}
                         loading={prioritizeImage ? 'eager' : 'lazy'}
                         decoding={prioritizeImage ? 'sync' : 'async'}
-                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 38vw"
-                        className="w-[85%] h-[85%] object-contain z-10 transition-transform duration-700 group-hover/card:scale-110"
+                        sizes="(max-width: 640px) 48vw, (max-width: 1024px) 33vw, 38vw"
+                        className="object-contain p-8 z-10 transition-transform duration-700 group-hover/card:scale-110"
                     />
 
                     {v.specifications?.features?.bluetooth === 'Yes' && (
@@ -1201,7 +1207,15 @@ export const ProductCard = ({
                         fetchPriority={prioritizeImage ? 'high' : 'auto'}
                         loading={prioritizeImage ? 'eager' : 'lazy'}
                         decoding={prioritizeImage ? 'sync' : 'async'}
-                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                        sizes="(max-width: 640px) 48vw, (max-width: 1024px) 33vw, 25vw"
+                        srcSet={(() => {
+                            const raw = selectedColorImage || v.imageUrl || '/images/categories/motorcycle_nobg.png';
+                            if (!raw.startsWith('http')) return undefined;
+                            const enc = encodeURIComponent(raw);
+                            return [320, 480, 640, 828, 1080]
+                                .map(w => `/_next/image?url=${enc}&w=${w}&q=75 ${w}w`)
+                                .join(', ');
+                        })()}
                         className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 ${isTv ? 'w-[80%] h-[80%]' : 'w-full h-full'} object-contain z-10`}
                     />
 
