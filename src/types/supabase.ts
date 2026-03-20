@@ -7188,18 +7188,6 @@ export type Database = {
                     vehicle_color_id: string;
                 }[];
             };
-            get_fin_winner: {
-                Args: { p_downpayment: number; p_sku_id: string; p_tenure: number };
-                Returns: {
-                    lender_name: string;
-                    monthly_emi: number;
-                    processing_fee: number;
-                    processing_fee_type: string;
-                    roi: number;
-                    scheme_code: string;
-                    scheme_id: string;
-                }[];
-            };
             get_market_best_offers:
                 | {
                       Args: { p_district_name: string; p_state_code: string };
