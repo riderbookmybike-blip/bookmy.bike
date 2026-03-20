@@ -32,6 +32,33 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
         setMounted(true);
     }, []);
 
+    useEffect(() => {
+        if (!mounted) return;
+        if (activeRole || userRole) return;
+
+        const isLoginRoute = pathname === '/login';
+        const searchParams = new URLSearchParams(window.location.search);
+        const hasLoginFlag = searchParams.get('login') === 'true';
+        if (!isLoginRoute && !hasLoginFlag) return;
+
+        const nextPath = searchParams.get('next');
+        if (nextPath && nextPath.startsWith('/') && !nextPath.startsWith('//')) {
+            localStorage.setItem('bkmb_login_next', nextPath);
+        }
+
+        setIsLoginOpen(true);
+
+        // Consume transient auth query params so storefront/login URLs stay clean.
+        if (hasLoginFlag || searchParams.has('next')) {
+            searchParams.delete('login');
+            searchParams.delete('next');
+            const remaining = searchParams.toString();
+            const basePath = isLoginRoute ? '/login' : pathname || '/';
+            const nextUrl = remaining ? `${basePath}?${remaining}` : basePath;
+            window.history.replaceState({}, '', nextUrl);
+        }
+    }, [mounted, pathname, activeRole, userRole]);
+
     const isAppRoute = (pathname || '').startsWith('/app/');
     const isHome = pathname === '/' || pathname === '/store';
 
