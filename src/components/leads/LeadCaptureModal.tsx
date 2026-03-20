@@ -119,6 +119,9 @@ export function LeadCaptureModal({
     const effectiveTenantId = sessionDealerId || quoteTenantId || tenantId || undefined;
     const bannerTenantId = sessionDealerId || quoteTenantId || tenantId;
     const primaryMembership = memberships?.find(m => m.tenant_id === bannerTenantId);
+    const crmLeadHref = primaryMembership?.tenants?.slug
+        ? `/app/${primaryMembership.tenants.slug}/leads`
+        : '/dashboard';
     const [autoPhoneLoaded, setAutoPhoneLoaded] = useState(false);
     const [isAutoSubmitting, setIsAutoSubmitting] = useState(false);
 
@@ -286,7 +289,7 @@ export function LeadCaptureModal({
                             ensures proper lead ownership, audit trail, and dealer attribution.
                         </p>
                         <a
-                            href="/store/leads"
+                            href={crmLeadHref}
                             className="w-full flex items-center justify-center gap-2 py-4 bg-blue-600 hover:bg-blue-700 text-white font-black text-xs uppercase tracking-[0.12em] rounded-2xl transition-all shadow-lg shadow-blue-600/20 active:scale-95"
                         >
                             <Briefcase size={16} />
