@@ -1,12 +1,8 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import dynamic from 'next/dynamic';
+import { UniversalCatalog } from '@/components/store/UniversalCatalog';
 import { CatalogGridSkeleton } from '@/components/store/CatalogSkeleton';
-
-const UniversalCatalog = dynamic(() => import('@/components/store/UniversalCatalog').then(m => m.UniversalCatalog), {
-    loading: () => <CatalogGridSkeleton count={6} />,
-});
 
 import { useCatalogFilters } from '@/hooks/useCatalogFilters';
 import { ProductVariant } from '@/types/productMaster';
@@ -53,6 +49,10 @@ function SmartCatalogRouter({ initialItems, basePath = '/store' }: SystemCatalog
         () => selectLowestVariantPerModel(clientItems.length > 0 ? clientItems : initialItems),
         [clientItems, initialItems]
     );
+    // Only show loading skeleton when client fetch is in flight AND there are no items
+    // to show yet (neither from SSR initialItems nor from a previous client fetch).
+    // When initialItems are present from SSR, skip the skeleton entirely — cards are
+    // already in the HTML and visible before JS hydrates.
     const loading = isClientLoading && currentItems.length === 0;
     const filters = useCatalogFilters(currentItems);
 
