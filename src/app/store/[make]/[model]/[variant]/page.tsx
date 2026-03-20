@@ -6,20 +6,12 @@ import { adminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 import { slugify } from '@/utils/slugs';
 import ProductClient from './ProductClient';
-import { PdpLocationGate } from '@/components/store/Personalize/PdpLocationGate';
 import { isMobileDevice } from '@/lib/utils/device';
-import { cookies, headers } from 'next/headers';
+import { cookies } from 'next/headers';
 import { resolveFinanceScheme, ViewerContext } from '@/utils/financeResolver';
 import { BankScheme } from '@/types/bankPartner';
 import { getSitemapData } from '@/lib/server/sitemapFetcher';
 import { isAccessoryCompatible } from '@/lib/catalog/accessoryCompatibility';
-
-/**
- * Known crawler bot User-Agent patterns.
- * These are allowed through the PDP gate so Google/Bing can index product pages.
- */
-const BOT_UA_PATTERN =
-    /googlebot|bingbot|slurp|duckduckbot|baiduspider|yandexbot|facebookexternalhit|twitterbot|linkedinbot|applebot|rogerbot|semrushbot|ahrefsbot/i;
 import { IDV_DEPRECIATION_RATE } from '@/lib/constants/pricingConstants';
 import {
     resolveStoreContext,
@@ -299,30 +291,21 @@ export default async function Page({ params, searchParams }: Props) {
     const resolvedParams = await params;
     const resolvedSearchParams = await searchParams;
 
-    // ── Hard Gate: Auth Required (Bot Pass Enabled) ──────────────────────
-    // Bots (Googlebot, Bingbot, etc.) are allowed through to preserve SEO indexing.
-    // All real unauthenticated users are redirected to /login with returnUrl.
-    const requestHeaders = await headers();
-    const userAgent = requestHeaders.get('user-agent') || '';
-    const isBot = BOT_UA_PATTERN.test(userAgent);
-
-    if (!isBot) {
-        const authClient = await createClient();
-        const {
-            data: { user },
-        } = await authClient.auth.getUser();
-        if (!user) {
-            const currentPath = `/store/${resolvedParams.make}/${resolvedParams.model}/${resolvedParams.variant}`;
-            const query = new URLSearchParams();
-            Object.entries(resolvedSearchParams || {}).forEach(([k, v]) => {
-                if (v) query.set(k, String(v));
-            });
-            const qs = query.toString();
-            const returnUrl = encodeURIComponent(currentPath + (qs ? `?${qs}` : ''));
-            redirect(`/login?next=${returnUrl}`);
-        }
+    // Hard Gate: PDP requires login for all users.
+    const authClient = await createClient();
+    const {
+        data: { user },
+    } = await authClient.auth.getUser();
+    if (!user) {
+        const currentPath = `/store/${resolvedParams.make}/${resolvedParams.model}/${resolvedParams.variant}`;
+        const query = new URLSearchParams();
+        Object.entries(resolvedSearchParams || {}).forEach(([k, v]) => {
+            if (v) query.set(k, String(v));
+        });
+        const qs = query.toString();
+        const returnUrl = encodeURIComponent(currentPath + (qs ? `?${qs}` : ''));
+        redirect(`/login?next=${returnUrl}`);
     }
-    // ─────────────────────────────────────────────────────────────────────
 
     const supabase = adminClient;
     const cookieStore = await cookies(); // Access cookies
@@ -1381,56 +1364,54 @@ export default async function Page({ params, searchParams }: Props) {
                 // eslint-disable-next-line react/no-danger
                 dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
             />
-            <PdpLocationGate initialLocation={location}>
-                <ProductClient
-                    product={product}
-                    makeParam={resolvedParams.make}
-                    modelParam={product.model}
-                    variantParam={product.variant}
-                    initialLocation={location}
-                    initialPrice={initialPricingSnapshot}
-                    insuranceRule={insuranceRule}
-                    registrationRule={effectiveRule} // Passing registration rule for client side calc
-                    initialAccessories={accessories}
-                    initialServices={services}
-                    initialFinance={
-                        resolvedFinance
-                            ? {
-                                  bank: {
-                                      id: resolvedFinance.bank.id,
-                                      name: resolvedFinance.bank.name,
-                                      identity: resolvedFinance.bank.config?.identity,
-                                      overview: resolvedFinance.bank.config?.overview,
-                                  },
-                                  scheme: resolvedFinance.scheme,
-                                  logic: resolvedFinance.logic, // Trace logic
-                              }
-                            : undefined
-                    }
-                    initialDealerId={winningDealerId}
-                    leadMeta={
-                        leadMeta
-                            ? {
-                                  id: leadMeta.id,
-                                  displayId: leadMeta.displayId,
-                                  customerName: leadMeta.customerName,
-                                  ownerTenantName: leadMeta.ownerTenantId
-                                      ? tenantMetaMap.get(leadMeta.ownerTenantId)?.name || null
-                                      : null,
-                                  leadDealerId: leadMeta.selectedDealerTenantId,
-                                  leadDealerName: leadMeta.selectedDealerTenantId
-                                      ? tenantMetaMap.get(leadMeta.selectedDealerTenantId)?.name || null
-                                      : null,
-                                  leadFinancerId: leadMeta.preferredFinancierId,
-                                  leadFinancerName: leadMeta.preferredFinancierId
-                                      ? tenantMetaMap.get(leadMeta.preferredFinancierId)?.name || null
-                                      : null,
-                              }
-                            : undefined
-                    }
-                    initialDevice={isMobile ? 'phone' : 'desktop'}
-                />
-            </PdpLocationGate>
+            <ProductClient
+                product={product}
+                makeParam={resolvedParams.make}
+                modelParam={product.model}
+                variantParam={product.variant}
+                initialLocation={location}
+                initialPrice={initialPricingSnapshot}
+                insuranceRule={insuranceRule}
+                registrationRule={effectiveRule} // Passing registration rule for client side calc
+                initialAccessories={accessories}
+                initialServices={services}
+                initialFinance={
+                    resolvedFinance
+                        ? {
+                              bank: {
+                                  id: resolvedFinance.bank.id,
+                                  name: resolvedFinance.bank.name,
+                                  identity: resolvedFinance.bank.config?.identity,
+                                  overview: resolvedFinance.bank.config?.overview,
+                              },
+                              scheme: resolvedFinance.scheme,
+                              logic: resolvedFinance.logic, // Trace logic
+                          }
+                        : undefined
+                }
+                initialDealerId={winningDealerId}
+                leadMeta={
+                    leadMeta
+                        ? {
+                              id: leadMeta.id,
+                              displayId: leadMeta.displayId,
+                              customerName: leadMeta.customerName,
+                              ownerTenantName: leadMeta.ownerTenantId
+                                  ? tenantMetaMap.get(leadMeta.ownerTenantId)?.name || null
+                                  : null,
+                              leadDealerId: leadMeta.selectedDealerTenantId,
+                              leadDealerName: leadMeta.selectedDealerTenantId
+                                  ? tenantMetaMap.get(leadMeta.selectedDealerTenantId)?.name || null
+                                  : null,
+                              leadFinancerId: leadMeta.preferredFinancierId,
+                              leadFinancerName: leadMeta.preferredFinancierId
+                                  ? tenantMetaMap.get(leadMeta.preferredFinancierId)?.name || null
+                                  : null,
+                          }
+                        : undefined
+                }
+                initialDevice={isMobile ? 'phone' : 'desktop'}
+            />
         </>
     );
 }

@@ -1023,6 +1023,21 @@ export const UniversalCatalog = ({
     // Location gate: catalog stays in DOM for SEO, but overlaid with modal when location missing
     const showLocationGate = needsLocation;
 
+    if (showLocationGate) {
+        return (
+            <div className="min-h-screen bg-slate-50">
+                <PincodeGateModal
+                    isOpen
+                    onResolved={() => {
+                        // PincodeGateModal.persistAndFire already wrote localStorage + cookie
+                        // + fired window.dispatchEvent(new Event('locationChanged')).
+                        window.dispatchEvent(new Event('locationChanged'));
+                    }}
+                />
+            </div>
+        );
+    }
+
     return (
         <div
             className="flex flex-col min-h-screen bg-slate-50 transition-colors duration-500 font-sans relative"
@@ -1036,21 +1051,6 @@ export const UniversalCatalog = ({
                     : undefined
             }
         >
-            {/* Location Gate — non-dismissable PincodeGateModal replaces old button overlay */}
-            {showLocationGate && (
-                <PincodeGateModal
-                    isOpen={showLocationGate}
-                    onResolved={() => {
-                        // PincodeGateModal.persistAndFire already wrote localStorage + cookie
-                        // + fired window.dispatchEvent(new Event('locationChanged')).
-                        // The checkCurrentServiceability useEffect listens to locationChanged
-                        // and will re-run automatically — no manual call needed here.
-                        // Extra dispatch ensures catalog re-evaluates if event was missed:
-                        window.dispatchEvent(new Event('locationChanged'));
-                    }}
-                />
-            )}
-
             {/* Non-Served State Modal — dismissable, user can still browse */}
             {showNotServingModal && (
                 <div className="fixed inset-0 z-[199] flex items-center justify-center">
@@ -1100,11 +1100,7 @@ export const UniversalCatalog = ({
                     </div>
                 </div>
             )}
-            <div
-                className={`flex-1 store-page-shell ${showLocationGate ? 'pointer-events-none select-none' : ''} ${
-                    isTv ? 'px-12' : ''
-                }`}
-            >
+            <div className={`flex-1 store-page-shell ${isTv ? 'px-12' : ''}`}>
                 <DiscoveryBar
                     className={
                         isTv

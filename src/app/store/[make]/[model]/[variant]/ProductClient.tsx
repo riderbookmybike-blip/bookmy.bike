@@ -5,7 +5,6 @@ import dynamic from 'next/dynamic';
 import { useSystemPDPLogic } from '@/hooks/SystemPDPLogic';
 import { LeadCaptureModal } from '@/components/leads/LeadCaptureModal';
 import { EmailUpdateModal } from '@/components/auth/EmailUpdateModal';
-import { PdpLocationGate } from '@/components/store/Personalize/PdpLocationGate';
 import { LocationPicker } from '@/components/store/LocationPicker';
 import { createClient } from '@/lib/supabase/client';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -25,27 +24,6 @@ import { InsuranceRule } from '@/types/insurance';
 const SKU_UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const MIN_DWELL_TRACKING_MS = 1500;
 const BOOKMYBIKE_WHATSAPP_NUMBER = '917447403491';
-
-function hasResolvedLocationSignal(value: any): boolean {
-    if (!value || typeof value !== 'object') return false;
-    const lat = Number((value as any)?.lat ?? (value as any)?.latitude);
-    const lng = Number((value as any)?.lng ?? (value as any)?.longitude);
-    if (Number.isFinite(lat) && Number.isFinite(lng)) return true;
-    const pincode = String((value as any)?.pincode || '').trim();
-    return /^\d{6}$/.test(pincode);
-}
-
-function readLocationResolvedFromCache(): boolean {
-    if (typeof window === 'undefined') return false;
-    try {
-        const cached = localStorage.getItem('bkmb_user_pincode');
-        if (!cached) return false;
-        const parsed = JSON.parse(cached);
-        return hasResolvedLocationSignal(parsed);
-    } catch {
-        return false;
-    }
-}
 
 let crmActionsPromise: Promise<typeof import('@/actions/crm')> | null = null;
 function getCrmActions() {
@@ -515,7 +493,6 @@ export default function ProductClient({
     const [dealerRetryCount, setDealerRetryCount] = useState(0);
     const [waInFlight, setWaInFlight] = useState(false);
     const shouldForcePhoneCapture = isCrmMode; // Only force phone capture in CRM/lead context
-    const pdpGateEnabled = process.env.NEXT_PUBLIC_PDP_GATE_ENABLED === 'true';
     const [cachedLocationHint, setCachedLocationHint] = useState<{ district?: string; pincode?: string } | null>(null);
 
     useEffect(() => {
@@ -533,10 +510,6 @@ export default function ProductClient({
         }
     }, []);
 
-    const [hasResolvedLocation, setHasResolvedLocation] = useState<boolean>(
-        () => hasResolvedLocationSignal(initialLocation) || readLocationResolvedFromCache()
-    );
-
     useEffect(() => {
         const syncLocationState = () => {
             try {
@@ -549,7 +522,6 @@ export default function ProductClient({
             } catch {
                 setCachedLocationHint(null);
             }
-            setHasResolvedLocation(hasResolvedLocationSignal(initialLocation) || readLocationResolvedFromCache());
             // Also trigger dealer hook re-run so it picks up newly resolved lat/lng from localStorage.
             // This closes the race: StoreLayoutClient bootstraps location async → fires locationChanged
             // → hook was already done with null coords → needs to re-run with fresh cache.
@@ -567,16 +539,10 @@ export default function ProductClient({
         };
     }, [initialLocation]);
 
-    // ── PDP Location Gate (moved to PdpLocationGate component) ──────────────
-    // PdpLocationGate now wraps the entire render tree and blocks children
-    // from rendering until location is confirmed. No redirect needed here.
-    // ─────────────────────────────────────────────────────────────────────────
-
     // Note: Do NOT disable when hasResolvedDealer — the hook must still run to fetch
     // the actual offer_amount via its overrideDealerId path (no lat/lng needed).
-    // Pincode-first gate: login is NOT required to unlock personalized offer.
-    // Only a resolved location (pincode or GPS coords) is needed.
-    const isDealerFetchDisabled = pdpGateEnabled ? !hasResolvedLocation : false;
+    // PDP is login-gated server-side; dealer context should always try resolving.
+    const isDealerFetchDisabled = false;
 
     // Unified Dealer Context Hook
     const {
@@ -990,10 +956,6 @@ export default function ProductClient({
 
     const handleConfirmQuote = async () => {
         if (!leadContext) return;
-        if (pdpGateEnabled && !hasResolvedLocation) {
-            toast.error('Add pincode to unlock best price.');
-            return;
-        }
         if (!quoteTenantId) {
             toast.error(dealerFetchNotice || 'Best offer dealer abhi resolve nahi hua. Thodi der baad retry karein.');
             return;
@@ -1043,10 +1005,6 @@ export default function ProductClient({
     };
 
     const handleBookingRequest = async () => {
-        if (pdpGateEnabled && !hasResolvedLocation) {
-            toast.error('Add pincode to unlock best price.');
-            return;
-        }
         if (!quoteTenantId) {
             toast.error(dealerFetchNotice || 'Best offer dealer abhi resolve nahi hua. Thodi der baad retry karein.');
             return;
@@ -1321,15 +1279,8 @@ export default function ProductClient({
             bestOffer?.price ??
             Number(data.colorSurge || 0) - Number(data.colorDiscount || 0)
     );
-    // Pincode-first: LOGIN_REQUIRED removed from gate chain.
-    // Login is only an incentive (bCoin nudge), not a blocker.
-    const pdpGateReason: 'LEGACY_MODE' | 'LOCATION_REQUIRED' | 'DEALER_TIMEOUT' | 'READY' = !pdpGateEnabled
-        ? 'LEGACY_MODE'
-        : !hasResolvedLocation
-          ? 'LOCATION_REQUIRED'
-          : dealerFetchState === 'TIMEOUT'
-            ? 'DEALER_TIMEOUT'
-            : 'READY';
+    const pdpGateReason: 'LEGACY_MODE' | 'LOCATION_REQUIRED' | 'DEALER_TIMEOUT' | 'READY' =
+        dealerFetchState === 'TIMEOUT' ? 'DEALER_TIMEOUT' : 'READY';
     const derivedServiceability = useMemo(() => {
         const isServiceableFromBestOffer =
             typeof (bestOffer as any)?.isServiceable === 'boolean' ? Boolean((bestOffer as any)?.isServiceable) : null;
@@ -1467,7 +1418,6 @@ export default function ProductClient({
                 <DesktopPDP {...commonProps} />
             )}
 
-            {/* Location gate is handled by PdpLocationGate wrapper in page.tsx */}
             <LocationPicker
                 isOpen={showLocationPicker}
                 onClose={() => setShowLocationPicker(false)}
