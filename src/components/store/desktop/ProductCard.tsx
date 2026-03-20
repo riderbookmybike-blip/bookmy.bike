@@ -18,6 +18,7 @@ import {
     X,
 } from 'lucide-react';
 import Image from 'next/image';
+import { supabaseResized } from '@/lib/utils/imageResize';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { createPortal } from 'react-dom';
@@ -697,14 +698,18 @@ export const ProductCard = ({
                      * next/image with fill: generates a proper width-based srcset so mobile browsers
                      * can fetch a 320-640px candidate instead of the full-res asset.
                      * Container has aspectRatio+position:relative, so fill works without extra wrapper.
+                     * For the priority (LCP) card, we also point src to the Supabase render/image
+                     * endpoint at 640px so external auditors (PSI) fetch a smaller asset directly.
                      */}
                     <Image
-                        src={
-                            v.imageUrl ||
-                            (v.bodyType === 'SCOOTER'
-                                ? '/images/categories/scooter_nobg.png'
-                                : '/images/categories/motorcycle_nobg.png')
-                        }
+                        src={(() => {
+                            const raw =
+                                v.imageUrl ||
+                                (v.bodyType === 'SCOOTER'
+                                    ? '/images/categories/scooter_nobg.png'
+                                    : '/images/categories/motorcycle_nobg.png');
+                            return prioritizeImage ? (supabaseResized(raw, 640) ?? raw) : raw;
+                        })()}
                         alt={v.model}
                         fill
                         fetchPriority={prioritizeImage ? 'high' : 'auto'}
@@ -1196,13 +1201,15 @@ export const ProductCard = ({
                         }}
                         whileHover={{ scale: (selectedColorZoom || v.zoomFactor || 1.15) + 0.05 }}
                         transition={{ duration: 0.5, ease: 'easeOut' }}
-                        src={
-                            selectedColorImage ||
-                            v.imageUrl ||
-                            (v.bodyType === 'SCOOTER'
-                                ? '/images/categories/scooter_nobg.png'
-                                : '/images/categories/motorcycle_nobg.png')
-                        }
+                        src={(() => {
+                            const raw =
+                                selectedColorImage ||
+                                v.imageUrl ||
+                                (v.bodyType === 'SCOOTER'
+                                    ? '/images/categories/scooter_nobg.png'
+                                    : '/images/categories/motorcycle_nobg.png');
+                            return prioritizeImage ? (supabaseResized(raw, 640) ?? raw) : raw;
+                        })()}
                         alt={v.model}
                         fetchPriority={prioritizeImage ? 'high' : 'auto'}
                         loading={prioritizeImage ? 'eager' : 'lazy'}
