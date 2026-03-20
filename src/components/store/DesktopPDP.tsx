@@ -816,6 +816,7 @@ export function DesktopPDP({
                                                             zoomFactor={activeColorConfig?.zoomFactor ?? null}
                                                             offsetX={activeColorConfig?.offsetX ?? 0}
                                                             offsetY={activeColorConfig?.offsetY ?? 0}
+                                                            priority={true}
                                                         />
                                                         {/* Bottom Swatch Strip — image ke niche, centered */}
                                                         <div
@@ -1078,6 +1079,7 @@ export function DesktopPDP({
                         videoSources={modelVideoSources}
                         isVideoOpen={isVideoOpen}
                         onCloseVideo={() => setIsVideoOpen(false)}
+                        priority={true}
                     />
                 </div>
 

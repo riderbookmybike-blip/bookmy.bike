@@ -674,9 +674,18 @@ export const ProductCard = ({
                 className="group bg-white border border-slate-200 rounded-[2.5rem] overflow-hidden flex shadow-sm hover:shadow-2xl transition-all duration-500 min-h-[22rem]"
             >
                 {/* Image Section - Wider */}
+                {/*
+                 * aspect-ratio ensures the browser reserves this column's height before
+                 * the image loads — eliminates the CLS contribution from catalog list cards.
+                 * We keep a raw <img> (not next/image) to avoid layout wrapper div from
+                 * next/image conflicting with the flex-column design.
+                 */}
                 <div
                     className="w-[38%] bg-slate-50 flex items-center justify-center relative p-8 shrink-0 border-r border-slate-100 overflow-hidden group/card"
-                    style={{ backgroundColor: selectedHex ? `${selectedHex}4D` : undefined }}
+                    style={{
+                        backgroundColor: selectedHex ? `${selectedHex}4D` : undefined,
+                        aspectRatio: '4 / 3',
+                    }}
                 >
                     {/* Vignette for depth */}
                     <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-slate-100/50 z-0" />
@@ -689,6 +698,8 @@ export const ProductCard = ({
                                 : '/images/categories/motorcycle_nobg.png')
                         }
                         alt={v.model}
+                        loading="lazy"
+                        decoding="async"
                         className="w-[85%] h-[85%] object-contain z-10 transition-transform duration-700 group-hover/card:scale-110"
                     />
 

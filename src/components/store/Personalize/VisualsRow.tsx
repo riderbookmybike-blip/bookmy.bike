@@ -33,6 +33,12 @@ interface VisualsRowProps {
     offsetX?: number;
     /** Vertical offset (px) for the hero image */
     offsetY?: number;
+    /**
+     * When true, tells the browser this is the LCP element:
+     * applies fetchPriority="high" + loading="eager".
+     * Pass true only for the first above-the-fold hero image.
+     */
+    priority?: boolean;
 }
 
 export default function VisualsRow({
@@ -50,6 +56,7 @@ export default function VisualsRow({
     zoomFactor = null,
     offsetX = 0,
     offsetY = 0,
+    priority = false,
 }: VisualsRowProps) {
     const extractYouTubeId = (source: string): string => {
         const raw = String(source || '').trim();
@@ -226,19 +233,29 @@ export default function VisualsRow({
                 </div>
 
                 {/* PART 1: Image Area (75%) - Strictly contained */}
-                <div className="relative flex-[3] z-10 flex items-center justify-center overflow-hidden">
+                {/*
+                 * aspect-ratio reservation: prevents CLS by giving the browser the
+                 * exact dimensions before the image loads. flex-[3] drives the height
+                 * on desktop; the aspect-ratio kicks in only on mobile where height is auto.
+                 */}
+                <div
+                    className="relative flex-[3] z-10 flex items-center justify-center overflow-hidden"
+                    style={{ aspectRatio: '4 / 3' }}
+                >
                     {/* Dynamic Backlight Glow */}
                     <div
                         className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[70%] h-[60%] blur-[120px] opacity-20 transition-all duration-1000 z-0 pointer-events-none"
                         style={{ backgroundColor: activeColor.hex }}
                     />
 
-                    {/* Skeleton Loader */}
-                    {!imageLoaded && (
-                        <div className="absolute inset-0 flex items-center justify-center">
-                            <div className="w-[65%] h-[70%] bg-gradient-to-br from-slate-200 to-slate-100 rounded-3xl animate-pulse" />
-                        </div>
-                    )}
+                    {/* Skeleton Loader — always reserves space, hides once loaded */}
+                    <div
+                        className={`absolute inset-0 flex items-center justify-center transition-opacity duration-300 ${
+                            imageLoaded ? 'opacity-0 pointer-events-none' : 'opacity-100'
+                        }`}
+                    >
+                        <div className="w-[65%] h-[70%] bg-gradient-to-br from-slate-200 to-slate-100 rounded-3xl animate-pulse" />
+                    </div>
 
                     {has360 && is360Active && config360 ? (
                         <div
@@ -257,6 +274,10 @@ export default function VisualsRow({
                             src={productImage || '/images/categories/scooter_nobg.png'}
                             alt="Product Visual"
                             onLoad={() => setImageLoaded(true)}
+                            // LCP priority hints — only applied to the first above-the-fold hero
+                            fetchPriority={priority ? 'high' : 'auto'}
+                            loading={priority ? 'eager' : 'lazy'}
+                            decoding={priority ? 'sync' : 'async'}
                             className={`w-full max-w-[65%] max-h-[90%] object-contain brightness-[1.1] contrast-[1.1] drop-shadow-[0_40px_80px_rgba(0,0,0,0.5)] transition-opacity duration-500 ${
                                 imageLoaded ? 'opacity-100 animate-in fade-in zoom-in-95 duration-700' : 'opacity-0'
                             }`}
