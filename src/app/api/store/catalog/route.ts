@@ -5,7 +5,10 @@ import type { ProductVariant } from '@/types/productMaster';
 
 export async function GET(request: NextRequest) {
     try {
-        const state = request.nextUrl.searchParams.get('state');
+        const url = request.nextUrl;
+        const state = url.searchParams.get('state');
+        const district = url.searchParams.get('district');
+        const leadId = url.searchParams.get('leadId');
 
         // Uniform Offer SOT: Catalog is state-SOT only.
         // No dealer resolution and no location/dealer hydration on catalog path.
@@ -42,10 +45,20 @@ export async function GET(request: NextRequest) {
             },
         });
 
-        // Do not edge-cache this API response aggressively.
-        // State catalog caching is handled in tagged server cache (fetchCatalogV2),
-        // which can be manually invalidated from AUMS trigger.
-        response.headers.set('Cache-Control', 'private, no-cache, no-store, must-revalidate');
+        // Cache strategy:
+        // - Generic requests (no district, no leadId) → public edge cache.
+        //   Vercel CDN serves subsequent hits without touching the Supabase layer,
+        //   eliminating TTFB variance on the 3-second background refresh.
+        //   fetchCatalogV2 already holds the canonical data in tagged server cache;
+        //   the edge s-maxage is a short-lived CDN layer on top.
+        // - User-specific requests (district or leadId present) → private, no-store.
+        //   Personalised pricing must never be served from a shared cache key.
+        const isGeneric = !district && !leadId;
+        if (isGeneric) {
+            response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300');
+        } else {
+            response.headers.set('Cache-Control', 'private, no-store');
+        }
 
         return response;
     } catch (error) {
