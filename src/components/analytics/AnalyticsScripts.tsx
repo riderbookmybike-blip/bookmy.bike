@@ -9,7 +9,7 @@ export default function AnalyticsScripts() {
 
     return (
         <>
-            {/* Google Analytics 4 (gtag.js) */}
+            {/* Google Analytics 4 — afterInteractive: needed for conversion tracking on first touch */}
             {ga4Id ? (
                 <>
                     <Script src={`https://www.googletagmanager.com/gtag/js?id=${ga4Id}`} strategy="afterInteractive" />
@@ -20,10 +20,14 @@ gtag('js',new Date());gtag('config','${ga4Id}');`}
                 </>
             ) : null}
 
-            {/* Google Tag Manager (if separate GTM container exists) */}
+            {/*
+             * Google Tag Manager — lazyOnload: GTM is a tag container that loads many
+             * sub-scripts. Deferring it to idle avoids main-thread blocking during the
+             * critical interaction window that INP measures.
+             */}
             {gtmId ? (
                 <>
-                    <Script id="gtm-script" strategy="afterInteractive">
+                    <Script id="gtm-script" strategy="lazyOnload">
                         {`(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
 new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
 j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
@@ -42,9 +46,13 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
                 </>
             ) : null}
 
-            {/* Microsoft Clarity */}
+            {/*
+             * Microsoft Clarity — lazyOnload: Heatmap/session recording, not time-sensitive.
+             * Running it on idle avoids the 50–100 ms main-thread task during first user
+             * interactions which is the primary INP measurement window.
+             */}
             {clarityId ? (
-                <Script id="clarity-script" strategy="afterInteractive">
+                <Script id="clarity-script" strategy="lazyOnload">
                     {`(function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
 t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
 y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})(window,document,"clarity","script","${clarityId}");`}

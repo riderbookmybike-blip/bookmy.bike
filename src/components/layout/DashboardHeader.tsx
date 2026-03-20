@@ -3,13 +3,19 @@ import { Bell, Menu, Megaphone, FileText } from 'lucide-react';
 import { useTheme } from '@/components/providers/ThemeProvider';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { useRouter } from 'next/navigation';
-import { ProfileDropdown } from './ProfileDropdown';
+import dynamic from 'next/dynamic';
 import { createClient } from '@/lib/supabase/client';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { HeaderCommandSearch } from '@/components/layout/HeaderCommandSearch';
 import { useUnreadNotifications } from '@/hooks/useUnreadNotifications';
 // Removed: import { DashboardGreeting } from './DashboardGreeting';
 // Removed: import { WorkspaceSwitcher } from '@/components/layout/WorkspaceSwitcher';
+
+// Deferred: ProfileDropdown is 2200+ lines; lazy-loading reduces initial JS bundle for INP
+const ProfileDropdown = dynamic(() => import('./ProfileDropdown').then(mod => mod.ProfileDropdown), {
+    loading: () => <div className="w-9 h-9 rounded-full bg-slate-200/30 dark:bg-white/10 animate-pulse" />,
+    ssr: false,
+});
 
 interface DashboardHeaderProps {
     onMenuClick?: () => void;

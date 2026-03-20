@@ -4,8 +4,16 @@ import { Heart, Home as HomeIcon, Menu } from 'lucide-react';
 import { MotorcycleIcon } from '@/components/icons/MotorcycleIcon';
 import { Logo } from '@/components/brand/Logo';
 import { AppHeaderShell } from './AppHeaderShell';
-import { ProfileDropdown } from './ProfileDropdown';
+import dynamic from 'next/dynamic';
 import { useFavorites } from '@/lib/favorites/favoritesContext';
+
+// next/dynamic: defers the 2200-line ProfileDropdown bundle out of the
+// initial JS chunk, reducing main-thread work during the INP window.
+const ProfileDropdown = dynamic(() => import('./ProfileDropdown').then(mod => mod.ProfileDropdown), {
+    // Skeleton: same w-9 h-9 dimensions as the trigger button → no CLS
+    loading: () => <div className="w-9 h-9 rounded-full bg-slate-200/30 animate-pulse" />,
+    ssr: false,
+});
 
 interface MarketplaceHeaderProps {
     onLoginClick: () => void;

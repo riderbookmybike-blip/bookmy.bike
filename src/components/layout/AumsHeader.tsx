@@ -7,9 +7,14 @@ import { useTenant } from '@/lib/tenant/tenantContext';
 import { useRouter } from 'next/navigation';
 import { HeaderCommandSearch } from '@/components/layout/HeaderCommandSearch';
 import { useUnreadNotifications } from '@/hooks/useUnreadNotifications';
-
+import dynamic from 'next/dynamic';
 import { AppHeaderShell } from './AppHeaderShell';
-import { ProfileDropdown } from './ProfileDropdown';
+
+// Deferred: ProfileDropdown is 2200+ lines; lazy-loading reduces initial JS bundle for INP
+const ProfileDropdown = dynamic(() => import('./ProfileDropdown').then(mod => mod.ProfileDropdown), {
+    loading: () => <div className="w-9 h-9 rounded-full bg-slate-200/30 dark:bg-white/10 animate-pulse" />,
+    ssr: false,
+});
 
 interface AumsHeaderProps {
     onLoginClick?: () => void;

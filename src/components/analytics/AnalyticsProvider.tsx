@@ -192,6 +192,9 @@ export default function AnalyticsProvider({ children }: { children: React.ReactN
     // - Logged in: passes real name + phone so Clarity shows "Ajit Singh" instead of random ID
     // - Anonymous: tags district/state from location cache so recordings are geo-labeled
     useEffect(() => {
+        // Collect cleanup handles from clarityIdentify (now returns cancelIdleCallback fn)
+        const cleanupCallbacks: Array<() => void> = [];
+
         const syncUser = async () => {
             const {
                 data: { user },
@@ -217,12 +220,14 @@ export default function AnalyticsProvider({ children }: { children: React.ReactN
                     realName = (profile as any)?.full_name || null;
                     // Also enrich phone if missing
                     if (!phone && (profile as any)?.primary_phone) {
-                        clarityIdentify(user.id, (profile as any).primary_phone, realName ?? undefined);
+                        cleanupCallbacks.push(
+                            clarityIdentify(user.id, (profile as any).primary_phone, realName ?? undefined)
+                        );
                     }
                 }
 
                 // Pass name → shows "Ajit Singh" in Clarity Recordings User ID column
-                clarityIdentify(user.id, phone, realName ?? undefined);
+                cleanupCallbacks.push(clarityIdentify(user.id, phone, realName ?? undefined));
                 clarityTag('auth_state', 'logged_in');
                 if (realName) clarityTag('user_name', realName);
             } else {
@@ -245,6 +250,8 @@ export default function AnalyticsProvider({ children }: { children: React.ReactN
             }
         };
         syncUser();
+        // Cancel any pending idle-scheduled Clarity identity calls on unmount
+        return () => cleanupCallbacks.forEach(fn => fn());
     }, []);
 
     // Core Tracking Function

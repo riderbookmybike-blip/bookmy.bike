@@ -35,13 +35,31 @@ const clarity = (...args: unknown[]): void => {
  * Identify a logged-in user in Clarity.
  * This links all their heatmaps & recordings to their account.
  *
+ * Deferred via requestIdleCallback so the main thread is never blocked during
+ * the interaction window that INP measures. Falls back to a 2s timeout if the
+ * browser doesn't schedule an idle callback quickly.
+ *
  * @param userId   Supabase user ID (UUID)
  * @param phone    User's phone number (e.g. "9876543210")
  * @param name     Optional display name
+ * @returns A cleanup function that cancels the pending callback (call on unmount)
  */
-export const clarityIdentify = (userId: string, phone?: string, name?: string): void => {
-    // clarity('identify', customId, customSessionId, customPageId, friendlyName)
-    clarity('identify', userId, undefined, undefined, name ?? phone ?? userId);
+export const clarityIdentify = (userId: string, phone?: string, name?: string): (() => void) => {
+    if (typeof window === 'undefined') return () => {};
+
+    const identify = () => {
+        clarity('identify', userId, undefined, undefined, name ?? phone ?? userId);
+    };
+
+    if ('requestIdleCallback' in window) {
+        // Schedule during browser idle time; fall back after 2s max
+        const handle = requestIdleCallback(identify, { timeout: 2000 });
+        return () => cancelIdleCallback(handle);
+    }
+
+    // Safari fallback: defer via setTimeout(0) — still async, doesn't block interaction
+    const timer = setTimeout(identify, 0);
+    return () => clearTimeout(timer);
 };
 
 // ─────────────────────────────────────────────────────
