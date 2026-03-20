@@ -1379,6 +1379,7 @@ export default async function Page({ params, searchParams }: Props) {
                               },
                               scheme: resolvedFinance.scheme,
                               logic: resolvedFinance.logic, // Trace logic
+                              candidateSchemes: resolvedFinance.candidateSchemes || [],
                           }
                         : undefined
                 }

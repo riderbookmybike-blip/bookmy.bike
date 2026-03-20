@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useMemo } from 'react';
 import { HelpCircle, Clock, CheckCircle2, SlidersHorizontal, Edit2 } from 'lucide-react';
 import { formatDisplayIdForUI, unformatDisplayId } from '@/lib/displayId';
 import { formatInterestRate } from '@/utils/formatVehicleSpec';
@@ -22,6 +22,7 @@ interface FinanceCardProps {
     financeCharges?: { id: string; label: string; value: number; helpText?: string }[];
     bank?: any;
     scheme?: any;
+    schemeCandidates?: Array<{ bank: any; scheme: any }>;
 }
 
 export default function FinanceCard({
@@ -40,58 +41,120 @@ export default function FinanceCard({
     financeCharges = [],
     bank,
     scheme,
+    schemeCandidates = [],
 }: FinanceCardProps) {
     const displayDownPayment = downPayment < 1 ? 0 : downPayment;
-    // Compute gross loan from scheme charges (upfront + funded/loan add-ons)
-    const allSchemeCharges: any[] = scheme?.charges || [];
-    const calcChargeAmt = (c: any) => {
-        if (c.valueType === 'PERCENTAGE') return Math.round(loanAmount * (c.value / 100));
+    const netLoan = Math.max(0, Math.round(totalOnRoad - displayDownPayment));
+    const calcChargeAmt = (c: any, baseLoan: number) => {
+        const type = String(c?.type || c?.valueType || 'FIXED').toUpperCase();
+        if (type === 'PERCENTAGE') {
+            const basisKey = String(c?.calculationBasis || 'ON_ROAD').toUpperCase();
+            const basis = basisKey === 'LOAN_AMOUNT' ? baseLoan : totalOnRoad;
+            return Math.round(Number(basis || 0) * (Number(c?.value || 0) / 100));
+        }
         return c.value || 0;
     };
-    const totalAllCharges = allSchemeCharges.reduce((s: number, c: any) => s + calcChargeAmt(c), 0);
-    const grossLoan = Math.round(loanAmount + totalAllCharges);
-
-    // Local state for slider to prevent lag
-    const [localDP, setLocalDP] = useState<number | string>(displayDownPayment);
-
-    // Sync local state when prop changes (debounce handling)
-    useEffect(() => {
-        setLocalDP(displayDownPayment);
-    }, [displayDownPayment]);
-
-    const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const valStr = e.target.value;
-        if (valStr === '') {
-            setLocalDP('');
-            return;
-        }
-        const val = parseInt(valStr);
-        if (isNaN(val)) return;
-
-        setLocalDP(val);
-        if (setUserDownPayment) {
-            setUserDownPayment(val);
-        }
+    const getBankName = (b: any) =>
+        String(b?.name || b?.identity?.display_name || b?.identity?.displayName || b?.identity?.name || 'Financier');
+    const getBankShortCode = (name: string) => {
+        const key = name.toLowerCase();
+        return (
+            (key.includes('home credit') && 'HC') ||
+            (key.includes('shriram') && 'SF') ||
+            (key.includes('kotak') && 'KP') ||
+            (key.includes('bajaj') && 'BF') ||
+            (key.includes('bandhan') && 'BB') ||
+            ((key.includes('l&t') || key.includes('lt finance')) && 'LT') ||
+            name
+                .split(/[\s&/-]+/)
+                .map(token => token.trim())
+                .filter(Boolean)
+                .slice(0, 2)
+                .map(token => token.charAt(0).toUpperCase())
+                .join('') ||
+            'FIN'
+        );
     };
 
-    // Standard tenures for display comparison
-    const tenures = [3, 6, 9, 12, 18, 24, 30, 36, 42, 48, 54, 60];
+    const activeCandidates: Array<{ bank: any; scheme: any }> =
+        Array.isArray(schemeCandidates) && schemeCandidates.length > 0
+            ? schemeCandidates
+            : bank && scheme
+              ? [{ bank, scheme }]
+              : [];
 
-    // Helper to calculate EMI for a given tenure — respects FLAT vs REDUCING
-    const calculateEMI = (t: number) => {
-        if (grossLoan <= 0) return 0;
+    const tenures: number[] = [3, 6, 9, 12, 18, 24, 30, 36, 42, 48, 54, 60];
 
-        if (interestType === 'FLAT') {
-            // FLAT: Simple interest over entire tenure
-            const totalInterest = grossLoan * annualInterest * (t / 12);
-            return (grossLoan + totalInterest) / t;
-        }
-
-        // REDUCING: Standard amortization formula
-        const monthlyRate = annualInterest / 12;
-        if (monthlyRate === 0) return grossLoan / t;
-        return (grossLoan * monthlyRate * Math.pow(1 + monthlyRate, t)) / (Math.pow(1 + monthlyRate, t) - 1);
+    type WinnerRow = {
+        bankName: string;
+        bankShortCode: string;
+        emi: number;
+        grossLoan: number;
+        interest: number;
+        total: number;
     };
+
+    const winnerByTenure = useMemo(() => {
+        const out = new Map<number, WinnerRow>();
+
+        for (const tenure of tenures) {
+            let best: WinnerRow | null = null;
+            for (const candidate of activeCandidates) {
+                const candidateScheme = candidate?.scheme || {};
+                const allowedTenures = Array.isArray(candidateScheme?.allowedTenures)
+                    ? candidateScheme.allowedTenures.map((t: any) => Number(t))
+                    : [];
+                if (allowedTenures.length > 0 && !allowedTenures.includes(tenure)) continue;
+
+                const charges: any[] = Array.isArray(candidateScheme?.charges) ? candidateScheme.charges : [];
+                const totalUpfront = charges
+                    .filter(c => String(c?.impact || '').toUpperCase() === 'UPFRONT')
+                    .reduce((s, c) => s + calcChargeAmt(c, netLoan), 0);
+                const totalFunded = charges
+                    .filter(c => String(c?.impact || '').toUpperCase() === 'FUNDED')
+                    .reduce((s, c) => s + calcChargeAmt(c, netLoan), 0);
+                const grossLoan = Math.max(0, Math.round(netLoan + totalFunded + totalUpfront));
+                if (grossLoan <= 0) continue;
+
+                const annualRate = Number(candidateScheme?.interestRate || 0) / 100;
+                const iType = String(candidateScheme?.interestType || 'REDUCING').toUpperCase();
+                const emiRaw =
+                    iType === 'FLAT'
+                        ? (grossLoan + grossLoan * annualRate * (tenure / 12)) / tenure
+                        : (() => {
+                              const monthlyRate = annualRate / 12;
+                              if (monthlyRate === 0) return grossLoan / tenure;
+                              return (
+                                  (grossLoan * monthlyRate * Math.pow(1 + monthlyRate, tenure)) /
+                                  (Math.pow(1 + monthlyRate, tenure) - 1)
+                              );
+                          })();
+                const emi = Math.round(emiRaw);
+                const totalPaidViaEmi = emi * tenure;
+                const interest = Math.max(0, Math.round(totalPaidViaEmi - grossLoan));
+                const total = Math.round(totalPaidViaEmi + displayDownPayment);
+                const bankName = getBankName(candidate?.bank);
+                const row: WinnerRow = {
+                    bankName,
+                    bankShortCode: getBankShortCode(bankName),
+                    emi,
+                    grossLoan,
+                    interest,
+                    total,
+                };
+                if (!best || row.emi < best.emi) best = row;
+            }
+            if (best) out.set(tenure, best);
+        }
+        return out;
+    }, [activeCandidates, displayDownPayment, netLoan, tenures]);
+
+    const selectedWinner = winnerByTenure.get(emiTenure);
+    const fallbackBankName = getBankName(bank);
+    const fallbackBankShortCode = getBankShortCode(fallbackBankName);
+    const selectedAnnualInterest =
+        selectedWinner && activeCandidates.length > 0 ? null : formatInterestRate(annualInterest);
+    const selectedGrossLoan = selectedWinner?.grossLoan ?? Math.max(0, Math.round(loanAmount || 0));
 
     const financeItems = [
         { label: 'Down Payment', value: `₹${displayDownPayment.toLocaleString('en-IN')}` },
@@ -100,8 +163,12 @@ export default function FinanceCard({
             value: typeof charge.value === 'number' ? `₹${charge.value.toLocaleString('en-IN')}` : charge.value,
             helpText: charge.helpText,
         })),
-        { label: 'Loan Amount', value: `₹${loanAmount.toLocaleString('en-IN')}` },
-        { label: `Interest (${interestType})`, value: formatInterestRate(annualInterest), isHighlight: true },
+        { label: 'Loan Amount', value: `₹${selectedGrossLoan.toLocaleString('en-IN')}` },
+        {
+            label: `Interest (${interestType})`,
+            value: selectedAnnualInterest ?? formatInterestRate(annualInterest),
+            isHighlight: true,
+        },
         {
             label: 'Approval Chance',
             value: downPayment / totalOnRoad > 0.25 ? 'High' : downPayment / totalOnRoad > 0.15 ? 'Medium' : 'Low',
@@ -116,15 +183,14 @@ export default function FinanceCard({
         { label: 'Scheme', value: schemeId ? formatDisplayIdForUI(unformatDisplayId(schemeId)) : 'STANDARD' },
     ];
 
-    const [expandedTenure, setExpandedTenure] = useState<number | null>(null);
-
     return (
         <div className="md:bg-transparent md:backdrop-blur-none md:border-0 md:shadow-none rounded-[2.5rem] md:rounded-none overflow-hidden flex flex-col h-full group/fcard relative">
             <div className="w-full flex-1 flex gap-2 lg:gap-3 px-4 md:px-0 pb-4 overflow-x-auto max-w-[800px] mr-auto hide-scrollbar">
                 {/* Independent Vertical Cards */}
                 {[
-                    { key: 'emi', label: 'EMI', align: 'text-left lg:text-center' },
+                    { key: 'fin', label: 'Fin', align: 'text-center' },
                     { key: 'tenure', label: 'Tenure', align: 'text-center' },
+                    { key: 'emi', label: 'EMI', align: 'text-left lg:text-center' },
                     { key: 'loan', label: 'Loan', align: 'text-center' },
                     { key: 'interest', label: 'Interest', align: 'text-center' },
                     { key: 'total', label: 'Total', align: 'text-right lg:text-center' },
@@ -140,20 +206,33 @@ export default function FinanceCard({
                         {/* Vertical Cells */}
                         <div className="flex flex-col flex-1 divide-y divide-slate-100">
                             {tenures.map(t => {
-                                const calculatedEmiForT = Math.round(calculateEMI(t));
-                                const totalPaidViaEMI = calculatedEmiForT * t;
-                                const totalInterest = Math.round(totalPaidViaEMI - grossLoan);
-                                const totalCost = Math.round(totalPaidViaEMI + downPayment);
+                                const winner = winnerByTenure.get(t);
+                                const calculatedEmiForT = winner?.emi ?? 0;
+                                const totalInterest = winner?.interest ?? 0;
+                                const totalCost = winner?.total ?? 0;
+                                const rowGrossLoan = winner?.grossLoan ?? 0;
+                                const rowFin = winner?.bankShortCode ?? '--';
+                                const rowFinTitle = winner?.bankName ?? 'No eligible financer';
                                 const isSelected = emiTenure === t;
+                                const isSelectable = Boolean(winner);
 
                                 let valueNode = <></>;
 
-                                if (col.key === 'emi') {
+                                if (col.key === 'fin') {
                                     valueNode = (
                                         <span
-                                            className={`text-[11px] lg:text-[12px] font-black font-mono tracking-tight ${isSelected ? 'text-brand-primary' : 'text-slate-700'}`}
+                                            className={`text-[10px] lg:text-[11px] font-black tracking-[0.06em] ${isSelected ? 'text-brand-primary' : 'text-slate-500'} ${!isSelectable ? 'opacity-40' : ''}`}
+                                            title={rowFinTitle}
                                         >
-                                            ₹{calculatedEmiForT.toLocaleString('en-IN')}
+                                            {rowFin}
+                                        </span>
+                                    );
+                                } else if (col.key === 'emi') {
+                                    valueNode = (
+                                        <span
+                                            className={`text-[11px] lg:text-[12px] font-black font-mono tracking-tight ${isSelected ? 'text-brand-primary' : 'text-slate-700'} ${!isSelectable ? 'opacity-40' : ''}`}
+                                        >
+                                            {isSelectable ? `₹${calculatedEmiForT.toLocaleString('en-IN')}` : '--'}
                                         </span>
                                     );
                                 } else if (col.key === 'tenure') {
@@ -167,25 +246,27 @@ export default function FinanceCard({
                                 } else if (col.key === 'loan') {
                                     valueNode = (
                                         <span
-                                            className={`text-[11px] lg:text-[12px] font-semibold font-mono tracking-tight ${isSelected ? 'text-brand-primary' : 'text-slate-500'}`}
+                                            className={`text-[11px] lg:text-[12px] font-semibold font-mono tracking-tight ${isSelected ? 'text-brand-primary' : 'text-slate-500'} ${!isSelectable ? 'opacity-40' : ''}`}
                                         >
-                                            ₹{grossLoan.toLocaleString('en-IN')}
+                                            {isSelectable ? `₹${rowGrossLoan.toLocaleString('en-IN')}` : '--'}
                                         </span>
                                     );
                                 } else if (col.key === 'interest') {
                                     valueNode = (
                                         <span
-                                            className={`text-[11px] lg:text-[12px] font-semibold font-mono tracking-tight ${totalInterest > 0 ? 'text-red-400/80' : 'text-slate-400'} ${isSelected && 'opacity-90'}`}
+                                            className={`text-[11px] lg:text-[12px] font-semibold font-mono tracking-tight ${totalInterest > 0 ? 'text-red-400/80' : 'text-slate-400'} ${isSelected && 'opacity-90'} ${!isSelectable ? 'opacity-40' : ''}`}
                                         >
-                                            +₹{Math.max(0, totalInterest).toLocaleString('en-IN')}
+                                            {isSelectable
+                                                ? `+₹${Math.max(0, totalInterest).toLocaleString('en-IN')}`
+                                                : '--'}
                                         </span>
                                     );
                                 } else if (col.key === 'total') {
                                     valueNode = (
                                         <span
-                                            className={`text-[11px] lg:text-[12px] font-bold font-mono tracking-tight ${isSelected ? 'text-brand-primary' : 'text-slate-600'}`}
+                                            className={`text-[11px] lg:text-[12px] font-bold font-mono tracking-tight ${isSelected ? 'text-brand-primary' : 'text-slate-600'} ${!isSelectable ? 'opacity-40' : ''}`}
                                         >
-                                            ₹{totalCost.toLocaleString('en-IN')}
+                                            {isSelectable ? `₹${totalCost.toLocaleString('en-IN')}` : '--'}
                                         </span>
                                     );
                                 }
@@ -194,16 +275,18 @@ export default function FinanceCard({
                                     <button
                                         key={`${col.key}-${t}`}
                                         onClick={() => {
-                                            setEmiTenure && setEmiTenure(t);
+                                            if (isSelectable) {
+                                                setEmiTenure && setEmiTenure(t);
+                                            }
                                         }}
                                         className={`w-full py-2.5 px-2 flex items-center justify-center transition-all duration-200 relative
-                                        ${isSelected ? 'bg-amber-50' : 'hover:bg-slate-50/60'}`}
+                                        ${isSelected ? 'bg-amber-50' : isSelectable ? 'hover:bg-slate-50/60' : 'bg-slate-50/40 cursor-not-allowed'}`}
                                     >
                                         {/* Row sync hover highlight hack */}
                                         <div className="absolute inset-x-0 inset-y-0 opacity-0 group-hover/row:opacity-100 peer-hover:bg-slate-50/60 pointer-events-none" />
 
-                                        {/* Selection Indicator: gold left-bar on EMI col, right-bar on Total col */}
-                                        {isSelected && col.key === 'emi' && (
+                                        {/* Selection Indicator: gold left-bar on first col (Fin), right-bar on Total col */}
+                                        {isSelected && col.key === 'fin' && (
                                             <div className="absolute left-0 inset-y-0 w-[4px] bg-amber-400 rounded-r-full" />
                                         )}
                                         {isSelected && col.key === 'total' && (

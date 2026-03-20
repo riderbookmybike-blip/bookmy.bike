@@ -92,6 +92,7 @@ export function PdpFinanceSection({
                     financeCharges={data.financeCharges || []}
                     bank={initialFinance?.bank}
                     scheme={initialFinance?.scheme}
+                    schemeCandidates={initialFinance?.candidateSchemes || []}
                 />
                 <DownPaymentSlider
                     userDownPayment={userDownPayment || downPayment || 0}
@@ -154,6 +155,7 @@ export function PdpFinanceSection({
                             financeCharges={data.financeCharges || []}
                             bank={initialFinance?.bank}
                             scheme={initialFinance?.scheme}
+                            schemeCandidates={initialFinance?.candidateSchemes || []}
                         />
                         <DownPaymentSlider
                             userDownPayment={userDownPayment || downPayment || 0}

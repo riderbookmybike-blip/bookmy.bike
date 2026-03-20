@@ -75,8 +75,9 @@ export function computeFinanceMetrics(input: FinanceMetricsInput): FinanceMetric
     const totalFunded = fundedCharges.reduce((s, c) => s + calcAmt(c), 0);
 
     const netLoan = Math.max(0, displayOnRoad - (userDownPayment || 0));
+    // SOT: upfront charges are financed as part of gross loan recovery.
     const grossLoan = netLoan + totalFunded + totalUpfront;
-    const marginMoney = (userDownPayment || 0) + totalUpfront;
+    const marginMoney = userDownPayment || 0;
 
     let monthlyEmi: number;
     if (interestType === 'FLAT') {
@@ -92,7 +93,8 @@ export function computeFinanceMetrics(input: FinanceMetricsInput): FinanceMetric
     }
 
     const totalInterest = Math.max(0, Math.round(monthlyEmi * emiTenure - grossLoan));
-    const totalOutflow = Math.round((userDownPayment || 0) + totalUpfront + monthlyEmi * emiTenure);
+    // Since upfront is financed in grossLoan, do not add upfront again in outflow.
+    const totalOutflow = Math.round((userDownPayment || 0) + monthlyEmi * emiTenure);
 
     return {
         monthlyEmi,

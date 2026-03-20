@@ -16,6 +16,15 @@ export type FinanceLogic =
     | 'BANKER_PRIMARY'
     | 'FALLBACK';
 
+export interface FinanceCandidateScheme {
+    bank: {
+        id: string;
+        name: string;
+        identity?: any;
+    };
+    scheme: BankScheme;
+}
+
 export async function resolveFinanceScheme(
     make: string,
     model: string,
@@ -28,7 +37,7 @@ export async function resolveFinanceScheme(
     // 0. Fetch all active bank partners
     const { data: rawBanks } = await supabase
         .from('id_tenants')
-        .select('id, name')
+        .select('id, name, config')
         .eq('type', 'BANK')
         .eq('status', 'ACTIVE');
 
@@ -73,6 +82,7 @@ export async function resolveFinanceScheme(
     }
 
     const allBanks = rawBanks.map(b => ({ ...b, schemes: schemesByBank.get(b.id) || [] }));
+    const candidateSchemes = collectEligibleSchemes(allBanks, make, model);
 
     // P0: Lead's Preferred Financier (highest priority, regardless of persona)
     if (leadId) {
@@ -87,23 +97,28 @@ export async function resolveFinanceScheme(
             const preferredBank = allBanks.find((b: any) => b.id === lead.preferred_financier_id);
             if (preferredBank) {
                 const scheme = findBestSchemeForBank(preferredBank, make, model);
-                if (scheme) return { bank: preferredBank, scheme, logic: 'PREFERRED_FINANCIER' as FinanceLogic };
+                if (scheme) {
+                    return {
+                        bank: preferredBank,
+                        scheme,
+                        logic: 'PREFERRED_FINANCIER' as FinanceLogic,
+                        candidateSchemes,
+                    };
+                }
             }
         }
     }
 
     // P1: Persona-Based Resolution
-    switch (persona) {
-        case 'BANKER':
-            return resolveForBanker(allBanks, make, model, viewerContext?.tenantId);
+    const resolved =
+        persona === 'BANKER'
+            ? resolveForBanker(allBanks, make, model, viewerContext?.tenantId)
+            : persona === 'DEALER'
+              ? resolveForDealer(allBanks, make, model, viewerContext?.activeFinancerId || null)
+              : resolveForCustomer(allBanks, make, model);
 
-        case 'DEALER':
-            return resolveForDealer(allBanks, make, model, viewerContext?.activeFinancerId || null);
-
-        case 'CUSTOMER':
-        default:
-            return resolveForCustomer(allBanks, make, model);
-    }
+    if (!resolved) return null;
+    return { ...resolved, candidateSchemes };
 }
 
 /**
@@ -258,6 +273,24 @@ function getEligibleSchemes(bank: any, make: string, model: string): BankScheme[
         if (!s.isActive) return false;
         return isApplicable(s, make, model);
     });
+}
+
+function collectEligibleSchemes(allBanks: any[], make: string, model: string): FinanceCandidateScheme[] {
+    const rows: FinanceCandidateScheme[] = [];
+    for (const bank of allBanks) {
+        const eligible = getEligibleSchemes(bank, make, model);
+        for (const scheme of eligible) {
+            rows.push({
+                bank: {
+                    id: String(bank.id),
+                    name: String(bank.name || 'Financier'),
+                    identity: (bank as any)?.config?.identity,
+                },
+                scheme,
+            });
+        }
+    }
+    return rows;
 }
 
 /**
