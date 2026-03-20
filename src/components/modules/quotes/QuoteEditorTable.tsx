@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { SchemeCharge, BankScheme } from '@/types/bankPartner';
 import { getBankSchemes } from '@/actions/crm';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
+import { buildPublicUrl } from '@/lib/utils/publicUrl';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Save,
@@ -1027,8 +1028,7 @@ export default function QuoteEditorTable({
 
     const handleShareDossier = async () => {
         if (!quote) return;
-        const baseUrl = window.location.origin;
-        const dossierUrl = `${baseUrl}/dossier/${quote.displayId || formatDisplayId(quote.id)}`;
+        const dossierUrl = buildPublicUrl(`/dossier/${quote.displayId || formatDisplayId(quote.id)}`);
 
         try {
             await navigator.clipboard.writeText(dossierUrl);
@@ -1043,8 +1043,7 @@ export default function QuoteEditorTable({
         if (!quote) return;
         setPdfLoading(true);
         try {
-            const baseUrl = window.location.origin;
-            const dossierUrl = `${baseUrl}/dossier/${quote.displayId || formatDisplayId(quote.id)}`;
+            const dossierUrl = buildPublicUrl(`/dossier/${quote.displayId || formatDisplayId(quote.id)}`);
             window.open(dossierUrl, '_blank');
             toast.success('Opened dossier');
         } catch (error) {

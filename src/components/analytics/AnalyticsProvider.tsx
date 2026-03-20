@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useRef } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { v4 as uuidv4 } from 'uuid';
 import { createClient } from '@/lib/supabase/client';
+import { clarityIdentify, clarityTag } from '@/lib/clarity';
 
 declare global {
     interface Window {
@@ -187,15 +188,60 @@ export default function AnalyticsProvider({ children }: { children: React.ReactN
         });
     }, [pathname, searchParams]);
 
-    // 3. User Identification (Auth Sync)
+    // 3. User Identification (Clarity sync)
+    // - Logged in: passes real name + phone so Clarity shows "Ajit Singh" instead of random ID
+    // - Anonymous: tags district/state from location cache so recordings are geo-labeled
     useEffect(() => {
         const syncUser = async () => {
             const {
                 data: { user },
             } = await supabase.auth.getUser();
+
             if (user) {
-                // We'll pass userId in the next batch
-                // Optionally we could force a session update here
+                // Resolve real name: user_metadata → id_members → fallback
+                const metaName = (user.user_metadata as any)?.full_name || (user.user_metadata as any)?.name || null;
+                const phone =
+                    (user.user_metadata as any)?.phone ||
+                    (user.user_metadata as any)?.mobile ||
+                    user.phone ||
+                    undefined;
+
+                // Fetch real name from id_members if not in metadata
+                let realName = metaName;
+                if (!realName) {
+                    const { data: profile } = await supabase
+                        .from('id_members')
+                        .select('full_name, primary_phone')
+                        .eq('id', user.id)
+                        .maybeSingle();
+                    realName = (profile as any)?.full_name || null;
+                    // Also enrich phone if missing
+                    if (!phone && (profile as any)?.primary_phone) {
+                        clarityIdentify(user.id, (profile as any).primary_phone, realName ?? undefined);
+                    }
+                }
+
+                // Pass name → shows "Ajit Singh" in Clarity Recordings User ID column
+                clarityIdentify(user.id, phone, realName ?? undefined);
+                clarityTag('auth_state', 'logged_in');
+                if (realName) clarityTag('user_name', realName);
+            } else {
+                // Anonymous: at least tag with cached location so recordings are geo-labeled
+                clarityTag('auth_state', 'anonymous');
+                try {
+                    const cached = localStorage.getItem('bkmb_user_pincode');
+                    if (cached) {
+                        const loc = JSON.parse(cached);
+                        const district = loc?.district || loc?.taluka || loc?.city || null;
+                        const state = loc?.state || loc?.stateCode || null;
+                        const pincode = loc?.pincode || null;
+                        if (district) clarityTag('location_district', district);
+                        if (state) clarityTag('location_state', state);
+                        if (pincode) clarityTag('location_pincode', pincode);
+                    }
+                } catch {
+                    // Ignore localStorage errors
+                }
             }
         };
         syncUser();

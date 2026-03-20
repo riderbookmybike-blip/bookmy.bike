@@ -17,7 +17,8 @@ import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { useAnalytics } from '@/components/analytics/AnalyticsProvider';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { isHandheldPhoneUserAgent, isTvUserAgent } from '@/lib/utils/deviceUserAgent';
-import { computeOClubPricing, OCLUB_SIGNUP_BONUS, coinsNeededForPrice } from '@/lib/oclub/coin';
+import { buildPublicUrl } from '@/lib/utils/publicUrl';
+import { computeOClubPricing, OCLUB_SIGNUP_BONUS } from '@/lib/oclub/coin';
 
 import { InsuranceRule } from '@/types/insurance';
 
@@ -270,6 +271,37 @@ export default function ProductClient({
         }
     }, [leadIdFromUrl]);
 
+    useEffect(() => {
+        let active = true;
+        const syncMemberActivity = async () => {
+            const supabase = createClient();
+            const {
+                data: { user },
+            } = await supabase.auth.getUser();
+            if (!active || !user?.id) return;
+
+            const pdpSlug = [makeParam, modelParam, variantParam]
+                .map(v => String(v || '').trim())
+                .filter(Boolean)
+                .join('/');
+
+            const activityPatch: Record<string, any> = {
+                last_active_at: new Date().toISOString(),
+                last_pdp_slug: pdpSlug || null,
+            };
+
+            await supabase
+                .from('id_members')
+                .update(activityPatch as any)
+                .eq('id', user.id);
+        };
+
+        void syncMemberActivity();
+        return () => {
+            active = false;
+        };
+    }, [makeParam, modelParam, variantParam]);
+
     const { data, actions } = useSystemPDPLogic({
         initialPrice,
         colors: clientColors, // Passing colors from product (client-aware)
@@ -299,10 +331,9 @@ export default function ProductClient({
         !walletLoading && Number.isFinite(Number(isLoggedIn ? availableCoins : OCLUB_SIGNUP_BONUS))
             ? Number(isLoggedIn ? availableCoins : OCLUB_SIGNUP_BONUS)
             : 0;
-    const modalDisplayOnRoadEstimate =
-        walletCoinsForDisplay > 0
-            ? computeOClubPricing(Number(totalOnRoad || 0), walletCoinsForDisplay).effectivePrice
-            : Number(totalOnRoad || 0);
+    const coinPricingForDisplay =
+        walletCoinsForDisplay > 0 ? computeOClubPricing(Number(totalOnRoad || 0), walletCoinsForDisplay) : null;
+    const modalDisplayOnRoadEstimate = coinPricingForDisplay?.effectivePrice ?? Number(totalOnRoad || 0);
     // SSPP v1: Enforce canonical SKU UUID for all persistence actions.
     const colorSkuId = SKU_UUID_REGEX.test(String(selectedSkuId || '')) ? String(selectedSkuId) : null;
 
@@ -731,7 +762,7 @@ export default function ProductClient({
             toast.info('Save your quote first, then we can open WhatsApp with your dossier.');
             return;
         }
-        const dossierUrl = `${window.location.origin}/q/${encodeURIComponent(dossierId)}`;
+        const dossierUrl = buildPublicUrl(`/dossier/${encodeURIComponent(dossierId)}`);
         const customerName =
             String(leadMeta?.customerName || '')
                 .trim()
@@ -907,7 +938,7 @@ export default function ProductClient({
                 total_surge: data.totalSurge || 0,
                 coin_effective_onroad: modalDisplayOnRoadEstimate || totalOnRoad,
                 coin_discount: Math.max(0, Number(totalOnRoad || 0) - Number(modalDisplayOnRoadEstimate || 0)),
-                coin_used: walletCoinsForDisplay > 0 ? coinsNeededForPrice(Number(modalDisplayOnRoadEstimate || 0)) : 0,
+                coin_used: coinPricingForDisplay?.coinsUsed || 0,
                 accessories: selectedAccessories,
                 accessory_items: selectedAccessoryItems,
                 services: selectedServices,

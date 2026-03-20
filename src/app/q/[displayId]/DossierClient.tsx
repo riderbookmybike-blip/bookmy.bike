@@ -1443,38 +1443,36 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                             const selectedFactor = EMI_FACTORS[selectedTenure] ?? EMI_FACTORS[36];
                             // For tenure grid rows, use factor-based EMI (indicative) but anchor loan to SOT
                             const selectedEmi = sotEmi > 0 ? sotEmi : Math.round(loanAmount * selectedFactor);
-                            const selectedTotal = selectedEmi * selectedTenure;
-                            const selectedInterest = Math.max(0, selectedTotal - loanAmount);
+                            const interestType = String(
+                                quote.finance?.interestType || pricing.financeInterestType || 'REDUCING'
+                            ).toUpperCase();
+                            const roiRaw = toNumber(quote.finance?.roi, 0);
+                            const annualRate = roiRaw > 1 ? roiRaw / 100 : roiRaw;
+                            const calculateIndicativeEmi = (tenure: number) => {
+                                if (loanAmount <= 0 || tenure <= 0) return 0;
+                                const factor = EMI_FACTORS[tenure];
+                                if (typeof factor === 'number') return Math.round(loanAmount * factor);
+
+                                if (annualRate <= 0) return Math.round(loanAmount / tenure);
+                                if (interestType === 'FLAT') {
+                                    const totalInterest = loanAmount * annualRate * (tenure / 12);
+                                    return Math.round((loanAmount + totalInterest) / tenure);
+                                }
+
+                                const monthlyRate = annualRate / 12;
+                                if (monthlyRate <= 0) return Math.round(loanAmount / tenure);
+                                const growth = Math.pow(1 + monthlyRate, tenure);
+                                return Math.round((loanAmount * monthlyRate * growth) / (growth - 1));
+                            };
 
                             return (
                                 <div className="space-y-4">
-                                    <div className="p-6 bg-indigo-50 rounded-[2rem] border border-indigo-100 flex items-center justify-between">
+                                    <div className="p-6 bg-indigo-50 rounded-[2rem] border border-indigo-100">
                                         <div>
-                                            <div className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">
-                                                Estimated Finance Summary
-                                            </div>
                                             <div className="text-sm font-black text-slate-900">
                                                 {quote.finance.bankName ||
                                                     quote.finance.bank ||
                                                     'Standard Finance Scheme'}
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-6">
-                                            <div className="text-right">
-                                                <div className="text-[8px] font-bold text-slate-400 uppercase">
-                                                    Monthly EMI
-                                                </div>
-                                                <div className="text-lg font-black text-slate-900">
-                                                    {formatCurrency(toNumber(quote.finance.emi, selectedEmi))}/mo
-                                                </div>
-                                            </div>
-                                            <div className="text-right">
-                                                <div className="text-[8px] font-bold text-slate-400 uppercase">
-                                                    Down Payment
-                                                </div>
-                                                <div className="text-lg font-black text-slate-900">
-                                                    {formatCurrency(downPayment)}
-                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -1562,49 +1560,50 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                                             </span>
                                         </div>
                                         {TENURES.map(t => {
-                                            const factor = EMI_FACTORS[t] ?? EMI_FACTORS[36];
-                                            const emi = Math.round(loanAmount * factor);
+                                            const isSelected = t === selectedTenure;
+                                            const emi = isSelected ? selectedEmi : calculateIndicativeEmi(t);
                                             const totalPaid = emi * t;
                                             const interest = Math.max(0, totalPaid - loanAmount);
-                                            const isSelected = t === selectedTenure;
                                             return (
                                                 <div
                                                     key={t}
                                                     className={`flex items-center justify-between py-2 px-6 ${
                                                         isSelected
-                                                            ? 'bg-zinc-900 text-white rounded-lg -mx-2 px-8'
+                                                            ? 'rounded-lg -mx-2 px-8 border'
                                                             : 'border-b border-zinc-50'
                                                     }`}
                                                     style={
                                                         isSelected
                                                             ? {
                                                                   borderLeft: `3px solid ${quote?.vehicle?.hexCode || '#F4B000'}`,
+                                                                  borderColor: `${quote?.vehicle?.hexCode || '#F4B000'}55`,
+                                                                  backgroundColor: `${quote?.vehicle?.hexCode || '#F4B000'}1A`,
                                                               }
                                                             : undefined
                                                     }
                                                 >
                                                     <span
-                                                        className={`text-[10px] tabular-nums font-mono w-[70px] ${isSelected ? 'font-black text-white text-[11px]' : 'font-bold text-slate-700'}`}
+                                                        className={`text-[10px] tabular-nums font-mono w-[70px] ${isSelected ? 'font-black text-slate-900 text-[11px]' : 'font-bold text-slate-700'}`}
                                                     >
                                                         {formatCurrency(emi)}
                                                     </span>
                                                     <span
-                                                        className={`text-[10px] w-[55px] text-center ${isSelected ? 'font-black text-white' : 'font-semibold text-slate-600'}`}
+                                                        className={`text-[10px] w-[72px] text-center whitespace-nowrap ${isSelected ? 'font-black text-slate-900' : 'font-semibold text-slate-600'}`}
                                                     >
                                                         {t} months
                                                     </span>
                                                     <span
-                                                        className={`text-[10px] tabular-nums font-mono w-[70px] text-right ${isSelected ? 'font-semibold text-white' : 'text-slate-500'}`}
+                                                        className={`text-[10px] tabular-nums font-mono w-[70px] text-right ${isSelected ? 'font-semibold text-slate-800' : 'text-slate-500'}`}
                                                     >
                                                         {formatCurrency(loanAmount)}
                                                     </span>
                                                     <span
-                                                        className={`text-[9px] tabular-nums font-mono w-[70px] text-right ${isSelected ? 'text-green-300' : 'text-red-400'}`}
+                                                        className={`text-[9px] tabular-nums font-mono w-[70px] text-right ${isSelected ? 'text-emerald-700' : 'text-red-400'}`}
                                                     >
                                                         +{formatCurrency(interest)}
                                                     </span>
                                                     <span
-                                                        className={`text-[10px] tabular-nums font-mono w-[70px] text-right ${isSelected ? 'font-black text-white' : 'font-medium text-slate-500'}`}
+                                                        className={`text-[10px] tabular-nums font-mono w-[70px] text-right ${isSelected ? 'font-black text-slate-900' : 'font-medium text-slate-500'}`}
                                                     >
                                                         {formatCurrency(totalPaid)}
                                                     </span>

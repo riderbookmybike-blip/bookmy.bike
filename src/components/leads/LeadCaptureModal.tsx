@@ -26,7 +26,9 @@ import { normalizeIndianPhone } from '@/lib/utils/inputFormatters';
 import { normalizePhone, formatPhone, isValidPhone } from '@/lib/utils/phoneUtils';
 import { ensureMemberByPhone } from '@/actions/teamActions';
 import { OCLUB_SIGNUP_BONUS, OCLUB_COIN_VALUE, discountForCoins, computeOClubPricing } from '@/lib/oclub/coin';
+import { buildPublicUrl } from '@/lib/utils/publicUrl';
 import { Logo } from '@/components/brand/Logo';
+import { clarityTrackLeadSubmitted, clarityTrackBookingCreated } from '@/lib/clarity';
 import { toast } from 'sonner';
 
 interface LeadCaptureModalProps {
@@ -251,7 +253,7 @@ export function LeadCaptureModal({
 
     const handleReachUsOnWhatsApp = useCallback(() => {
         const path = getDossierPath();
-        const dossierUrl = path ? `${window.location.origin}${path}` : window.location.href;
+        const dossierUrl = path ? buildPublicUrl(path.replace(/^\/q\//, '/dossier/')) : buildPublicUrl('/store');
         const firstName = (name || '').trim().split(/\s+/)[0] || 'Hi';
         const msg =
             `${firstName}, I reviewed my personalised dossier for ${productName} (${variant || model}).\n` +
@@ -483,6 +485,11 @@ export function LeadCaptureModal({
             if (leadResult.success && (leadResult as any).leadId) {
                 setSubmitStage('SHARING QUOTE');
                 const coinsToUse = isNewCustomer ? OCLUB_SIGNUP_BONUS : customerCoins || 0;
+                // 🔍 Clarity: track high-intent lead submission
+                clarityTrackLeadSubmitted({
+                    variantName: variant || model,
+                    source: isStaff ? 'crm_referral' : 'pdp_quick_quote',
+                });
                 await handleCreateQuote((leadResult as any).leadId, coinsToUse, isNewCustomer);
             } else {
                 setSubmitStage(null);
@@ -554,6 +561,12 @@ export function LeadCaptureModal({
                 setQuoteUuid(uuid);
                 setError(null);
                 setSuccess(true);
+                // 🔍 Clarity: track quote/booking created — highest-value conversion event
+                clarityTrackBookingCreated({
+                    bookingId: displayId ?? undefined,
+                    variantName: variant || model,
+                    totalOnRoad,
+                });
                 // Bubble display_id up to parent so download button can use it immediately
                 if (displayId) onQuoteSaved?.(displayId);
             } else {

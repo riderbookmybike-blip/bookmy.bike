@@ -55,9 +55,17 @@ interface ProfileClientProps {
     memberships: any[];
     quotes: any[];
     addresses: any[];
+    initialTab?: 'QUOTES' | 'BOOKINGS' | 'PAYMENTS' | 'INVOICES';
 }
 
-export default function ProfileClient({ user, member, memberships, quotes, addresses }: ProfileClientProps) {
+export default function ProfileClient({
+    user,
+    member,
+    memberships,
+    quotes,
+    addresses,
+    initialTab = 'QUOTES',
+}: ProfileClientProps) {
     const [copied, setCopied] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const [localMember, setLocalMember] = useState(member || {});
@@ -66,7 +74,11 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
     const [isLoginOpen, setIsLoginOpen] = useState(false);
     const [showLocationPickerForProfile, setShowLocationPickerForProfile] = useState(false);
     const [isEditMode, setIsEditMode] = useState(false);
-    const [activeTab, setActiveTab] = useState('QUOTES');
+    const allowedTabs = new Set(['QUOTES', 'BOOKINGS', 'PAYMENTS', 'INVOICES']);
+    const safeInitialTab = allowedTabs.has(String(initialTab).toUpperCase())
+        ? String(initialTab).toUpperCase()
+        : 'QUOTES';
+    const [activeTab, setActiveTab] = useState(safeInitialTab);
     const [originalMember, setOriginalMember] = useState(member || {});
     const [originalAddresses, setOriginalAddresses] = useState(addresses || []);
 
@@ -264,7 +276,7 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 font-sans">
+        <div className="min-h-screen bg-gradient-to-b from-[#fffdf5] via-white to-slate-50 font-sans">
             <MarketplaceHeader onLoginClick={() => setIsLoginOpen(true)} />
 
             <motion.div
@@ -278,27 +290,27 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                     <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
                         <div className="flex flex-col sm:flex-row items-center sm:items-end gap-6 text-center sm:text-left">
                             <div className="relative group">
-                                <div className="w-24 h-24 md:w-32 md:h-32 rounded-[2.5rem] bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-3xl md:text-5xl font-black text-white shadow-2xl shadow-indigo-500/20 ring-4 ring-white dark:ring-slate-900 overflow-hidden">
+                                <div className="w-24 h-24 md:w-32 md:h-32 rounded-[2.5rem] bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-3xl md:text-5xl font-black text-white shadow-2xl shadow-indigo-500/20 ring-4 ring-white overflow-hidden">
                                     <img
                                         src={avatarUrl || getDefaultAvatar(user?.id || 'anon', displayName)}
                                         alt={displayName}
                                         className="w-full h-full object-cover"
                                     />
                                 </div>
-                                <button className="absolute -bottom-2 -right-2 w-10 h-10 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-white/10 shadow-lg flex items-center justify-center text-slate-500 hover:text-indigo-600 transition-colors">
+                                <button className="absolute -bottom-2 -right-2 w-10 h-10 bg-white rounded-2xl border border-slate-200 shadow-lg flex items-center justify-center text-slate-500 hover:text-indigo-600 transition-colors">
                                     <Camera size={18} />
                                 </button>
                             </div>
                             <div className="space-y-1">
-                                <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-slate-900 dark:text-white uppercase italic scale-y-110 origin-left">
+                                <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-slate-900 uppercase italic scale-y-110 origin-left">
                                     {displayName.split(' ')[0]}'S <span className="text-indigo-600">PROFILE</span>
                                 </h1>
                                 <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4 mt-4">
-                                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-[10px] font-black uppercase text-slate-500 tracking-wider">
+                                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-[10px] font-black uppercase text-slate-500 tracking-wider">
                                         <Mail size={12} className="text-indigo-500" />
                                         {user?.email}
                                     </div>
-                                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-[10px] font-black uppercase text-slate-500 tracking-wider">
+                                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-[10px] font-black uppercase text-slate-500 tracking-wider">
                                         <Shield size={12} className="text-emerald-500" />
                                         O&apos; Circle Membership ID: {membershipId}
                                     </div>
@@ -310,7 +322,7 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                             {!isEditMode ? (
                                 <button
                                     onClick={() => setIsEditMode(true)}
-                                    className="px-8 py-3 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-black uppercase tracking-widest hover:scale-105 transition-all flex items-center gap-2"
+                                    className="px-8 py-3 rounded-2xl bg-indigo-600 text-white text-xs font-black uppercase tracking-widest hover:scale-105 transition-all flex items-center gap-2"
                                 >
                                     <User size={16} />
                                     Edit Profile
@@ -319,7 +331,7 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                 <>
                                     <button
                                         onClick={handleCancelEdit}
-                                        className="px-8 py-3 rounded-2xl bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400 text-xs font-black uppercase tracking-widest hover:bg-slate-200 transition-all"
+                                        className="px-8 py-3 rounded-2xl bg-slate-100 text-slate-500 text-xs font-black uppercase tracking-widest hover:bg-slate-200 transition-all"
                                     >
                                         Cancel
                                     </button>
@@ -344,7 +356,7 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                 {/* Workspace Section */}
                 {dealerMemberships.length > 0 && (
                     <motion.div variants={itemVariants} className="mb-12">
-                        <div className="bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-950 dark:to-slate-900 rounded-[40px] p-8 md:p-12 border border-white/5 shadow-2xl relative overflow-hidden">
+                        <div className="bg-gradient-to-br from-indigo-50 to-violet-50 rounded-[40px] p-8 md:p-12 border border-indigo-100 shadow-xl relative overflow-hidden">
                             {/* Background Pattern */}
                             <div className="absolute inset-0 opacity-5">
                                 <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full blur-[100px]" />
@@ -354,11 +366,11 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                 {/* Header with Toggle */}
                                 <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-10">
                                     <div>
-                                        <h3 className="text-xl font-black uppercase tracking-tighter italic text-white flex items-center gap-3">
+                                        <h3 className="text-xl font-black uppercase tracking-tighter italic text-slate-900 flex items-center gap-3">
                                             <Building2 size={24} className="text-orange-500" />
                                             Work<span className="text-orange-500">space</span>
                                         </h3>
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">
                                             Select a workspace to access the dashboard
                                         </p>
                                     </div>
@@ -370,18 +382,18 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                         return (
                                             <div
                                                 key={m.id}
-                                                className="group p-6 rounded-3xl border bg-white/5 border-white/10 hover:border-white/20 transition-all"
+                                                className="group p-6 rounded-3xl border bg-white border-indigo-100 hover:border-indigo-200 transition-all"
                                             >
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-4">
-                                                        <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-black bg-white/10 text-white">
+                                                        <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-black bg-indigo-600 text-white">
                                                             {m.studio_id || m.tenant_name?.charAt(0) || '?'}
                                                         </div>
                                                         <div>
-                                                            <p className="text-sm font-black uppercase tracking-tight text-white flex items-center gap-2">
+                                                            <p className="text-sm font-black uppercase tracking-tight text-slate-900 flex items-center gap-2">
                                                                 {m.tenant_name}
                                                             </p>
-                                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
+                                                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
                                                                 {m.studio_id && `${m.studio_id} • `}
                                                                 {m.district_name || m.role}
                                                             </p>
@@ -391,7 +403,7 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                                     <div className="flex items-center gap-2">
                                                         <a
                                                             href={`/app/${m.tenant_slug}/dashboard`}
-                                                            className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-all"
+                                                            className="p-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white transition-all"
                                                             title="Go to Dashboard"
                                                         >
                                                             <LayoutDashboard size={16} />
@@ -412,11 +424,11 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                     {/* Personal Matrix */}
                     <motion.div
                         variants={itemVariants}
-                        className="lg:col-span-2 bg-white dark:bg-slate-900/40 rounded-[40px] p-8 md:p-12 border border-slate-200 dark:border-white/5 shadow-sm"
+                        className="lg:col-span-2 bg-white rounded-[40px] p-8 md:p-12 border border-slate-200 shadow-sm"
                     >
                         <div className="flex items-center justify-between mb-10">
                             <div>
-                                <h3 className="text-xl font-black uppercase tracking-tighter italic text-slate-900 dark:text-white flex items-center gap-3">
+                                <h3 className="text-xl font-black uppercase tracking-tighter italic text-slate-900 flex items-center gap-3">
                                     <User size={24} className="text-indigo-600" />
                                     Personal <span className="text-indigo-600">Matrix</span>
                                 </h3>
@@ -437,7 +449,7 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                     onChange={e => handleUpdateField('full_name', e.target.value)}
                                     disabled={!isEditMode}
                                     placeholder="Enter full name"
-                                    className="w-full bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all placeholder:text-slate-300 disabled:opacity-50"
+                                    className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all placeholder:text-slate-300 disabled:opacity-50"
                                 />
                             </div>
                             <div className="space-y-2">
@@ -449,7 +461,7 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                     value={localMember.date_of_birth || ''}
                                     onChange={e => handleUpdateField('date_of_birth', e.target.value)}
                                     disabled={!isEditMode}
-                                    className="w-full bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all disabled:opacity-50"
+                                    className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all disabled:opacity-50"
                                 />
                             </div>
                             <div className="space-y-2">
@@ -462,7 +474,7 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                     onChange={e => handleUpdateField('father_name', e.target.value)}
                                     disabled={!isEditMode}
                                     placeholder="Father's full name"
-                                    className="w-full bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all placeholder:text-slate-300 disabled:opacity-50"
+                                    className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all placeholder:text-slate-300 disabled:opacity-50"
                                 />
                             </div>
                             <div className="space-y-2">
@@ -475,7 +487,7 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                     onChange={e => handleUpdateField('mother_name', e.target.value)}
                                     disabled={!isEditMode}
                                     placeholder="Mother's full name"
-                                    className="w-full bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all placeholder:text-slate-300 disabled:opacity-50"
+                                    className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all placeholder:text-slate-300 disabled:opacity-50"
                                 />
                             </div>
                             <div className="space-y-2">
@@ -486,7 +498,7 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                     value={localMember.religion || ''}
                                     onChange={e => handleUpdateField('religion', e.target.value)}
                                     disabled={!isEditMode}
-                                    className="w-full bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                                    className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
                                 >
                                     <option value="">Select Religion</option>
                                     <option value="HINDU">HINDU</option>
@@ -506,7 +518,7 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                     value={localMember.category || ''}
                                     onChange={e => handleUpdateField('category', e.target.value)}
                                     disabled={!isEditMode}
-                                    className="w-full bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                                    className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
                                 >
                                     <option value="">Select Category</option>
                                     <option value="GENERAL">GENERAL</option>
@@ -522,13 +534,13 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                     {/* Communication Hub */}
                     <motion.div
                         variants={itemVariants}
-                        className="lg:col-span-1 bg-slate-900 rounded-[40px] p-8 md:p-12 text-white relative overflow-hidden shadow-2xl"
+                        className="lg:col-span-1 bg-white rounded-[40px] p-8 md:p-12 text-slate-900 relative overflow-hidden shadow-xl border border-slate-200"
                     >
                         <div className="absolute top-0 right-0 p-12 opacity-5">
                             <Smartphone size={160} />
                         </div>
                         <div className="relative z-10">
-                            <h3 className="text-xl font-black uppercase tracking-tighter italic mb-8 flex items-center gap-3 text-white">
+                            <h3 className="text-xl font-black uppercase tracking-tighter italic mb-8 flex items-center gap-3 text-slate-900">
                                 <PhoneCall size={24} className="text-indigo-400" />
                                 Comms <span className="text-indigo-400">Hub</span>
                             </h3>
@@ -541,7 +553,7 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                         </p>
                                         <Shield size={12} className="text-emerald-500" />
                                     </div>
-                                    <div className="bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-sm font-bold text-slate-300">
+                                    <div className="bg-slate-50 border border-slate-200 rounded-2xl px-6 py-4 text-sm font-bold text-slate-700">
                                         {(() => {
                                             const phone = user?.phone || member?.primary_phone || '';
                                             // Extract only last 10 digits (remove +91, 91, etc.)
@@ -561,7 +573,7 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                         onChange={e => handleUpdateField('whatsapp', e.target.value)}
                                         disabled={!isEditMode}
                                         placeholder="WhatsApp number"
-                                        className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all placeholder:text-slate-600"
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all placeholder:text-slate-400"
                                     />
                                 </div>
 
@@ -575,7 +587,7 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                         onChange={e => handleUpdateField('primary_phone', e.target.value)}
                                         disabled={!isEditMode}
                                         placeholder="Secondary contact"
-                                        className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all placeholder:text-slate-600"
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all placeholder:text-slate-400"
                                     />
                                 </div>
 
@@ -589,7 +601,7 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                         onChange={e => handleUpdateField('primary_email', e.target.value)}
                                         disabled={!isEditMode}
                                         placeholder="Backup email"
-                                        className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all placeholder:text-slate-600"
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all placeholder:text-slate-400"
                                     />
                                 </div>
                             </div>
@@ -600,11 +612,11 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                 {/* Location Matrix */}
                 <motion.div
                     variants={itemVariants}
-                    className="bg-white dark:bg-slate-900/40 rounded-[40px] p-8 md:p-12 border border-slate-200 dark:border-white/5 shadow-sm mb-12"
+                    className="bg-white rounded-[40px] p-8 md:p-12 border border-slate-200 shadow-sm mb-12"
                 >
                     <div className="flex items-center justify-between mb-10">
                         <div>
-                            <h3 className="text-xl font-black uppercase tracking-tighter italic text-slate-900 dark:text-white flex items-center gap-3">
+                            <h3 className="text-xl font-black uppercase tracking-tighter italic text-slate-900 flex items-center gap-3">
                                 <MapPin size={24} className="text-emerald-600" />
                                 Location <span className="text-emerald-600">Matrix</span>
                             </h3>
@@ -616,7 +628,7 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                         {/* GPS Coordinates */}
-                        <div className="md:col-span-3 p-6 rounded-3xl bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-900/10 dark:to-green-900/10 border border-emerald-200 dark:border-emerald-500/20">
+                        <div className="md:col-span-3 p-6 rounded-3xl bg-gradient-to-br from-emerald-50 to-green-50 border border-emerald-200">
                             <div className="flex items-center gap-3 mb-4">
                                 <MapPin size={20} className="text-emerald-600" />
                                 <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">
@@ -628,7 +640,7 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                     <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
                                         Latitude
                                     </label>
-                                    <div className="bg-white dark:bg-slate-900/40 border border-emerald-100 dark:border-emerald-500/20 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 dark:text-white font-mono">
+                                    <div className="bg-white border border-emerald-100 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 font-mono">
                                         {localMember.latitude?.toFixed(6) || '—'}
                                     </div>
                                 </div>
@@ -636,7 +648,7 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                     <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
                                         Longitude
                                     </label>
-                                    <div className="bg-white dark:bg-slate-900/40 border border-emerald-100 dark:border-emerald-500/20 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 dark:text-white font-mono">
+                                    <div className="bg-white border border-emerald-100 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 font-mono">
                                         {localMember.longitude?.toFixed(6) || '—'}
                                     </div>
                                 </div>
@@ -668,7 +680,7 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                     }
                                     disabled={!isEditMode}
                                     placeholder="6-digit pincode"
-                                    className="w-full bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all placeholder:text-slate-300 disabled:opacity-50"
+                                    className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all placeholder:text-slate-300 disabled:opacity-50"
                                 />
                                 {localMember.pincode && (
                                     <div className="absolute right-4 top-1/2 -translate-y-1/2">
@@ -691,7 +703,7 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                 onChange={e => handleUpdateField('state', e.target.value)}
                                 disabled={!isEditMode}
                                 placeholder="State"
-                                className="w-full bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all placeholder:text-slate-300 disabled:opacity-50"
+                                className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all placeholder:text-slate-300 disabled:opacity-50"
                             />
                         </div>
 
@@ -706,7 +718,7 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                 onChange={e => handleUpdateField('district', e.target.value)}
                                 disabled={!isEditMode}
                                 placeholder="District"
-                                className="w-full bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all placeholder:text-slate-300 disabled:opacity-50"
+                                className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all placeholder:text-slate-300 disabled:opacity-50"
                             />
                         </div>
 
@@ -721,7 +733,7 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                 onChange={e => handleUpdateField('taluka', e.target.value)}
                                 disabled={!isEditMode}
                                 placeholder="Taluka/Tehsil"
-                                className="w-full bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all placeholder:text-slate-300 disabled:opacity-50"
+                                className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all placeholder:text-slate-300 disabled:opacity-50"
                             />
                         </div>
 
@@ -737,7 +749,7 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                     onChange={e => handleUpdateField('area', e.target.value)}
                                     disabled={!isEditMode}
                                     placeholder="Area/Locality"
-                                    className="w-full bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all placeholder:text-slate-300 disabled:opacity-50"
+                                    className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all placeholder:text-slate-300 disabled:opacity-50"
                                 />
                             </div>
                         )}
@@ -745,12 +757,12 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
 
                     {/* Enrichment Button for Incomplete Data */}
                     {localMember.pincode && (!localMember.state || !localMember.district || !localMember.taluka) && (
-                        <div className="mt-6 p-6 rounded-3xl bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-500/20">
+                        <div className="mt-6 p-6 rounded-3xl bg-blue-50 border border-blue-200">
                             <div className="flex items-start gap-3">
                                 <MapPin size={20} className="text-blue-600 flex-shrink-0 mt-0.5" />
                                 <div className="flex-1">
                                     <p className="text-sm font-bold text-blue-600">Incomplete Location Data</p>
-                                    <p className="text-xs font-medium text-slate-600 dark:text-slate-400 mt-1">
+                                    <p className="text-xs font-medium text-slate-600 mt-1">
                                         We have your pincode ({localMember.pincode}) but state/district/taluka details
                                         are missing. Click below to auto-fill these details.
                                     </p>
@@ -788,12 +800,12 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                     )}
 
                     {!localMember.latitude && !localMember.longitude && (
-                        <div className="mt-6 p-6 rounded-3xl bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-500/20">
+                        <div className="mt-6 p-6 rounded-3xl bg-amber-50 border border-amber-200">
                             <div className="flex items-start gap-3">
                                 <AlertCircle size={20} className="text-amber-600 flex-shrink-0 mt-0.5" />
                                 <div className="flex-1">
                                     <p className="text-sm font-bold text-amber-600">GPS Location Not Captured</p>
-                                    <p className="text-xs font-medium text-slate-600 dark:text-slate-400 mt-1">
+                                    <p className="text-xs font-medium text-slate-600 mt-1">
                                         {localMember.pincode
                                             ? `Pincode ${localMember.pincode} is set, but GPS was not captured at signup.`
                                             : 'No location signal found for your account. Add your pincode to unlock accurate pricing and offers.'}
@@ -839,11 +851,11 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                     {/* Address Portfolio */}
                     <motion.div
                         variants={itemVariants}
-                        className="lg:col-span-2 bg-white dark:bg-slate-900/40 rounded-[40px] p-8 md:p-12 border border-slate-200 dark:border-white/5 shadow-sm"
+                        className="lg:col-span-2 bg-white rounded-[40px] p-8 md:p-12 border border-slate-200 shadow-sm"
                     >
                         <div className="flex items-center justify-between mb-10">
                             <div>
-                                <h3 className="text-xl font-black uppercase tracking-tighter italic text-slate-900 dark:text-white flex items-center gap-3">
+                                <h3 className="text-xl font-black uppercase tracking-tighter italic text-slate-900 flex items-center gap-3">
                                     <MapIcon size={24} className="text-orange-500" />
                                     Address <span className="text-orange-500">Portfolio</span>
                                 </h3>
@@ -858,7 +870,7 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                 localAddresses.map((addr: any) => (
                                     <div
                                         key={addr.id}
-                                        className="p-6 rounded-3xl bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 flex items-center justify-between group"
+                                        className="p-6 rounded-3xl bg-slate-50 border border-slate-100 flex items-center justify-between group"
                                     >
                                         <div className="flex items-center gap-4">
                                             <div
@@ -867,7 +879,7 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                                 {addr.is_current ? <Home size={20} /> : <Shield size={20} />}
                                             </div>
                                             <div>
-                                                <p className="text-[12px] font-black uppercase text-slate-900 dark:text-white tracking-tight">
+                                                <p className="text-[12px] font-black uppercase text-slate-900 tracking-tight">
                                                     {addr.label}{' '}
                                                     {addr.is_current && (
                                                         <span className="ml-2 text-[8px] px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-500">
@@ -880,13 +892,13 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                                 </p>
                                             </div>
                                         </div>
-                                        <button className="p-2 rounded-xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-400 opacity-0 group-hover:opacity-100 transition-all">
+                                        <button className="p-2 rounded-xl bg-white border border-slate-200 text-slate-400 opacity-0 group-hover:opacity-100 transition-all">
                                             <ChevronRight size={16} />
                                         </button>
                                     </div>
                                 ))
                             ) : (
-                                <div className="text-center py-12 border-2 border-dashed border-slate-200 dark:border-white/10 rounded-[32px]">
+                                <div className="text-center py-12 border-2 border-dashed border-slate-200 rounded-[32px]">
                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
                                         No addresses on portfolio
                                     </p>
@@ -901,9 +913,9 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                     {/* Identity Vault */}
                     <motion.div
                         variants={itemVariants}
-                        className="lg:col-span-1 bg-white dark:bg-slate-900/40 rounded-[40px] p-8 md:p-12 border border-slate-200 dark:border-white/5 shadow-sm"
+                        className="lg:col-span-1 bg-white rounded-[40px] p-8 md:p-12 border border-slate-200 shadow-sm"
                     >
-                        <h3 className="text-xl font-black uppercase tracking-tighter italic mb-8 flex items-center gap-3 text-slate-900 dark:text-white">
+                        <h3 className="text-xl font-black uppercase tracking-tighter italic mb-8 flex items-center gap-3 text-slate-900">
                             <Fingerprint size={24} className="text-emerald-500" />
                             Identity <span className="text-emerald-500">Vault</span>
                         </h3>
@@ -936,14 +948,14 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                             handleUpdateField('aadhaar_number', e.target.value.replace(/\s/g, ''))
                                         }
                                         placeholder="XXXX XXXX XXXX"
-                                        className="w-full bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all placeholder:text-slate-300"
+                                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all placeholder:text-slate-300"
                                     />
-                                    <div className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-400 cursor-pointer">
+                                    <div className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-xl bg-white border border-slate-200 text-slate-400 cursor-pointer">
                                         <Activity size={14} />
                                     </div>
                                 </div>
-                                <button className="w-full py-4 rounded-2xl border border-dashed border-slate-200 dark:border-white/10 hover:border-emerald-500/50 hover:bg-emerald-500/5 transition-all flex flex-col items-center justify-center gap-2 group">
-                                    <div className="w-10 h-10 rounded-full bg-slate-50 dark:bg-white/5 flex items-center justify-center text-slate-400 group-hover:text-emerald-500 transition-colors">
+                                <button className="w-full py-4 rounded-2xl border border-dashed border-slate-200 hover:border-emerald-500/50 hover:bg-emerald-500/5 transition-all flex flex-col items-center justify-center gap-2 group">
+                                    <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover:text-emerald-500 transition-colors">
                                         <Plus size={18} />
                                     </div>
                                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest group-hover:text-emerald-500 transition-colors">
@@ -976,10 +988,10 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                     }
                                     onBlur={e => handleUpdateField('pan_number', e.target.value.toUpperCase())}
                                     placeholder="ABCDE1234F"
-                                    className="w-full bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all placeholder:text-slate-300"
+                                    className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all placeholder:text-slate-300"
                                 />
-                                <button className="w-full py-4 rounded-2xl border border-dashed border-slate-200 dark:border-white/10 hover:border-emerald-500/50 hover:bg-emerald-500/5 transition-all flex flex-col items-center justify-center gap-2 group">
-                                    <div className="w-10 h-10 rounded-full bg-slate-50 dark:bg-white/5 flex items-center justify-center text-slate-400 group-hover:text-emerald-500 transition-colors">
+                                <button className="w-full py-4 rounded-2xl border border-dashed border-slate-200 hover:border-emerald-500/50 hover:bg-emerald-500/5 transition-all flex flex-col items-center justify-center gap-2 group">
+                                    <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover:text-emerald-500 transition-colors">
                                         <Plus size={18} />
                                     </div>
                                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest group-hover:text-emerald-500 transition-colors">
@@ -993,15 +1005,15 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
 
                 {/* Transaction Registry (Full Width) */}
                 <motion.div variants={itemVariants} className="mb-24">
-                    <div className="bg-white dark:bg-slate-950 rounded-[40px] border border-slate-200 dark:border-white/5 shadow-2xl overflow-hidden">
+                    <div className="bg-white rounded-[40px] border border-slate-200 shadow-2xl overflow-hidden">
                         {/* Registry Navigation */}
-                        <div className="flex flex-wrap items-center justify-between p-8 border-b border-slate-100 dark:border-white/5">
+                        <div className="flex flex-wrap items-center justify-between p-8 border-b border-slate-100">
                             <div className="flex items-center gap-4 mb-4 sm:mb-0">
                                 <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/20">
                                     <TrendingUp size={24} />
                                 </div>
                                 <div>
-                                    <h3 className="text-xl font-black uppercase tracking-tighter italic text-slate-900 dark:text-white">
+                                    <h3 className="text-xl font-black uppercase tracking-tighter italic text-slate-900">
                                         Transaction <span className="text-indigo-600">Registry</span>
                                     </h3>
                                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
@@ -1010,15 +1022,15 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                 </div>
                             </div>
 
-                            <div className="flex items-center gap-2 p-1 bg-slate-100 dark:bg-white/5 rounded-2xl">
+                            <div className="flex items-center gap-2 p-1 bg-slate-100 rounded-2xl">
                                 {['QUOTES', 'BOOKINGS', 'PAYMENTS', 'INVOICES'].map(tab => (
                                     <button
                                         key={tab}
                                         onClick={() => setActiveTab(tab)}
                                         className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
                                             activeTab === tab
-                                                ? 'bg-white dark:bg-slate-800 text-indigo-600 shadow-sm'
-                                                : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
+                                                ? 'bg-white text-indigo-600 shadow-sm'
+                                                : 'text-slate-400 hover:text-slate-600'
                                         }`}
                                     >
                                         {tab}
@@ -1042,19 +1054,19 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                             quotes.map((q: any) => (
                                                 <div
                                                     key={q.id}
-                                                    className="group p-6 rounded-3xl bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 hover:border-indigo-500/20 transition-all"
+                                                    className="group p-6 rounded-3xl bg-slate-50 border border-slate-100 hover:border-indigo-500/20 transition-all"
                                                 >
                                                     <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
                                                         <div className="flex items-center gap-4">
-                                                            <div className="w-16 h-16 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 flex items-center justify-center text-slate-400">
+                                                            <div className="w-16 h-16 rounded-2xl bg-white border border-slate-200 flex items-center justify-center text-slate-400">
                                                                 <FileText size={24} />
                                                             </div>
                                                             <div>
-                                                                <p className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white">
+                                                                <p className="text-sm font-black uppercase tracking-tight text-slate-900">
                                                                     {q.commercials?.label || 'Vehicle Quote'}
                                                                 </p>
                                                                 <div className="flex items-center gap-3 mt-1.5">
-                                                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-white dark:bg-white/5 px-2 py-0.5 rounded-lg border border-slate-100 dark:border-white/5">
+                                                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-white px-2 py-0.5 rounded-lg border border-slate-100">
                                                                         {q.display_id}
                                                                     </span>
                                                                     <span
@@ -1066,12 +1078,12 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                                             </div>
                                                         </div>
 
-                                                        <div className="flex flex-wrap items-center gap-8 md:gap-12 w-full md:w-auto pt-4 md:pt-0 border-t md:border-t-0 border-slate-200/50 dark:border-white/5">
+                                                        <div className="flex flex-wrap items-center gap-8 md:gap-12 w-full md:w-auto pt-4 md:pt-0 border-t md:border-t-0 border-slate-200/50">
                                                             <div className="space-y-1">
                                                                 <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">
                                                                     Base Price
                                                                 </p>
-                                                                <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                                                                <p className="text-sm font-bold text-slate-700">
                                                                     ₹{' '}
                                                                     {Number(q.ex_showroom_price || 0).toLocaleString(
                                                                         'en-IN'
@@ -1089,7 +1101,7 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                                                     )}
                                                                 </p>
                                                             </div>
-                                                            <button className="flex-1 md:flex-none px-6 py-3 rounded-2xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-[10px] font-black uppercase tracking-widest text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-all flex items-center justify-center gap-2">
+                                                            <button className="flex-1 md:flex-none px-6 py-3 rounded-2xl bg-white border border-slate-200 text-[10px] font-black uppercase tracking-widest text-slate-900 hover:bg-slate-100 transition-all flex items-center justify-center gap-2">
                                                                 View Details
                                                                 <ChevronRight size={14} />
                                                             </button>
@@ -1099,10 +1111,7 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                             ))
                                         ) : (
                                             <div className="text-center py-24">
-                                                <FileText
-                                                    size={48}
-                                                    className="mx-auto text-slate-200 dark:text-white/5 mb-4"
-                                                />
+                                                <FileText size={48} className="mx-auto text-slate-200 mb-4" />
                                                 <p className="text-xs font-black text-slate-400 uppercase tracking-widest">
                                                     No commercial quotes found
                                                 </p>
@@ -1119,7 +1128,7 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                         exit={{ opacity: 0, x: -20 }}
                                         className="text-center py-24"
                                     >
-                                        <Package size={48} className="mx-auto text-slate-200 dark:text-white/5 mb-4" />
+                                        <Package size={48} className="mx-auto text-slate-200 mb-4" />
                                         <p className="text-xs font-black text-slate-400 uppercase tracking-widest">
                                             No active bookings detected
                                         </p>
@@ -1135,10 +1144,7 @@ export default function ProfileClient({ user, member, memberships, quotes, addre
                                         exit={{ opacity: 0, x: -20 }}
                                         className="text-center py-24"
                                     >
-                                        <ShieldCheck
-                                            size={48}
-                                            className="mx-auto text-slate-200 dark:text-white/5 mb-4"
-                                        />
+                                        <ShieldCheck size={48} className="mx-auto text-slate-200 mb-4" />
                                         <p className="text-xs font-black text-slate-400 uppercase tracking-widest">
                                             No {activeTab.toLowerCase()} recorded yet
                                         </p>

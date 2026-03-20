@@ -244,7 +244,7 @@ export function OCircleClient() {
             window.dispatchEvent(new Event('openLogin'));
             return;
         }
-        router.push('/profile');
+        router.push('/store/ocircle?tab=QUOTES');
     };
 
     const scrollTo = (id: string) => {
