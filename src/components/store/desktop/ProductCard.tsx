@@ -704,6 +704,7 @@ export const ProductCard = ({
                         fetchPriority={prioritizeImage ? 'high' : 'auto'}
                         loading={prioritizeImage ? 'eager' : 'lazy'}
                         decoding={prioritizeImage ? 'sync' : 'async'}
+                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 38vw"
                         className="w-[85%] h-[85%] object-contain z-10 transition-transform duration-700 group-hover/card:scale-110"
                     />
 
@@ -1200,6 +1201,7 @@ export const ProductCard = ({
                         fetchPriority={prioritizeImage ? 'high' : 'auto'}
                         loading={prioritizeImage ? 'eager' : 'lazy'}
                         decoding={prioritizeImage ? 'sync' : 'async'}
+                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
                         className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 ${isTv ? 'w-[80%] h-[80%]' : 'w-full h-full'} object-contain z-10`}
                     />
 

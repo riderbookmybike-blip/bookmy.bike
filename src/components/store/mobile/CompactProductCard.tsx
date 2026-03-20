@@ -31,6 +31,8 @@ interface CompactProductCardProps {
     } | null;
     offerMode?: 'BEST_OFFER' | 'FAST_DELIVERY';
     variantCount?: number;
+    /** Pass true for the first above-the-fold card to trigger eager/high-priority loading. */
+    priority?: boolean;
 }
 
 export function CompactProductCard({
@@ -47,6 +49,7 @@ export function CompactProductCard({
     bestOffer,
     offerMode: propOfferMode,
     variantCount = 1,
+    priority = false,
 }: CompactProductCardProps) {
     const { isFavorite, toggleFavorite } = useFavorites();
     const { trackEvent } = useAnalytics();
@@ -240,7 +243,8 @@ export function CompactProductCard({
                         alt={`${v.make} ${v.model}`}
                         fill
                         className="object-contain p-2"
-                        sizes="320px"
+                        sizes="(max-width: 480px) 50vw, (max-width: 768px) 33vw, 25vw"
+                        priority={priority}
                     />
                 ) : (
                     <div className="w-full h-full flex items-center justify-center text-slate-200 text-[10px] font-black uppercase tracking-widest">
