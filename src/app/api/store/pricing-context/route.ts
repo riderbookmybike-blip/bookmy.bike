@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { resolvePricingContext } from '@/lib/server/pricingContext';
+import { applyApiGuard } from '@/lib/server/apiGuard';
 
 export async function POST(request: NextRequest) {
+    const blocked = applyApiGuard(request, { maxRequests: 30 });
+    if (blocked) return blocked;
+
     try {
         const params = await request.json();
         const context = await resolvePricingContext({

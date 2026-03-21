@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import Image from 'next/image';
 import { ArrowRight, CheckCircle2, Flame, Gauge, Plus, Search, ShieldCheck, Sparkles, Trophy, X } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { useSystemCatalogLogic } from '@/hooks/SystemCatalogLogic';
@@ -8,6 +9,8 @@ import { ProductVariant } from '@/types/productMaster';
 import { formatRating } from '@/utils/formatVehicleSpec';
 import { EMI_FACTORS, getEmiFactor } from '@/lib/constants/pricingConstants';
 import { slugify } from '@/utils/slugs';
+import { supabaseResized } from '@/lib/utils/imageResize';
+import { isNextImageUnoptimized } from '@/lib/utils/imageOptimization';
 
 const MAX_COMPARE = 3;
 const DEFAULT_TENURE = 36;
@@ -586,7 +589,15 @@ export function ComparePageClient() {
                         >
                             <div className="h-40 bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center">
                                 {bike ? (
-                                    <img src={bike.image} alt={bike.name} className="h-32 object-contain" />
+                                    <Image
+                                        src={supabaseResized(bike.image, 256) ?? bike.image}
+                                        alt={bike.name}
+                                        width={256}
+                                        height={128}
+                                        className="h-32 w-auto object-contain"
+                                        sizes="(max-width: 768px) 100vw, 33vw"
+                                        unoptimized={isNextImageUnoptimized(bike.image)}
+                                    />
                                 ) : (
                                     <button
                                         onClick={() => handleOpenPicker(index)}
@@ -774,10 +785,14 @@ export function ComparePageClient() {
                                         onClick={() => handlePickOption(option.id)}
                                         className="w-full flex items-center gap-4 px-4 py-3 rounded-2xl border border-slate-200 hover:border-slate-400 transition"
                                     >
-                                        <img
-                                            src={option.image}
+                                        <Image
+                                            src={supabaseResized(option.image, 128) ?? option.image}
                                             alt={option.title}
-                                            className="w-16 h-12 object-contain"
+                                            width={64}
+                                            height={48}
+                                            className="w-16 h-12 object-contain flex-shrink-0"
+                                            sizes="64px"
+                                            unoptimized={isNextImageUnoptimized(option.image)}
                                         />
                                         <div className="flex-1 text-left">
                                             <p className="text-sm font-black text-slate-900">{option.title}</p>

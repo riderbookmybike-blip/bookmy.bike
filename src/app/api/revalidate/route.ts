@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
+import { applyApiGuard } from '@/lib/server/apiGuard';
 
 export async function POST(req: NextRequest) {
+    const blocked = applyApiGuard(req, { maxRequests: 10 });
+    if (blocked) return blocked;
+
     const searchParams = req.nextUrl.searchParams;
     const secret = searchParams.get('secret');
     const tag = searchParams.get('tag');

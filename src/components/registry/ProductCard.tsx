@@ -1,7 +1,9 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 import StatusBadge from './StatusBadge';
+import { isNextImageUnoptimized } from '@/lib/utils/imageOptimization';
 
 interface ProductCardProps {
     name: string;
@@ -22,7 +24,9 @@ export default function ProductCard({
 }: ProductCardProps) {
     const isMobile = variant === 'mobile';
     return (
-        <div className={`group relative bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[2.5rem] overflow-hidden transition-all duration-500 ${isMobile ? 'p-5' : 'p-7'} hover:shadow-2xl hover:shadow-indigo-500/10 hover:border-indigo-500/30`}>
+        <div
+            className={`group relative bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[2.5rem] overflow-hidden transition-all duration-500 ${isMobile ? 'p-5' : 'p-7'} hover:shadow-2xl hover:shadow-indigo-500/10 hover:border-indigo-500/30`}
+        >
             <div className="absolute inset-0 bg-gradient-to-br from-indigo-600/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
 
             <div className="relative z-10 flex flex-col gap-5">
@@ -31,12 +35,23 @@ export default function ProductCard({
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{subtitle}</span>
                 </div>
 
-                <div className="h-32 bg-slate-50 dark:bg-white/5 rounded-2xl border border-slate-100 dark:border-white/10 flex items-center justify-center overflow-hidden">
-                    <img src={imageUrl} alt={name} className="w-full h-full object-cover" />
+                <div className="h-32 bg-slate-50 dark:bg-white/5 rounded-2xl border border-slate-100 dark:border-white/10 flex items-center justify-center overflow-hidden relative">
+                    <Image
+                        src={imageUrl}
+                        alt={name}
+                        fill
+                        className="object-cover"
+                        sizes="(max-width: 640px) 100vw, 300px"
+                        unoptimized={isNextImageUnoptimized(imageUrl)}
+                    />
                 </div>
 
                 <div>
-                    <h3 className={`font-black text-slate-900 dark:text-white uppercase tracking-tighter ${isMobile ? 'text-lg' : 'text-xl'}`}>{name}</h3>
+                    <h3
+                        className={`font-black text-slate-900 dark:text-white uppercase tracking-tighter ${isMobile ? 'text-lg' : 'text-xl'}`}
+                    >
+                        {name}
+                    </h3>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">On-Road Price</p>
                 </div>
 

@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, ArrowRight, ShieldCheck, Zap, Star, ChevronRight } from 'lucide-react';
@@ -200,11 +201,16 @@ export default function BrandPage() {
                                     </div>
 
                                     <div className="absolute top-[40%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full flex items-center justify-center opacity-100 group-hover:scale-110 transition-transform duration-700 pointer-events-none">
-                                        <img
-                                            src={cat.img}
-                                            alt={cat.title}
-                                            className="w-[95%] max-w-none h-auto object-contain filter contrast-110 drop-shadow-[0_40px_80px_rgba(0,0,0,0.25)]"
-                                        />
+                                        <div className="relative w-[95%] h-[60%]">
+                                            <Image
+                                                src={cat.img}
+                                                alt={cat.title}
+                                                fill
+                                                className="object-contain filter contrast-110 drop-shadow-[0_40px_80px_rgba(0,0,0,0.25)]"
+                                                sizes="(max-width: 768px) 90vw, 25vw"
+                                                priority={false}
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                             ))}

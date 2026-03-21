@@ -30,7 +30,7 @@ const nextConfig: NextConfig = {
             },
             {
                 protocol: 'https',
-                hostname: '**.yamahamotorinddia.com',
+                hostname: '**.yamahamotorindia.com',
             },
             {
                 protocol: 'https',

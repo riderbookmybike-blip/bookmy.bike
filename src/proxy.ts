@@ -2,6 +2,16 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { resolveCookieDomain } from '@/lib/supabase/cookieDomain';
 
+// ---------------------------------------------------------------------------
+// NOTE: API route protection is handled at the route layer via
+// src/lib/server/apiGuard.ts — NOT here.
+//
+// proxy.ts matcher excludes `/api/` to avoid running Supabase auth
+// initialization on every API request. Adding `/api/` to the matcher
+// would be a regression risk. Bot filtering and rate limiting live
+// inside individual route handlers that need them.
+// ---------------------------------------------------------------------------
+
 function normalizeDisplayIdParam(value: string | null): string {
     if (!value) return '';
     return value
@@ -61,15 +71,8 @@ export async function proxy(request: NextRequest) {
     }
     // ────────────────────────────────────────────────────────────────────────────
 
-    // A. BOT PROTECTION FOR API
-    const IS_BOT_REGEX =
-        /bot|spider|crawl|slurp|adsbot|mediapartners-google|apis-google|adsbot-google|google-polaris|bingpreview|bingbot|baiduspider|yandexbot|duckduckbot|rogerbot|exabot|facebot|facebookexternalhit|ia_archiver/i;
-    if (pathname.startsWith('/api') && IS_BOT_REGEX.test(userAgent)) {
-        return new NextResponse(JSON.stringify({ error: 'Bots not allowed on API' }), {
-            status: 403,
-            headers: { 'Content-Type': 'application/json' },
-        });
-    }
+    // A. BOT PROTECTION + RATE LIMITING FOR /api/* — see src/lib/server/apiGuard.ts
+    // (proxy matcher excludes /api/ — these guards live in route handlers)
 
     // A-bis. SMS DOSSIER LINK REDIRECT
     // SMS uses `www.bookmy.bike/?q=DISPLAY_ID` (DLT CTA whitelist format).

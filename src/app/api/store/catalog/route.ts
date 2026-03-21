@@ -2,8 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { fetchCatalogV2 } from '@/lib/server/catalogFetcherV2';
 import { normalizeStateCode } from '@/lib/server/pricingContext';
 import type { ProductVariant } from '@/types/productMaster';
+import { applyApiGuard } from '@/lib/server/apiGuard';
 
 export async function GET(request: NextRequest) {
+    const blocked = applyApiGuard(request, { maxRequests: 60 });
+    if (blocked) return blocked;
+
     try {
         const url = request.nextUrl;
         const state = url.searchParams.get('state');

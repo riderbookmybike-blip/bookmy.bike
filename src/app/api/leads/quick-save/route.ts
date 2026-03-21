@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { addLeadNoteAction, checkQuickLeadContextAction, createLeadAction } from '@/actions/crm';
+import { applyApiGuard } from '@/lib/server/apiGuard';
 
 export async function POST(req: NextRequest) {
+    const blocked = applyApiGuard(req, { maxRequests: 20 });
+    if (blocked) return blocked;
+
     try {
         const body = (await req.json()) as {
             customerName?: string;
