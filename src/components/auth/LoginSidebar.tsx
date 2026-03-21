@@ -444,11 +444,16 @@ export default function LoginSidebar({
             setIsStaff((normalizedRole && normalizedRole !== 'member' && normalizedRole !== 'customer') || !!tenantId);
 
             if (checkData.isNew) {
-                // setIsNewUser(true); // Don't set yet
-                // setStep('SIGNUP'); // Don't auto-transition
-                setShowSignupPrompt(true);
-                setLoginError('Account not found. Create a new account?');
-                if (!hasReferralFromLink && !isEmail) {
+                if (hasReferralFromLink) {
+                    // Referral link user: we already have the code, send OTP immediately.
+                    // After verification, completeLogin → signup happens automatically.
+                    setIsNewUser(true);
+                    setLoginError(null);
+                    if (!isEmail) await handleSendPhoneOtp(phoneVal);
+                } else {
+                    // No referral link: hold and show a signup prompt so user can enter code.
+                    setShowSignupPrompt(true);
+                    setLoginError('Account not found. Create a new account?');
                     void capturePendingMembership('LOGIN_ATTEMPT_NO_REFERRAL_LINK');
                 }
             } else {

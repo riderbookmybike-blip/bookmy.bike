@@ -709,16 +709,22 @@ ${referralUrl}`;
                 });
             });
 
-            // Fetch display_id (canonical O' Circle membership ID) for membership card
+            // Fetch referral_code (SOT for URL) and display_id (for card display)
             const supabase = createClient();
             supabase
                 .from('id_members')
-                .select('display_id')
+                .select('display_id, referral_code')
                 .eq('id', authUser.id)
                 .maybeSingle()
                 .then(({ data }) => {
-                    if (data?.display_id) {
-                        setMemberCode(formatMembershipCardCode(data.display_id));
+                    if (data?.referral_code) {
+                        // Use raw referral_code as the identity in the referral URL.
+                        // formatMembershipCardCode() is applied at display time (poster/card)
+                        // using the same value, so the card visual stays formatted.
+                        setMemberCode(data.referral_code);
+                    } else if (data?.display_id) {
+                        // Fallback to display_id if referral_code is missing (should be same value)
+                        setMemberCode(data.display_id);
                     }
                 });
         } else {

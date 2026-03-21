@@ -82,11 +82,15 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        const normalizedReferralCode = String(referralCode || '')
+        // Canonical normalization: strip all non-alphanumeric chars, uppercase.
+        // This makes raw codes (8UHQ3KFZ4), hyphenated (8UH-Q3K-FZ4), and
+        // any other formatting variants all resolve to the same canonical form.
+        const canonicalReferralCode = String(referralCode || '')
             .trim()
-            .toUpperCase();
-        if (!/^[A-Z0-9-]{4,32}$/.test(normalizedReferralCode)) {
-            await capturePendingMembership('SIGNUP_BLOCKED_INVALID_REFERRAL_FORMAT', normalizedReferralCode);
+            .toUpperCase()
+            .replace(/[^A-Z0-9]/g, '');
+        if (!/^[A-Z0-9]{4,32}$/.test(canonicalReferralCode)) {
+            await capturePendingMembership('SIGNUP_BLOCKED_INVALID_REFERRAL_FORMAT', canonicalReferralCode);
             return NextResponse.json(
                 {
                     success: false,
@@ -96,13 +100,17 @@ export async function POST(req: NextRequest) {
                 { status: 400 }
             );
         }
+        // Single canonical lookup on referral_code (SOT).
+        // Incoming code is already canonicalized above (non-alnum stripped, uppercased),
+        // so hyphenated and raw variants both resolve to the same DB value.
         const { data: referrer } = await adminClient
             .from('id_members')
             .select('id, referral_code, role, full_name, display_id')
-            .eq('referral_code', normalizedReferralCode)
+            .eq('referral_code', canonicalReferralCode)
             .maybeSingle();
+
         if (!referrer?.id) {
-            await capturePendingMembership('SIGNUP_BLOCKED_INVALID_REFERRAL_CODE', normalizedReferralCode);
+            await capturePendingMembership('SIGNUP_BLOCKED_INVALID_REFERRAL_CODE', canonicalReferralCode);
             return NextResponse.json(
                 {
                     success: false,
@@ -190,7 +198,7 @@ export async function POST(req: NextRequest) {
             user_metadata: {
                 full_name: resolvedDisplayName,
                 phone: cleanPhone,
-                referral_code_used: normalizedReferralCode,
+                referral_code_used: canonicalReferralCode,
             },
             password: password,
         });
@@ -221,7 +229,7 @@ export async function POST(req: NextRequest) {
             latitude: hasCoords ? Number(lat) : null,
             longitude: hasCoords ? Number(lng) : null,
             preferences: {
-                signup_referral_code: normalizedReferralCode,
+                signup_referral_code: canonicalReferralCode,
                 signup_referrer_member_id: referrer.id,
                 signup_referrer_type: referrerType,
                 signup_referrer_name: referrer.full_name || null,
