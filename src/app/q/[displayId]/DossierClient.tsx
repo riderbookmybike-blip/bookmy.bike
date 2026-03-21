@@ -36,6 +36,8 @@ import {
     Download,
     Heart,
     Shield,
+    Landmark,
+    Fingerprint,
     FileText,
     Wrench,
     Droplets,
@@ -91,6 +93,77 @@ const formatCurrency = (val: number) =>
 const toNumber = (val: any, fallback = 0) => {
     const n = Number(val);
     return Number.isFinite(n) ? n : fallback;
+};
+
+const getRegistrationOptionDisplayMeta = (typeRaw: string, fallbackName: string, stateName: string) => {
+    const type = String(typeRaw || '').toUpperCase();
+    if (type === 'STATE') {
+        const label = stateName ? `${stateName} Registration` : 'State Registration';
+        return {
+            label,
+            description: 'Individual State Residential Road Tax',
+            detail: 'Road Tax (15 Years)',
+        };
+    }
+    if (type === 'BH') {
+        return {
+            label: 'Bharat Series (BH) Registration',
+            description: 'For Central Government or Corporate employees with offices in over three states',
+            detail: 'Road Tax (2 Years)',
+        };
+    }
+    if (type === 'COMPANY') {
+        return {
+            label: 'Company / Corporate Registration',
+            description: 'Corporate Body Road Tax',
+            detail: 'Road Tax (15 Years)',
+        };
+    }
+    return {
+        label: fallbackName || 'Registration',
+        description: 'Statutory registration charges',
+        detail: '',
+    };
+};
+
+const getRegistrationIcon = (typeRaw: string): LucideIcon => {
+    const type = String(typeRaw || '').toUpperCase();
+    if (type === 'STATE') return FileText;
+    if (type === 'BH') return Fingerprint;
+    if (type === 'COMPANY') return Landmark;
+    return FileText;
+};
+
+const getFinancerCode = (bankNameRaw: string, existingCodeRaw?: string) => {
+    const bankName = String(bankNameRaw || '').trim();
+    const key = bankName.toLowerCase();
+    const mapped =
+        (key.includes('home credit') && 'HCI') ||
+        (key.includes('shriram') && 'SFL') ||
+        (key.includes('kotak') && 'KPL') ||
+        (key.includes('bajaj') && 'BFS') ||
+        (key.includes('bandhan') && 'BBL') ||
+        ((key.includes('l&t') || key.includes('lt finance')) && 'LTF') ||
+        '';
+    if (mapped) return mapped;
+
+    const existingCode = String(existingCodeRaw || '')
+        .trim()
+        .toUpperCase();
+    if (existingCode.length >= 3) return existingCode.slice(0, 3);
+
+    const initials = bankName
+        .split(/[\s&/-]+/)
+        .map(token => token.trim())
+        .filter(Boolean)
+        .map(token => token.charAt(0).toUpperCase())
+        .join('');
+    if (initials.length >= 3) return initials.slice(0, 3);
+
+    const compact = bankName.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+    if (compact.length >= 3) return compact.slice(0, 3);
+
+    return 'FIN';
 };
 
 const calcItemsTotal = (items: any[], useDiscount = true) =>
@@ -208,10 +281,10 @@ const OptionRow = ({
                 )}
                 <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-700">{label}</span>
+                        <span className="text-[10px] font-black text-slate-700">{label}</span>
 
                         {selected && (
-                            <span className="text-[8px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-200">
+                            <span className="text-[8px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-200">
                                 Included
                             </span>
                         )}
@@ -485,10 +558,20 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
     const accessories = pricing.accessories || [];
     const allAccessories = pricing.allAccessories || accessories || [];
     const services = pricing.services || [];
+    const allServices = pricing.allServices || services || [];
     const insuranceAddons = pricing.insuranceAddons || [];
     const allInsuranceAddons = pricing.allInsuranceAddons || insuranceAddons || [];
     const insuranceRequired = pricing.insuranceRequired || [];
+    const insuranceTotalValue = toNumber(pricing.insuranceTotal, 0);
+    const insurancePrimaryRows = Array.isArray(insuranceRequired) ? insuranceRequired : [];
+    const insurancePrimarySum = insurancePrimaryRows.reduce(
+        (sum: number, item: any) => sum + toNumber(item?.price ?? item?.amount, 0),
+        0
+    );
+    const insurancePrimaryDelta = Math.max(0, insuranceTotalValue - insurancePrimarySum);
+    const insurancePrimaryDisplayRows = insurancePrimaryRows;
     const warrantyItems = pricing.warrantyItems || [];
+    const allWarrantyItems = pricing.allWarrantyItems || pricing.allWarranty || warrantyItems || [];
     const rtoOptions = pricing.rtoOptions || [];
     const shareUrl = `https://bookmy.bike/dossier/${formatDisplayId(quote.display_id)}`;
     const specs = quote.vehicle?.specs || {};
@@ -546,10 +629,46 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
     const selectedAccessoryIds = new Set(extractIds(accessories));
     const selectedServiceIds = new Set(extractIds(services));
     const selectedInsuranceAddonIds = new Set(extractIds(insuranceAddons));
+    const insuranceIncludedAddons = (allInsuranceAddons || []).filter((addon: any) => {
+        const id = String(addon?.id || addon?.name || addon?.label || '');
+        const isMandatory = Boolean(addon?.isMandatory || addon?.inclusionType === 'BUNDLE');
+        return isMandatory || selectedInsuranceAddonIds.has(id) || addon?.selected;
+    });
+    const insuranceOptionalAddons = (allInsuranceAddons || []).filter((addon: any) => {
+        const id = String(addon?.id || addon?.name || addon?.label || '');
+        const isMandatory = Boolean(addon?.isMandatory || addon?.inclusionType === 'BUNDLE');
+        return !isMandatory && !selectedInsuranceAddonIds.has(id) && !addon?.selected;
+    });
+    const selectedInsuranceAddonsTotal = insuranceIncludedAddons.reduce(
+        (sum: number, addon: any) => sum + toNumber(addon.discountPrice ?? addon.price ?? addon.amount, 0),
+        0
+    );
+    const insuranceNetPayable = insuranceTotalValue + selectedInsuranceAddonsTotal;
     const selectedWarrantyIds = new Set(extractIds(warrantyItems));
     const warrantyHasSelection = selectedWarrantyIds.size > 0;
+    const isServiceSelected = (item: any) => {
+        const id = String(item?.id || item?.name || item?.label || '');
+        return selectedServiceIds.has(id) || Boolean(item?.selected || item?.isMandatory);
+    };
+    const isWarrantySelected = (item: any) => {
+        if (!warrantyHasSelection) return true;
+        const id = String(item?.id || item?.name || item?.label || '');
+        return selectedWarrantyIds.has(id) || Boolean(item?.selected || item?.isMandatory);
+    };
+    const sortedServiceItems = [...allServices].sort((a: any, b: any) => {
+        const aSelected = isServiceSelected(a);
+        const bSelected = isServiceSelected(b);
+        if (aSelected === bSelected) return 0;
+        return aSelected ? -1 : 1;
+    });
+    const sortedWarrantyItems = [...allWarrantyItems].sort((a: any, b: any) => {
+        const aSelected = isWarrantySelected(a);
+        const bSelected = isWarrantySelected(b);
+        if (aSelected === bSelected) return 0;
+        return aSelected ? -1 : 1;
+    });
     const selectedRtoType = pricing.rtoType || pricing.rto_type || 'STATE';
-    const warrantyOptions = warrantyItems;
+    const warrantyOptions = sortedWarrantyItems;
     const financeModeNormalized = String(quote.financeMode || quote.finance?.mode || '').toUpperCase();
     const hasLoanTerms =
         toNumber(quote.finance?.loanAmount, 0) > 0 ||
@@ -1237,7 +1356,14 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                                 title="Registration (RTO)"
                                 icon={FileText}
                                 iconColor="#6366f1"
-                                subtitle={`${(quote as any)?.rtoOptions?.find((o: any) => o.id === selectedRtoType)?.name || selectedRtoType || dealerLocation.state || 'State'} Registration`}
+                                subtitle={
+                                    getRegistrationOptionDisplayMeta(
+                                        selectedRtoType,
+                                        (quote as any)?.rtoOptions?.find((o: any) => o.id === selectedRtoType)?.name ||
+                                            selectedRtoType,
+                                        dealerLocation.state
+                                    ).label
+                                }
                                 total={pricing.rtoTotal}
                             ></DossierGroup>
 
@@ -1529,6 +1655,20 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                                             </div>
                                             <div
                                                 className="px-3 py-4 border-l border-zinc-100"
+                                                style={{ backgroundColor: '#6366f130' }}
+                                            >
+                                                <div className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1">
+                                                    Tenure
+                                                </div>
+                                                <div className="text-[15px] font-black text-slate-800">
+                                                    {selectedTenure}
+                                                    <span className="text-[8px] font-medium text-slate-400 ml-0.5">
+                                                        months
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div
+                                                className="px-3 py-4 border-l border-zinc-100"
                                                 style={{
                                                     backgroundColor: `${quote?.vehicle?.hexCode || '#F4B000'}30`,
                                                 }}
@@ -1543,20 +1683,6 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                                                     </span>
                                                 </div>
                                             </div>
-                                            <div
-                                                className="px-3 py-4 border-l border-zinc-100"
-                                                style={{ backgroundColor: '#6366f130' }}
-                                            >
-                                                <div className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1">
-                                                    Tenure
-                                                </div>
-                                                <div className="text-[15px] font-black text-slate-800">
-                                                    {selectedTenure}
-                                                    <span className="text-[8px] font-medium text-slate-400 ml-0.5">
-                                                        months
-                                                    </span>
-                                                </div>
-                                            </div>
                                         </div>
                                     </div>
 
@@ -1566,23 +1692,23 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                                         icon={TrendingUp}
                                         iconColor="#6366f1"
                                     >
-                                        <div className="flex items-center justify-between py-2 px-6 border-b-2 border-zinc-200 mb-1">
-                                            <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 w-[45px]">
+                                        <div className="grid grid-cols-[44px_88px_92px_92px_92px_92px] items-center gap-3 py-2 px-6 border-b-2 border-zinc-200 mb-1">
+                                            <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">
                                                 Fin
                                             </span>
-                                            <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 w-[70px]">
-                                                EMI
-                                            </span>
-                                            <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 w-[55px] text-center">
+                                            <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 text-center">
                                                 Tenure
                                             </span>
-                                            <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 w-[70px] text-right">
+                                            <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 text-right">
+                                                EMI
+                                            </span>
+                                            <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 text-right">
                                                 Loan
                                             </span>
-                                            <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 w-[70px] text-right">
+                                            <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 text-right">
                                                 Interest
                                             </span>
-                                            <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 w-[70px] text-right">
+                                            <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 text-right">
                                                 Total
                                             </span>
                                         </div>
@@ -1607,14 +1733,15 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                                                 toNumber(row?.interest, 0) > 0
                                                     ? toNumber(row?.interest, 0)
                                                     : Math.max(0, totalPaid - downPayment - rowGrossLoan);
-                                            const finCode = String(row?.bank_short_code || row?.bankShortCode || '--');
+                                            const finCode = getFinancerCode(
+                                                String(row?.bank_name || row?.bankName || ''),
+                                                String(row?.bank_short_code || row?.bankShortCode || '')
+                                            );
                                             return (
                                                 <div
                                                     key={t}
-                                                    className={`flex items-center justify-between py-2 px-6 ${
-                                                        isSelected
-                                                            ? 'rounded-lg -mx-2 px-8 border'
-                                                            : 'border-b border-zinc-50'
+                                                    className={`grid grid-cols-[44px_88px_92px_92px_92px_92px] items-center gap-3 py-2 px-6 ${
+                                                        isSelected ? 'rounded-lg border' : 'border-b border-zinc-50'
                                                     }`}
                                                     style={
                                                         isSelected
@@ -1627,33 +1754,33 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                                                     }
                                                 >
                                                     <span
-                                                        className={`text-[10px] w-[45px] ${isSelected ? 'font-black text-slate-900' : 'font-semibold text-slate-600'}`}
+                                                        className={`text-[10px] ${isSelected ? 'font-black text-slate-900' : 'font-semibold text-slate-600'}`}
                                                         title={row?.bank_name || row?.bankName || 'Financier'}
                                                     >
                                                         {finCode}
                                                     </span>
                                                     <span
-                                                        className={`text-[10px] tabular-nums font-mono w-[70px] ${isSelected ? 'font-black text-slate-900 text-[11px]' : 'font-bold text-slate-700'}`}
-                                                    >
-                                                        {formatCurrency(emi)}
-                                                    </span>
-                                                    <span
-                                                        className={`text-[10px] w-[72px] text-center whitespace-nowrap ${isSelected ? 'font-black text-slate-900' : 'font-semibold text-slate-600'}`}
+                                                        className={`text-[10px] text-center whitespace-nowrap ${isSelected ? 'font-black text-slate-900' : 'font-semibold text-slate-600'}`}
                                                     >
                                                         {t} months
                                                     </span>
                                                     <span
-                                                        className={`text-[10px] tabular-nums font-mono w-[70px] text-right ${isSelected ? 'font-semibold text-slate-800' : 'text-slate-500'}`}
+                                                        className={`text-[10px] tabular-nums font-mono text-right ${isSelected ? 'font-black text-slate-900 text-[11px]' : 'font-bold text-slate-700'}`}
+                                                    >
+                                                        {formatCurrency(emi)}
+                                                    </span>
+                                                    <span
+                                                        className={`text-[10px] tabular-nums font-mono text-right ${isSelected ? 'font-semibold text-slate-800' : 'text-slate-500'}`}
                                                     >
                                                         {formatCurrency(rowGrossLoan)}
                                                     </span>
                                                     <span
-                                                        className={`text-[9px] tabular-nums font-mono w-[70px] text-right ${isSelected ? 'text-emerald-700' : 'text-red-400'}`}
+                                                        className={`text-[9px] tabular-nums font-mono text-right ${isSelected ? 'text-emerald-700' : 'text-red-400'}`}
                                                     >
                                                         +{formatCurrency(interest)}
                                                     </span>
                                                     <span
-                                                        className={`text-[10px] tabular-nums font-mono w-[70px] text-right ${isSelected ? 'font-black text-slate-900' : 'font-medium text-slate-500'}`}
+                                                        className={`text-[10px] tabular-nums font-mono text-right ${isSelected ? 'font-black text-slate-900' : 'font-medium text-slate-500'}`}
                                                     >
                                                         {formatCurrency(totalPaid)}
                                                     </span>
@@ -1908,7 +2035,8 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                                 initialFinance={{
                                     bank: { name: quote.finance.bankName || quote.finance.bank || '' },
                                     scheme: {
-                                        interestRate: quote.finance.roi ? quote.finance.roi / 100 : 0,
+                                        // computeFinanceMetrics expects percentage (e.g. 10.99), not decimal.
+                                        interestRate: quote.finance.roi ? quote.finance.roi : 0,
                                         interestType:
                                             quote.finance?.interestType || pricing.financeInterestType || 'REDUCING',
                                     },
@@ -2082,16 +2210,18 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                                                                         ) : (
                                                                             <div
                                                                                 className={cn(
-                                                                                    'w-3 h-3 rounded-full border shrink-0',
+                                                                                    'w-7 h-7 rounded-lg flex items-center justify-center shrink-0',
                                                                                     isSelected
-                                                                                        ? 'bg-emerald-100 border-emerald-300'
-                                                                                        : 'bg-slate-50 border-slate-200'
+                                                                                        ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
+                                                                                        : 'bg-slate-50 text-slate-400 border border-slate-200'
                                                                                 )}
-                                                                            />
+                                                                            >
+                                                                                <Package size={14} />
+                                                                            </div>
                                                                         )}
                                                                         <div className="min-w-0">
                                                                             <div className="flex items-center gap-1.5">
-                                                                                <span className="text-[10px] font-bold text-slate-700">
+                                                                                <span className="text-[10px] font-black text-slate-700">
                                                                                     {formatAccessoryLabel(
                                                                                         item.description ||
                                                                                             item.displayName ||
@@ -2099,18 +2229,18 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                                                                                     )}
                                                                                 </span>
                                                                                 {isSelected && (
-                                                                                    <span className="text-[7px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 px-1 py-0.5 rounded border border-emerald-200">
+                                                                                    <span className="text-[8px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-200">
                                                                                         Included
                                                                                     </span>
                                                                                 )}
                                                                                 {isSwap && (
-                                                                                    <span className="text-[7px] font-black uppercase tracking-widest text-amber-600 bg-amber-50 px-1 py-0.5 rounded border border-amber-200">
+                                                                                    <span className="text-[8px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-md border border-amber-200">
                                                                                         Swap
                                                                                     </span>
                                                                                 )}
                                                                             </div>
                                                                             {item.brand && (
-                                                                                <div className="text-[8px] text-slate-400">
+                                                                                <div className="text-[9px] text-slate-400 mt-0.5">
                                                                                     {item.brand}
                                                                                 </div>
                                                                             )}
@@ -2194,19 +2324,37 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                                 title="Primary Covers"
                                 icon={ShieldCheck}
                                 iconColor="#10b981"
-                                total={pricing.insuranceTotal}
+                                total={insuranceTotalValue}
                             >
                                 <div className="space-y-2 p-2">
-                                    {insuranceRequired.length > 0 ? (
-                                        insuranceRequired.map((item: any, idx: number) => (
+                                    {insurancePrimaryDisplayRows.length > 0 ? (
+                                        insurancePrimaryDisplayRows.map((item: any, idx: number) => (
                                             <OptionRow
                                                 key={item.id || idx}
-                                                label={item.name || item.label}
+                                                label={
+                                                    idx === 0 && insurancePrimaryDelta > 0
+                                                        ? `${item.name || item.label} (incl. GST ${formatCurrency(insurancePrimaryDelta)})`
+                                                        : item.name || item.label
+                                                }
                                                 price={toNumber(item.price ?? item.amount, 0)}
                                                 selected
-                                                description={item.description}
+                                                description={
+                                                    idx === 0 && insurancePrimaryDelta > 0
+                                                        ? `${item.description || ''}`.trim()
+                                                        : item.description
+                                                }
                                                 isMandatory
-                                                breakdown={item.breakdown}
+                                                breakdown={
+                                                    idx === 0 && insurancePrimaryDelta > 0
+                                                        ? [
+                                                              ...(Array.isArray(item.breakdown) ? item.breakdown : []),
+                                                              {
+                                                                  label: 'GST (included)',
+                                                                  amount: insurancePrimaryDelta,
+                                                              },
+                                                          ]
+                                                        : item.breakdown
+                                                }
                                                 icon={resolveInsuranceIcon(item.name || item.label || '')}
                                             />
                                         ))
@@ -2221,20 +2369,54 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                             <DossierGroup quote={quote} title="Add-ons" icon={Sparkles} iconColor="#f59e0b">
                                 <div className="space-y-2 p-2">
                                     {allInsuranceAddons.length > 0 ? (
-                                        allInsuranceAddons.map((addon: any, idx: number) => (
-                                            <OptionRow
-                                                key={addon.id || idx}
-                                                label={addon.name || addon.label}
-                                                price={toNumber(addon.discountPrice ?? addon.price ?? addon.amount, 0)}
-                                                selected={
-                                                    selectedInsuranceAddonIds.has(String(addon.id)) || addon.selected
-                                                }
-                                                description={addon.description}
-                                                isMandatory={addon.isMandatory || addon.inclusionType === 'BUNDLE'}
-                                                breakdown={addon.breakdown}
-                                                icon={resolveInsuranceIcon(addon.name || addon.label || '')}
-                                            />
-                                        ))
+                                        <>
+                                            {insuranceIncludedAddons.length > 0 && (
+                                                <>
+                                                    <div className="px-2 pt-1 pb-0.5 text-[8px] font-black uppercase tracking-widest text-slate-400">
+                                                        Mandatory / Included
+                                                    </div>
+                                                    {insuranceIncludedAddons.map((addon: any, idx: number) => (
+                                                        <OptionRow
+                                                            key={addon.id || `inc-${idx}`}
+                                                            label={addon.name || addon.label}
+                                                            price={toNumber(
+                                                                addon.discountPrice ?? addon.price ?? addon.amount,
+                                                                0
+                                                            )}
+                                                            selected
+                                                            description={addon.description}
+                                                            isMandatory={
+                                                                addon.isMandatory || addon.inclusionType === 'BUNDLE'
+                                                            }
+                                                            breakdown={addon.breakdown}
+                                                            icon={resolveInsuranceIcon(addon.name || addon.label || '')}
+                                                        />
+                                                    ))}
+                                                </>
+                                            )}
+                                            {insuranceOptionalAddons.length > 0 && (
+                                                <>
+                                                    <div className="px-2 pt-2 pb-0.5 text-[8px] font-black uppercase tracking-widest text-slate-400">
+                                                        Optional Add-ons
+                                                    </div>
+                                                    {insuranceOptionalAddons.map((addon: any, idx: number) => (
+                                                        <OptionRow
+                                                            key={addon.id || `opt-${idx}`}
+                                                            label={addon.name || addon.label}
+                                                            price={toNumber(
+                                                                addon.discountPrice ?? addon.price ?? addon.amount,
+                                                                0
+                                                            )}
+                                                            selected={false}
+                                                            description={addon.description}
+                                                            isMandatory={false}
+                                                            breakdown={addon.breakdown}
+                                                            icon={resolveInsuranceIcon(addon.name || addon.label || '')}
+                                                        />
+                                                    ))}
+                                                </>
+                                            )}
+                                        </>
                                     ) : (
                                         <div className="text-center text-[9px] text-slate-300 uppercase py-2">
                                             No insurance add-ons available
@@ -2242,6 +2424,15 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                                     )}
                                 </div>
                             </DossierGroup>
+
+                            <div className="border border-slate-100 rounded-xl bg-slate-50 px-4 py-3 flex items-center justify-between">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-600">
+                                    Net Payable
+                                </span>
+                                <span className="text-[12px] font-black text-slate-900 tabular-nums">
+                                    {formatCurrency(insuranceNetPayable)}
+                                </span>
+                            </div>
                         </div>
                     </div>
                     <div className="a4-footer">
@@ -2339,14 +2530,13 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                                                         className="flex items-center justify-between gap-3 px-4 py-2.5"
                                                     >
                                                         <div className="flex items-center gap-2 min-w-0">
-                                                            <div className="w-3 h-3 rounded-full bg-emerald-100 border border-emerald-300 shrink-0" />
+                                                            <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 bg-emerald-50 text-emerald-600 border border-emerald-200">
+                                                                <FileText size={14} />
+                                                            </div>
                                                             <div className="min-w-0">
                                                                 <div className="flex items-center gap-1.5">
-                                                                    <span className="text-[10px] font-bold text-slate-700">
+                                                                    <span className="text-[10px] font-black text-slate-700">
                                                                         {b.label}
-                                                                    </span>
-                                                                    <span className="text-[7px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 px-1 py-0.5 rounded border border-emerald-200">
-                                                                        Included
                                                                     </span>
                                                                 </div>
                                                             </div>
@@ -2369,67 +2559,83 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                                             <span className="text-[8px] text-slate-400">{allItems.length} options</span>
                                         </div>
                                         <div className="divide-y divide-slate-50">
-                                            {allItems.map((item: any, idx: number) => {
-                                                const typeId = String(item.id || item.type || '').toUpperCase();
-                                                const isActive = String(selectedRtoType || '').toUpperCase() === typeId;
-                                                const roadTaxBd = item.breakdown || [];
-                                                const rtEntry = roadTaxBd.find(
-                                                    (b: any) => b.label === 'Road Tax' || b.label === 'Road Tax Amount'
-                                                );
-                                                const roadTaxAmount =
-                                                    toNumber(rtEntry?.amount, 0) ||
-                                                    toNumber(item.price ?? item.amount ?? item.total, 0);
-                                                const itemCess = roadTaxBd.find(
-                                                    (b: any) => b.label === 'Cess' || b.label === 'Cess Amount'
-                                                );
-                                                const cessAmount = toNumber(itemCess?.amount, 0);
-                                                const displayRoadTax = roadTaxAmount + cessAmount;
-                                                return (
-                                                    <div key={item.id || idx}>
-                                                        <div className="flex items-center justify-between gap-3 px-4 py-2.5">
-                                                            <div className="flex items-center gap-2 min-w-0">
-                                                                <div
-                                                                    className={cn(
-                                                                        'w-3 h-3 rounded-full border shrink-0',
-                                                                        isActive
-                                                                            ? 'bg-emerald-100 border-emerald-300'
-                                                                            : 'bg-slate-50 border-slate-200'
-                                                                    )}
-                                                                />
-                                                                <div className="min-w-0">
-                                                                    <div className="flex items-center gap-1.5">
-                                                                        <span className="text-[10px] font-bold text-slate-700">
-                                                                            {item.name ||
-                                                                                item.label ||
-                                                                                item.type ||
-                                                                                'Registration'}
-                                                                        </span>
-                                                                        {isActive && (
-                                                                            <span className="text-[7px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 px-1 py-0.5 rounded border border-emerald-200">
-                                                                                Included
+                                            {[...allItems]
+                                                .sort((a: any, b: any) => {
+                                                    const aSelected =
+                                                        String(selectedRtoType || '').toUpperCase() ===
+                                                        String(a.id || a.type || '').toUpperCase();
+                                                    const bSelected =
+                                                        String(selectedRtoType || '').toUpperCase() ===
+                                                        String(b.id || b.type || '').toUpperCase();
+                                                    if (aSelected === bSelected) return 0;
+                                                    return aSelected ? -1 : 1;
+                                                })
+                                                .map((item: any, idx: number) => {
+                                                    const typeId = String(item.id || item.type || '').toUpperCase();
+                                                    const isActive =
+                                                        String(selectedRtoType || '').toUpperCase() === typeId;
+                                                    const RegIcon = getRegistrationIcon(typeId);
+                                                    const optionMeta = getRegistrationOptionDisplayMeta(
+                                                        typeId,
+                                                        item.name || item.label || item.type || 'Registration',
+                                                        dealerLocation.state
+                                                    );
+                                                    const roadTaxBd = item.breakdown || [];
+                                                    const rtEntry = roadTaxBd.find(
+                                                        (b: any) =>
+                                                            b.label === 'Road Tax' || b.label === 'Road Tax Amount'
+                                                    );
+                                                    const roadTaxAmount =
+                                                        toNumber(rtEntry?.amount, 0) ||
+                                                        toNumber(item.price ?? item.amount ?? item.total, 0);
+                                                    const itemCess = roadTaxBd.find(
+                                                        (b: any) => b.label === 'Cess' || b.label === 'Cess Amount'
+                                                    );
+                                                    const cessAmount = toNumber(itemCess?.amount, 0);
+                                                    const displayRoadTax = roadTaxAmount + cessAmount;
+                                                    return (
+                                                        <div key={item.id || idx}>
+                                                            <div className="flex items-center justify-between gap-3 px-4 py-2.5">
+                                                                <div className="flex items-center gap-2 min-w-0">
+                                                                    <div
+                                                                        className={cn(
+                                                                            'w-7 h-7 rounded-lg flex items-center justify-center shrink-0',
+                                                                            isActive
+                                                                                ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
+                                                                                : 'bg-slate-50 text-slate-400 border border-slate-200'
+                                                                        )}
+                                                                    >
+                                                                        <RegIcon size={14} />
+                                                                    </div>
+                                                                    <div className="min-w-0">
+                                                                        <div className="flex items-center gap-1.5">
+                                                                            <span className="text-[10px] font-black text-slate-700">
+                                                                                {optionMeta.label}
                                                                             </span>
+                                                                        </div>
+                                                                        <div className="text-[9px] text-slate-400 mt-0.5">
+                                                                            {optionMeta.description}
+                                                                        </div>
+                                                                        {optionMeta.detail && (
+                                                                            <div className="text-[9px] text-slate-400">
+                                                                                {optionMeta.detail}
+                                                                            </div>
+                                                                        )}
+                                                                        {cessAmount > 0 && (
+                                                                            <div className="text-[7.5px] text-slate-400 italic">
+                                                                                inclusive of cess{' '}
+                                                                                {formatCurrency(cessAmount)}
+                                                                            </div>
                                                                         )}
                                                                     </div>
-                                                                    {item.description && (
-                                                                        <div className="text-[8px] text-slate-400">
-                                                                            {item.description}
-                                                                        </div>
-                                                                    )}
-                                                                    {cessAmount > 0 && (
-                                                                        <div className="text-[7.5px] text-slate-400 italic">
-                                                                            inclusive of cess{' '}
-                                                                            {formatCurrency(cessAmount)}
-                                                                        </div>
-                                                                    )}
                                                                 </div>
+                                                                <span className="text-[10px] font-black text-slate-900 tabular-nums shrink-0">
+                                                                    {formatCurrency(displayRoadTax)}
+                                                                </span>
                                                             </div>
-                                                            <span className="text-[10px] font-black text-slate-900 tabular-nums shrink-0">
-                                                                {formatCurrency(displayRoadTax)}
-                                                            </span>
                                                         </div>
-                                                    </div>
-                                                );
-                                            })}
+                                                    );
+                                                })}
                                         </div>
                                     </div>
 
@@ -2495,15 +2701,16 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                             <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">
                                 Service Packages
                             </div>
-                            {services.length > 0 ? (
-                                services.map((svc: any, idx: number) => (
+                            {sortedServiceItems.length > 0 ? (
+                                sortedServiceItems.map((svc: any, idx: number) => (
                                     <OptionRow
                                         key={svc.id || idx}
                                         label={svc.name}
                                         price={toNumber(svc.discountPrice ?? svc.price, 0)}
-                                        selected={selectedServiceIds.has(String(svc.id))}
+                                        selected={isServiceSelected(svc)}
                                         description={svc.description}
                                         isMandatory={svc.isMandatory}
+                                        icon={Wrench}
                                     />
                                 ))
                             ) : (
@@ -2531,6 +2738,7 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                                         description={w.description}
                                         isMandatory
                                         breakdown={w.breakdown}
+                                        icon={ShieldCheck}
                                     />
                                 ))
                             ) : (

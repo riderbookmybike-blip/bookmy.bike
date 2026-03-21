@@ -160,7 +160,7 @@ export async function onboardDealer(formData: {
         const { error: locationError } = await adminClient.from('id_locations').insert({
             tenant_id: tenant.id,
             name: formData.dealerName,
-            type: 'DEALERSHIP',
+            type: 'SHOWROOM',
             city: (pinRow as any).taluka || null,
             district: (pinRow as any).district || null,
             taluka: (pinRow as any).taluka || null,

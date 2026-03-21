@@ -8118,11 +8118,24 @@ export async function getQuoteByDisplayId(
                 insuranceGst: pricingSnapshot?.insurance_gst || 0,
                 insuranceTotal: quote.insurance_amount || pricingSnapshot?.insurance_total || 0,
                 insuranceAddons: pricingSnapshot?.insurance_addon_items || pricingSnapshot?.insurance_addons || [],
+                allInsuranceAddons:
+                    pricingSnapshot?.insurance_addons_catalog ||
+                    pricingSnapshot?.insurance_addons ||
+                    pricingSnapshot?.insurance_addon_items ||
+                    [],
                 insuranceRequired: pricingSnapshot?.insurance_required_items || [],
                 accessoriesTotal: quote.accessories_amount || pricingSnapshot?.accessories_total || 0,
-                accessories: pricingSnapshot?.accessory_items || pricingSnapshot?.accessories || [],
+                accessories:
+                    pricingSnapshot?.accessory_items ||
+                    pricingSnapshot?.all_accessory_items ||
+                    pricingSnapshot?.accessories ||
+                    [],
                 servicesTotal: pricingSnapshot?.services_total || 0,
-                services: pricingSnapshot?.service_items || pricingSnapshot?.services || [],
+                services:
+                    pricingSnapshot?.service_items ||
+                    pricingSnapshot?.all_service_items ||
+                    pricingSnapshot?.services ||
+                    [],
                 dealerDiscount: pricingSnapshot?.dealer_discount || 0,
                 colorDelta: pricingSnapshot?.color_delta || 0,
                 offersDelta: pricingSnapshot?.offers_delta || 0,
@@ -8136,10 +8149,17 @@ export async function getQuoteByDisplayId(
                 referralBonus: pricingSnapshot?.referral_bonus || 0,
                 onRoadTotal: pricingSnapshot?.grand_total || quote.on_road_price || commercials.grand_total || 0,
                 finalTotal: quote.on_road_price || commercials.grand_total || 0,
-                warrantyItems: pricingSnapshot?.warranty_items || [],
-                allAccessories: pricingSnapshot?.accessories || [],
-                allServices: pricingSnapshot?.services || [],
-                allInsuranceAddons: pricingSnapshot?.insurance_addons || [],
+                warrantyItems: pricingSnapshot?.warranty_items || pricingSnapshot?.all_warranty_items || [],
+                allAccessories:
+                    pricingSnapshot?.all_accessory_items ||
+                    pricingSnapshot?.accessory_items ||
+                    pricingSnapshot?.accessories ||
+                    [],
+                allServices:
+                    pricingSnapshot?.all_service_items ||
+                    pricingSnapshot?.service_items ||
+                    pricingSnapshot?.services ||
+                    [],
                 allOffers: pricingSnapshot?.offers || [],
                 dealer: pricingSnapshot?.dealer || null,
                 dealerLocation: dealerLocationData || null,

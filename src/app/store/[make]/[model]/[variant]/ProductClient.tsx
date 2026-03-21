@@ -792,6 +792,15 @@ export default function ProductClient({
                 inclusionType: a.inclusionType,
                 qty: Number(quantities?.[a.id] || 1),
             }));
+        const accessoryCatalogItems = (data.activeAccessories || []).map((a: any) => ({
+            id: a.id,
+            name: a.description || a.displayName || a.name,
+            price: a.price,
+            discountPrice: a.discountPrice,
+            inclusionType: a.inclusionType,
+            qty: Number(quantities?.[a.id] || 1),
+            selected: selectedAccessories.includes(a.id),
+        }));
 
         const selectedServiceItems = (data.activeServices || [])
             .filter((s: any) => selectedServices.includes(s.id))
@@ -802,6 +811,14 @@ export default function ProductClient({
                 discountPrice: s.discountPrice,
                 qty: Number(quantities?.[s.id] || 1),
             }));
+        const serviceCatalogItems = (data.activeServices || []).map((s: any) => ({
+            id: s.id,
+            name: s.name,
+            price: s.price,
+            discountPrice: s.discountPrice,
+            qty: Number(quantities?.[s.id] || 1),
+            selected: selectedServices.includes(s.id),
+        }));
 
         const selectedInsuranceAddonItems = (data.availableInsuranceAddons || [])
             .filter((i: any) => selectedInsuranceAddons.includes(i.id))
@@ -814,6 +831,22 @@ export default function ProductClient({
                 breakdown: i.breakdown,
                 selected: true,
             }));
+        const insuranceCatalogItems = (data.availableInsuranceAddons || []).map((i: any) => ({
+            id: i.id,
+            name: i.name,
+            price: i.price,
+            discountPrice: i.discountPrice,
+            inclusionType: i.inclusionType,
+            breakdown: i.breakdown,
+            isMandatory: Boolean(i.isMandatory || i.inclusionType === 'BUNDLE'),
+            selected: selectedInsuranceAddons.includes(i.id),
+            description: i.description,
+            tenure: i.tenure || i.term || null,
+        }));
+        const warrantyCatalogItems = (data.warrantyItems || []).map((w: any) => ({
+            ...w,
+            selected: true,
+        }));
 
         const insuranceTotal = (data.baseInsurance || 0) + (data.insuranceAddonsPrice || 0);
         const colorDelta = (data.colorSurge || 0) - (data.colorDiscount || 0);
@@ -936,22 +969,27 @@ export default function ProductClient({
         ).sort((a, b) => a - b);
         const getBankShortCode = (name: string) => {
             const key = String(name || '').toLowerCase();
-            return (
-                (key.includes('home credit') && 'HC') ||
-                (key.includes('shriram') && 'SF') ||
-                (key.includes('kotak') && 'KP') ||
-                (key.includes('bajaj') && 'BF') ||
-                (key.includes('bandhan') && 'BB') ||
-                ((key.includes('l&t') || key.includes('lt finance')) && 'LT') ||
-                String(name || '')
-                    .split(/[\s&/-]+/)
-                    .map(token => token.trim())
-                    .filter(Boolean)
-                    .slice(0, 2)
-                    .map(token => token.charAt(0).toUpperCase())
-                    .join('') ||
-                'FIN'
-            );
+            const mapped =
+                (key.includes('home credit') && 'HCI') ||
+                (key.includes('shriram') && 'SFL') ||
+                (key.includes('kotak') && 'KPL') ||
+                (key.includes('bajaj') && 'BFS') ||
+                (key.includes('bandhan') && 'BBL') ||
+                ((key.includes('l&t') || key.includes('lt finance')) && 'LTF') ||
+                '';
+            if (mapped) return mapped;
+            const initials = String(name || '')
+                .split(/[\s&/-]+/)
+                .map(token => token.trim())
+                .filter(Boolean)
+                .map(token => token.charAt(0).toUpperCase())
+                .join('');
+            if (initials.length >= 3) return initials.slice(0, 3);
+            const compact = String(name || '')
+                .replace(/[^a-zA-Z0-9]/g, '')
+                .toUpperCase();
+            if (compact.length >= 3) return compact.slice(0, 3);
+            return 'FIN';
         };
         const financeTenureRows = marketTenures
             .map(tenure => {
@@ -1110,6 +1148,7 @@ export default function ProductClient({
                 insurance_total: insuranceTotal,
                 insurance_breakdown: data.insuranceBreakdown || [],
                 insurance_required_items: data.insuranceRequiredItems || [],
+                insurance_addons_catalog: insuranceCatalogItems,
                 offers: selectedOffers,
                 offers_items: data.offersItems || [],
                 offers_delta: offersDelta,
@@ -1128,11 +1167,14 @@ export default function ProductClient({
                 coin_used: coinPricingForDisplay?.coinsUsed || 0,
                 accessories: selectedAccessories,
                 accessory_items: selectedAccessoryItems,
+                all_accessory_items: accessoryCatalogItems,
                 services: selectedServices,
                 service_items: selectedServiceItems,
+                all_service_items: serviceCatalogItems,
                 insurance_addons: selectedInsuranceAddons,
                 insurance_addon_items: selectedInsuranceAddonItems,
-                warranty_items: data.warrantyItems || [],
+                warranty_items: warrantyCatalogItems,
+                all_warranty_items: warrantyCatalogItems,
                 emi_tenure: data.emiTenure,
                 down_payment: data.userDownPayment || data.downPayment, // Use calculated downPayment if user hasn't explicitly set it
                 referral_applied: data.isReferralActive || false,

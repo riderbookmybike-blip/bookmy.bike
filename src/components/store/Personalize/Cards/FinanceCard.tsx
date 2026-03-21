@@ -60,22 +60,27 @@ export default function FinanceCard({
         String(b?.name || b?.identity?.display_name || b?.identity?.displayName || b?.identity?.name || 'Financier');
     const getBankShortCode = (name: string) => {
         const key = name.toLowerCase();
-        return (
-            (key.includes('home credit') && 'HC') ||
-            (key.includes('shriram') && 'SF') ||
-            (key.includes('kotak') && 'KP') ||
-            (key.includes('bajaj') && 'BF') ||
-            (key.includes('bandhan') && 'BB') ||
-            ((key.includes('l&t') || key.includes('lt finance')) && 'LT') ||
-            name
-                .split(/[\s&/-]+/)
-                .map(token => token.trim())
-                .filter(Boolean)
-                .slice(0, 2)
-                .map(token => token.charAt(0).toUpperCase())
-                .join('') ||
-            'FIN'
-        );
+        const mapped =
+            (key.includes('home credit') && 'HCI') ||
+            (key.includes('shriram') && 'SFL') ||
+            (key.includes('kotak') && 'KPL') ||
+            (key.includes('bajaj') && 'BFS') ||
+            (key.includes('bandhan') && 'BBL') ||
+            ((key.includes('l&t') || key.includes('lt finance')) && 'LTF') ||
+            '';
+        if (mapped) return mapped;
+        const initials = String(name || '')
+            .split(/[\s&/-]+/)
+            .map(token => token.trim())
+            .filter(Boolean)
+            .map(token => token.charAt(0).toUpperCase())
+            .join('');
+        if (initials.length >= 3) return initials.slice(0, 3);
+        const compact = String(name || '')
+            .replace(/[^a-zA-Z0-9]/g, '')
+            .toUpperCase();
+        if (compact.length >= 3) return compact.slice(0, 3);
+        return 'FIN';
     };
 
     const activeCandidates: Array<{ bank: any; scheme: any }> =
