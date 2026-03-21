@@ -54,6 +54,7 @@ export function flattenVariantSpecs(variant: Record<string, any>): Record<string
 /** Canonical SKU select string — single source for all queries */
 export const SKU_SELECT = `
     id,
+    updated_at,
     name,
     slug,
     sku_type,
@@ -74,9 +75,9 @@ export const SKU_SELECT = `
     offset_y,
     video_url_1,
     video_url_2,
-    colour:cat_colours!colour_id(id, name, hex_primary, hex_secondary, finish, primary_image, media_shared, video_url_1, video_url_2),
+    colour:cat_colours!colour_id(id, name, hex_primary, hex_secondary, finish, primary_image, media_shared, video_url_1, video_url_2, updated_at),
     vehicle_variant:cat_variants_vehicle!vehicle_variant_id(
-        id, name, slug, status,
+        id, name, slug, status, updated_at,
         displacement, max_power, max_torque, transmission, mileage_arai,
         front_brake, rear_brake, braking_system,
         kerb_weight, seat_height, ground_clearance, fuel_capacity, wheelbase,
@@ -106,6 +107,7 @@ export const PRICE_SELECT = '*';
  */
 export const CATALOG_SKU_SELECT = `
     id,
+    updated_at,
     sku_code,
     sku_type,
     name,
@@ -128,10 +130,10 @@ export const CATALOG_SKU_SELECT = `
     offset_y,
     colour_id,
     colour:cat_colours!colour_id (
-        id, name, hex_primary, hex_secondary, finish, primary_image, media_shared, video_url_1, video_url_2
+        id, name, hex_primary, hex_secondary, finish, primary_image, media_shared, video_url_1, video_url_2, updated_at
     ),
     model:cat_models!model_id (
-        id, name, slug, product_type, body_type, segment,
+        id, name, slug, product_type, body_type, segment, updated_at,
         engine_cc, fuel_type, emission_standard, status,
         primary_image, media_shared, video_url_1, video_url_2,
         brand:cat_brands!brand_id (
@@ -139,7 +141,7 @@ export const CATALOG_SKU_SELECT = `
         )
     ),
     vehicle_variant:cat_variants_vehicle!vehicle_variant_id (
-        id, name, slug, status,
+        id, name, slug, status, updated_at,
         displacement, max_power, max_torque, transmission, mileage_arai,
         front_brake, rear_brake, braking_system,
         kerb_weight, seat_height, ground_clearance, fuel_capacity, wheelbase,
@@ -1179,6 +1181,10 @@ export async function getCatalogSnapshot(stateCode: string = 'MH'): Promise<Cata
                 ins_total: price?.ins_total ? Math.round(price.ins_total) : null,
                 publish_stage: price?.publish_stage ?? null,
                 is_popular: price?.is_popular ?? null,
+                sku_updated_at: sku.updated_at ?? null,
+                colour_updated_at: sku.colour?.updated_at ?? null,
+                variant_updated_at: variant?.updated_at ?? null,
+                model_updated_at: model?.updated_at ?? null,
             } as CatalogSnapshotRow;
         });
     } catch (error: any) {

@@ -97,7 +97,7 @@ const nextConfig: NextConfig = {
             // Optimized image responses can be safely cached for shorter window.
             {
                 source: '/_next/image/:path*',
-                headers: [{ key: 'Cache-Control', value: 'public, max-age=86400, stale-while-revalidate=604800' }],
+                headers: [{ key: 'Cache-Control', value: 'public, max-age=2592000, stale-while-revalidate=86400' }],
             },
             // Public media assets should be long-cached.
             {

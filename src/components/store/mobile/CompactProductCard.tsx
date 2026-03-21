@@ -9,6 +9,7 @@ import { useFavorites } from '@/lib/favorites/favoritesContext';
 import { coinsNeededForPrice, computeOClubPricing, discountForCoins } from '@/lib/oclub/coin';
 import { Logo } from '@/components/brand/Logo';
 import Image from 'next/image';
+import { appendImageVersion, supabaseResized } from '@/lib/utils/imageResize';
 import { getEmiFactor } from '@/lib/constants/pricingConstants';
 import { useAnalytics } from '@/components/analytics/AnalyticsProvider';
 import { slugify } from '@/utils/slugs';
@@ -239,7 +240,11 @@ export function CompactProductCard({
             >
                 {selectedImage ? (
                     <Image
-                        src={selectedImage}
+                        src={(() => {
+                            const raw = selectedImage || '/images/categories/scooter_nobg.png';
+                            const resized = supabaseResized(raw, priority ? 640 : 400) ?? raw;
+                            return appendImageVersion(resized, v.mediaVersion) ?? resized;
+                        })()}
                         alt={`${v.make} ${v.model}`}
                         fill
                         className="object-contain p-2"

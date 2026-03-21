@@ -18,5 +18,25 @@ export function supabaseResized(url: string | null | undefined, width: number, q
     const match = url.match(/^(https:\/\/[^/]+\/storage\/v1)\/object\/public\/(.+)$/);
     if (!match) return url;
     const [, base, path] = match;
-    return `${base}/render/image/public/${path}?width=${width}&quality=${quality}`;
+    return `${base}/render/image/public/${path}?width=${width}&quality=${quality}&format=webp`;
+}
+
+/**
+ * Appends a stable image version token for cache-busting only when media changes.
+ */
+export function appendImageVersion(
+    url: string | null | undefined,
+    version: string | null | undefined
+): string | undefined {
+    if (!url) return undefined;
+    if (!version) return url;
+    try {
+        const parsed = new URL(url, 'https://local.invalid');
+        parsed.searchParams.set('iv', version);
+        if (/^https?:\/\//i.test(url)) return parsed.toString();
+        return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+    } catch {
+        const separator = url.includes('?') ? '&' : '?';
+        return `${url}${separator}iv=${encodeURIComponent(version)}`;
+    }
 }

@@ -135,6 +135,10 @@ interface RawProductRow {
     visitor_dwell_ms: number;
     catalog_click_count: number;
     dealer_offer: number; // from cat_price_dealer: negative = discount, positive = surge
+    sku_updated_at?: string | null;
+    colour_updated_at?: string | null;
+    variant_updated_at?: string | null;
+    model_updated_at?: string | null;
 }
 
 type VisitorSignalMaps = {
@@ -179,6 +183,19 @@ function extractVariantKeyFromPath(pathname?: string | null): string | null {
 function appendMetric(map: Map<string, number>, key: string | null, increment: number) {
     if (!key || !Number.isFinite(increment) || increment <= 0) return;
     map.set(key, (map.get(key) || 0) + increment);
+}
+
+function latestIsoTimestamp(values: Array<string | null | undefined>): string | undefined {
+    let winner: string | undefined;
+    let winnerTs = 0;
+    for (const value of values) {
+        if (!value) continue;
+        const ts = Date.parse(value);
+        if (!Number.isFinite(ts) || ts <= winnerTs) continue;
+        winnerTs = ts;
+        winner = value;
+    }
+    return winner;
 }
 
 async function fetchSkuBookingCounts(days: number = 180): Promise<Map<string, number>> {
@@ -566,6 +583,12 @@ function mapV2ToProductVariants(rows: RawProductRow[]): ProductVariant[] {
             visitorViews * 100 +
             dwellMinutes +
             popularBoost;
+        const mediaVersion = latestIsoTimestamp([
+            m.model_updated_at,
+            m.variant_updated_at,
+            ...skus.map(s => s.sku_updated_at),
+            ...skus.map(s => s.colour_updated_at),
+        ]);
 
         const variant: ProductVariant = {
             id: primarySku.sku_id,
@@ -614,6 +637,7 @@ function mapV2ToProductVariants(rows: RawProductRow[]): ProductVariant[] {
                           },
                       ],
             imageUrl: cleanImageUrl(primarySku.primary_image) || primaryColorFallback || fallbackImage || '',
+            mediaVersion,
             zoomFactor: primarySku.zoom_factor ?? undefined,
             isFlipped: primarySku.is_flipped || undefined,
             offsetX: primarySku.offset_x ?? undefined,

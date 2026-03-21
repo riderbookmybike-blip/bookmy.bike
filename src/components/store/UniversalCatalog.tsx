@@ -81,6 +81,7 @@ import {
     compareMinSelectionMessage,
     getSafeViewMode,
 } from './cards/vehicleModeConfig';
+import { isTvUserAgent } from '@/lib/utils/deviceUserAgent';
 
 type CatalogFilters = ReturnType<typeof useCatalogFilters>;
 
@@ -155,31 +156,30 @@ export const UniversalCatalog = ({
         const syncTvViewport = () => {
             const params = new URLSearchParams(window.location.search);
             const forced = params.get('tv');
-            const explicitTv = document.documentElement.dataset.tv === '1';
+            const tvByUserAgent = isTvUserAgent(window.navigator.userAgent || '');
+            const explicitTv = document.documentElement.dataset.tv === '1' || tvByUserAgent;
             const width = window.innerWidth || document.documentElement.clientWidth || 0;
             const height = window.innerHeight || document.documentElement.clientHeight || 0;
-            const tvLikeViewport =
-                (width >= 1500 && height <= 1000) || (width >= 900 && width <= 1200 && height >= 500 && height <= 700);
             const forcedTv = forced === '1' ? true : forced === '0' ? false : null;
             setViewportDebug({
                 width,
                 height,
                 dpr: window.devicePixelRatio || 1,
-                tvLike: tvLikeViewport,
+                tvLike: explicitTv,
                 forced: forced === '1' || forced === '0' ? (forced as '1' | '0') : 'auto',
             });
-            const resolved = forcedTv ?? (explicitTv || tvLikeViewport);
+            // Never infer TV mode from viewport dimensions; browser UI show/hide can
+            // change height on desktop and cause false positives.
+            const resolved = forcedTv ?? explicitTv;
             setTvViewport(resolved);
             document.documentElement.dataset.tv = resolved ? '1' : '0';
         };
         // Defer initial TV detection — non-urgent, runs after first paint
         const cancelIdle = scheduleIdle(syncTvViewport, 1000);
         window.addEventListener('popstate', syncTvViewport);
-        window.addEventListener('resize', syncTvViewport);
         return () => {
             cancelIdle();
             window.removeEventListener('popstate', syncTvViewport);
-            window.removeEventListener('resize', syncTvViewport);
         };
     }, []);
 

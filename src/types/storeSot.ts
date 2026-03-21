@@ -19,6 +19,7 @@ export interface SotModel {
     media_shared: boolean | null;
     video_url_1?: string | null;
     video_url_2?: string | null;
+    updated_at?: string | null;
 }
 
 // ─── Vehicle Variant ─────────────────────────────────────────
@@ -30,6 +31,7 @@ export interface SotVariant {
     media_shared?: boolean | null;
     video_url_1?: string | null;
     video_url_2?: string | null;
+    updated_at?: string | null;
 }
 
 // ─── Colour ──────────────────────────────────────────────────
@@ -42,6 +44,7 @@ export interface SotColour {
     media_shared?: boolean | null;
     video_url_1?: string | null;
     video_url_2?: string | null;
+    updated_at?: string | null;
 }
 
 // ─── SKU (as returned from the canonical query) ──────────────
@@ -69,6 +72,7 @@ export interface SotSku {
     video_url_2?: string | null;
     colour: SotColour | null;
     vehicle_variant: SotVariant | null;
+    updated_at?: string | null;
 }
 
 // ─── Normalized SKU (with flattened variant fields) ──────────
@@ -288,6 +292,10 @@ export interface CatalogSnapshotRow {
     ins_total: number | null;
     publish_stage: string | null;
     is_popular: boolean | null;
+    sku_updated_at?: string | null;
+    colour_updated_at?: string | null;
+    variant_updated_at?: string | null;
+    model_updated_at?: string | null;
 }
 
 export interface DealerDelta {

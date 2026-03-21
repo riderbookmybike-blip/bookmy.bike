@@ -77,6 +77,8 @@ export default function SKUMediaManager({
     onSave,
     onClose,
 }: SKUMediaManagerProps) {
+    const IMAGE_CACHE_CONTROL_SECONDS = '31536000';
+
     const [images, setImages] = useState<string[]>(initialImages);
     const [skuVideos, setSkuVideos] = useState<string[]>(initialVideos.filter(v => !inheritedVideos.includes(v)));
     const [selectedInheritedVideos, setSelectedInheritedVideos] = useState<string[]>(
@@ -257,6 +259,7 @@ export default function SKUMediaManager({
             const fileName = `catalog/cropped_${Date.now()}_${Math.random().toString(36).substring(2, 9)}.webp`;
 
             const { error: uploadError } = await supabase.storage.from('vehicles').upload(fileName, blob, {
+                cacheControl: IMAGE_CACHE_CONTROL_SECONDS,
                 contentType: 'image/webp',
                 upsert: false,
             });
@@ -313,6 +316,7 @@ export default function SKUMediaManager({
             const supabase = createClient();
             const fileName = `catalog/mirrored_${Date.now()}_${Math.random().toString(36).substring(2, 9)}.webp`;
             const { error: uploadError } = await supabase.storage.from('vehicles').upload(fileName, blob, {
+                cacheControl: IMAGE_CACHE_CONTROL_SECONDS,
                 contentType: 'image/webp',
                 upsert: false,
             });
@@ -406,6 +410,7 @@ export default function SKUMediaManager({
             const arrayBuffer = await resultBlob.arrayBuffer();
 
             const { error: uploadError } = await supabase.storage.from('vehicles').upload(fileName, arrayBuffer, {
+                cacheControl: IMAGE_CACHE_CONTROL_SECONDS,
                 contentType: resultBlob.type || 'image/png',
                 upsert: false,
             });
@@ -481,7 +486,9 @@ export default function SKUMediaManager({
                 const fileExt = file.name.split('.').pop();
                 const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
                 const filePath = `catalog/${fileName}`;
-                const { error } = await supabase.storage.from('vehicles').upload(filePath, file);
+                const { error } = await supabase.storage.from('vehicles').upload(filePath, file, {
+                    cacheControl: IMAGE_CACHE_CONTROL_SECONDS,
+                });
                 if (error) throw error;
                 const {
                     data: { publicUrl },
@@ -523,7 +530,9 @@ export default function SKUMediaManager({
                 const fileExt = file.name.split('.').pop();
                 const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
                 const filePath = `catalog/${fileName}`;
-                const { error } = await supabase.storage.from('vehicles').upload(filePath, file);
+                const { error } = await supabase.storage.from('vehicles').upload(filePath, file, {
+                    cacheControl: IMAGE_CACHE_CONTROL_SECONDS,
+                });
                 if (error) throw error;
                 const {
                     data: { publicUrl },

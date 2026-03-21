@@ -38,6 +38,7 @@ export async function uploadMediaAsset(
 
     // 3. Upload to Supabase Storage
     const { data: storageData, error: storageError } = await adminClient.storage.from('vehicles').upload(path, buffer, {
+        cacheControl: '31536000',
         contentType: file.type,
         upsert: true,
     });

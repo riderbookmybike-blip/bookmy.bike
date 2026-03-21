@@ -18,7 +18,7 @@ import {
     X,
 } from 'lucide-react';
 import Image from 'next/image';
-import { supabaseResized } from '@/lib/utils/imageResize';
+import { appendImageVersion, supabaseResized } from '@/lib/utils/imageResize';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { createPortal } from 'react-dom';
@@ -725,10 +725,12 @@ export const ProductCard = ({
                                 (v.bodyType === 'SCOOTER'
                                     ? '/images/categories/scooter_nobg.png'
                                     : '/images/categories/motorcycle_nobg.png');
-                            return prioritizeImage ? (supabaseResized(raw, 640) ?? raw) : raw;
+                            const resized = supabaseResized(raw, prioritizeImage ? 640 : 400) ?? raw;
+                            return appendImageVersion(resized, v.mediaVersion) ?? resized;
                         })()}
                         alt={v.model}
                         fill
+                        priority={prioritizeImage}
                         fetchPriority={prioritizeImage ? 'high' : 'auto'}
                         loading={prioritizeImage ? 'eager' : 'lazy'}
                         decoding={prioritizeImage ? 'sync' : 'async'}
@@ -852,8 +854,8 @@ export const ProductCard = ({
                                 </p>
                                 <div className="flex flex-col">
                                     <div className="flex items-baseline gap-3">
-                                        <span className="text-3xl font-black text-slate-900 leading-none tracking-tight">
-                                            ₹ {formatRoundedPrice(baseOnRoadPrice)}
+                                        <span className="text-3xl font-black text-slate-900 leading-none tracking-tight whitespace-nowrap tabular-nums">
+                                            ₹{formatRoundedPrice(baseOnRoadPrice)}
                                         </span>
                                         {bestOffer ? (
                                             <div className="flex flex-col items-start leading-none">
@@ -877,8 +879,8 @@ export const ProductCard = ({
                                             v.price?.offerPrice &&
                                             v.price?.onRoad && (
                                                 <div className="flex flex-col">
-                                                    <span className="text-[10px] font-bold text-slate-400 line-through">
-                                                        ₹ {formatRoundedPrice(v.price.onRoad)}
+                                                    <span className="text-[10px] font-bold text-slate-400 line-through whitespace-nowrap tabular-nums">
+                                                        ₹{formatRoundedPrice(v.price.onRoad)}
                                                     </span>
                                                     {(priceSourceLabel || v.price.pricingSource) && (
                                                         <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
@@ -1225,17 +1227,18 @@ export const ProductCard = ({
                                 (v.bodyType === 'SCOOTER'
                                     ? '/images/categories/scooter_nobg.png'
                                     : '/images/categories/motorcycle_nobg.png');
-                            return prioritizeImage ? (supabaseResized(raw, 640) ?? raw) : raw;
+                            const resized = supabaseResized(raw, prioritizeImage ? 640 : 400) ?? raw;
+                            return appendImageVersion(resized, v.mediaVersion) ?? resized;
                         })()}
-                        alt={v.model}
                         fetchPriority={prioritizeImage ? 'high' : 'auto'}
                         loading={prioritizeImage ? 'eager' : 'lazy'}
                         decoding={prioritizeImage ? 'sync' : 'async'}
                         sizes="(max-width: 640px) 48vw, (max-width: 1024px) 33vw, 25vw"
                         srcSet={(() => {
                             const raw = selectedColorImage || v.imageUrl || '/images/categories/motorcycle_nobg.png';
-                            if (!raw.startsWith('http')) return undefined;
-                            const enc = encodeURIComponent(raw);
+                            const versionedRaw = appendImageVersion(raw, v.mediaVersion) ?? raw;
+                            if (!versionedRaw.startsWith('http')) return undefined;
+                            const enc = encodeURIComponent(versionedRaw);
                             return [320, 480, 640, 828, 1080]
                                 .map(w => `/_next/image?url=${enc}&w=${w}&q=75 ${w}w`)
                                 .join(', ');
@@ -1383,9 +1386,7 @@ export const ProductCard = ({
 
                         // Text on cash face: dark if background is light (which it always is)
                         const cashPrimaryText = '#0f172a';
-                        const cashLabelColor = rgb
-                            ? `rgb(${Math.round(rgb.r * 0.55 + 20)}, ${Math.round(rgb.g * 0.4 + 15)}, ${Math.round(rgb.b * 0.3 + 10)})`
-                            : '#059669'; // fallback emerald
+                        const cashLabelColor = 'rgba(15,23,42,0.72)';
                         const cashDivider = rgb ? `rgba(${rgb.r},${rgb.g},${rgb.b},0.2)` : 'rgba(0,0,0,0.06)';
                         const cashBorder = rgb ? `rgba(${rgb.r},${rgb.g},${rgb.b},0.18)` : 'rgba(16,185,129,0.15)';
                         const cashCurrencyValueClass = isTv ? 'text-[22px]' : 'text-[24px] md:text-[28px]';
@@ -1442,10 +1443,10 @@ export const ProductCard = ({
                                                     </p>
                                                 </div>
                                                 <span
-                                                    className={`font-black italic leading-none ${isTv ? 'text-[22px]' : 'text-[22px] md:text-[26px]'}`}
+                                                    className={`whitespace-nowrap tabular-nums font-black italic leading-none ${isTv ? 'text-[22px]' : 'text-[22px] md:text-[26px]'}`}
                                                     style={{ color: finText }}
                                                 >
-                                                    ₹ {formatRoundedPrice(downpayment || 0)}
+                                                    ₹{formatRoundedPrice(downpayment || 0)}
                                                 </span>
                                                 <div className="flex items-center gap-1 mt-1">
                                                     <Logo
@@ -1475,10 +1476,10 @@ export const ProductCard = ({
                                                     Lowest EMI
                                                 </p>
                                                 <span
-                                                    className={`font-black italic leading-none ${isTv ? 'text-[22px]' : 'text-[22px] md:text-[26px]'}`}
+                                                    className={`whitespace-nowrap tabular-nums font-black italic leading-none ${isTv ? 'text-[22px]' : 'text-[22px] md:text-[26px]'}`}
                                                     style={{ color: finText }}
                                                 >
-                                                    {emiValue !== null ? `₹ ${formatRoundedPrice(emiValue)}` : '—'}
+                                                    {emiValue !== null ? `₹${formatRoundedPrice(emiValue)}` : '—'}
                                                 </span>
                                                 <div className="flex items-center gap-1 mt-1">
                                                     <Clock size={9} style={{ color: finSubText }} />
@@ -1607,10 +1608,10 @@ export const ProductCard = ({
                                                     <div className="flex flex-col items-start gap-0.5">
                                                         <span
                                                             onClick={handleFlip}
-                                                            className={`${cashCurrencyValueClass} font-black italic leading-none cursor-pointer hover:scale-105 active:scale-95 transition-all`}
+                                                            className={`${cashCurrencyValueClass} whitespace-nowrap tabular-nums font-black italic leading-none cursor-pointer hover:scale-105 active:scale-95 transition-all`}
                                                             style={{ color: cashPrimaryText }}
                                                         >
-                                                            ₹ {formatRoundedPrice(effectiveOfferPrice)}
+                                                            ₹{formatRoundedPrice(effectiveOfferPrice)}
                                                         </span>
                                                     </div>
                                                 </div>

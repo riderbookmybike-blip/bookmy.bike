@@ -49,7 +49,7 @@ export default function MediaUploadModal({
 
             const { error: uploadError, data } = await supabase.storage
                 .from('vehicles') // Assuming 'vehicles' bucket exists
-                .upload(filePath, file);
+                .upload(filePath, file, { cacheControl: '31536000' });
 
             if (uploadError) throw uploadError;
 

@@ -53,6 +53,8 @@ export interface ProductVariant {
         };
     }>;
     imageUrl: string;
+    /** Cache-busting token derived from latest catalog media update timestamp. */
+    mediaVersion?: string;
     zoomFactor?: number;
     isFlipped?: boolean;
     offsetX?: number;
