@@ -251,6 +251,23 @@ export const UniversalCatalog = ({
         };
     }, [isTv]);
 
+    // TV Force-Reload: poll /api/tv-command every 30s, reload when admin triggers it
+    useEffect(() => {
+        if (!isTv) return;
+        const poll = async () => {
+            try {
+                const res = await fetch('/api/tv-command', { cache: 'no-store' });
+                const data = await res.json();
+                if (data?.reload === true) window.location.reload();
+            } catch {
+                // network error — ignore, retry next tick
+            }
+        };
+        poll(); // immediate first check
+        const id = setInterval(poll, 30_000);
+        return () => clearInterval(id);
+    }, [isTv]);
+
     // Destructure filters from props
     const {
         searchQuery,

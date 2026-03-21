@@ -19,6 +19,24 @@ interface ProbeData {
 export default function TvProbePage() {
     const [data, setData] = useState<ProbeData | null>(null);
     const [serverUa, setServerUa] = useState<string>('loading...');
+    const [reloadStatus, setReloadStatus] = useState<'idle' | 'sent' | 'error'>('idle');
+
+    const triggerReload = async () => {
+        setReloadStatus('idle');
+        try {
+            const secret = prompt('Admin secret:');
+            if (!secret) return;
+            const res = await fetch('/api/tv-command', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ secret, action: 'reload' }),
+            });
+            setReloadStatus(res.ok ? 'sent' : 'error');
+            if (res.ok) setTimeout(() => setReloadStatus('idle'), 65_000);
+        } catch {
+            setReloadStatus('error');
+        }
+    };
 
     useEffect(() => {
         // Client-side viewport data
@@ -308,6 +326,53 @@ export default function TvProbePage() {
                         >
                             → OPEN CATALOG (AUTO)
                         </a>
+                    </div>
+
+                    {/* 🔴 Force Reload Section */}
+                    <div
+                        style={{
+                            marginTop: 40,
+                            padding: '28px 32px',
+                            background: '#0d0d0d',
+                            borderRadius: 16,
+                            border: `2px solid ${reloadStatus === 'sent' ? '#22c55e' : reloadStatus === 'error' ? '#ef4444' : '#3b1a1a'}`,
+                        }}
+                    >
+                        <div
+                            style={{
+                                fontSize: 16,
+                                color: '#ffd700',
+                                fontWeight: 700,
+                                letterSpacing: 2,
+                                marginBottom: 16,
+                            }}
+                        >
+                            📡 REMOTE TV CONTROL
+                        </div>
+                        <div style={{ fontSize: 18, color: '#888', marginBottom: 20 }}>
+                            TV browser har 30 second mein check karta hai. Button press karne par sab TVs reload honge.
+                        </div>
+                        <button
+                            onClick={triggerReload}
+                            disabled={reloadStatus === 'sent'}
+                            style={{
+                                padding: '20px 48px',
+                                background: reloadStatus === 'sent' ? '#052e16' : '#7f1d1d',
+                                color: reloadStatus === 'sent' ? '#22c55e' : '#fca5a5',
+                                border: `2px solid ${reloadStatus === 'sent' ? '#22c55e' : '#ef4444'}`,
+                                borderRadius: 12,
+                                fontSize: 22,
+                                fontWeight: 900,
+                                cursor: reloadStatus === 'sent' ? 'not-allowed' : 'pointer',
+                                letterSpacing: 1,
+                            }}
+                        >
+                            {reloadStatus === 'sent'
+                                ? '✅ Signal Sent — TVs Reload in ~30s'
+                                : reloadStatus === 'error'
+                                  ? '❌ Error — Retry'
+                                  : '🔄 Force Reload All TVs'}
+                        </button>
                     </div>
                 </>
             )}
