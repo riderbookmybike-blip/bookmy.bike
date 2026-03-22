@@ -43,11 +43,10 @@ interface LeadCaptureModalProps {
     quoteTenantId?: string;
     displayOnRoadEstimate?: number;
     source?: 'STORE_PDP' | 'LEADS';
-    forceStaffMode?: boolean;
     onQuoteSaved?: (displayId: string) => void;
 }
 
-type LeadStep = 'PHONE' | 'PHONE_CONFIRM' | 'DETAILS';
+type LeadStep = 'PHONE' | 'DETAILS';
 
 let crmActionsPromise: Promise<typeof import('@/actions/crm')> | null = null;
 const LOGIN_NEXT_STORAGE_KEY = 'bkmb_login_next';
@@ -81,7 +80,6 @@ export function LeadCaptureModal({
     quoteTenantId,
     displayOnRoadEstimate,
     source = 'LEADS',
-    forceStaffMode = false,
     onQuoteSaved,
 }: LeadCaptureModalProps) {
     const { tenantId, userRole, memberships } = useTenant();
@@ -106,22 +104,11 @@ export function LeadCaptureModal({
     const [customerCoins, setCustomerCoins] = useState<number | null>(null);
     const [isNewCustomer, setIsNewCustomer] = useState(false);
 
-    // Referral state
-    const [referredByPhone, setReferredByPhone] = useState('');
-    const [referralResolved, setReferralResolved] = useState<{ memberId: string; name: string | null } | null>(null);
-    const [referralError, setReferralError] = useState<string | null>(null);
-    const [referralResolving, setReferralResolving] = useState(false);
-
-    // Detect if current user role has been resolved and whether it's a staff role.
+    // Detect if current user role has been resolved
     const hasResolvedRole = typeof userRole === 'string' && userRole.length > 0;
-    const normalizedRole = String(userRole || '').toLowerCase();
-    const isStaff = forceStaffMode || (hasResolvedRole && normalizedRole !== 'member' && normalizedRole !== 'customer');
     const effectiveTenantId = sessionDealerId || quoteTenantId || tenantId || undefined;
     const bannerTenantId = sessionDealerId || quoteTenantId || tenantId;
     const primaryMembership = memberships?.find(m => m.tenant_id === bannerTenantId);
-    const crmLeadHref = primaryMembership?.tenants?.slug
-        ? `/app/${primaryMembership.tenants.slug}/leads`
-        : '/dashboard';
     const [autoPhoneLoaded, setAutoPhoneLoaded] = useState(false);
     const [isAutoSubmitting, setIsAutoSubmitting] = useState(false);
 
@@ -146,16 +133,11 @@ export function LeadCaptureModal({
             setIsAutoSubmitting(false);
             setCustomerCoins(null);
             setIsNewCustomer(false);
-            setReferredByPhone('');
-            setReferralResolved(null);
-            setReferralError(null);
         }
     }, [isOpen]);
 
     useEffect(() => {
-        // Important: wait for role hydration first, otherwise staff users can be treated
-        // as end-customers briefly and their own phone gets auto-submitted.
-        if (!isOpen || autoPhoneLoaded || !hasResolvedRole || isStaff) return;
+        if (!isOpen || autoPhoneLoaded || !hasResolvedRole) return;
         const supabase = createClient();
         const hydratePhone = async () => {
             const { data: auth } = await supabase.auth.getUser();
@@ -197,7 +179,7 @@ export function LeadCaptureModal({
             setAutoPhoneLoaded(true);
         };
         hydratePhone();
-    }, [isOpen, autoPhoneLoaded, hasResolvedRole, isStaff]);
+    }, [isOpen, autoPhoneLoaded, hasResolvedRole]);
 
     const tryShareWithFallback = useCallback(
         async (
@@ -268,45 +250,6 @@ export function LeadCaptureModal({
 
     if (!isOpen) return null;
 
-    // ── Hard boundary: only block staff in CRM/LEADS mode (creating quote for a customer)
-    // Direct marketplace visit (source=STORE_PDP, no lead) → allow self-shopping as normal user
-    if (isStaff && source === 'LEADS') {
-        return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md animate-in fade-in duration-300">
-                <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl shadow-2xl border border-slate-200/80 dark:border-white/10 overflow-hidden">
-                    {/* Header */}
-                    <div className="bg-blue-600 p-6 text-white text-center">
-                        <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center mx-auto mb-4">
-                            <Briefcase size={28} />
-                        </div>
-                        <h3 className="text-xl font-black uppercase tracking-tight">Team Member Detected</h3>
-                        <p className="text-blue-100 text-sm mt-1 font-medium">Quote creation via CRM only</p>
-                    </div>
-                    {/* Body */}
-                    <div className="p-6 space-y-4">
-                        <p className="text-slate-600 dark:text-slate-400 text-sm text-center leading-relaxed">
-                            As a team member, please create quotes through the <strong>CRM Lead Flow</strong> — this
-                            ensures proper lead ownership, audit trail, and dealer attribution.
-                        </p>
-                        <a
-                            href={crmLeadHref}
-                            className="w-full flex items-center justify-center gap-2 py-4 bg-blue-600 hover:bg-blue-700 text-white font-black text-xs uppercase tracking-[0.12em] rounded-2xl transition-all shadow-lg shadow-blue-600/20 active:scale-95"
-                        >
-                            <Briefcase size={16} />
-                            Open CRM Lead Flow
-                        </a>
-                        <button
-                            onClick={onClose}
-                            className="w-full py-3 text-slate-400 font-bold text-xs uppercase tracking-wider hover:text-slate-600 transition-colors"
-                        >
-                            Close
-                        </button>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
     const toUiError = (err: unknown, fallback: string) =>
         err instanceof Error ? err.message || fallback : typeof err === 'string' ? err : fallback;
 
@@ -315,11 +258,6 @@ export function LeadCaptureModal({
 
         if (!isValidPhone(rawPhone)) {
             setError('Please enter a valid 10-digit mobile number');
-            return;
-        }
-
-        if (isStaff && !effectiveTenantId) {
-            setError('Active dealership context missing. Select dealership and retry.');
             return;
         }
 
@@ -339,11 +277,7 @@ export function LeadCaptureModal({
                 setName(existingUser.name || '');
                 setPincode(existingUser.pincode || '');
 
-                // Staff flow: always capture details/referrer in next step.
-                if (isStaff) {
-                    setStep('DETAILS');
-                    return;
-                }
+                // Proceed directly to quote logic for returning customer
 
                 // Create lead and quote
                 setSubmitStage('QUOTE GENERATING');
@@ -355,8 +289,7 @@ export function LeadCaptureModal({
                     model: model,
                     owner_tenant_id: effectiveTenantId,
                     selected_dealer_id: effectiveTenantId,
-                    source: isStaff ? 'DEALER_REFERRAL' : 'PDP_QUICK_QUOTE',
-                    referred_by_phone: referralResolved ? undefined : referredByPhone || undefined,
+                    source: 'PDP_QUICK_QUOTE',
                 });
 
                 if (leadResult.success && (leadResult as any).leadId) {
@@ -372,12 +305,7 @@ export function LeadCaptureModal({
                 setIsNewCustomer(true);
                 setMemberId(null);
                 setDob(null);
-                if (isStaff) {
-                    setConfirmPhone('');
-                    setStep('PHONE_CONFIRM');
-                } else {
-                    setStep('DETAILS');
-                }
+                setStep('DETAILS');
                 setSubmitStage(null);
             }
         } catch (err) {
@@ -394,69 +322,9 @@ export function LeadCaptureModal({
         await processPhoneNumber(phone);
     }
 
-    async function handlePhoneConfirmSubmit(e: React.FormEvent) {
-        e.preventDefault();
-        setError(null);
-
-        if (!isValidPhone(confirmPhone)) {
-            setError('Please re-enter a valid 10-digit mobile number');
-            return;
-        }
-
-        if (normalizePhone(confirmPhone) !== normalizePhone(phone)) {
-            setError('Mobile numbers do not match. Please re-check.');
-            return;
-        }
-
-        setStep('DETAILS');
-    }
-
-    // Referral phone blur handler — resolve or auto-create member
-    async function handleReferralBlur() {
-        if (!referredByPhone || referredByPhone.length < 10) {
-            setReferralResolved(null);
-            setReferralError(null);
-            return;
-        }
-
-        // Self-referral guard
-        const normalizedRef = normalizePhone(referredByPhone);
-        const normalizedCustomer = normalizePhone(phone);
-        if (normalizedRef === normalizedCustomer) {
-            setReferralError('Referral cannot be the same as customer phone');
-            setReferralResolved(null);
-            return;
-        }
-
-        setReferralResolving(true);
-        setReferralError(null);
-        try {
-            const result = await ensureMemberByPhone(referredByPhone);
-            if (result.success) {
-                setReferralResolved({ memberId: result.memberId, name: result.name || null });
-                setReferralError(null);
-                if (result.created) {
-                    toast.success('Referrer profile created automatically');
-                }
-            } else {
-                setReferralError(result.message || 'Could not resolve referrer');
-                setReferralResolved(null);
-            }
-        } catch {
-            setReferralError('Failed to resolve referrer');
-        } finally {
-            setReferralResolving(false);
-        }
-    }
-
     async function handleDetailSubmit(e: React.FormEvent) {
         e.preventDefault();
         setError(null);
-
-        if (isStaff && !effectiveTenantId) {
-            setError('Active dealership context missing. Select dealership and retry.');
-            return;
-        }
 
         if (name.length < 2) {
             setError('Please enter a valid name');
@@ -480,8 +348,7 @@ export function LeadCaptureModal({
                 model: model,
                 owner_tenant_id: effectiveTenantId,
                 selected_dealer_id: effectiveTenantId,
-                source: isStaff ? 'DEALER_REFERRAL' : 'PDP_QUICK_QUOTE',
-                referred_by_phone: referredByPhone || undefined,
+                source: 'PDP_QUICK_QUOTE',
             });
 
             if (leadResult.success && (leadResult as any).leadId) {
@@ -490,7 +357,7 @@ export function LeadCaptureModal({
                 // 🔍 Clarity: track high-intent lead submission
                 clarityTrackLeadSubmitted({
                     variantName: variant || model,
-                    source: isStaff ? 'crm_referral' : 'pdp_quick_quote',
+                    source: 'pdp_quick_quote',
                 });
                 await handleCreateQuote((leadResult as any).leadId, coinsToUse, isNewCustomer);
             } else {
@@ -861,9 +728,7 @@ export function LeadCaptureModal({
                                 <div className="flex-1">
                                     <h3 className="text-3xl font-black uppercase italic tracking-tighter text-slate-900 dark:text-white leading-none">
                                         {step === 'PHONE'
-                                            ? isStaff
-                                                ? 'Identify Customer'
-                                                : 'Get Personal Quote'
+                                            ? 'Get Personal Quote'
                                             : step === 'PHONE_CONFIRM'
                                               ? 'Confirm Mobile'
                                               : 'Complete Profile'}
@@ -876,30 +741,24 @@ export function LeadCaptureModal({
 
                             {/* Step Progress Indicator */}
                             <div className="flex items-center gap-2 px-1">
-                                {(['PHONE', ...(isStaff ? ['PHONE_CONFIRM'] : []), 'DETAILS'] as LeadStep[]).map(
-                                    (s, idx) => {
-                                        const stepIndex = [
-                                            'PHONE',
-                                            ...(isStaff ? ['PHONE_CONFIRM'] : []),
-                                            'DETAILS',
-                                        ].indexOf(step);
-                                        const thisIndex = idx;
-                                        const isComplete = thisIndex < stepIndex;
-                                        const isCurrent = s === step;
-                                        return (
-                                            <div
-                                                key={s}
-                                                className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${
-                                                    isComplete
-                                                        ? 'bg-brand-primary shadow-[0_0_8px_rgba(255,215,0,0.4)]'
-                                                        : isCurrent
-                                                          ? 'bg-brand-primary/40'
-                                                          : 'bg-slate-200 dark:bg-slate-700'
-                                                }`}
-                                            />
-                                        );
-                                    }
-                                )}
+                                {(['PHONE', 'DETAILS'] as LeadStep[]).map((s, idx) => {
+                                    const stepIndex = ['PHONE', 'DETAILS'].indexOf(step);
+                                    const thisIndex = idx;
+                                    const isComplete = thisIndex < stepIndex;
+                                    const isCurrent = s === step;
+                                    return (
+                                        <div
+                                            key={s}
+                                            className={`h-1.5 flex-1 rounded-full transition-all duration-500 ${
+                                                isComplete
+                                                    ? 'bg-brand-primary shadow-[0_0_8px_rgba(255,215,0,0.4)]'
+                                                    : isCurrent
+                                                      ? 'bg-brand-primary/40'
+                                                      : 'bg-slate-200 dark:bg-slate-700'
+                                            }`}
+                                        />
+                                    );
+                                })}
                             </div>
 
                             {/* Separator */}
@@ -929,7 +788,7 @@ export function LeadCaptureModal({
                                     <form onSubmit={handlePhoneSubmit} className="space-y-6">
                                         <div className="space-y-3">
                                             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 px-2">
-                                                {isStaff ? "Customer's Mobile" : 'Your Mobile'}
+                                                Your Mobile
                                             </p>
                                             <div className="relative group">
                                                 <span className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 font-black tracking-tighter text-lg select-none z-10">
@@ -967,50 +826,6 @@ export function LeadCaptureModal({
                                         </button>
                                     </form>
                                 )
-                            ) : step === 'PHONE_CONFIRM' ? (
-                                <form
-                                    onSubmit={handlePhoneConfirmSubmit}
-                                    className="space-y-6 animate-in slide-in-from-right-4 duration-300"
-                                >
-                                    <div className="space-y-3">
-                                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 px-2">
-                                            Re-enter Mobile
-                                        </p>
-                                        <div className="relative group">
-                                            <span className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 font-black tracking-tighter text-lg select-none z-10">
-                                                +91
-                                            </span>
-                                            <input
-                                                type="tel"
-                                                required
-                                                value={confirmPhone}
-                                                onChange={e => setConfirmPhone(normalizeIndianPhone(e.target.value))}
-                                                placeholder="Re-enter 10-digit mobile"
-                                                maxLength={10}
-                                                className="w-full pl-16 pr-6 py-5 bg-white dark:bg-black/20 border border-slate-200 dark:border-slate-700 focus:border-brand-primary/60 dark:focus:border-brand-primary/40 focus:shadow-[0_0_0_4px_rgba(255,215,0,0.1)] rounded-2xl outline-none font-black text-xl text-slate-900 dark:text-white tracking-[0.1em] transition-all placeholder:text-slate-300 dark:placeholder:text-slate-700"
-                                                autoFocus
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="flex gap-3 pt-2">
-                                        <button
-                                            type="button"
-                                            onClick={() => setStep('PHONE')}
-                                            className="px-6 py-5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-black uppercase text-xs tracking-[0.12em] rounded-2xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-95 border border-slate-200/50"
-                                        >
-                                            Back
-                                        </button>
-                                        <button
-                                            type="submit"
-                                            disabled={isSubmitting || !isValidPhone(confirmPhone)}
-                                            className="flex-1 py-5 bg-[#FFD700] hover:bg-[#F4B000] disabled:bg-slate-100 dark:disabled:bg-slate-800 text-slate-900 disabled:text-slate-400 font-black uppercase text-xs tracking-[0.12em] rounded-2xl transition-all shadow-[0_4px_20px_rgba(255,215,0,0.3)] hover:shadow-[0_6px_28px_rgba(255,215,0,0.45)] disabled:shadow-none flex items-center justify-center gap-3 active:scale-[0.98] hover:-translate-y-0.5"
-                                        >
-                                            Continue
-                                            <ChevronRight className="w-5 h-5" />
-                                        </button>
-                                    </div>
-                                </form>
                             ) : (
                                 <form
                                     onSubmit={handleDetailSubmit}
@@ -1047,54 +862,12 @@ export function LeadCaptureModal({
                                                 className="w-full px-6 py-4 bg-white dark:bg-black/20 border border-slate-200 dark:border-slate-700 focus:border-brand-primary/60 focus:shadow-[0_0_0_4px_rgba(255,215,0,0.1)] rounded-2xl outline-none font-bold text-slate-900 dark:text-white transition-all tracking-[0.2em] placeholder:text-slate-300"
                                             />
                                         </div>
-
-                                        {isStaff && (
-                                            <div className="space-y-3">
-                                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 px-2">
-                                                    Referred By (Optional)
-                                                </p>
-                                                <div className="relative">
-                                                    <span className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 font-bold text-sm select-none z-10">
-                                                        +91
-                                                    </span>
-                                                    <input
-                                                        type="tel"
-                                                        value={referredByPhone}
-                                                        onChange={e => {
-                                                            setReferredByPhone(normalizeIndianPhone(e.target.value));
-                                                            setReferralResolved(null);
-                                                            setReferralError(null);
-                                                        }}
-                                                        onBlur={handleReferralBlur}
-                                                        placeholder="Referrer's mobile"
-                                                        maxLength={10}
-                                                        className="w-full pl-14 pr-6 py-4 bg-white dark:bg-black/20 border border-slate-200 dark:border-slate-700 focus:border-indigo-500/60 focus:shadow-[0_0_0_4px_rgba(99,102,241,0.1)] rounded-2xl outline-none font-bold text-sm text-slate-900 dark:text-white tracking-wider transition-all placeholder:text-slate-300 dark:placeholder:text-slate-600"
-                                                    />
-                                                </div>
-                                                {referralResolving && (
-                                                    <p className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 px-2">
-                                                        <Loader2 className="w-3 h-3 animate-spin" /> Resolving
-                                                        referrer...
-                                                    </p>
-                                                )}
-                                                {referralResolved && (
-                                                    <p className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-600 px-2">
-                                                        ✓ {referralResolved.name || 'Member'} linked as referrer
-                                                    </p>
-                                                )}
-                                                {referralError && (
-                                                    <p className="text-[10px] font-bold text-red-500 px-2">
-                                                        {referralError}
-                                                    </p>
-                                                )}
-                                            </div>
-                                        )}
                                     </div>
 
                                     <div className="flex gap-3 pt-2">
                                         <button
                                             type="button"
-                                            onClick={() => setStep(isStaff && !memberId ? 'PHONE_CONFIRM' : 'PHONE')}
+                                            onClick={() => setStep('PHONE')}
                                             className="px-6 py-5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-black uppercase text-xs tracking-[0.12em] rounded-2xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-95 border border-slate-200/50"
                                         >
                                             Back
