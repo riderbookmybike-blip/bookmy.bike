@@ -149,6 +149,7 @@ interface DesktopPDPProps {
     quoteState?: 'IDLE' | 'SAVED' | 'DOWNLOADED';
     quoteActionDisabled?: boolean;
     quoteActionDisabledLabel?: string;
+    isPendingPrice?: boolean;
 }
 
 // FullLayoutDebugger extracted to ./Personalize/FullLayoutDebugger.tsx
@@ -200,6 +201,7 @@ export function DesktopPDP({
     quoteState = 'IDLE',
     quoteActionDisabled = false,
     quoteActionDisabledLabel,
+    isPendingPrice = false,
 }: DesktopPDPProps) {
     const params = useSearchParams();
     const { language } = useI18n();
@@ -866,6 +868,25 @@ export function DesktopPDP({
                                             )}
                                         </div>
                                     </div>
+
+                                    {/* Right: Vehicle identity — only on Gallery card when active */}
+                                    {isActive && card.id === 'GALLERY' && (
+                                        <div className="text-right shrink-0">
+                                            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 leading-none">
+                                                {product?.brand_name || product?.brand || ''}
+                                            </p>
+                                            <div className="flex items-baseline gap-1.5 justify-end mt-0.5">
+                                                <span className="text-base font-black text-slate-900 tracking-tight leading-none">
+                                                    {product?.model_name || product?.model || product?.name || ''}
+                                                </span>
+                                                {displayVariant && (
+                                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                                        {displayVariant}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Content Area */}
@@ -1264,7 +1285,7 @@ export function DesktopPDP({
                                     </div>
 
                                     <div
-                                        className={`absolute right-6 top-5 transition-all duration-500 ${isActive ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 pointer-events-none'}`}
+                                        className={`absolute right-6 top-5 transition-all duration-500 ${isActive && category.id !== 'REGISTRATION' ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 pointer-events-none'}`}
                                     >
                                         <div className="flex items-center gap-2 px-4 py-2 rounded-[1rem] bg-gradient-to-tr from-brand-primary/20 to-brand-primary/5 border border-brand-primary/30 shadow-[0_8px_20px_rgba(255,215,0,0.15)] ring-2 ring-white/50">
                                             <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
@@ -1375,6 +1396,7 @@ export function DesktopPDP({
                 quoteState={quoteState}
                 quoteActionDisabled={quoteActionDisabled}
                 quoteActionDisabledLabel={quoteActionDisabledLabel}
+                isPendingPrice={isPendingPrice}
             />
         </div>
     );

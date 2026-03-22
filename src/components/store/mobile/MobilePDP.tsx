@@ -442,7 +442,26 @@ export const MobilePDP = ({
                     onToggle={() => toggleCard('finance-summary')}
                 />
 
-                {/* 7b. Amortization Chart */}
+                {/* 8. Config Cards — all 5 categories as independent cards */}
+                <PdpConfigSection
+                    layout="mobile"
+                    data={data}
+                    handlers={{
+                        toggleAccessory,
+                        toggleInsuranceAddon,
+                        toggleService,
+                        toggleOffer,
+                        updateQuantity,
+                        setRegType,
+                    }}
+                    mobileOpenCardId={openContentCard}
+                    onMobileCardToggle={(id: string) => toggleCard(id)}
+                />
+
+                {/* 9. Tech Specs Categories (same category card count as desktop) */}
+                <PdpSpecsSection layout="mobile" product={product} data={data} />
+
+                {/* 10. Amortization Chart (shifted lower in flow) */}
                 <div className="glass-panel bg-white/90 rounded-3xl border border-slate-200 shadow-xl overflow-hidden">
                     <button
                         onClick={() => toggleCard('amortization')}
@@ -478,28 +497,9 @@ export const MobilePDP = ({
                         </div>
                     )}
                 </div>
-
-                {/* 8. Config Cards — all 5 categories as independent cards */}
-                <PdpConfigSection
-                    layout="mobile"
-                    data={data}
-                    handlers={{
-                        toggleAccessory,
-                        toggleInsuranceAddon,
-                        toggleService,
-                        toggleOffer,
-                        updateQuantity,
-                        setRegType,
-                    }}
-                    mobileOpenCardId={openContentCard}
-                    onMobileCardToggle={(id: string) => toggleCard(id)}
-                />
-
-                {/* 9. Tech Specs Categories (same category card count as desktop) */}
-                <PdpSpecsSection layout="mobile" product={product} data={data} />
             </div>
 
-            {/* 10. Unified Command Bar — with guard behaviors (G4) */}
+            {/* 11. Unified Command Bar — with guard behaviors (G4) */}
             <PdpCommandBar
                 layout="mobile"
                 getProductImage={getProductImage}
