@@ -3,12 +3,7 @@ import { TP_SUBTEXT, OD_SUBTEXT } from '@/lib/constants/insuranceConstants';
 
 import { createClient } from '@/lib/supabase/server';
 import { adminClient } from '@/lib/supabase/admin';
-import {
-    validateFinanceLeadDealer,
-    validateQuoteDealerContext,
-    validateBookingDealerContext,
-    validateDealerAuthorization,
-} from '@/lib/crm/contextHardening';
+import { validateBookingDealerContext, validateDealerAuthorization } from '@/lib/crm/contextHardening';
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { checkServiceability } from './serviceArea';
@@ -17,6 +12,7 @@ import { toAppStorageFormat } from '@/lib/utils/phoneUtils';
 import { isAccessoryCompatible } from '@/lib/catalog/accessoryCompatibility';
 import { sendStoreVisitSms } from '@/lib/sms/msg91';
 import { formatDisplayId } from '@/utils/displayId';
+import { buildShareIdentifierCandidates, isQuoteUuid, resolvePublicAppUrl } from './shareQuoteUtils';
 
 const END_CUSTOMER_ROLES = new Set(['bmb_user', 'member', 'customer']);
 const STAFF_SOURCE_HINTS = new Set(['LEADS', 'DEALER_REFERRAL', 'CRM']);
@@ -38,6 +34,20 @@ function normalizeLeadSource(source?: string | null) {
     const normalized = (source || '').trim().toUpperCase();
     if (normalized === 'WEBSITE_PDP') return 'PDP_QUICK_QUOTE';
     return normalized || undefined;
+}
+
+const PUBLIC_LEAD_SOURCES = new Set([
+    'PDP_QUICK_QUOTE',
+    'STORE_PDP',
+    'MARKETPLACE_QUICK_LEAD',
+    'PDP_FINANCE_SIMULATOR',
+    'WEBSITE',
+    'PUBLIC',
+]);
+
+function isPublicLeadSource(source?: string | null) {
+    const normalized = normalizeLeadSource(source);
+    return !!normalized && PUBLIC_LEAD_SOURCES.has(normalized);
 }
 
 function asRecord(value: any): Record<string, any> {
@@ -3046,16 +3056,19 @@ export async function createLeadAction(data: {
     organisation?: string;
 }) {
     const normalizedSource = normalizeLeadSource(data.source);
+    if (!isPublicLeadSource(normalizedSource)) {
+        return {
+            success: false,
+            message: 'Blocked: lead creation is allowed only via public marketplace flows.',
+        };
+    }
     const interestModel = data.interest_model || data.model || 'GENERAL_ENQUIRY';
     const interestText = (data.interest_text || '').trim();
     const referredByCodeInput = (data.referred_by_code || '').trim().toUpperCase();
     const referredByPhoneInput = toAppStorageFormat(data.referred_by_phone || '') || '';
     const referredByNameInput = (data.referred_by_name || '').trim();
-    const isCrmManualSource = normalizedSource === 'CRM_MANUAL';
     const authUser = await getAuthUser();
-    let actorIsStaff = false;
-    let actorActiveTenantId: string | null = null;
-    const selectedDealerId = (data.selected_dealer_id || '').trim() || null;
+    const selectedDealerId = null;
 
     // Strict sanitation
     const strictPhone = toAppStorageFormat(data.customer_phone);
@@ -3066,103 +3079,17 @@ export async function createLeadAction(data: {
     // console.log('[DEBUG] createLeadAction triggered by client:', data.customer_phone, 'Sanitized:', strictPhone);
 
     try {
-        // Handle owner_tenant_id fallback
-        let effectiveOwnerId = (data.owner_tenant_id || '').trim() || null;
-        let isStrict = true; // Default to strict
-
         const { data: settings } = await (adminClient
             .from('sys_settings')
             .select('default_owner_tenant_id, unified_context_strict_mode')
             .single() as any);
 
-        if (settings) {
-            if (!effectiveOwnerId) {
-                effectiveOwnerId = settings.default_owner_tenant_id;
-            }
-            if (settings.unified_context_strict_mode === false) {
-                isStrict = false;
-            }
-        }
+        // Intake owner is always AUMS/system default owner.
+        const effectiveOwnerId = settings?.default_owner_tenant_id || null;
 
         if (!effectiveOwnerId) {
             console.error('[DEBUG] No owner tenant identified');
             return { success: false, message: 'No owner tenant identified for lead creation' };
-        }
-
-        // Finance Partner Ownership Swap:
-        // When a BANK tenant creates a lead and selects a dealer,
-        // the DEALER becomes the owner and the BANK gets shared access.
-        let financeTenantId: string | null = null;
-        if (selectedDealerId && effectiveOwnerId !== selectedDealerId) {
-            const { data: creatorTenant } = await adminClient
-                .from('id_tenants')
-                .select('type')
-                .eq('id', effectiveOwnerId)
-                .single();
-
-            if (creatorTenant?.type === 'BANK') {
-                // console.log('[DEBUG] Finance partner lead swap: dealer becomes owner, bank gets shared access');
-                financeTenantId = effectiveOwnerId; // store bank as shared partner
-                effectiveOwnerId = selectedDealerId; // dealer becomes owner
-            }
-        }
-
-        // Hardening: Enforce dealer selection for finance simulation
-        const validation = validateFinanceLeadDealer(data.source, selectedDealerId || undefined, {
-            unified_context_strict_mode: isStrict,
-        });
-        if (!validation.success) {
-            return validation;
-        }
-
-        if (authUser?.id) {
-            const { data: activeTeamMembership } = await adminClient
-                .from('id_team')
-                .select('tenant_id')
-                .eq('user_id', authUser.id)
-                .eq('status', 'ACTIVE')
-                .order('created_at', { ascending: false })
-                .limit(1)
-                .maybeSingle();
-            actorActiveTenantId = activeTeamMembership?.tenant_id || null;
-
-            const { data: actorMember } = await adminClient
-                .from('id_members')
-                .select('role')
-                .eq('id', authUser.id)
-                .maybeSingle();
-            actorIsStaff = !isEndCustomerRole(actorMember?.role);
-        }
-
-        // For finance-team users, dealership context must be explicitly granted by dealership.
-        if (authUser?.id && actorIsStaff && selectedDealerId) {
-            const financeTenantForAccess = financeTenantId || effectiveOwnerId || null;
-            if (financeTenantForAccess) {
-                const { data: financeTenant } = await adminClient
-                    .from('id_tenants')
-                    .select('type')
-                    .eq('id', financeTenantForAccess)
-                    .maybeSingle();
-
-                if (String(financeTenant?.type || '').toUpperCase() === 'BANK') {
-                    const { data: accessRow } = await adminClient
-                        .from('dealer_finance_user_access')
-                        .select('dealer_tenant_id')
-                        .eq('finance_tenant_id', financeTenantForAccess)
-                        .eq('dealer_tenant_id', selectedDealerId)
-                        .eq('user_id', authUser.id)
-                        .eq('crm_access', true)
-                        .maybeSingle();
-
-                    if (!accessRow) {
-                        return {
-                            success: false,
-                            message:
-                                'No CRM access for selected dealership. Ask dealership admin to grant access first.',
-                        };
-                    }
-                }
-            }
         }
 
         let customerId: string;
@@ -3204,23 +3131,6 @@ export async function createLeadAction(data: {
         }
 
         // console.log('[DEBUG] Step 1 Complete. CustomerId:', customerId);
-
-        // Guardrail: staff should not accidentally create a lead mapped to their own team profile.
-        // Allow marketplace quick-quote/test paths, while keeping CRM/staff flows protected.
-        const isMarketplaceQuickQuote = normalizedSource === 'PDP_QUICK_QUOTE' || normalizedSource === 'STORE_PDP';
-        if (
-            isStrict &&
-            authUser?.id &&
-            customerId === authUser.id &&
-            (actorIsStaff || isStaffContextSource(data.source)) &&
-            !isMarketplaceQuickQuote
-        ) {
-            return {
-                success: false,
-                message:
-                    'Lead creation blocked: customer is mapped to your team account. Use customer phone/details and retry.',
-            };
-        }
 
         const normalizedPincode = (data.customer_pincode || '').replace(/\D/g, '').slice(0, 6);
         const nowIso = new Date().toISOString();
@@ -3270,7 +3180,7 @@ export async function createLeadAction(data: {
         const hasActiveDelivery = await hasMemberActiveDelivery(customerId);
         const referralBenefitEligible = !hasActiveDelivery;
         const hasExplicitReferralInput = Boolean(referredByCodeInput || referredByPhoneInput || referredByNameInput);
-        const isInternalTeamCrmLead = isCrmManualSource && (actorIsStaff || isStaffContextSource(data.source));
+        const isInternalTeamCrmLead = false;
 
         let defaultDealerReferralCode: string | null = null;
         let defaultDealerReferralTenantId: string | null = null;
@@ -3457,20 +3367,6 @@ export async function createLeadAction(data: {
             };
         }
 
-        const isStrictReferralRequired =
-            isCrmManualSource ||
-            actorIsStaff ||
-            isStaffContextSource(data.source) ||
-            normalizedSource === 'DEALER_REFERRAL';
-
-        if (isStrictReferralRequired && !resolvedReferrer?.memberId) {
-            return {
-                success: false,
-                message:
-                    "Referral is strictly mandatory for staff/dealer created leads. Please provide a valid O' Circle Membership ID or registered referrer phone.",
-            };
-        }
-
         const customerIdForInsert = String(customerId);
         const { data: lead, error } = await adminClient
             .from('crm_leads')
@@ -3487,7 +3383,7 @@ export async function createLeadAction(data: {
                 interest_text: interestText || interestModel,
                 interest_variant: data.model === 'GENERAL_ENQUIRY' ? null : null,
                 owner_tenant_id: effectiveOwnerId,
-                selected_dealer_tenant_id: financeTenantId || selectedDealerId || null,
+                selected_dealer_tenant_id: null,
                 // Column is non-nullable UUID; fallback to self to avoid invalid '' UUID writes.
                 referred_by_id: resolvedReferrer?.memberId || customerIdForInsert,
                 referred_by_name:
@@ -3823,6 +3719,14 @@ export async function createQuoteAction(data: {
     store_url?: string;
     source?: 'STORE_PDP' | 'LEADS';
 }): Promise<{ success: boolean; data?: any; message?: string; smsStatus?: QuoteSmsStatus }> {
+    const normalizedSource = normalizeLeadSource(data.source);
+    if (!isPublicLeadSource(normalizedSource)) {
+        return {
+            success: false,
+            message: 'Blocked: quote creation is allowed only via public marketplace flows.',
+        };
+    }
+
     const user = await getAuthUser();
     const safeLeadId = (data.lead_id || '').trim() || null;
     const isGuestMarketplaceQuote = !user && data.source === 'STORE_PDP' && !!safeLeadId;
@@ -3838,7 +3742,7 @@ export async function createQuoteAction(data: {
         .select('unified_context_strict_mode, default_owner_tenant_id')
         .single();
     const isStrict = settings?.unified_context_strict_mode !== false; // Active by default
-    let resolvedTenantId = (data.tenant_id || '').trim() || null;
+    let resolvedTenantId = settings?.default_owner_tenant_id || null;
 
     const createdBy = user?.id || null;
     let actorMember: { id: string; role: string | null } | null = null;
@@ -3850,7 +3754,6 @@ export async function createQuoteAction(data: {
             .maybeSingle();
         actorMember = actorMemberData;
     }
-    const actorIsStaff = !!createdBy && !isEndCustomerRole(actorMember?.role);
 
     // Prefer explicit member_id or lead-linked customer_id (avoid using staff auth IDs)
     let memberId: string | null = (data.member_id || '').trim() || null;
@@ -3890,14 +3793,6 @@ export async function createQuoteAction(data: {
                 memberId = lead.customer_id;
             }
 
-            // Guardrail: team users should not create lead-based quotes against their own staff profile.
-            if (actorIsStaff && createdBy && lead.customer_id && lead.customer_id === createdBy && !data.member_id) {
-                return {
-                    success: false,
-                    message:
-                        'Quote creation blocked: selected lead is mapped to your team profile. Open the correct customer lead.',
-                };
-            }
             leadReferrerId = lead.referred_by_id || null;
         }
     }
@@ -6766,7 +6661,8 @@ export async function sendQuoteToCustomer(quoteId: string): Promise<{ success: b
             const managerDiscount = q.manager_discount || 0;
             const totalDiscount = platformDiscount + managerDiscount;
             const onRoad = q.on_road_price || commercials.grand_total || 0;
-            const dossierUrl = `https://bookmy.bike/dossier/${displayId}`;
+            const baseUrl = resolvePublicAppUrl();
+            const dossierUrl = `${baseUrl}/dossier/${displayId}`;
 
             await sendQuoteDossierWhatsApp({
                 phone,
@@ -6802,55 +6698,52 @@ export async function sendQuoteToCustomer(quoteId: string): Promise<{ success: b
     return { success: true };
 }
 
-const QUOTE_UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-async function fetchQuoteForShare(identifier: string) {
+export async function fetchQuoteForShare(identifier: string) {
     const normalized = String(identifier || '').trim();
     if (!normalized) return null;
 
     const baseSelect = `
         *, display_id, commercials,
-        customer:customer_id(full_name, primary_phone, whatsapp),
+        customer:member_id(full_name, primary_phone, whatsapp),
         lead:lead_id(customer_name, customer_phone)
     `;
 
-    if (QUOTE_UUID_REGEX.test(normalized)) {
-        const { data } = await adminClient
-            .from('crm_quotes')
-            .select(baseSelect)
-            .eq('is_deleted', false)
-            .eq('id', normalized)
-            .maybeSingle();
-        if (data) return data as any;
+    try {
+        if (isQuoteUuid(normalized)) {
+            const { data, error } = await adminClient
+                .from('crm_quotes')
+                .select(baseSelect)
+                .eq('is_deleted', false)
+                .eq('id', normalized)
+                .maybeSingle();
+            if (error) console.error('[Share] Quote UUID lookup failed:', error);
+            if (data) return data as any;
+        }
+
+        const displayCandidates = buildShareIdentifierCandidates(normalized);
+
+        if (displayCandidates.length > 0) {
+            const { data, error } = await adminClient
+                .from('crm_quotes')
+                .select(baseSelect)
+                .eq('is_deleted', false)
+                .in('display_id', displayCandidates)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+            if (error) console.error('[Share] Quote display_id lookup failed:', error);
+            if (data) return data as any;
+        }
+
+        console.warn(
+            `[Share] Quote not found for identifier: ${identifier}. Normalized: ${normalized}, Candidates: ${displayCandidates.join(',')}`
+        );
+        return null;
+    } catch (err) {
+        console.error(`[Share] Unexpected exception during fetchQuoteForShare(${identifier}):`, err);
+        return null;
     }
-
-    const displayCandidates = Array.from(
-        new Set(
-            [
-                normalized,
-                normalized.toUpperCase(),
-                normalized.replace(/[^A-Z0-9]/gi, '').toUpperCase(),
-                normalized
-                    .replace(/^QT[-_ ]?/i, '')
-                    .replace(/[^A-Z0-9]/gi, '')
-                    .toUpperCase(),
-            ].filter(Boolean)
-        )
-    );
-
-    if (displayCandidates.length > 0) {
-        const { data } = await adminClient
-            .from('crm_quotes')
-            .select(baseSelect)
-            .eq('is_deleted', false)
-            .in('display_id', displayCandidates)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
-        if (data) return data as any;
-    }
-
-    return null;
 }
 
 async function canUserShareQuote(
@@ -6909,7 +6802,8 @@ export async function shareQuoteViaSms(quoteId: string): Promise<{ success: bool
         if (!phone) return { success: false, error: 'No recipient phone number' };
 
         const displayId = q.display_id ? formatDisplayId(q.display_id) : resolvedQuoteId.slice(0, 8);
-        const dossierUrl = `https://www.bookmy.bike/dossier/${q.display_id || displayId}`;
+        const baseUrl = resolvePublicAppUrl();
+        const dossierUrl = `${baseUrl}/dossier/${q.display_id || displayId}`;
 
         const result = await sendStoreVisitSms({ phone, name, storeUrl: dossierUrl });
 
@@ -6974,7 +6868,8 @@ export async function shareQuoteViaWhatsApp(quoteId: string): Promise<{ success:
         const managerDiscount = q.manager_discount || 0;
         const totalDiscount = platformDiscount + managerDiscount;
         const onRoad = q.on_road_price || commercials.grand_total || 0;
-        const dossierUrl = `https://bookmy.bike/dossier/${displayId}`;
+        const baseUrl = resolvePublicAppUrl();
+        const dossierUrl = `${baseUrl}/dossier/${displayId}`;
 
         const result = await sendQuoteDossierWhatsApp({
             phone,
@@ -8181,6 +8076,11 @@ export async function getQuoteByDisplayId(
                           null,
                       ltv: activeFinance.ltv ?? commercials.finance?.ltv ?? null,
                       roi: activeFinance.roi ?? commercials.finance?.roi ?? null,
+                      interestType:
+                          (activeFinance as any)?.interest_type ??
+                          commercials.finance?.interest_type ??
+                          commercials.pricing_snapshot?.finance_interest_type ??
+                          null,
                       tenure: activeFinance.tenure_months ?? commercials.finance?.tenure_months ?? null,
                       tenureMonths: activeFinance.tenure_months ?? commercials.finance?.tenure_months ?? null,
                       allowedTenures:
@@ -8194,6 +8094,11 @@ export async function getQuoteByDisplayId(
                           (commercials.pricing_snapshot?.finance_tenure_rows as any[] | undefined) ||
                           [],
                       emi: activeFinance.emi ?? commercials.finance?.emi ?? null,
+                      emiDate:
+                          (activeFinance as any)?.emi_date ??
+                          commercials.finance?.emi_date ??
+                          commercials.pricing_snapshot?.finance_emi_date ??
+                          null,
                       downPayment: activeFinance.down_payment ?? commercials.finance?.down_payment ?? null,
                       loanAmount: activeFinance.loan_amount ?? commercials.finance?.loan_amount ?? null,
                       grossLoanAmount:
@@ -8847,4 +8752,40 @@ export async function getAlternativeRecommendations(variantId: string) {
 
     if (filtered.length === 0) filtered = hydratedSiblings;
     return filtered.slice(0, 3);
+}
+
+export async function assignLeadToDealerAction(leadId: string, targetDealerId: string) {
+    const supabase = await createClient();
+    const { data: settings } = await supabase.from('sys_settings').select('default_owner_tenant_id').single();
+
+    const aumsTenantId = settings?.default_owner_tenant_id;
+    if (!aumsTenantId) {
+        return { success: false, message: 'System configuration error: AUMS tenant missing.' };
+    }
+
+    const context = await resolveActorContext();
+    if (context.actorTenantId !== aumsTenantId) {
+        return { success: false, message: 'Unauthorized: Only AUMS members can assign leads.' };
+    }
+
+    const { error } = await supabase.rpc('assign_lead_to_dealer', {
+        p_lead_id: leadId,
+        p_target_dealer_id: targetDealerId,
+        p_actor_tenant_id: context.actorTenantId,
+    });
+
+    if (error) {
+        console.error('Failed to assign lead to dealer:', error);
+        return { success: false, message: 'Failed to assign lead: ' + error.message };
+    }
+
+    await logLeadEvent({
+        leadId,
+        eventType: 'LEAD_ASSIGNED',
+        notes: `Assigned to dealer ${targetDealerId}`,
+        actorUserId: context.actorUserId,
+        actorTenantId: context.actorTenantId,
+    });
+
+    return { success: true };
 }
