@@ -3089,7 +3089,22 @@ export async function createLeadAction(data: {
 
         if (!effectiveOwnerId) {
             console.error('[DEBUG] No owner tenant identified');
-            return { success: false, message: 'No owner tenant identified for lead creation' };
+            return { success: false, message: 'Configuration error: No default owner tenant identified' };
+        }
+
+        // Hardening: Verify the tenant exists in id_tenants
+        const { data: tenantCheck } = await adminClient
+            .from('id_tenants')
+            .select('id')
+            .eq('id', effectiveOwnerId)
+            .maybeSingle();
+
+        if (!tenantCheck) {
+            console.error(`[DEBUG] Default owner tenant ID ${effectiveOwnerId} does not exist in id_tenants.`);
+            return {
+                success: false,
+                message: 'Configuration error: The designated default owner tenant is invalid or missing.',
+            };
         }
 
         let customerId: string;
@@ -3804,6 +3819,21 @@ export async function createQuoteAction(data: {
         return {
             success: false,
             message: 'Quote creation blocked: tenant context is missing.',
+        };
+    }
+
+    // Hardening: Verify the tenant exists in id_tenants
+    const { data: quoteTenantCheck } = await adminClient
+        .from('id_tenants')
+        .select('id')
+        .eq('id', resolvedTenantId)
+        .maybeSingle();
+
+    if (!quoteTenantCheck) {
+        console.error(`[DEBUG] Quote tenant ID ${resolvedTenantId} does not exist in id_tenants.`);
+        return {
+            success: false,
+            message: 'Configuration error: The designated quote tenant is invalid or missing.',
         };
     }
 
