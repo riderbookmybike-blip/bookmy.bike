@@ -30,6 +30,7 @@ import { useSystemBrandsLogic } from '@/hooks/SystemBrandsLogic';
 import { sanitizeSvg } from '@/lib/utils/sanitizeSvg';
 
 import { useAuth } from '@/components/providers/AuthProvider';
+import { createClient } from '@/lib/supabase/client';
 import { coinsNeededForPrice } from '@/lib/oclub/coin';
 import { Logo } from '@/components/brand/Logo';
 import { selectTrendingModels } from '@/lib/store/trending';
@@ -157,6 +158,22 @@ export function StoreHomePage({
     // Feature hooks
     const { user } = useAuth();
     const [userLocationStr, setUserLocationStr] = useState('');
+    // G2: id_members is SOT for name — fetched client-side on auth
+    const [memberFullName, setMemberFullName] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!user?.id) {
+            setMemberFullName(null);
+            return;
+        }
+        const supabase = createClient();
+        supabase
+            .from('id_members')
+            .select('full_name')
+            .eq('id', user.id)
+            .maybeSingle()
+            .then(({ data }) => setMemberFullName(data?.full_name ?? null));
+    }, [user?.id]);
 
     // EMI Calculator state
     const basePrice = 120000;
@@ -201,7 +218,7 @@ export function StoreHomePage({
             ...DEFAULT_SERVICE_CITIES.filter(city => city.toLowerCase() !== normalized),
         ].slice(0, 8);
     }, [primaryServiceLocation]);
-    const riderName = user?.user_metadata?.full_name?.split(' ')[0] || user?.user_metadata?.first_name || 'Rider';
+    const riderName = memberFullName?.split(' ')[0] || 'Rider';
     const isReturningUser = !!user;
 
     // Calculate real-time EMI

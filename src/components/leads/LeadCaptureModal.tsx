@@ -106,6 +106,9 @@ export function LeadCaptureModal({
 
     // Detect if current user role has been resolved
     const hasResolvedRole = typeof userRole === 'string' && userRole.length > 0;
+    // Derive staff status from role — not from auth metadata
+    const STAFF_ROLES = new Set(['ADMIN', 'OWNER', 'MANAGER', 'STAFF', 'BANK_STAFF', 'SUPER_ADMIN', 'SUPERADMIN']);
+    const isStaff = hasResolvedRole && STAFF_ROLES.has((userRole || '').toUpperCase());
     const effectiveTenantId = sessionDealerId || quoteTenantId || tenantId || undefined;
     const bannerTenantId = sessionDealerId || quoteTenantId || tenantId;
     const primaryMembership = memberships?.find(m => m.tenant_id === bannerTenantId);
@@ -155,9 +158,8 @@ export function LeadCaptureModal({
             const candidate =
                 member?.primary_phone ||
                 member?.whatsapp ||
+                // G2: user.phone is the canonical auth field — no user_metadata reads (G4)
                 user.phone ||
-                (user.user_metadata as any)?.phone ||
-                (user.user_metadata as any)?.mobile ||
                 '';
             if (isValidPhone(candidate)) {
                 setIsAutoSubmitting(true);
@@ -719,19 +721,13 @@ export function LeadCaptureModal({
                                         ) : (
                                             <Sparkles className="w-8 h-8" />
                                         )
-                                    ) : step === 'PHONE_CONFIRM' ? (
-                                        <ShieldCheck className="w-8 h-8" />
                                     ) : (
                                         <UserCircle2 className="w-8 h-8" />
                                     )}
                                 </div>
                                 <div className="flex-1">
                                     <h3 className="text-3xl font-black uppercase italic tracking-tighter text-slate-900 dark:text-white leading-none">
-                                        {step === 'PHONE'
-                                            ? 'Get Personal Quote'
-                                            : step === 'PHONE_CONFIRM'
-                                              ? 'Confirm Mobile'
-                                              : 'Complete Profile'}
+                                        {step === 'PHONE' ? 'Get Personal Quote' : 'Complete Profile'}
                                     </h3>
                                     <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1.5">
                                         {productName}

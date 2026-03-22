@@ -149,12 +149,8 @@ export default async function TenantDashboardLayout({
 
     const { data: profile } = await supabase.from('id_members').select('full_name').eq('id', user.id).maybeSingle();
 
-    const resolvedName =
-        profile?.full_name ||
-        user.user_metadata?.full_name ||
-        user.user_metadata?.name ||
-        user.email?.split('@')[0] ||
-        'User';
+    // G2: id_members is SOT — profile fetched above, email is last resort (G4: no user_metadata reads)
+    const resolvedName = profile?.full_name || user.email?.split('@')[0] || 'User';
     const tenantConfig = (matched.tenants?.config as unknown as TenantConfig) || null;
     const tenantType = (matched.tenants?.type === 'SUPER_ADMIN' ? 'AUMS' : matched.tenants?.type) as TenantType;
 

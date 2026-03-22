@@ -168,18 +168,16 @@ async function resolveActorDisplayNames(actorIds: string[]): Promise<Map<string,
     const missingActorIds = uniqueActorIds.filter(id => !actorNameMap.has(id));
     if (missingActorIds.length === 0) return actorNameMap;
 
+    // G2: id_members is SOT — only fall back to auth email, never user_metadata
     const authUsers = await Promise.all(
         missingActorIds.map(async id => {
             try {
                 const { data, error } = await adminClient.auth.admin.getUserById(id);
                 if (error || !data?.user) return { id, name: null as string | null };
                 const user = data.user as any;
-                const metadataName =
-                    String(user?.user_metadata?.full_name || '').trim() ||
-                    String(user?.user_metadata?.name || '').trim() ||
-                    String(user?.email || '').trim() ||
-                    null;
-                return { id, name: metadataName };
+                // Use only auth.email as last resort — not user_metadata (G4)
+                const fallbackName = String(user?.email || '').trim() || null;
+                return { id, name: fallbackName };
             } catch {
                 return { id, name: null as string | null };
             }
@@ -2109,16 +2107,18 @@ export async function addLeadNoteAction(input: {
     }
 
     const now = new Date().toISOString();
+    // G2: Resolve actor name from id_members (SOT), not user_metadata
+    const { data: noteActorRow } = await adminClient
+        .from('id_members')
+        .select('full_name')
+        .eq('id', user.id)
+        .maybeSingle();
     const note: LeadModuleNote = {
         id: `NOTE_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
         body,
         created_at: now,
         created_by: user.id,
-        created_by_name:
-            ((user as any)?.user_metadata?.full_name as string | undefined) ||
-            ((user as any)?.user_metadata?.name as string | undefined) ||
-            ((user as any)?.email as string | undefined) ||
-            null,
+        created_by_name: (noteActorRow?.full_name as string | undefined) || user.email || null,
         attachments: normalizedAttachments,
     };
 
@@ -2248,6 +2248,12 @@ export async function addLeadTaskAction(input: {
         console.error('addLeadTaskAction crm_tasks sync error:', crmTaskError);
     }
 
+    // G2: Resolve actor name from id_members (SOT), not user_metadata
+    const { data: taskActorRow } = await adminClient
+        .from('id_members')
+        .select('full_name')
+        .eq('id', user.id)
+        .maybeSingle();
     const task: LeadModuleTask = {
         id: `TASK_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
         title,
@@ -2258,7 +2264,7 @@ export async function addLeadTaskAction(input: {
         created_by: user.id,
         crm_task_id: (crmTask as any)?.id || null,
         priority: input.priority || 'MEDIUM',
-        assigned_to_name: (user as any).user_metadata?.full_name || user.email || null,
+        assigned_to_name: taskActorRow?.full_name || user.email || null,
     };
 
     const { tasks } = readLeadModuleData((data as any).utm_data);
@@ -2671,11 +2677,13 @@ export async function requestLeadShareAccessAction(input: {
         return { success: true, message: 'Share request already pending with lead owner.' };
     }
 
-    const requesterName =
-        ((user as any)?.user_metadata?.full_name as string | undefined) ||
-        ((user as any)?.user_metadata?.name as string | undefined) ||
-        ((user as any)?.email as string | undefined) ||
-        null;
+    // G2: Resolve requester name from id_members (SOT), not user_metadata
+    const { data: shareReqActorRow } = await adminClient
+        .from('id_members')
+        .select('full_name')
+        .eq('id', user?.id || '')
+        .maybeSingle();
+    const requesterName = shareReqActorRow?.full_name || user?.email || null;
 
     const normalizedNote = (input.note || '').trim();
 
@@ -2954,11 +2962,13 @@ export async function shareLeadAccessAction(input: { leadId: string; targetTenan
 
     const { notes, tasks, shares, share_requests } = readLeadModuleData((lead as any).utm_data);
     const now = new Date().toISOString();
-    const actorName =
-        ((user as any)?.user_metadata?.full_name as string | undefined) ||
-        ((user as any)?.user_metadata?.name as string | undefined) ||
-        ((user as any)?.email as string | undefined) ||
-        'Lead Owner';
+    // G2: Resolve actor name from id_members (SOT), not user_metadata
+    const { data: shareActorRow } = await adminClient
+        .from('id_members')
+        .select('full_name')
+        .eq('id', user.id)
+        .maybeSingle();
+    const actorName = shareActorRow?.full_name || user.email || 'Lead Owner';
 
     const nextShares = [...shares];
     targetTenantIds.forEach(targetTenantId => {
@@ -3206,7 +3216,8 @@ export async function createLeadAction(data: {
         let defaultDealerReferralName: string | null = null;
 
         if (isInternalTeamCrmLead && !hasExplicitReferralInput) {
-            const referralTenantId = actorActiveTenantId || selectedDealerId || effectiveOwnerId || null;
+            // TS fix: actorActiveTenantId was never in scope; effectiveOwnerId is the correct local var
+            const referralTenantId = selectedDealerId || effectiveOwnerId || null;
             if (referralTenantId) {
                 const { data: referralDealer } = await adminClient
                     .from('id_tenants')
@@ -8196,10 +8207,14 @@ export async function logQuoteEvent(
         try {
             const user = await getAuthUser();
             if (user) {
-                // If it's a generic actor name, resolve to real name
+                // G2: Resolve actor name from id_members (SOT), not user_metadata
                 if (!resolvedActor || resolvedActor === 'Team Member' || resolvedActor === 'System') {
-                    const fullName = user.user_metadata?.full_name || user.user_metadata?.name || null;
-                    resolvedActor = fullName || user.email?.split('@')[0] || 'System';
+                    const { data: timelineActorRow } = await adminClient
+                        .from('id_members')
+                        .select('full_name')
+                        .eq('id', user.id)
+                        .maybeSingle();
+                    resolvedActor = timelineActorRow?.full_name || user.email?.split('@')[0] || 'System';
                 }
 
                 if (tenantId) {
@@ -8806,7 +8821,8 @@ export async function assignLeadToDealerAction(leadId: string, targetDealerId: s
         return { success: false, message: 'Unauthorized: Only AUMS members can assign leads.' };
     }
 
-    const { error } = await supabase.rpc('assign_lead_to_dealer', {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase as any).rpc('assign_lead_to_dealer', {
         p_lead_id: leadId,
         p_target_dealer_id: targetDealerId,
         p_actor_tenant_id: context.actorTenantId,

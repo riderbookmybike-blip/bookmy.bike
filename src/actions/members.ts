@@ -859,7 +859,7 @@ export async function getSelfMemberProfile() {
     const { data: member } = await supabase
         .from('id_members')
         .select(
-            'id, display_id, full_name, primary_phone, primary_email, pan_number, aadhaar_number, member_status, created_at, updated_at'
+            'id, display_id, full_name, primary_phone, primary_email, email, pan_number, aadhaar_number, member_status, avatar_url, preferences, created_at, updated_at'
         )
         .eq('id', user.id)
         .maybeSingle();
@@ -956,4 +956,195 @@ export async function updateSelfMemberLocation(location: {
     }
 
     return { success: true, data };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CANONICAL IDENTITY SERVICE — Phase 1
+// id_members is the SINGLE SOURCE OF TRUTH for all member business data.
+// auth.users is used for OTP/session only.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * G1 — Ensure id_members row exists for a given auth user.
+ * Called immediately after every OTP success / auth callback.
+ * Safe to call on every login — ignoreDuplicates: true never overwrites existing data.
+ *
+ * @canonical
+ */
+export async function ensureMemberRow(
+    authUserId: string,
+    seed?: {
+        phone?: string;
+        fullName?: string;
+    }
+): Promise<void> {
+    try {
+        const insertPayload: Record<string, unknown> = {
+            id: authUserId,
+            role: 'customer', // production-confirmed default (21,431 / 22,344 rows)
+            tenant_id: null, // no forced tenant — assigned organically via CRM/lead flow
+        };
+
+        if (seed?.phone) {
+            const formatted = toAppStorageFormat(seed.phone);
+            if (formatted && isValidPhone(formatted)) {
+                insertPayload.primary_phone = formatted;
+            }
+        }
+
+        if (seed?.fullName?.trim()) {
+            insertPayload.full_name = toTitleCase(seed.fullName.trim());
+        }
+
+        const { error } = await adminClient
+            .from('id_members')
+            .upsert(insertPayload, { onConflict: 'id', ignoreDuplicates: true });
+
+        if (error) {
+            console.error('[ensureMemberRow] Upsert error:', error.message);
+        }
+    } catch (err) {
+        // Non-fatal — log but don't block login flow
+        console.error('[ensureMemberRow] Unexpected error:', err);
+    }
+}
+
+/**
+ * G3 — Canonical write path for self-edits (Profile page, O'Circle, user-facing flows).
+ * Uses RLS-enforced client — user can only update their own id_members row.
+ * This is the ONLY way profile data should be written from user-facing flows.
+ *
+ * @canonical
+ */
+export async function updateSelfMemberCanonical(updates: {
+    fullName?: string;
+    avatarUrl?: string;
+    primaryPhone?: string;
+    primaryEmail?: string;
+    pincode?: string;
+    district?: string;
+    taluka?: string;
+    state?: string;
+    dateOfBirth?: string;
+}) {
+    const user = await getAuthUser();
+    if (!user) return { success: false, error: 'UNAUTHENTICATED' } as const;
+
+    const sanitized: Record<string, unknown> = {};
+
+    if (updates.fullName?.trim()) {
+        sanitized.full_name = toTitleCase(updates.fullName.trim());
+    }
+    if (updates.avatarUrl !== undefined) {
+        sanitized.avatar_url = updates.avatarUrl;
+    }
+    if (updates.primaryPhone) {
+        const formatted = toAppStorageFormat(updates.primaryPhone);
+        if (!formatted || !isValidPhone(formatted)) {
+            return { success: false, error: 'INVALID_PHONE' } as const;
+        }
+        sanitized.primary_phone = formatted;
+    }
+    if (updates.primaryEmail?.trim()) {
+        sanitized.primary_email = updates.primaryEmail.trim().toLowerCase();
+    }
+    if (updates.pincode) sanitized.pincode = updates.pincode;
+    if (updates.district) sanitized.district = updates.district;
+    if (updates.taluka) sanitized.taluka = updates.taluka;
+    if (updates.state) sanitized.state = updates.state;
+    if (updates.dateOfBirth) sanitized.date_of_birth = updates.dateOfBirth;
+
+    if (Object.keys(sanitized).length === 0) {
+        return { success: false, error: 'NO_UPDATES' } as const;
+    }
+
+    const supabase = await createClient();
+    const { data, error } = await supabase
+        .from('id_members')
+        .update(sanitized)
+        .eq('id', user.id)
+        .select('id, full_name, avatar_url, primary_phone, primary_email, pincode, district, taluka, state')
+        .maybeSingle();
+
+    if (error) {
+        console.error('[updateSelfMemberCanonical] Update error:', error.message);
+        return { success: false, error: error.message } as const;
+    }
+
+    // Log the update event for auditability
+    try {
+        await adminClient.from('id_member_events').insert({
+            member_id: user.id,
+            tenant_id: null,
+            event_type: 'PROFILE_UPDATED',
+            payload: { fields: Object.keys(sanitized), source: 'SELF' },
+        });
+    } catch {
+        // Non-fatal — audit log failure should not block the update
+    }
+
+    // Revalidate consuming pages so SSR data reflects the update
+    try {
+        const { revalidatePath } = await import('next/cache');
+        revalidatePath('/profile');
+        revalidatePath('/store/ocircle');
+    } catch {
+        /* non-fatal in non-RSC context */
+    }
+
+    return { success: true, data } as const;
+}
+
+/**
+ * uploadMemberImage — server action that uploads a base64 JPEG to Supabase storage
+ * using the adminClient, which bypasses RLS entirely.
+ * Returns the public URL on success or an error message.
+ */
+export async function uploadMemberImage(
+    memberId: string,
+    base64Jpeg: string,
+    variant: 'avatar' | 'cover'
+): Promise<{ success: true; url: string } | { success: false; error: string }> {
+    if (!memberId) return { success: false, error: 'Member ID missing' };
+
+    // Decode base64 → Buffer
+    const buffer = Buffer.from(base64Jpeg, 'base64');
+    const fileName = variant === 'avatar' ? `avatar_${Date.now()}.jpg` : `cover_${Date.now()}.jpg`;
+    const filePath = `${memberId}/${fileName}`;
+
+    const { error: uploadError } = await adminClient.storage.from('users').upload(filePath, buffer, {
+        contentType: 'image/jpeg',
+        upsert: true,
+    });
+
+    if (uploadError) return { success: false, error: uploadError.message };
+
+    const {
+        data: { publicUrl },
+    } = adminClient.storage.from('users').getPublicUrl(filePath);
+
+    // Update the member record
+    if (variant === 'avatar') {
+        const { error: dbErr } = await adminClient
+            .from('id_members')
+            .update({ avatar_url: publicUrl })
+            .eq('id', memberId);
+        if (dbErr) return { success: false, error: dbErr.message };
+    } else {
+        const { data: freshRow } = await adminClient
+            .from('id_members')
+            .select('preferences')
+            .eq('id', memberId)
+            .maybeSingle();
+        const freshPrefs = (
+            freshRow?.preferences && typeof freshRow.preferences === 'object' ? freshRow.preferences : {}
+        ) as Record<string, unknown>;
+        const { error: dbErr } = await adminClient
+            .from('id_members')
+            .update({ preferences: { ...freshPrefs, cover_image_url: publicUrl } })
+            .eq('id', memberId);
+        if (dbErr) return { success: false, error: dbErr.message };
+    }
+
+    return { success: true, url: publicUrl };
 }

@@ -24,6 +24,7 @@ import { useTenant, TenantType } from '@/lib/tenant/tenantContext';
 import { createClient } from '@/lib/supabase/client';
 import { getSmartPincode } from '@/lib/location/geocode';
 import { syncMemberLocation } from '@/actions/locationSync';
+import { ensureMemberRow } from '@/actions/members';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { getErrorMessage } from '@/lib/utils/errorMessage';
 import { resolveLocation } from '@/utils/locationResolver';
@@ -741,11 +742,34 @@ export default function LoginSidebar({
             console.error('[LoginSidebar] Failed to fetch memberships:', err);
         }
 
+        // G1: Guarantee id_members row exists immediately after login
+        // Non-blocking — errors logged internally, will never interrupt login flow
+        const isPhone = authMethod !== 'EMAIL';
+        void ensureMemberRow(user!.id, {
+            phone: isPhone ? identifier.replace(/\D/g, '') : undefined,
+            fullName: fullName.trim() || undefined,
+        });
+
+        // Fetch member name from id_members for local storage
+        // Falls back to auth metadata as a transitional measure (Phase 2 will remove)
+        const supabaseForMember = createClient();
+        let idMembersName: string | null = null;
+        try {
+            const { data: memberRow } = await supabaseForMember
+                .from('id_members')
+                .select('full_name')
+                .eq('id', user!.id)
+                .maybeSingle();
+            idMembersName = memberRow?.full_name ?? null;
+        } catch {
+            /* non-fatal */
+        }
+
         // Session Set
         const primaryMembership = memberships && memberships.length > 0 ? memberships[0] : null;
-        const finalRole = detectedRole || primaryMembership?.role || 'member';
-        const displayName =
-            user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'User';
+        const finalRole = detectedRole || primaryMembership?.role || 'customer';
+        // G2 + G4 final: id_members is SOT — metadata fallback removed (0 active users affected, confirmed)
+        const displayName = idMembersName || user?.email?.split('@')[0] || 'Rider';
         localStorage.setItem('user_role', finalRole);
         localStorage.setItem('active_role', finalRole);
         localStorage.setItem('base_role', 'member');

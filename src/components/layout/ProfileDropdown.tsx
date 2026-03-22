@@ -11,17 +11,13 @@ import {
     Linkedin,
     ChevronRight,
     Camera,
-    Zap,
     Power,
     Home as HomeIcon,
     Bike,
     Heart as HeartIcon,
-    ArrowRightLeft,
-    Box,
     Globe,
     LayoutDashboard,
     User as LucideUser,
-    Package,
     Heart,
     Bell,
     Settings,
@@ -45,6 +41,7 @@ import {
 import { useFavorites } from '@/lib/favorites/favoritesContext';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { Logo } from '@/components/brand/Logo';
+import { OCircleLogo } from '@/components/common/OCircleLogo';
 import { useDealerSession } from '@/hooks/useDealerSession';
 import { OCircleMembershipCard, type WalletData } from '@/components/auth/OCircleMembershipCard';
 import { useTenant } from '@/lib/tenant/tenantContext';
@@ -66,6 +63,13 @@ interface ProfileMembership {
         studio_id?: string | null;
         district_name?: string | null;
     } | null;
+}
+
+interface MemberIdentityProfile {
+    full_name: string | null;
+    avatar_url: string | null;
+    primary_phone: string | null;
+    primary_email: string | null;
 }
 
 interface ProfileDropdownProps {
@@ -95,6 +99,7 @@ export function ProfileDropdown({
     const searchParams = useSearchParams();
     const { user: authUser } = useAuth();
     const [user, setUser] = useState<User | null>(null);
+    const [memberProfile, setMemberProfile] = useState<MemberIdentityProfile | null>(null);
     const [memberships, setProfileMemberships] = useState<ProfileMembership[]>([]);
     const [internalOpen, setInternalOpen] = useState(false);
     const [bCoins, setBCoins] = useState<number | null>(null);
@@ -305,7 +310,7 @@ ${referralUrl}`;
                 .select('full_name, primary_phone, whatsapp')
                 .eq('id', user.id)
                 .maybeSingle();
-            const advisorName = (member?.full_name || user.user_metadata?.full_name || '').trim();
+            const advisorName = String(member?.full_name || '').trim();
             const advisorPhone = (member?.primary_phone || member?.whatsapp || '').replace(/\D/g, '').slice(-10);
             if (!advisorName || advisorPhone.length < 10) {
                 setWaError('Your profile name/phone is incomplete. Update your profile first.');
@@ -372,7 +377,7 @@ ${referralUrl}`;
         const LIGHT_SLATE = '#cbd5e1';
 
         // User Data
-        const userName = (user?.user_metadata?.full_name || 'BOOKMY.BIKE MEMBER').toUpperCase();
+        const userName = (memberProfile?.full_name || 'BOOKMY.BIKE MEMBER').toUpperCase();
         const formattedID = formatMembershipCardCode(referralCode);
 
         const roundRect = (x: number, y: number, w: number, h: number, r: number) => {
@@ -713,10 +718,16 @@ ${referralUrl}`;
             const supabase = createClient();
             supabase
                 .from('id_members')
-                .select('display_id, referral_code')
+                .select('display_id, referral_code, full_name, avatar_url, primary_phone, primary_email')
                 .eq('id', authUser.id)
                 .maybeSingle()
                 .then(({ data }) => {
+                    setMemberProfile({
+                        full_name: data?.full_name || null,
+                        avatar_url: data?.avatar_url || null,
+                        primary_phone: data?.primary_phone || null,
+                        primary_email: data?.primary_email || null,
+                    });
                     if (data?.referral_code) {
                         // Use raw referral_code as the identity in the referral URL.
                         // formatMembershipCardCode() is applied at display time (poster/card)
@@ -729,6 +740,7 @@ ${referralUrl}`;
                 });
         } else {
             setBCoins(null);
+            setMemberProfile(null);
         }
     }, [authUser]);
 
@@ -876,9 +888,7 @@ ${referralUrl}`;
             // Sync avatar to id_members (SOT for member data)
             await supabase.from('id_members').update({ avatar_url: publicUrl }).eq('id', user.id);
 
-            setUser(prev =>
-                prev ? { ...prev, user_metadata: { ...prev.user_metadata, avatar_url: publicUrl } } : null
-            );
+            setMemberProfile(prev => (prev ? { ...prev, avatar_url: publicUrl } : prev));
         } catch (error) {
             console.error('Error uploading avatar:', error);
             alert('Error uploading avatar!');
@@ -900,9 +910,7 @@ ${referralUrl}`;
 
             await supabase.from('id_members').update({ avatar_url: presetUrl }).eq('id', user.id);
 
-            setUser(prev =>
-                prev ? { ...prev, user_metadata: { ...prev.user_metadata, avatar_url: presetUrl } } : null
-            );
+            setMemberProfile(prev => (prev ? { ...prev, avatar_url: presetUrl } : prev));
             setShowAvatarPicker(false);
         } catch (error) {
             console.error('Error setting avatar:', error);
@@ -1191,32 +1199,11 @@ ${referralUrl}`;
                     bg: 'bg-slate-500/10',
                 },
                 {
-                    label: 'Catalog',
-                    icon: Bike,
-                    href: '/catalog',
-                    color: 'text-indigo-500',
-                    bg: 'bg-indigo-500/10',
-                },
-                {
                     label: "O'Circle",
-                    icon: Zap,
-                    href: '/store/ocircle',
+                    icon: OCircleLogo,
+                    href: '/store/ocircle?tab=PROFILE',
                     color: 'text-amber-500',
                     bg: 'bg-amber-500/10',
-                },
-                {
-                    label: 'Membership',
-                    icon: Box,
-                    href: '/store/ocircle',
-                    color: 'text-cyan-500',
-                    bg: 'bg-cyan-500/10',
-                },
-                {
-                    label: 'Profile',
-                    icon: LucideUser,
-                    href: '/profile',
-                    color: 'text-blue-500',
-                    bg: 'bg-blue-500/10',
                 },
                 {
                     label: 'Favorites',
@@ -1224,27 +1211,6 @@ ${referralUrl}`;
                     href: '/store/compare/favorites',
                     color: 'text-rose-500',
                     bg: 'bg-rose-500/10',
-                },
-                {
-                    label: 'Compare',
-                    icon: ArrowRightLeft,
-                    href: '/compare',
-                    color: 'text-teal-500',
-                    bg: 'bg-teal-500/10',
-                },
-                {
-                    label: 'Orders',
-                    icon: Package,
-                    href: '/orders',
-                    color: 'text-orange-500',
-                    bg: 'bg-orange-500/10',
-                },
-                {
-                    label: 'Notifications',
-                    icon: Bell,
-                    href: '/notifications',
-                    color: 'text-purple-500',
-                    bg: 'bg-purple-500/10',
                 },
             ];
         }
@@ -1290,12 +1256,7 @@ ${referralUrl}`;
         ? 'bg-transparent border-white/40 text-white hover:text-white hover:border-white/70'
         : 'border-slate-900/10 text-slate-900 hover:bg-slate-100 dark:border-white/10 dark:text-white dark:hover:bg-white/10 shadow-sm';
 
-    const displayName = user
-        ? user.user_metadata?.full_name?.split(' ')[0] ||
-          user.user_metadata?.name?.split(' ')[0] ||
-          user.email?.split('@')[0] ||
-          'User'
-        : 'Guest';
+    const displayName = user ? memberProfile?.full_name?.split(' ')[0] || user.email?.split('@')[0] || 'User' : 'Guest';
 
     /** Animation Variants borrowed from LoginSidebar */
     const overlayVariants = {
@@ -1355,7 +1316,7 @@ ${referralUrl}`;
                             className={`${compactTrigger ? 'w-8 h-8' : 'w-8 h-8'} rounded-full overflow-hidden flex items-center justify-center text-slate-900 dark:text-white font-black text-xs transition-all ring-1 ring-white/10 shadow-inner`}
                         >
                             <img
-                                src={user.user_metadata?.avatar_url || getDefaultAvatar(user.id, displayName)}
+                                src={memberProfile?.avatar_url || getDefaultAvatar(user.id, displayName)}
                                 alt="Profile"
                                 className="w-full h-full object-cover"
                             />
@@ -1451,15 +1412,13 @@ ${referralUrl}`;
                                                         <div className="w-16 h-16 rounded-full bg-gradient-to-br from-brand-primary to-[#F4B000] flex items-center justify-center text-black text-xl font-black shadow-lg shadow-brand-primary/20 overflow-hidden relative z-10 ring-2 ring-white dark:ring-[#0F172A]">
                                                             <img
                                                                 src={
-                                                                    user.user_metadata?.avatar_url ||
+                                                                    memberProfile?.avatar_url ||
                                                                     getDefaultAvatar(
                                                                         user.id,
-                                                                        user.user_metadata?.full_name ||
-                                                                            user.user_metadata?.name ||
-                                                                            user.email
+                                                                        memberProfile?.full_name || user.email
                                                                     )
                                                                 }
-                                                                alt={user.user_metadata?.full_name || 'Profile'}
+                                                                alt={memberProfile?.full_name || 'Profile'}
                                                                 className="w-full h-full object-cover"
                                                             />
                                                         </div>
@@ -1485,7 +1444,7 @@ ${referralUrl}`;
 
                                                     <div className="relative z-10 min-w-0 flex-1">
                                                         <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight leading-tight truncate">
-                                                            {user.user_metadata?.full_name || 'BookMyBike User'}
+                                                            {memberProfile?.full_name || 'BookMyBike User'}
                                                         </h3>
                                                         <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mt-0.5 tracking-wide uppercase truncate">
                                                             {user.email}
@@ -1537,11 +1496,7 @@ ${referralUrl}`;
                                             {user && (
                                                 <motion.div variants={itemVariants} className="mt-2">
                                                     <OCircleMembershipCard
-                                                        memberName={
-                                                            user.user_metadata?.full_name ||
-                                                            user.user_metadata?.name ||
-                                                            'MEMBER'
-                                                        }
+                                                        memberName={memberProfile?.full_name || 'MEMBER'}
                                                         memberCode={memberCode}
                                                         wallet={walletData}
                                                         sizePreset="sidebar"

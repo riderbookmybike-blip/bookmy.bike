@@ -26,13 +26,24 @@ function ReferralInviteContent() {
     const params = useParams();
     const code = params.code as string;
     const [user, setUser] = useState<User | null>(null);
+    const [memberName, setMemberName] = useState<string | null>(null);
     const [catalogItems, setCatalogItems] = useState<ProductVariant[]>([]);
     const [isCatalogLoading, setIsCatalogLoading] = useState(true);
 
-    // Fetch User Context
+    // Fetch User Context + id_members name (G2: id_members is SOT)
     useEffect(() => {
         const supabase = createClient();
-        supabase.auth.getUser().then(({ data }) => setUser(data.user));
+        supabase.auth.getUser().then(({ data }) => {
+            setUser(data.user);
+            if (data.user?.id) {
+                supabase
+                    .from('id_members')
+                    .select('full_name')
+                    .eq('id', data.user.id)
+                    .maybeSingle()
+                    .then(({ data: m }) => setMemberName(m?.full_name ?? null));
+            }
+        });
     }, []);
 
     // Fetch dynamic "Biggest Discounts" (Specific requested lineup)
@@ -79,8 +90,9 @@ function ReferralInviteContent() {
     }, [code]);
 
     const userName = useMemo(() => {
-        return (user?.user_metadata?.full_name || 'BMB PRIVILEGED MEMBER').toUpperCase();
-    }, [user]);
+        // G2: id_members is SOT — no user_metadata reads (G4)
+        return (memberName || 'BMB PRIVILEGED MEMBER').toUpperCase();
+    }, [memberName]);
 
     const formattedCode = useMemo(() => {
         return formatMembershipCardCode(code);

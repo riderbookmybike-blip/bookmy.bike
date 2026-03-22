@@ -40,7 +40,7 @@ import { useDealerSession } from '@/hooks/useDealerSession';
 import { Logo } from '@/components/brand/Logo';
 import { MarketplaceHeader } from '@/components/layout/MarketplaceHeader';
 import { MarketplaceFooter } from '@/components/layout/MarketplaceFooter';
-import { updateMemberProfile } from '@/actions/profileActions';
+import { updateSelfMemberCanonical } from '@/actions/members';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { LocationPicker } from '@/components/store/LocationPicker';
@@ -141,22 +141,24 @@ export default function ProfileClient({
 
         setIsSaving(true);
         try {
-            // 1. Normalize phones
-            const memberToSave = {
-                ...localMember,
-                whatsapp: normalizePhone(localMember.whatsapp),
-                primary_phone: normalizePhone(localMember.primary_phone),
-            };
+            // G3: All profile writes go through canonical service (RLS-enforced, field-validated)
+            const result = await updateSelfMemberCanonical({
+                fullName: localMember.full_name,
+                primaryPhone: localMember.primary_phone,
+                primaryEmail: localMember.primary_email,
+                pincode: localMember.pincode,
+                district: localMember.district,
+                taluka: localMember.taluka,
+                state: localMember.state,
+                dateOfBirth: localMember.date_of_birth,
+            });
 
-            // 2. Save Member Profile
-            await updateMemberProfile(member.id, memberToSave);
+            if (!result.success) {
+                toast.error(`Save failed: ${result.error}`);
+                return;
+            }
 
-            // 3. Save Addresses (Later: parallelize if multiple)
-            // For now, assume we only handle the addresses in localAddresses
-            // (Minimal implementation for Step 2)
-
-            setOriginalMember(memberToSave);
-            setLocalMember(memberToSave);
+            setOriginalMember({ ...localMember });
             setIsEditMode(false);
             toast.success('Jan Kundali updated successfully');
         } catch (err) {
@@ -176,14 +178,14 @@ export default function ProfileClient({
         setLocalMember((prev: any) => ({ ...prev, [field]: value }));
     };
 
-    const displayName =
-        user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'User';
+    // G2: id_members is SOT — member prop comes from server-side getSelfMemberProfile()
+    const displayName = member?.full_name || user?.email?.split('@')[0] || 'User';
     const initials = displayName
         .split(' ')
         .map((n: string) => n[0])
         .join('')
         .toUpperCase();
-    const avatarUrl = user?.user_metadata?.avatar_url;
+    const avatarUrl = member?.avatar_url || null;
     const membershipId = member?.display_id ? formatMembershipCardCode(member.display_id) : 'PENDING';
 
     const handleCopyCode = () => {

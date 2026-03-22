@@ -201,32 +201,17 @@ export default function AnalyticsProvider({ children }: { children: React.ReactN
             } = await supabase.auth.getUser();
 
             if (user) {
-                // Resolve real name: user_metadata → id_members → fallback
-                const metaName = (user.user_metadata as any)?.full_name || (user.user_metadata as any)?.name || null;
-                const phone =
-                    (user.user_metadata as any)?.phone ||
-                    (user.user_metadata as any)?.mobile ||
-                    user.phone ||
-                    undefined;
+                // Canonical identity source: id_members only (no auth.user_metadata fallback)
+                const { data: profile } = await supabase
+                    .from('id_members')
+                    .select('full_name, primary_phone')
+                    .eq('id', user.id)
+                    .maybeSingle();
 
-                // Fetch real name from id_members if not in metadata
-                let realName = metaName;
-                if (!realName) {
-                    const { data: profile } = await supabase
-                        .from('id_members')
-                        .select('full_name, primary_phone')
-                        .eq('id', user.id)
-                        .maybeSingle();
-                    realName = (profile as any)?.full_name || null;
-                    // Also enrich phone if missing
-                    if (!phone && (profile as any)?.primary_phone) {
-                        cleanupCallbacks.push(
-                            clarityIdentify(user.id, (profile as any).primary_phone, realName ?? undefined)
-                        );
-                    }
-                }
+                const realName = (profile as any)?.full_name || null;
+                const phone = (profile as any)?.primary_phone || user.phone || undefined;
 
-                // Pass name → shows "Ajit Singh" in Clarity Recordings User ID column
+                // Pass name → shows real member name in Clarity Recordings User ID column
                 cleanupCallbacks.push(clarityIdentify(user.id, phone, realName ?? undefined));
                 clarityTag('auth_state', 'logged_in');
                 if (realName) clarityTag('user_name', realName);
