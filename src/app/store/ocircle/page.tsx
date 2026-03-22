@@ -30,7 +30,7 @@ export default async function OCirclePage({ searchParams }: { searchParams?: Pro
     const { data: member } = await supabase
         .from('id_members')
         .select(
-            'id, display_id, full_name, primary_phone, primary_email, pan_number, aadhaar_number, member_status, created_at, updated_at'
+            'id, display_id, full_name, primary_phone, primary_email, avatar_url, preferences, pan_number, aadhaar_number, aadhaar_front, pan_card_url, pincode, aadhaar_pincode, created_at, updated_at, date_of_birth, whatsapp, father_name, mother_name, work_company, work_designation, work_address1, work_phone, work_email, address, current_address1, current_address2, aadhaar_address1, aadhaar_address2'
         )
         .eq('id', user.id)
         .maybeSingle();
@@ -94,6 +94,19 @@ export default async function OCirclePage({ searchParams }: { searchParams?: Pro
         .eq('member_id', user.id)
         .order('created_at', { ascending: false });
 
+    // Fetch alternate contacts & addresses
+    const { data: memberContacts } = await supabase
+        .from('id_member_contacts')
+        .select('id, contact_type, label, value, is_primary, verified_at, created_at')
+        .eq('member_id', user.id)
+        .order('is_primary', { ascending: false });
+
+    const { data: memberAddresses } = await supabase
+        .from('id_member_addresses')
+        .select('id, label, line1, line2, line3, taluka, state, country, pincode, is_current, created_at')
+        .eq('member_id', user.id)
+        .order('is_current', { ascending: false });
+
     const [walletRes, ledgerRes] = await Promise.all([getOClubWallet(user.id), getOClubLedger(user.id, 40)]);
     const wallet = walletRes.success ? walletRes.wallet : null;
     const ledger = ledgerRes.success ? ledgerRes.ledger || [] : [];
@@ -108,6 +121,8 @@ export default async function OCirclePage({ searchParams }: { searchParams?: Pro
             memberDocuments={memberDocuments || []}
             wallet={wallet}
             ledger={ledger}
+            memberContacts={memberContacts || []}
+            memberAddresses={memberAddresses || []}
         />
     );
 }

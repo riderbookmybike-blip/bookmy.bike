@@ -31,6 +31,7 @@ import { Logo } from '@/components/brand/Logo';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useRouter } from 'next/navigation';
 import { getOClubWallet, getOClubLedger } from '@/actions/oclub';
+import { createClient } from '@/lib/supabase/client';
 
 /* ═══════════════════════════════════════════════════
    DATA
@@ -188,8 +189,24 @@ export function OCircleClient() {
     const [ledger, setLedger] = useState<any[]>([]);
     const [walletLoading, setWalletLoading] = useState(false);
     const [showStickyCta, setShowStickyCta] = useState(false);
+    // G2: id_members is SOT for name — fetched client-side on auth
+    const [memberFullName, setMemberFullName] = useState<string | null>(null);
     const { user } = useAuth();
     const router = useRouter();
+
+    useEffect(() => {
+        if (!user?.id) {
+            setMemberFullName(null);
+            return;
+        }
+        const supabase = createClient();
+        supabase
+            .from('id_members')
+            .select('full_name')
+            .eq('id', user.id)
+            .maybeSingle()
+            .then(({ data }) => setMemberFullName(data?.full_name ?? null));
+    }, [user?.id]);
 
     // Fetch wallet + ledger for logged-in user
     useEffect(() => {
@@ -264,7 +281,8 @@ export function OCircleClient() {
         }
     };
 
-    const memberName = String(user?.user_metadata?.full_name ?? '').toUpperCase() || 'YOUR NAME HERE';
+    // G2: Read name from id_members (canonical SOT)
+    const memberName = (memberFullName ?? '').toUpperCase() || 'YOUR NAME HERE';
 
     return (
         <div className="min-h-screen bg-[#0b0d10] text-white">
