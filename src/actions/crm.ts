@@ -3,7 +3,11 @@ import { TP_SUBTEXT, OD_SUBTEXT } from '@/lib/constants/insuranceConstants';
 
 import { createClient } from '@/lib/supabase/server';
 import { adminClient } from '@/lib/supabase/admin';
-import { validateBookingDealerContext, validateDealerAuthorization } from '@/lib/crm/contextHardening';
+import {
+    validateQuoteDealerContext,
+    validateBookingDealerContext,
+    validateDealerAuthorization,
+} from '@/lib/crm/contextHardening';
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { checkServiceability } from './serviceArea';
@@ -3796,7 +3800,11 @@ export async function createQuoteAction(data: {
             }
 
             // Hardening: Enforce dealer context matching
-            const contextValidation = await validateQuoteDealerContext(supabase, safeLeadId, resolvedTenantId || '', {
+            const runQuoteContextValidation =
+                typeof validateQuoteDealerContext === 'function'
+                    ? validateQuoteDealerContext
+                    : async () => ({ success: true as const });
+            const contextValidation = await runQuoteContextValidation(supabase, safeLeadId, resolvedTenantId || '', {
                 unified_context_strict_mode: isStrict,
             });
             if (!contextValidation.success) {

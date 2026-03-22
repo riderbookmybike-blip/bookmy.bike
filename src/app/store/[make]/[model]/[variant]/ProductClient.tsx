@@ -570,6 +570,7 @@ export default function ProductClient({
         otherOffers,
         resolvedLocation,
         serverPricing,
+        isHydrating,
         dealerFetchState,
         dealerFetchNotice,
     } = useSystemDealerContext({
@@ -643,6 +644,13 @@ export default function ProductClient({
         legacyBestOffer?.dealer_id ||
         legacyBestOffer?.id ||
         undefined;
+    const isQuoteTenantPending =
+        !quoteTenantId && (isHydrating || dealerFetchState === 'IDLE' || dealerFetchState === 'GATED');
+    const quoteActionDisabled = !quoteTenantId;
+    const quoteActionDisabledLabel = isQuoteTenantPending ? 'SEARCHING BEST OFFER...' : 'SET LOCATION TO GET QUOTE';
+    const quoteActionDisabledNotice = isQuoteTenantPending
+        ? 'Searching best offer for you, please stay with us.'
+        : dealerFetchNotice || 'Best offer dealer abhi resolve nahi hua. Location set karke retry karein.';
     const resolvedStudioIdForUrl =
         ssppServerPricing?.dealer?.studio_id ||
         initialServerPricing?.dealer?.studio_id ||
@@ -1221,7 +1229,7 @@ export default function ProductClient({
         if (requireAuth('save_quote')) return;
         if (!leadContext) return;
         if (!quoteTenantId) {
-            toast.error(dealerFetchNotice || 'Best offer dealer abhi resolve nahi hua. Thodi der baad retry karein.');
+            toast.error(quoteActionDisabledNotice);
             return;
         }
         if (!colorSkuId) {
@@ -1271,7 +1279,7 @@ export default function ProductClient({
     const handleDirectPublicSaveQuote = async () => {
         if (requireAuth('save_quote')) return;
         if (!quoteTenantId) {
-            toast.error(dealerFetchNotice || 'Best offer dealer abhi resolve nahi hua. Thodi der baad retry karein.');
+            toast.error(quoteActionDisabledNotice);
             return;
         }
         if (!colorSkuId) {
@@ -1359,7 +1367,7 @@ export default function ProductClient({
     const handleBookingRequest = async () => {
         if (requireAuth('book_now')) return;
         if (!quoteTenantId) {
-            toast.error(dealerFetchNotice || 'Best offer dealer abhi resolve nahi hua. Thodi der baad retry karein.');
+            toast.error(quoteActionDisabledNotice);
             return;
         }
         if (!colorSkuId) {
@@ -1701,6 +1709,8 @@ export default function ProductClient({
         cachedPincode: cachedLocationHint?.pincode || undefined,
         serviceability: derivedServiceability,
         quoteState: quotePhase,
+        quoteActionDisabled,
+        quoteActionDisabledLabel,
     };
     const leadDealerMismatch = Boolean(
         leadMeta?.leadDealerId && sessionDealerId && leadMeta.leadDealerId !== sessionDealerId

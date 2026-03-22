@@ -39,6 +39,8 @@ export interface MobilePDPProps {
         handleColorChange: (id: string) => void;
         handleShareQuote: () => void;
         handleSaveQuote: () => void;
+        handleDownloadQuote?: () => void;
+        handleReachUsQuote?: () => void;
         handleBookingRequest: () => void;
         toggleAccessory: (id: string) => void;
         toggleInsuranceAddon: (id: string) => void;
@@ -71,6 +73,9 @@ export interface MobilePDPProps {
         pincode?: string;
         taluka?: string;
     };
+    quoteState?: 'IDLE' | 'SAVED' | 'DOWNLOADED';
+    quoteActionDisabled?: boolean;
+    quoteActionDisabledLabel?: string;
 }
 
 // ============================================================================
@@ -98,6 +103,9 @@ export const MobilePDP = ({
     onRetryLocation,
     cachedPincode,
     serviceability,
+    quoteState = 'IDLE',
+    quoteActionDisabled = false,
+    quoteActionDisabledLabel,
 }: MobilePDPProps) => {
     const { language } = useI18n();
     const [promoTimeLeftMs, setPromoTimeLeftMs] = useState(15 * 60 * 1000);
@@ -123,6 +131,8 @@ export const MobilePDP = ({
         handleColorChange,
         handleShareQuote,
         handleSaveQuote,
+        handleDownloadQuote,
+        handleReachUsQuote,
         handleBookingRequest,
         setEmiTenure,
         setUserDownPayment,
@@ -508,6 +518,8 @@ export const MobilePDP = ({
                 emiTenure={emiTenure}
                 handleShareQuote={handleShareQuote}
                 handleSaveQuote={handleSaveQuote}
+                handleDownloadQuote={handleDownloadQuote}
+                handleReachUsQuote={handleReachUsQuote}
                 handleBookingRequest={handleBookingRequest}
                 serviceability={serviceability}
                 isGated={isGated ?? false}
@@ -520,6 +532,9 @@ export const MobilePDP = ({
                 onEditLocation={onRetryLocation}
                 deliveryByLabel={deliveryByLabel}
                 studioIdLabel={studioIdLabel}
+                quoteState={quoteState}
+                quoteActionDisabled={quoteActionDisabled}
+                quoteActionDisabledLabel={quoteActionDisabledLabel}
             />
         </div>
     );

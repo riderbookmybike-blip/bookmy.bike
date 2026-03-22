@@ -85,6 +85,8 @@ export interface PdpCommandBarProps {
     isLoggedIn?: boolean;
     /** IDLE = not saved yet; SAVED = quote saved, show Download Dossier CTA; DOWNLOADED = dossier opened, show Share CTA */
     quoteState?: 'IDLE' | 'SAVED' | 'DOWNLOADED';
+    quoteActionDisabled?: boolean;
+    quoteActionDisabledLabel?: string;
 }
 
 // ── WhatsApp Phone Modal ─────────────────────────────────────────────────────
@@ -815,6 +817,8 @@ export function PdpCommandBar({
     studioIdLabel,
     isLoggedIn = false,
     quoteState = 'IDLE',
+    quoteActionDisabled = false,
+    quoteActionDisabledLabel,
 }: PdpCommandBarProps) {
     const isDesktop = layout === 'desktop';
 
@@ -829,7 +833,7 @@ export function PdpCommandBar({
         isGated,
         serviceability,
     });
-    const isDisabled = barState.isDisabled;
+    const isDisabled = barState.isDisabled || quoteActionDisabled;
     const isTeamView = Boolean(onWaSend);
     // State machine: IDLE → SAVE QUOTE, SAVED → DOWNLOAD DOSSIER, DOWNLOADED → SHARE QUOTE
     const isSaved = quoteState === 'SAVED';
@@ -843,7 +847,7 @@ export function PdpCommandBar({
             ? (handleDownloadQuote ?? handleSaveQuote)
             : handleSaveQuote;
     const primaryLabel = isDisabled
-        ? barState.primaryLabel
+        ? quoteActionDisabledLabel || barState.primaryLabel
         : isTeamView
           ? 'SHARE QUOTE'
           : isDownloaded

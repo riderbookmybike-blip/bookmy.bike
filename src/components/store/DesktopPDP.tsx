@@ -147,6 +147,8 @@ interface DesktopPDPProps {
     };
     /** IDLE = not saved; SAVED = quote saved, CTA becomes Download Dossier; DOWNLOADED = dossier opened, CTA becomes Share */
     quoteState?: 'IDLE' | 'SAVED' | 'DOWNLOADED';
+    quoteActionDisabled?: boolean;
+    quoteActionDisabledLabel?: string;
 }
 
 // FullLayoutDebugger extracted to ./Personalize/FullLayoutDebugger.tsx
@@ -196,6 +198,8 @@ export function DesktopPDP({
     onWaSend,
     serviceability,
     quoteState = 'IDLE',
+    quoteActionDisabled = false,
+    quoteActionDisabledLabel,
 }: DesktopPDPProps) {
     const params = useSearchParams();
     const { language } = useI18n();
@@ -1369,6 +1373,8 @@ export function DesktopPDP({
                 handleDownloadQuote={handleDownloadQuote}
                 handleReachUsQuote={handleReachUsQuote}
                 quoteState={quoteState}
+                quoteActionDisabled={quoteActionDisabled}
+                quoteActionDisabledLabel={quoteActionDisabledLabel}
             />
         </div>
     );
