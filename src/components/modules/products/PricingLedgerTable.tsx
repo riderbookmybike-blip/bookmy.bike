@@ -464,22 +464,31 @@ export default function PricingLedgerTable({
     type CategoryType = 'vehicles' | 'accessories' | 'service';
     const [activeFilterColumn, setActiveFilterColumn] = useState<string | null>(null);
     const [activeToolbarFilter, setActiveToolbarFilter] = useState<string | null>(null);
-    const [activeCategory, setActiveCategory] = useState<CategoryType>('vehicles');
     const ITEMS_PER_PAGE = 50;
     const [currentPage, setCurrentPage] = useState(1);
     const [filters, setFilters] = useState<Partial<Record<keyof SKUPriceRow, string>>>({});
     const [sortConfig, setSortConfig] = useState<{ key: keyof SKUPriceRow; direction: 'asc' | 'desc' } | null>(null);
 
     const [searchText, setSearchText] = useState('');
-    const [prevSelectedCategory, setPrevSelectedCategory] = useState(selectedCategory);
-    const [prevFilters, setPrevFilters] = useState({
-        filters,
+
+    // Parent-level filter context changed (category/brand/model/state/quick filter):
+    // clear table-local search & column filters to avoid hidden stale constraints.
+    useEffect(() => {
+        setFilters({});
+        setSearchText('');
+        setSortConfig(null);
+        setActiveFilterColumn(null);
+        setFilterDropdownPos(null);
+        setCurrentPage(1);
+    }, [
+        selectedCategory,
         selectedBrand,
         selectedSubCategory,
-        selectedStateId,
         selectedModel,
         selectedVariant,
-    } as any);
+        selectedStateId,
+        quickFilter,
+    ]);
 
     const formatMoney = (value: number | null | undefined) => {
         if (value === null || value === undefined) return '—';
@@ -593,52 +602,22 @@ export default function PricingLedgerTable({
         return null;
     };
 
+    // Derive activeCategory synchronously from selectedCategory prop.
+    // useMemo ensures the correct value on EVERY render without an extra setState cycle.
+    // The previous render-phase setState caused a stale 'vehicles' value to be used on
+    // the first render after category switch, making the Accessories/Service tab blank.
+    const activeCategory: CategoryType = useMemo(() => {
+        if (!selectedCategory || selectedCategory === 'ALL') return 'vehicles';
+        const raw = selectedCategory.toLowerCase();
+        if (raw === 'accessory' || raw === 'accessories') return 'accessories';
+        if (raw === 'service' || raw === 'services') return 'service';
+        return 'vehicles';
+    }, [selectedCategory]);
+
+    // Clear selection when category tab changes
     useEffect(() => {
         setSelectedSkuIds(new Set());
     }, [activeCategory]);
-
-    // Sync internal category with prop (Render phase adjustment)
-    if (selectedCategory !== prevSelectedCategory) {
-        setPrevSelectedCategory(selectedCategory);
-        setCurrentPage(1);
-        if (selectedCategory && selectedCategory !== 'ALL') {
-            const rawCat = selectedCategory.toLowerCase();
-            let mappedCat: CategoryType = 'vehicles'; // Default
-
-            if (rawCat === 'accessory' || rawCat === 'accessories') mappedCat = 'accessories';
-            else if (rawCat === 'service' || rawCat === 'services') mappedCat = 'service';
-            else if (rawCat === 'vehicle' || rawCat === 'vehicles') mappedCat = 'vehicles';
-
-            setActiveCategory(mappedCat);
-        } else {
-            // If ALL, maybe default to vehicles or handle differently?
-            // For now, let's keep it as is, or reset to vehicles.
-            // The Logic below filters by activeCategory. If we want ALL, we might need activeCategory to be null?
-            // But the UI seems tab-based logic. Let's assume Vehicle is default.
-            setActiveCategory('vehicles');
-        }
-    }
-
-    // Reset page 1 and clear selection on internal filters (Render phase adjustment)
-    if (
-        filters !== prevFilters.filters ||
-        selectedBrand !== prevFilters.selectedBrand ||
-        selectedSubCategory !== prevFilters.selectedSubCategory ||
-        selectedStateId !== prevFilters.selectedStateId ||
-        selectedModel !== (prevFilters as any).selectedModel ||
-        selectedVariant !== (prevFilters as any).selectedVariant
-    ) {
-        setPrevFilters({
-            filters,
-            selectedBrand,
-            selectedSubCategory,
-            selectedStateId,
-            selectedModel,
-            selectedVariant,
-        } as any);
-        setCurrentPage(1);
-        setSelectedSkuIds(new Set());
-    }
 
     // Sort & Filter State
     const [filterDropdownPos, setFilterDropdownPos] = useState<{ top: number; left: number } | null>(null);
