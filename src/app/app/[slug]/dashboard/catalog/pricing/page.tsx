@@ -261,31 +261,116 @@ export default function PricingPage() {
                 allowedBrandIds = (dealerBrandsData || []).map((r: any) => r.brand_id).filter(Boolean);
             }
 
-            // V2 Catalog Fetch: SKU -> Variant -> Model -> Brand
-            let skuQuery = supabase
-                .from('cat_skus')
-                .select(
-                    `
-                    id, name, slug, position, status, sku_type,
-                    hex_primary, hex_secondary, color_name, finish,
-                    model:cat_models!model_id (
-                        id, name, slug, position, status, product_type,
-                        brand:cat_brands!brand_id (id, name, logo_svg)
-                    ),
-                    vehicle_variant:cat_variants_vehicle!vehicle_variant_id (id, name, slug, position, displacement, max_power),
-                    accessory_variant:cat_variants_accessory!accessory_variant_id (id, name, slug, position),
-                    service_variant:cat_variants_service!service_variant_id (id, name, slug, position)
-                `
-                )
-                .order('position', { ascending: true, nullsFirst: false });
+            const skuSelect = `
+                id, name, slug, position, status, sku_type,
+                hex_primary, hex_secondary, color_name, finish,
+                model:cat_models!model_id (
+                    id, name, slug, position, status, product_type,
+                    brand:cat_brands!brand_id (id, name, logo_svg)
+                ),
+                vehicle_variant:cat_variants_vehicle!vehicle_variant_id (id, name, slug, position, displacement, max_power),
+                accessory_variant:cat_variants_accessory!accessory_variant_id (id, name, slug, position),
+                service_variant:cat_variants_service!service_variant_id (id, name, slug, position)
+            `;
 
-            // Apply brand filter if dealer has brand restrictions
+            // V2 Catalog Fetch:
+            // - VEHICLE: dealer brand restricted for mono-brand dealers
+            // - ACCESSORY/SERVICE: fetched without brand restriction
+            let skuData: any[] = [];
             if (allowedBrandIds.length > 0) {
-                skuQuery = (skuQuery as any).in('brand_id', allowedBrandIds);
-            }
+                const [vehicleSkuRes, nonVehicleSkuRes] = await Promise.all([
+                    (supabase as any)
+                        .from('cat_skus')
+                        .select(skuSelect)
+                        .eq('sku_type', 'VEHICLE')
+                        .in('brand_id', allowedBrandIds)
+                        .order('position', { ascending: true, nullsFirst: false }),
+                    (supabase as any)
+                        .from('cat_skus')
+                        .select(skuSelect)
+                        .in('sku_type', ['ACCESSORY', 'SERVICE'])
+                        .order('position', { ascending: true, nullsFirst: false }),
+                ]);
 
-            const { data: skuData, error: skuError } = await skuQuery;
-            if (skuError) throw skuError;
+                if (vehicleSkuRes.error) throw vehicleSkuRes.error;
+                if (nonVehicleSkuRes.error) throw nonVehicleSkuRes.error;
+
+                const vehicleSkus = vehicleSkuRes.data || [];
+                const nonVehicleSkus = nonVehicleSkuRes.data || [];
+
+                // Build dealer compatibility scope from brand -> model -> variant.
+                let dealerModelIds: string[] = [];
+                let dealerVariantIds: string[] = [];
+                const { data: dealerModelsData, error: dealerModelsError } = await (supabase as any)
+                    .from('cat_models')
+                    .select('id')
+                    .in('brand_id', allowedBrandIds);
+                if (dealerModelsError) throw dealerModelsError;
+                dealerModelIds = (dealerModelsData || []).map((m: any) => m.id).filter(Boolean);
+
+                if (dealerModelIds.length > 0) {
+                    const { data: dealerVariantsData, error: dealerVariantsError } = await (supabase as any)
+                        .from('cat_variants_vehicle')
+                        .select('id')
+                        .in('model_id', dealerModelIds);
+                    if (dealerVariantsError) throw dealerVariantsError;
+                    dealerVariantIds = (dealerVariantsData || []).map((v: any) => v.id).filter(Boolean);
+                }
+
+                const dealerBrandSet = new Set(allowedBrandIds);
+                const dealerModelSet = new Set(dealerModelIds);
+                const dealerVariantSet = new Set(dealerVariantIds);
+
+                const accessorySkus = nonVehicleSkus.filter((sku: any) => sku?.sku_type === 'ACCESSORY');
+                const serviceSkus = nonVehicleSkus.filter((sku: any) => sku?.sku_type === 'SERVICE');
+
+                const accessoryVariantIds = accessorySkus.map((sku: any) => sku?.accessory_variant?.id).filter(Boolean);
+                const { data: accessoryCompatRows, error: accessoryCompatError } =
+                    accessoryVariantIds.length > 0
+                        ? await (supabase as any)
+                              .from('cat_accessory_suitable_for')
+                              .select('variant_id, is_universal, target_brand_id, target_model_id, target_variant_id')
+                              .in('variant_id', accessoryVariantIds)
+                        : ({ data: [] as any[], error: null } as any);
+                if (accessoryCompatError) throw accessoryCompatError;
+
+                const variantCompatMap = new Map<string, any[]>();
+                (accessoryCompatRows || []).forEach((row: any) => {
+                    const variantId = String(row?.variant_id || '').trim();
+                    if (!variantId) return;
+                    if (!variantCompatMap.has(variantId)) variantCompatMap.set(variantId, []);
+                    variantCompatMap.get(variantId)!.push(row);
+                });
+
+                const compatibleAccessorySkus = accessorySkus.filter((sku: any) => {
+                    const variantId = String(sku?.accessory_variant?.id || '').trim();
+                    if (!variantId) return false;
+                    const rows = variantCompatMap.get(variantId) || [];
+                    if (rows.length === 0) return false;
+
+                    return rows.some((row: any) => {
+                        const targetBrandId = row?.target_brand_id;
+                        const targetModelId = row?.target_model_id;
+                        const targetVariantId = row?.target_variant_id;
+                        const isUniversal =
+                            row?.is_universal === true || (!targetBrandId && !targetModelId && !targetVariantId);
+                        if (isUniversal) return true;
+                        if (targetBrandId && !dealerBrandSet.has(targetBrandId)) return false;
+                        if (targetModelId && !dealerModelSet.has(targetModelId)) return false;
+                        if (targetVariantId && !dealerVariantSet.has(targetVariantId)) return false;
+                        return true;
+                    });
+                });
+
+                skuData = [...vehicleSkus, ...compatibleAccessorySkus, ...serviceSkus];
+            } else {
+                const { data, error } = await (supabase as any)
+                    .from('cat_skus')
+                    .select(skuSelect)
+                    .order('position', { ascending: true, nullsFirst: false });
+                if (error) throw error;
+                skuData = data || [];
+            }
 
             const activeStateCode = states.find(s => s.id === selectedStateId)?.stateCode ?? 'MH';
 
@@ -1315,6 +1400,18 @@ export default function PricingPage() {
     }, [skus, selectedBrand, selectedCategory, selectedSubCategory, selectedModel]);
 
     useEffect(() => {
+        if (selectedBrand !== 'ALL' && !uniqueBrands.includes(selectedBrand)) {
+            setSelectedBrand('ALL');
+        }
+    }, [uniqueBrands, selectedBrand]);
+
+    useEffect(() => {
+        if (selectedSubCategory !== 'ALL' && !uniqueSubCategories.includes(selectedSubCategory)) {
+            setSelectedSubCategory('ALL');
+        }
+    }, [uniqueSubCategories, selectedSubCategory]);
+
+    useEffect(() => {
         if (selectedModel !== 'ALL' && !uniqueModels.includes(selectedModel)) {
             setSelectedModel('ALL');
         }
@@ -1364,6 +1461,39 @@ export default function PricingPage() {
 
     const activeRule = states.find(s => s.id === selectedStateId) || null;
 
+    const baseScopedSkus = useMemo(() => {
+        return skus.filter(s => {
+            const matchesBrand = selectedBrand === 'ALL' || s.brand === selectedBrand;
+            const matchesCategory = selectedCategory === 'ALL' || s.category === selectedCategory;
+            const matchesSubCategory = selectedSubCategory === 'ALL' || s.subCategory === selectedSubCategory;
+            const matchesModel = selectedModel === 'ALL' || s.model === selectedModel;
+            const matchesVariant = selectedVariant === 'ALL' || s.variant === selectedVariant;
+            return matchesBrand && matchesCategory && matchesSubCategory && matchesModel && matchesVariant;
+        });
+    }, [skus, selectedBrand, selectedCategory, selectedSubCategory, selectedModel, selectedVariant]);
+
+    const scopedLiveSkus = useMemo(
+        () =>
+            baseScopedSkus.filter(s =>
+                tenantSlug === 'aums'
+                    ? s.displayState === 'Live' || s.displayState === 'Published'
+                    : s.localIsActive === true
+            ).length,
+        [baseScopedSkus, tenantSlug]
+    );
+
+    const scopedDraftSkus = useMemo(
+        () =>
+            baseScopedSkus.filter(s =>
+                tenantSlug === 'aums'
+                    ? !(s.displayState === 'Live' || s.displayState === 'Published')
+                    : s.localIsActive !== true
+            ).length,
+        [baseScopedSkus, tenantSlug]
+    );
+
+    const scopedMissingPrices = useMemo(() => baseScopedSkus.filter(s => s.exShowroom === 0).length, [baseScopedSkus]);
+
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-4 lg:p-6 overflow-auto transition-colors duration-500">
             {/* Category Gate */}
@@ -1394,22 +1524,9 @@ export default function PricingPage() {
                 saveQueued={saveQueued}
                 lastSavedAt={lastSavedAt}
                 tableSummary={tableSummary}
-                liveSkus={
-                    skus.filter(s =>
-                        tenantSlug === 'aums'
-                            ? s.displayState === 'Live' || s.displayState === 'Published'
-                            : s.localIsActive === true
-                    ).length
-                }
-                draftSkus={
-                    skus.filter(
-                        s =>
-                            !(tenantSlug === 'aums'
-                                ? s.displayState === 'Live' || s.displayState === 'Published'
-                                : s.localIsActive === true)
-                    ).length
-                }
-                missingPrices={skus.filter(s => s.exShowroom === 0).length}
+                liveSkus={scopedLiveSkus}
+                draftSkus={scopedDraftSkus}
+                missingPrices={scopedMissingPrices}
                 quickFilter={quickFilter}
                 onToggleQuickFilter={toggleQuickFilter}
                 activeRuleObj={states.find(s => s.id === selectedStateId)}
