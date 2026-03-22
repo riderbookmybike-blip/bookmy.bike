@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
 import React from 'react';
@@ -20,10 +19,25 @@ export interface AccordionRegistrationProps {
     setRegType: (type: 'STATE' | 'BH' | 'COMPANY') => void;
     data: {
         baseExShowroom?: number;
-        rtoOptions?: any[];
+        rtoOptions?: RegistrationOption[];
         stateCode?: string;
     };
 }
+
+type RegistrationType = 'STATE' | 'BH' | 'COMPANY';
+
+type RegistrationCharge = {
+    label?: string;
+    amount?: number | string | null;
+};
+
+type RegistrationOption = {
+    id?: string;
+    name?: string;
+    label?: string;
+    price?: number | string | null;
+    breakdown?: RegistrationCharge[];
+};
 
 const getRegDescription = (name: string) => {
     const lowerName = name.toLowerCase();
@@ -80,16 +94,16 @@ export default function AccordionRegistration({ regType, setRegType, data }: Acc
         );
     }
 
-    const selectedItem = items.find((i: any) => i.id === regType) || items[0];
+    const selectedItem = items.find(i => i.id === regType) || items[0];
     const rawBreakdown = selectedItem?.breakdown || [];
 
     // Extract rates (e.g., "Road Tax Rate" -> 8%) to merge into descriptions
     const rates: Record<string, number> = {};
-    const visibleBreakdown: any[] = [];
+    const visibleBreakdown: RegistrationCharge[] = [];
     // 'cess' removed from this list so it appears independently in the top block
     const taxIdentifiers = ['road tax', 'road tax amount', 'tax', 'roadtax'];
 
-    rawBreakdown.forEach((charge: any) => {
+    rawBreakdown.forEach(charge => {
         const lbl = charge.label || '';
         const lowerLbl = lbl.toLowerCase();
 
@@ -104,14 +118,14 @@ export default function AccordionRegistration({ regType, setRegType, data }: Acc
         }
     });
 
-    const getRoadTaxTotal = (itemObj: any) => {
+    const getRoadTaxTotal = (itemObj: RegistrationOption) => {
         const bd = itemObj?.breakdown || [];
         const sum = bd
-            .filter((b: any) => {
+            .filter(b => {
                 const l = (b.label || '').toLowerCase();
                 return taxIdentifiers.includes(l);
             })
-            .reduce((acc: number, b: any) => acc + Number(b.amount || 0), 0);
+            .reduce((acc: number, b) => acc + Number(b.amount || 0), 0);
         return sum || Number(itemObj.price || 0); // Fallback to price if breakdown is empty
     };
     const STATE_MAP: Record<string, string> = {
@@ -176,7 +190,7 @@ export default function AccordionRegistration({ regType, setRegType, data }: Acc
         selectedDetailText = '(15 Years)';
     }
 
-    (selectedItem?.breakdown || []).forEach((b: any) => {
+    (selectedItem?.breakdown || []).forEach(b => {
         const blbl = (b.label || '').toLowerCase();
         if (blbl.includes('rate') && (blbl.includes('tax') || blbl.includes('road'))) {
             selectedOptionRate = Number(b.amount || 0);
@@ -187,16 +201,17 @@ export default function AccordionRegistration({ regType, setRegType, data }: Acc
     const SelectedIcon = selectedConfig.icon;
     const selectedDisplayAmount = getRoadTaxTotal(selectedItem);
 
-    const nonSelectedItems = items.filter((i: any) => String(i.id || '').toUpperCase() !== selectedTypeId);
+    const nonSelectedItems = items.filter(i => String(i.id || '').toUpperCase() !== selectedTypeId);
 
     // Split fixed charges: everything before cess goes first, cess goes after selected registration
-    const cessCharges = visibleBreakdown.filter((c: any) => (c.label || '').toLowerCase().includes('cess'));
-    const preCharges = visibleBreakdown.filter((c: any) => !(c.label || '').toLowerCase().includes('cess'));
+    const cessCharges = visibleBreakdown.filter(c => (c.label || '').toLowerCase().includes('cess'));
+    const preCharges = visibleBreakdown.filter(c => !(c.label || '').toLowerCase().includes('cess'));
 
-    const renderFixedCharge = (charge: any, idx: number, isFirst: boolean) => {
-        const config = getRegIcon(charge.label);
+    const renderFixedCharge = (charge: RegistrationCharge, idx: number, isFirst: boolean) => {
+        const chargeLabel = String(charge.label || '');
+        const config = getRegIcon(chargeLabel);
         const Icon = config.icon;
-        const baseLabel = charge.label.toLowerCase();
+        const baseLabel = chargeLabel.toLowerCase();
         const ratePct = rates[baseLabel] || (baseLabel === 'road tax' && rates['tax']) ? rates['tax'] : null;
         const finalRate = rates[baseLabel] ?? ratePct;
         return (
@@ -216,10 +231,10 @@ export default function AccordionRegistration({ regType, setRegType, data }: Acc
                 </div>
                 <div className="flex-1 min-w-0">
                     <p className="text-[12px] font-black tracking-tight leading-tight truncate text-slate-900 capitalize">
-                        {charge.label.toLowerCase()}
+                        {chargeLabel.toLowerCase()}
                     </p>
                     <p className="text-[11px] font-medium mt-0.5 truncate leading-tight text-slate-600">
-                        {getRegDescription(charge.label)}
+                        {getRegDescription(chargeLabel)}
                     </p>
                     <p className="text-[10px] text-slate-400 mt-0.5 truncate leading-tight">
                         {finalRate ? `Variable Rate @ ${finalRate}%` : 'Fixed Mandatory Charge'}
@@ -237,7 +252,7 @@ export default function AccordionRegistration({ regType, setRegType, data }: Acc
     return (
         <div className="flex flex-col">
             {/* Pre-cess fixed charges (Registration Fee, Smartcard, Postal…) */}
-            {preCharges.map((charge: any, idx: number) => renderFixedCharge(charge, idx, idx === 0))}
+            {preCharges.map((charge, idx: number) => renderFixedCharge(charge, idx, idx === 0))}
 
             {/* Selected registration — sits above Cess */}
             <div className="group flex items-center gap-3 px-4 py-3 border-l-[3px] border-l-brand-primary bg-brand-primary/[0.02] border-t border-t-slate-100/80">
@@ -271,13 +286,11 @@ export default function AccordionRegistration({ regType, setRegType, data }: Acc
             </div>
 
             {/* Cess charges — after selected registration */}
-            {cessCharges.map((charge: any, idx: number) =>
-                renderFixedCharge(charge, preCharges.length + 1 + idx, false)
-            )}
+            {cessCharges.map((charge, idx: number) => renderFixedCharge(charge, preCharges.length + 1 + idx, false))}
 
             {/* ── Grand Total row ── */}
             {(() => {
-                const fixedTotal = visibleBreakdown.reduce((acc: number, c: any) => acc + Number(c.amount || 0), 0);
+                const fixedTotal = visibleBreakdown.reduce((acc: number, c) => acc + Number(c.amount || 0), 0);
                 const grandTotal = Math.round(fixedTotal + selectedDisplayAmount);
                 return (
                     <div className="flex items-center justify-between px-4 py-3.5 border-t-2 border-slate-300 bg-brand-primary/[0.03] mt-1">
@@ -301,9 +314,8 @@ export default function AccordionRegistration({ regType, setRegType, data }: Acc
                     <span className="text-[11px] font-bold text-slate-400">Change Registration Type</span>
                 </div>
             )}
-            {nonSelectedItems.map((item: any, idx: number) => {
+            {nonSelectedItems.map((item, idx: number) => {
                 const typeId = String(item.id || '').toUpperCase();
-                const isSelected = false; // These are always non-selected
                 const displayAmount = getRoadTaxTotal(item);
                 let displayName = item.name || item.label || typeId;
                 let description = getRegDescription(displayName);
@@ -327,7 +339,7 @@ export default function AccordionRegistration({ regType, setRegType, data }: Acc
                 }
 
                 let optionRate = null;
-                (item.breakdown || []).forEach((b: any) => {
+                (item.breakdown || []).forEach(b => {
                     const blbl = (b.label || '').toLowerCase();
                     if (blbl.includes('rate') && (blbl.includes('tax') || blbl.includes('road'))) {
                         optionRate = Number(b.amount || 0);
@@ -340,7 +352,11 @@ export default function AccordionRegistration({ regType, setRegType, data }: Acc
                 return (
                     <div
                         key={typeId}
-                        onClick={() => setRegType(typeId as any)}
+                        onClick={() => {
+                            const nextType: RegistrationType =
+                                typeId === 'STATE' || typeId === 'BH' || typeId === 'COMPANY' ? typeId : 'STATE';
+                            setRegType(nextType);
+                        }}
                         className={`group flex items-center gap-3 px-4 py-3 transition-all duration-200 cursor-pointer border-l-[3px] border-l-transparent hover:bg-slate-50 ${idx > 0 ? 'border-t border-t-slate-100/80' : ''}`}
                     >
                         <div className="w-[18px] h-[18px] rounded-full flex items-center justify-center transition-all shrink-0 border-2 border-slate-300 group-hover:border-brand-primary" />
