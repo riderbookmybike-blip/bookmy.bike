@@ -5,8 +5,11 @@ import { createClient } from '@/lib/supabase/client';
 import { Search, Loader2, Save, Filter, MapPin, Tag, AlertCircle, CheckCircle2, LayoutGrid } from 'lucide-react';
 import { toast } from 'sonner';
 
+type PricelistTab = 'VEHICLE' | 'ACCESSORY' | 'SERVICE';
+
 interface SKU {
     id: string;
+    skuType: PricelistTab;
     fullName: string;
     modelName: string;
     variantName: string;
@@ -41,6 +44,7 @@ export const DealerPricelist = ({
     const [brandFilter, setBrandFilter] = useState('ALL');
     const [pricingDistrict, setPricingDistrict] = useState('');
     const [activeFilter, setActiveFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
+    const [activeTab, setActiveTab] = useState<PricelistTab>('VEHICLE');
 
     const supabase = createClient();
 
@@ -57,31 +61,151 @@ export const DealerPricelist = ({
 
             const allowedBrandIds = (dealerBrandsData || []).map((r: any) => r.brand_id).filter(Boolean);
 
-            // 1. Fetch SKUs from canonical V2 catalog — filtered by allowed brands
-            let skuQuery = (supabase as any)
+            // 1. Fetch VEHICLE SKUs from canonical V2 catalog — filtered by allowed brands
+            let vehicleSkuQuery = (supabase as any)
                 .from('cat_skus')
                 .select(
                     `
                     id,
                     name,
+                    model_id,
+                    vehicle_variant_id,
                     color_name,
                     price_base,
                     vehicle_variant:cat_variants_vehicle!vehicle_variant_id(name),
                     model:cat_models!model_id(name, brand:cat_brands!brand_id(name, logo_svg))
                 `
                 )
+                .eq('sku_type', 'VEHICLE')
                 .eq('status', 'ACTIVE');
 
             // If dealer has brand restrictions, apply filter; otherwise show all (superadmin/platform view)
             if (allowedBrandIds.length > 0) {
-                skuQuery = skuQuery.in('brand_id', allowedBrandIds);
+                vehicleSkuQuery = vehicleSkuQuery.in('brand_id', allowedBrandIds);
             }
 
-            const { data: skuData, error: skuError } = await skuQuery;
+            const { data: vehicleSkuData, error: vehicleSkuError } = await vehicleSkuQuery;
+            if (vehicleSkuError) throw vehicleSkuError;
 
-            if (skuError) throw skuError;
+            // Build dealer compatibility scope from catalog hierarchy (brand -> model -> variant),
+            // not only from currently active vehicle SKUs.
+            let dealerModelIds: string[] = [];
+            let dealerVariantIds: string[] = [];
+            if (allowedBrandIds.length > 0) {
+                const { data: dealerModelsData, error: dealerModelsError } = await (supabase as any)
+                    .from('cat_models')
+                    .select('id')
+                    .in('brand_id', allowedBrandIds);
+                if (dealerModelsError) throw dealerModelsError;
 
-            // 2. Fetch Rules
+                dealerModelIds = (dealerModelsData || []).map((m: any) => m.id).filter(Boolean);
+
+                if (dealerModelIds.length > 0) {
+                    const { data: dealerVariantsData, error: dealerVariantsError } = await (supabase as any)
+                        .from('cat_variants_vehicle')
+                        .select('id')
+                        .in('model_id', dealerModelIds);
+                    if (dealerVariantsError) throw dealerVariantsError;
+                    dealerVariantIds = (dealerVariantsData || []).map((v: any) => v.id).filter(Boolean);
+                }
+            }
+
+            // 2. Fetch ACCESSORY SKUs without brand restriction; include only dealer-suitable rows
+            const { data: accessorySkuData, error: accessorySkuError } = await (supabase as any)
+                .from('cat_skus')
+                .select(
+                    `
+                    id,
+                    name,
+                    price_base,
+                    model_id,
+                    accessory_variant_id,
+                    color_name,
+                    finish,
+                    accessory_variant:cat_variants_accessory!accessory_variant_id(id, name),
+                    model:cat_models!model_id(name, brand:cat_brands!brand_id(name, logo_svg))
+                `
+                )
+                .eq('sku_type', 'ACCESSORY')
+                .eq('status', 'ACTIVE');
+
+            if (accessorySkuError) throw accessorySkuError;
+
+            const accessoryVariantIds = (accessorySkuData || [])
+                .map((item: any) => item.accessory_variant_id)
+                .filter(Boolean);
+
+            const { data: accessoryCompatRows, error: accessoryCompatError } =
+                accessoryVariantIds.length > 0
+                    ? await (supabase as any)
+                          .from('cat_accessory_suitable_for')
+                          .select('variant_id, is_universal, target_brand_id, target_model_id, target_variant_id')
+                          .in('variant_id', accessoryVariantIds)
+                    : ({ data: [] as any[], error: null } as any);
+
+            if (accessoryCompatError) throw accessoryCompatError;
+
+            const dealerBrandSet = new Set(allowedBrandIds);
+            const dealerModelSet = new Set([
+                ...dealerModelIds,
+                ...(vehicleSkuData || []).map((item: any) => item.model_id).filter(Boolean),
+            ]);
+            const dealerVariantSet = new Set([
+                ...dealerVariantIds,
+                ...(vehicleSkuData || []).map((item: any) => item.vehicle_variant_id).filter(Boolean),
+            ]);
+            const hasDealerScope = dealerBrandSet.size > 0 || dealerModelSet.size > 0 || dealerVariantSet.size > 0;
+
+            const variantCompatMap = new Map<string, any[]>();
+            (accessoryCompatRows || []).forEach((row: any) => {
+                const variantId = row?.variant_id;
+                if (!variantId) return;
+                if (!variantCompatMap.has(variantId)) variantCompatMap.set(variantId, []);
+                variantCompatMap.get(variantId)!.push(row);
+            });
+
+            const filteredAccessorySkuData = (accessorySkuData || []).filter((item: any) => {
+                // Platform/super-admin view (no dealer scope) should remain brand-agnostic.
+                if (!hasDealerScope) return true;
+
+                const rows = variantCompatMap.get(item.accessory_variant_id) || [];
+                if (rows.length === 0) return false;
+
+                return rows.some((row: any) => {
+                    const targetBrandId = row?.target_brand_id;
+                    const targetModelId = row?.target_model_id;
+                    const targetVariantId = row?.target_variant_id;
+
+                    const isUniversal =
+                        row?.is_universal === true || (!targetBrandId && !targetModelId && !targetVariantId);
+                    if (isUniversal) return true;
+                    if (targetBrandId && !dealerBrandSet.has(targetBrandId)) return false;
+                    if (targetModelId && !dealerModelSet.has(targetModelId)) return false;
+                    if (targetVariantId && !dealerVariantSet.has(targetVariantId)) return false;
+                    return true;
+                });
+            });
+
+            // 3. Fetch SERVICE SKUs without brand restriction.
+            const { data: serviceSkuData, error: serviceSkuError } = await (supabase as any)
+                .from('cat_skus')
+                .select(
+                    `
+                    id,
+                    name,
+                    price_base,
+                    color_name,
+                    finish,
+                    service_variant:cat_variants_service!service_variant_id(name),
+                    model:cat_models!model_id(name, brand:cat_brands!brand_id(name, logo_svg))
+                `
+                )
+                .eq('sku_type', 'SERVICE')
+                .eq('status', 'ACTIVE');
+
+            if (serviceSkuError) throw serviceSkuError;
+
+            // 4. Fetch Rules
             const { data: rulesData, error: rulesError } = await supabase
                 .from('cat_price_dealer')
                 .select('id, vehicle_color_id, offer_amount, is_active')
@@ -89,7 +213,7 @@ export const DealerPricelist = ({
 
             if (rulesError) throw rulesError;
 
-            // 3. Resolve Dealer District (for pricing RPC + district-specific prices)
+            // 5. Resolve Dealer District (for pricing RPC + district-specific prices)
             const { data: dealerData } = await supabase
                 .from('id_tenants')
                 .select('id, name, location, pincode')
@@ -99,9 +223,10 @@ export const DealerPricelist = ({
             const displayDistrict = dealerDistrict || 'ALL';
             setPricingDistrict(displayDistrict);
 
-            const skuIds = (skuData || []).map((item: any) => item.id).filter(Boolean);
+            const allSkuData = [...(vehicleSkuData || []), ...filteredAccessorySkuData, ...(serviceSkuData || [])];
+            const skuIds = allSkuData.map((item: any) => item.id).filter(Boolean);
 
-            // 4. Fetch base prices from canonical state pricing table
+            // 6. Fetch base prices from canonical state pricing table
             const { data: priceRows } =
                 skuIds.length > 0
                     ? await supabase
@@ -130,9 +255,10 @@ export const DealerPricelist = ({
                 }
             });
 
-            const formatted: SKU[] = (skuData || []).map((item: any) => {
+            const mapSkuRow = (item: any, skuType: PricelistTab): SKU => {
                 const color = item.color_name || item.name;
-                const variant = item.vehicle_variant?.name || '';
+                const variant =
+                    item.vehicle_variant?.name || item.accessory_variant?.name || item.service_variant?.name || '';
                 const model = item.model?.name || '';
                 const brand = item.model?.brand;
 
@@ -140,19 +266,24 @@ export const DealerPricelist = ({
                 const priceRecord = priceMap.get(item.id);
                 const pricingReady = Boolean(priceRecord?.price || priceRecord?.onRoad);
                 const statePrice = priceRecord?.price ?? item.price_base ?? 0;
-                const rto = priceRecord?.rto || 0;
-                const insurance = priceRecord?.insurance || 0;
-                const onRoadBase = priceRecord?.onRoad || statePrice + rto + insurance;
+                const isVehicle = skuType === 'VEHICLE';
+                const rto = isVehicle ? priceRecord?.rto || 0 : 0;
+                const insurance = isVehicle ? priceRecord?.insurance || 0 : 0;
+                const onRoadBase = isVehicle
+                    ? priceRecord?.onRoad || statePrice + rto + insurance
+                    : priceRecord?.onRoad || statePrice;
                 const currentOffer = rule ? (rule as any).offer_amount : 0;
                 const isActive = rule ? Boolean((rule as any).is_active ?? true) : true;
 
                 return {
                     id: item.id,
+                    skuType,
                     fullName: `${brand?.name} ${model} ${variant}`,
                     modelName: model,
                     variantName: variant,
-                    colorName: color,
+                    colorName: item.finish || color,
                     brandName: brand?.name || 'Unknown',
+                    brandLogo: brand?.logo_svg || undefined,
                     exShowroom: statePrice,
                     rtoAmount: rto,
                     insuranceAmount: insurance,
@@ -166,7 +297,13 @@ export const DealerPricelist = ({
                     isDirty: false,
                     pricingReady,
                 };
-            });
+            };
+
+            const formatted: SKU[] = [
+                ...(vehicleSkuData || []).map((item: any) => mapSkuRow(item, 'VEHICLE')),
+                ...filteredAccessorySkuData.map((item: any) => mapSkuRow(item, 'ACCESSORY')),
+                ...(serviceSkuData || []).map((item: any) => mapSkuRow(item, 'SERVICE')),
+            ];
 
             setSkus(formatted);
         } catch (err) {
@@ -273,10 +410,11 @@ export const DealerPricelist = ({
     };
 
     // Derived State
-    const brands = useMemo(() => Array.from(new Set(skus.map(s => s.brandName))).sort(), [skus]);
+    const tabSkus = useMemo(() => skus.filter(s => s.skuType === activeTab), [skus, activeTab]);
+    const brands = useMemo(() => Array.from(new Set(tabSkus.map(s => s.brandName))).sort(), [tabSkus]);
 
     const filteredSkus = useMemo(() => {
-        let result = skus;
+        let result = tabSkus;
         if (searchTerm) {
             const lower = searchTerm.toLowerCase();
             result = result.filter(
@@ -290,15 +428,15 @@ export const DealerPricelist = ({
             result = result.filter(s => (activeFilter === 'ACTIVE' ? s.isActive : !s.isActive));
         }
         return result;
-    }, [skus, searchTerm, brandFilter, activeFilter]);
+    }, [tabSkus, searchTerm, brandFilter, activeFilter]);
 
     const stats = useMemo(() => {
-        const total = skus.length;
-        const activeOffers = skus.filter(s => s.offerAmount !== 0).length;
+        const total = tabSkus.length;
+        const activeOffers = tabSkus.filter(s => s.offerAmount !== 0).length;
         const dirtyCount = skus.filter(s => s.isDirty).length;
-        const activeRows = skus.filter(s => s.isActive).length;
+        const activeRows = tabSkus.filter(s => s.isActive).length;
         return { total, activeOffers, dirtyCount, activeRows };
-    }, [skus]);
+    }, [skus, tabSkus]);
 
     return (
         <div className="space-y-6">
@@ -359,6 +497,26 @@ export const DealerPricelist = ({
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-3xl overflow-hidden shadow-sm flex flex-col min-h-[600px]">
                 {/* Integrated Toolbar */}
                 <div className="p-4 border-b border-slate-100 dark:border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-50/50 dark:bg-slate-950/50">
+                    <div className="flex items-center gap-2 overflow-x-auto">
+                        {(['VEHICLE', 'ACCESSORY', 'SERVICE'] as const).map(tab => (
+                            <button
+                                key={tab}
+                                onClick={() => {
+                                    setActiveTab(tab);
+                                    setBrandFilter('ALL');
+                                    setSearchTerm('');
+                                }}
+                                className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors ${
+                                    activeTab === tab
+                                        ? 'bg-[#FFD700] text-black'
+                                        : 'bg-white dark:bg-white/5 text-slate-500 hover:text-slate-800 dark:hover:text-white'
+                                }`}
+                            >
+                                {tab === 'VEHICLE' ? 'Vehicles' : tab === 'ACCESSORY' ? 'Accessories' : 'Services'}
+                            </button>
+                        ))}
+                    </div>
+
                     {/* Left: Filters & Search */}
                     <div className="flex items-center gap-3 w-full md:w-auto overflow-x-auto">
                         {/* Search */}
@@ -371,7 +529,7 @@ export const DealerPricelist = ({
                                 type="text"
                                 value={searchTerm}
                                 onChange={e => setSearchTerm(e.target.value)}
-                                placeholder="Search inventory..."
+                                placeholder={`Search ${activeTab.toLowerCase()}...`}
                                 className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white pl-9 pr-4 py-2 rounded-xl text-xs font-bold focus:ring-2 focus:ring-[#FFD700]/20 outline-none w-48 transition-all hover:border-[#FFD700]/40"
                             />
                         </div>
@@ -463,10 +621,14 @@ export const DealerPricelist = ({
                                     Brand
                                 </th>
                                 <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                    Vehicle Details
+                                    {activeTab === 'VEHICLE'
+                                        ? 'Vehicle Details'
+                                        : activeTab === 'ACCESSORY'
+                                          ? 'Accessory Details'
+                                          : 'Service Details'}
                                 </th>
                                 <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">
-                                    Ex-Showroom
+                                    {activeTab === 'VEHICLE' ? 'Ex-Showroom' : 'Base Price'}
                                 </th>
                                 <th className="p-4 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">
                                     RTO
@@ -491,15 +653,15 @@ export const DealerPricelist = ({
                         <tbody className="divide-y divide-slate-100 dark:divide-white/5">
                             {loading ? (
                                 <tr>
-                                    <td colSpan={5} className="p-12 text-center text-slate-400">
+                                    <td colSpan={9} className="p-12 text-center text-slate-400">
                                         <Loader2 className="animate-spin mx-auto mb-2 opacity-50" />
                                         <p className="text-xs uppercase tracking-widest font-bold">Syncing Ledger...</p>
                                     </td>
                                 </tr>
                             ) : filteredSkus.length === 0 ? (
                                 <tr>
-                                    <td colSpan={5} className="p-12 text-center text-slate-400 italic">
-                                        No inventory matches found.
+                                    <td colSpan={9} className="p-12 text-center text-slate-400 italic">
+                                        No {activeTab.toLowerCase()} matches found.
                                     </td>
                                 </tr>
                             ) : (

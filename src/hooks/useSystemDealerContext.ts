@@ -10,6 +10,7 @@ import { normalizeLatLng } from '@/lib/location/coordinates';
 interface UseDealerContextProps {
     product: any;
     initialAccessories: any[];
+    initialServices?: any[];
     hasTouchedAccessories?: boolean;
     initialLocation?: any;
     selectedColor?: string;
@@ -263,6 +264,7 @@ interface ServerPricing {
 export function useSystemDealerContext({
     product,
     initialAccessories = [],
+    initialServices = [],
     hasTouchedAccessories = false,
     initialLocation,
     selectedColor,
@@ -278,6 +280,7 @@ export function useSystemDealerContext({
     // These states hold the "Hydrated" versions of data implies Dealer-specific overrides
     const [dealerColors, setDealerColors] = useState<any[]>(product.colors || []);
     const [dealerAccessories, setDealerAccessories] = useState<any[]>(initialAccessories);
+    const [dealerServices, setDealerServices] = useState<any[]>(initialServices);
 
     // The "Best Offer" object to be passed to UI (ProductCard)
     const [bestOffer, setBestOffer] = useState<
@@ -1069,6 +1072,45 @@ export function useSystemDealerContext({
 
                     setDealerAccessories(updatedAccessories.filter(Boolean));
                 }
+
+                // 7. Update Services with Dealer Pricing Rules
+                if ((initialServices || []).length > 0 && winningDealerId) {
+                    const serviceIds = initialServices.map((s: any) => s.id).filter(Boolean);
+                    const { data: rules } = await supabase
+                        .from('cat_price_dealer')
+                        .select('vehicle_color_id, offer_amount, is_active')
+                        .in('vehicle_color_id', serviceIds)
+                        .eq('tenant_id', winningDealerId)
+                        .eq('state_code', stateCode || 'MH');
+
+                    const ruleMap = new Map<string, any>();
+                    rules?.forEach((r: any) => ruleMap.set(r.vehicle_color_id, r));
+
+                    const updatedServices = initialServices.map((s: any) => {
+                        const rule = ruleMap.get(s.id);
+
+                        // If dealer has explicitly disabled this service, hide it
+                        if (rule && rule.is_active === false) {
+                            return null;
+                        }
+
+                        const basePrice = Number(s.price || 0);
+                        const fallbackSellPrice =
+                            s.discountPrice !== undefined && s.discountPrice !== null
+                                ? Number(s.discountPrice)
+                                : basePrice;
+                        const dealerSellPrice = rule
+                            ? Math.max(0, basePrice + Number(rule.offer_amount || 0))
+                            : fallbackSellPrice;
+
+                        return {
+                            ...s,
+                            discountPrice: dealerSellPrice,
+                        };
+                    });
+
+                    setDealerServices(updatedServices.filter(Boolean));
+                }
             } catch (err) {
                 if (
                     (err as any)?.code === 'DEALER_FETCH_TIMEOUT' ||
@@ -1118,6 +1160,7 @@ export function useSystemDealerContext({
     return {
         dealerColors,
         dealerAccessories,
+        dealerServices,
         bestOffer,
         otherOffers,
         isHydrating,

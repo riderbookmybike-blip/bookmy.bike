@@ -309,6 +309,14 @@ export interface DealerDelta {
             isActive: boolean;
         }
     >;
+    /** Dealer-specific offers for cat_services / SERVICE-type SKUs. Keyed by service id. */
+    serviceRules: Record<
+        string,
+        {
+            offer: number;
+            isActive: boolean;
+        }
+    >;
 }
 
 export interface PdpSnapshotPayload extends PdpSnapshot {

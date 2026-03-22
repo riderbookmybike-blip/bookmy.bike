@@ -794,53 +794,85 @@ export async function getDealerDelta({
     stateCode,
     skuIds,
     accessoryIds,
+    serviceIds,
 }: {
     dealerId: string | null;
     stateCode: string;
     skuIds: string[];
     accessoryIds?: string[];
+    serviceIds?: string[];
 }): Promise<DealerDelta> {
+    const normalizedStateCode =
+        String(stateCode || '')
+            .trim()
+            .toUpperCase() || 'MH';
+
     if (!dealerId) {
-        return { vehicleOffers: {}, bundleSkuIds: [], accessoryRules: {} };
+        return { vehicleOffers: {}, bundleSkuIds: [], accessoryRules: {}, serviceRules: {} };
     }
 
-    const [vehicleRulesRes, bundleRulesRes, accessoryRulesRes] = await Promise.all([
+    const [vehicleRulesRes, bundleRulesRes, accessoryRulesRes, serviceRulesRes] = await Promise.all([
         skuIds.length > 0
             ? (adminClient as any)
                   .from('cat_price_dealer')
-                  .select('vehicle_color_id, offer_amount')
+                  .select('vehicle_color_id, offer_amount, state_code')
                   .in('vehicle_color_id', skuIds)
                   .eq('tenant_id', dealerId)
-                  .eq('state_code', stateCode)
+                  .or(`state_code.eq.${normalizedStateCode},state_code.eq.ALL`)
                   .eq('is_active', true)
             : Promise.resolve({ data: [] }),
         (adminClient as any)
             .from('cat_price_dealer')
-            .select('vehicle_color_id')
+            .select('vehicle_color_id, state_code')
             .eq('tenant_id', dealerId)
-            .eq('state_code', stateCode)
+            .or(`state_code.eq.${normalizedStateCode},state_code.eq.ALL`)
             .eq('inclusion_type', 'BUNDLE'),
         accessoryIds && accessoryIds.length > 0
             ? (adminClient as any)
                   .from('cat_price_dealer')
-                  .select('vehicle_color_id, offer_amount, inclusion_type, is_active')
+                  .select('vehicle_color_id, offer_amount, inclusion_type, is_active, state_code')
                   .in('vehicle_color_id', accessoryIds)
                   .eq('tenant_id', dealerId)
-                  .eq('state_code', stateCode)
+                  .or(`state_code.eq.${normalizedStateCode},state_code.eq.ALL`)
+            : Promise.resolve({ data: [] }),
+        serviceIds && serviceIds.length > 0
+            ? (adminClient as any)
+                  .from('cat_price_dealer')
+                  .select('vehicle_color_id, offer_amount, is_active, state_code')
+                  .in('vehicle_color_id', serviceIds)
+                  .eq('tenant_id', dealerId)
+                  .or(`state_code.eq.${normalizedStateCode},state_code.eq.ALL`)
             : Promise.resolve({ data: [] }),
     ]);
 
+    const pickBestByState = (rows: any[]) => {
+        const bestBySku = new Map<string, any>();
+        (rows || []).forEach((row: any) => {
+            const skuId = String(row?.vehicle_color_id || '').trim();
+            if (!skuId) return;
+            const nextScore = String(row?.state_code || '').toUpperCase() === normalizedStateCode ? 2 : 1;
+            const prev = bestBySku.get(skuId);
+            const prevScore = prev ? (String(prev?.state_code || '').toUpperCase() === normalizedStateCode ? 2 : 1) : 0;
+            if (!prev || nextScore > prevScore) {
+                bestBySku.set(skuId, row);
+            }
+        });
+        return Array.from(bestBySku.values());
+    };
+
     const vehicleOffers: Record<string, number> = {};
-    (vehicleRulesRes.data || []).forEach((r: any) => {
+    pickBestByState(vehicleRulesRes.data || []).forEach((r: any) => {
         if (r?.vehicle_color_id) {
             vehicleOffers[r.vehicle_color_id] = Number(r.offer_amount || 0);
         }
     });
 
-    const bundleSkuIds = (bundleRulesRes.data || []).map((r: any) => String(r?.vehicle_color_id || '')).filter(Boolean);
+    const bundleSkuIds = pickBestByState(bundleRulesRes.data || [])
+        .map((r: any) => String(r?.vehicle_color_id || ''))
+        .filter(Boolean);
 
     const accessoryRules: DealerDelta['accessoryRules'] = {};
-    (accessoryRulesRes.data || []).forEach((r: any) => {
+    pickBestByState(accessoryRulesRes.data || []).forEach((r: any) => {
         if (!r?.vehicle_color_id) return;
         accessoryRules[r.vehicle_color_id] = {
             offer: Number(r.offer_amount || 0),
@@ -849,10 +881,20 @@ export async function getDealerDelta({
         };
     });
 
+    const serviceRules: DealerDelta['serviceRules'] = {};
+    pickBestByState(serviceRulesRes.data || []).forEach((r: any) => {
+        if (!r?.vehicle_color_id) return;
+        serviceRules[r.vehicle_color_id] = {
+            offer: Number(r.offer_amount || 0),
+            isActive: Boolean(r.is_active),
+        };
+    });
+
     return {
         vehicleOffers,
         bundleSkuIds,
         accessoryRules,
+        serviceRules,
     };
 }
 

@@ -906,22 +906,25 @@ export default async function Page({ params, searchParams }: Props) {
               breakdown: null,
           };
 
-    // Dealer resolution is NEVER done server-side.
-    // Client-side useSystemDealerContext RPC picks best offer within 200km radius.
-    let winningDealerId: string | null = null;
+    // Server receives explicit dealer context from resolveStoreContext
+    // (lead-selected dealer / ?dealer / ?studio). Best-offer discovery remains client-side.
+    let winningDealerId: string | null = pricingContext.dealerId || null;
     const leadId = resolvedLeadId;
     let accessoryRules: Map<string, { offer: number; inclusion: string; isActive: boolean }> = new Map();
+    let serviceRules: Map<string, { offer: number; isActive: boolean }> = new Map();
     let marketOffers: Record<string, number> = {};
     let bundleIdsForDealer: Set<string> = new Set();
 
-    // Resolve dealer delta from shared SOT layer (vehicle offers + bundles + accessories)
+    // Resolve dealer delta from shared SOT layer (vehicle offers + bundles + accessories + services)
     const currentSkuIds = allSkus.map((s: any) => s.id);
+    const serviceIdsForDelta = (servicesData || []).map((s: any) => s.id).filter(Boolean);
     if (winningDealerId) {
         const dealerDelta = await getDealerDelta({
             dealerId: winningDealerId,
             stateCode,
             skuIds: currentSkuIds,
             accessoryIds,
+            serviceIds: serviceIdsForDelta,
         });
         marketOffers = dealerDelta.vehicleOffers;
         bundleIdsForDealer = new Set(dealerDelta.bundleSkuIds);
@@ -931,6 +934,15 @@ export default async function Page({ params, searchParams }: Props) {
                 {
                     offer: Number(rule.offer || 0),
                     inclusion: rule.inclusion || 'OPTIONAL',
+                    isActive: Boolean(rule.isActive),
+                },
+            ])
+        );
+        serviceRules = new Map(
+            Object.entries(dealerDelta.serviceRules).map(([svcId, rule]) => [
+                svcId,
+                {
+                    offer: Number(rule.offer || 0),
                     isActive: Boolean(rule.isActive),
                 },
             ])
@@ -1258,16 +1270,28 @@ export default async function Page({ params, searchParams }: Props) {
         });
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const services = (servicesData || []).map((s: any) => ({
-        id: s.id,
-        name: s.name,
-        description: s.description,
-        price: Number(s.price),
-        discountPrice: Number(s.discount_price),
-        maxQty: s.max_qty,
-        isMandatory: s.is_mandatory,
-        durationMonths: s.duration_months,
-    }));
+    const services = (servicesData || []).map((s: any) => {
+        const rule = serviceRules.get(s.id);
+        const basePrice = Number(s.price);
+        // If dealer has set an offer (delta), apply it; otherwise fall back to
+        // cat_services.discount_price (platform-level discount) or MRP.
+        let dealerSellPrice: number;
+        if (rule && rule.isActive !== false) {
+            dealerSellPrice = Math.max(0, basePrice + rule.offer);
+        } else {
+            dealerSellPrice = Number(s.discount_price) || basePrice;
+        }
+        return {
+            id: s.id,
+            name: s.name,
+            description: s.description,
+            price: basePrice,
+            discountPrice: dealerSellPrice,
+            maxQty: s.max_qty,
+            isMandatory: s.is_mandatory,
+            durationMonths: s.duration_months,
+        };
+    });
 
     // 7. Resolve Finance Scheme (Persona-Based)
     let viewerContext: ViewerContext | undefined;

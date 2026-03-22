@@ -132,6 +132,7 @@ export default function ProductClient({
     isAuthenticated = false,
 }: ProductClientProps) {
     const [clientAccessories, setClientAccessories] = useState(initialAccessories);
+    const [clientServices, setClientServices] = useState(initialServices);
     const [clientColors, setClientColors] = useState(product.colors);
     const [hasTouchedAccessories, setHasTouchedAccessories] = useState(false);
     const initialServerPricing =
@@ -307,7 +308,7 @@ export default function ProductClient({
         insuranceRule,
         registrationRule,
         initialAccessories: clientAccessories,
-        initialServices,
+        initialServices: clientServices,
         product,
         initialFinance,
         serverPricing: ssppServerPricing, // SSPP v1: Pass server-calculated pricing for Single Source of Truth
@@ -566,6 +567,7 @@ export default function ProductClient({
     const {
         dealerColors,
         dealerAccessories,
+        dealerServices,
         bestOffer,
         otherOffers,
         resolvedLocation,
@@ -628,6 +630,12 @@ export default function ProductClient({
             }
         }
     }, [dealerAccessories, hasTouchedAccessories, setSelectedAccessories]);
+
+    useEffect(() => {
+        if (Array.isArray(dealerServices)) {
+            setClientServices(dealerServices);
+        }
+    }, [dealerServices]);
 
     const legacyBestOffer = bestOffer as
         | ({
@@ -1711,6 +1719,7 @@ export default function ProductClient({
         quoteState: quotePhase,
         quoteActionDisabled,
         quoteActionDisabledLabel,
+        isPendingPrice: isHydrating || dealerFetchState === 'IDLE',
     };
     const leadDealerMismatch = Boolean(
         leadMeta?.leadDealerId && sessionDealerId && leadMeta.leadDealerId !== sessionDealerId
