@@ -1268,6 +1268,94 @@ export default function ProductClient({
         }
     };
 
+    const handleDirectPublicSaveQuote = async () => {
+        if (requireAuth('save_quote')) return;
+        if (!quoteTenantId) {
+            toast.error(dealerFetchNotice || 'Best offer dealer abhi resolve nahi hua. Thodi der baad retry karein.');
+            return;
+        }
+        if (!colorSkuId) {
+            toast.error('Selected color SKU is unavailable. Please refresh or choose another color.');
+            return;
+        }
+
+        const supabase = createClient();
+        const {
+            data: { user },
+        } = await supabase.auth.getUser();
+        if (!user?.id) return;
+
+        try {
+            const { data: member } = await supabase
+                .from('id_members')
+                .select('full_name, primary_phone, pincode, aadhaar_pincode, latitude, longitude, whatsapp')
+                .eq('id', user.id)
+                .maybeSingle();
+
+            const hasPhone = member?.primary_phone || member?.whatsapp;
+            const hasLocation = member?.latitude && member?.longitude;
+            const hasName = member?.full_name;
+
+            if (!hasName || (!hasPhone && !hasLocation)) {
+                toast.error('Quote save ke liye pehle profile complete karein (name + phone/location).');
+                return;
+            }
+
+            const { createLeadAction, createQuoteAction } = await getCrmActions();
+            toast.loading('Saving quote...', { id: 'save-quote' });
+
+            let phoneForLead = member?.primary_phone || member?.whatsapp || '';
+            if (!phoneForLead && user.phone) {
+                const digits = user.phone.replace(/\D/g, '');
+                phoneForLead = digits.length >= 10 ? digits.slice(-10) : user.phone;
+            }
+            if (!member) return;
+
+            const leadResult = await createLeadAction({
+                customer_name: member.full_name || 'Unknown',
+                customer_phone: phoneForLead,
+                customer_pincode: (member.pincode || member.aadhaar_pincode || undefined) as string | undefined,
+                customer_id: user.id,
+                model: product.model || '',
+                owner_tenant_id: quoteTenantId,
+                selected_dealer_id: quoteTenantId,
+                source: 'STORE_PDP',
+            });
+
+            if (!leadResult.success || !('leadId' in leadResult) || !leadResult.leadId) {
+                toast.dismiss('save-quote');
+                toast.error((leadResult as any)?.message || 'Failed to process request');
+                return;
+            }
+
+            const commercials = buildCommercials();
+            const quoteResult = await createQuoteAction({
+                tenant_id: quoteTenantId,
+                lead_id: leadResult.leadId,
+                variant_id: product.id,
+                color_id: colorSkuId || undefined,
+                commercials,
+                source: 'STORE_PDP',
+            });
+
+            toast.dismiss('save-quote');
+            if (!quoteResult?.success) {
+                toast.error(quoteResult?.message || 'Failed to create quote');
+                return;
+            }
+
+            const displayId = quoteResult.data?.display_id || quoteResult.data?.id;
+            setSavedQuoteDisplayId(displayId || null);
+            setQuotePhase('SAVED');
+            notifySmsStatus((quoteResult as any)?.smsStatus);
+            toast.success(`Quote ${displayId} saved`);
+        } catch (error) {
+            if (isAbortError(error)) return;
+            console.error('Direct quote save error:', error);
+            toast.error('An error occurred while saving the quote');
+        }
+    };
+
     const handleBookingRequest = async () => {
         if (requireAuth('book_now')) return;
         if (!quoteTenantId) {
@@ -1505,8 +1593,7 @@ export default function ProductClient({
     const handlers = {
         handleColorChange: setSelectedColor,
         handleShareQuote: shouldForcePhoneCapture ? () => setShowQuoteSuccess(true) : handleShareQuote,
-        handleSaveQuote:
-            shouldForcePhoneCapture || !leadIdFromUrl ? () => setShowQuoteSuccess(true) : handleConfirmQuote,
+        handleSaveQuote: leadIdFromUrl ? handleConfirmQuote : handleDirectPublicSaveQuote,
         handleBookingRequest: shouldForcePhoneCapture
             ? () => setShowQuoteSuccess(true)
             : leadIdFromUrl
@@ -1725,7 +1812,6 @@ export default function ProductClient({
                 quoteTenantId={quoteTenantId}
                 displayOnRoadEstimate={modalDisplayOnRoadEstimate}
                 source={leadIdFromUrl ? 'LEADS' : 'STORE_PDP'}
-                forceStaffMode={isTeamMember}
                 onQuoteSaved={displayId => {
                     setSavedQuoteDisplayId(displayId);
                     setQuotePhase('SAVED');
