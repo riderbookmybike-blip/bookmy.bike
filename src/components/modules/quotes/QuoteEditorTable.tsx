@@ -66,7 +66,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {
     updateMemberProfile,
-    updateMemberAvatar,
     setQuoteFinanceMode,
     createQuoteFinanceAttempt,
     updateQuoteFinanceAttempt,
@@ -81,6 +80,7 @@ import {
     getBookingFeedbackAction,
     upsertBookingFeedbackAction,
 } from '@/actions/crm';
+import { uploadMemberImage } from '@/actions/members';
 import { getBookingStageHistory } from '@/actions/bookingStage';
 import { updateFinanceStatus } from '@/actions/finance';
 import { PremiumQuoteTemplate } from './PremiumQuoteTemplate';
@@ -1234,23 +1234,20 @@ export default function QuoteEditorTable({
         }
         try {
             setAvatarUploading(true);
-            const fileExt = file.name.split('.').pop();
-            const filePath = `${memberId}/avatar_${Date.now()}.${fileExt}`;
+            const arrayBuffer = await file.arrayBuffer();
+            const uint8 = new Uint8Array(arrayBuffer);
+            let binary = '';
+            uint8.forEach(b => {
+                binary += String.fromCharCode(b);
+            });
+            const base64 = btoa(binary);
 
-            const { error: uploadError } = await supabase.storage.from('users').upload(filePath, file);
-            if (uploadError) throw uploadError;
-
-            const {
-                data: { publicUrl },
-            } = supabase.storage.from('users').getPublicUrl(filePath);
-
-            // Sync to both id_members and auth
-            const res = await updateMemberAvatar(memberId, publicUrl);
+            const res = await uploadMemberImage(memberId, base64, 'avatar');
             if (res.success) {
-                setMemberAvatarUrl(publicUrl);
+                setMemberAvatarUrl(res.url);
                 toast.success('Member photo updated');
             } else {
-                toast.error('Failed to update avatar');
+                toast.error(`Failed to update avatar: ${res.error}`);
             }
         } catch (err) {
             console.error('Avatar upload error:', err);

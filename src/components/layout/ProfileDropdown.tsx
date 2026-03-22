@@ -49,6 +49,7 @@ import { getDefaultAvatar, AVATAR_PRESETS } from '@/lib/avatars';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { formatMembershipCardCode } from '@/lib/oclub/membershipCardIdentity';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import { uploadMemberImage } from '@/actions/members';
 
 const ADMIN_ROLES = new Set(['OWNER', 'ADMIN', 'SUPER_ADMIN', 'DEALERSHIP_ADMIN', 'MARKETPLACE_ADMIN']);
 
@@ -867,28 +868,18 @@ ${referralUrl}`;
             const file = event.target.files?.[0];
             if (!file || !user) return;
 
-            const fileExt = file.name.split('.').pop();
-            const filePath = `${user.id}/${Math.random()}.${fileExt}`;
-            const supabase = createClient();
-
-            const { error: uploadError } = await supabase.storage.from('users').upload(filePath, file);
-
-            if (uploadError) throw uploadError;
-
-            const {
-                data: { publicUrl },
-            } = supabase.storage.from('users').getPublicUrl(filePath);
-
-            const { error: updateError } = await supabase.auth.updateUser({
-                data: { avatar_url: publicUrl },
+            const arrayBuffer = await file.arrayBuffer();
+            const uint8 = new Uint8Array(arrayBuffer);
+            let binary = '';
+            uint8.forEach(b => {
+                binary += String.fromCharCode(b);
             });
+            const base64 = btoa(binary);
 
-            if (updateError) throw updateError;
+            const result = await uploadMemberImage(user.id, base64, 'avatar');
+            if (!result.success) throw new Error(result.error);
 
-            // Sync avatar to id_members (SOT for member data)
-            await supabase.from('id_members').update({ avatar_url: publicUrl }).eq('id', user.id);
-
-            setMemberProfile(prev => (prev ? { ...prev, avatar_url: publicUrl } : prev));
+            setMemberProfile(prev => (prev ? { ...prev, avatar_url: result.url } : prev));
         } catch (error) {
             console.error('Error uploading avatar:', error);
             alert('Error uploading avatar!');
