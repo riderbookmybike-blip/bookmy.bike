@@ -81,6 +81,7 @@ export type TaxStatus = 'INCLUSIVE' | 'EXCLUSIVE' | 'NOT_APPLICABLE';
 export interface SchemeCharge {
     id: string;
     name: string;
+    description?: string;
     type: ChargeType;
     value: number; // Used for FIXED/PERCENTAGE
     calculationBasis: ChargeCalculationBasis;
@@ -89,6 +90,11 @@ export interface SchemeCharge {
     taxRate?: number; // e.g., 18 for 18% GST
     tableData?: SchemeTableEntry[]; // Used if type === 'TABLE' (legacy)
     premiumTable?: PremiumTableCell[]; // Tenure × LA Range matrix
+    offer?: {
+        type: 'FIXED' | 'PERCENTAGE';
+        value: number;
+        description?: string;
+    };
 
     // Integration
     masterChargeId?: string; // Link to a template in chargesMaster
@@ -114,6 +120,7 @@ export interface BankScheme {
     // Rates & Earnings
     interestRate: number;
     interestType: InterestType;
+    emiDate?: number; // Added to specify EMI deduction date (e.g., 3rd, 5th)
     payout: number; // Dealer Payout/Commission
     payoutType: ChargeType; // 'PERCENTAGE' or 'FIXED'
     payoutBasis?: ChargeCalculationBasis; // Basis for percentage calculation (LOAN_AMOUNT, GROSS_LOAN_AMOUNT, DISBURSAL_AMOUNT, FIXED)

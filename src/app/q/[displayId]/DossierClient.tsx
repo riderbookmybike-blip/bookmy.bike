@@ -47,6 +47,7 @@ import {
     BadgePercent,
     TrendingDown,
     IndianRupee,
+    Tag,
     type LucideIcon,
 } from 'lucide-react';
 
@@ -195,7 +196,7 @@ const DossierRow = ({
 }) => (
     <div
         className={cn(
-            'group flex items-start justify-between py-2 px-6 border-b border-slate-100',
+            'group flex items-start justify-between py-2.5 px-6 border-b border-slate-100',
             isSub && 'bg-slate-50/30',
             isBold && 'bg-slate-50/50'
         )}
@@ -204,6 +205,7 @@ const DossierRow = ({
             <div className="flex items-center gap-2">
                 <div
                     className={cn(
+                        'capitalize',
                         isBold ? 'text-[12px] font-black text-slate-900' : 'text-[11px] font-medium text-slate-600',
                         isSub && 'text-[11px] pl-3'
                     )}
@@ -212,13 +214,17 @@ const DossierRow = ({
                 </div>
                 {extra}
             </div>
-            {description && <div className="pl-3 text-[10px] text-slate-400">{description}</div>}
+            {description && <div className="pl-3 text-[10px] text-slate-500/90">{description}</div>}
         </div>
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-3 shrink-0 min-w-[120px] justify-end">
             <span
                 className={cn(
                     'tabular-nums',
-                    isBold ? 'text-[12px] font-black text-slate-900' : 'text-[11px] font-bold text-slate-700',
+                    isBold
+                        ? 'text-[12px] font-black text-slate-900'
+                        : isSaving
+                          ? 'text-[11px] font-bold text-emerald-700'
+                          : 'text-[11px] font-medium text-slate-700',
                     isSub && 'text-[11px]'
                 )}
             >
@@ -347,6 +353,7 @@ const DossierGroup = ({
     iconColor,
     children,
     quote,
+    hideHeader = false,
 }: {
     title: React.ReactNode;
     icon: any;
@@ -355,39 +362,42 @@ const DossierGroup = ({
     iconColor?: string;
     children?: React.ReactNode;
     quote: any;
+    hideHeader?: boolean;
 }) => {
     const color = iconColor || getSafeAccentColor(quote?.vehicle?.hexCode);
     return (
         <div className="border-b border-slate-100 last:border-0 bg-white">
-            <div className="w-full flex items-center justify-between py-3 px-6 relative overflow-hidden bg-white">
-                <div className="flex items-center gap-3">
-                    <div
-                        className="w-9 h-9 rounded-xl flex items-center justify-center shadow-sm border"
-                        style={{
-                            backgroundColor: `${color}1A`,
-                            borderColor: `${color}33`,
-                            color: color,
-                        }}
-                    >
-                        <Icon size={16} />
+            {!hideHeader && (
+                <div className="w-full flex items-center justify-between py-3 px-6 relative overflow-hidden bg-white">
+                    <div className="flex items-center gap-3">
+                        <div
+                            className="w-9 h-9 rounded-xl flex items-center justify-center shadow-sm border"
+                            style={{
+                                backgroundColor: `${color}1A`,
+                                borderColor: `${color}33`,
+                                color: color,
+                            }}
+                        >
+                            <Icon size={16} />
+                        </div>
+                        <div className="flex flex-col">
+                            <span className="text-xs font-bold text-slate-900 tracking-tight">{title}</span>
+                            {subtitle && (
+                                <span className="text-[9px] text-slate-400 font-medium leading-tight mt-0.5">
+                                    {subtitle}
+                                </span>
+                            )}
+                        </div>
                     </div>
-                    <div className="flex flex-col">
-                        <span className="text-xs font-bold text-slate-900 tracking-tight">{title}</span>
-                        {subtitle && (
-                            <span className="text-[9px] text-slate-400 font-medium leading-tight mt-0.5">
-                                {subtitle}
+                    {total !== undefined && (
+                        <div className="flex items-center gap-4">
+                            <span className="text-xs font-black text-slate-900 tabular-nums font-mono">
+                                {typeof total === 'number' ? formatCurrency(total) : total}
                             </span>
-                        )}
-                    </div>
+                        </div>
+                    )}
                 </div>
-                {total !== undefined && (
-                    <div className="flex items-center gap-4">
-                        <span className="text-xs font-black text-slate-900 tabular-nums font-mono">
-                            {typeof total === 'number' ? formatCurrency(total) : total}
-                        </span>
-                    </div>
-                )}
-            </div>
+            )}
             <div className="bg-slate-50/20">{children}</div>
         </div>
     );
@@ -1015,7 +1025,7 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                     </div>
 
                     <div className="a4-body">
-                        <div className="space-y-5">
+                        <div className="space-y-8 pb-4">
                             <div className="flex justify-center">
                                 <OCircleMembershipCard
                                     memberName={quoteMemberName}
@@ -1036,124 +1046,67 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                                 />
                             </div>
 
-                            {/* Triple Zero Promise */}
-                            <div className="rounded-2xl overflow-hidden border border-slate-200">
-                                <div className="px-5 py-3 bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50 border-b border-amber-100">
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <div className="text-[9px] font-black uppercase tracking-[0.3em] text-amber-700">
-                                                The Triple Zero Promise
-                                            </div>
-                                            <div className="text-[10px] font-bold text-slate-500 mt-0.5">
-                                                Exclusive benefits for O&apos;Circle members
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200">
-                                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                                            <span className="text-[7px] font-black uppercase tracking-[0.15em] text-emerald-700">
-                                                Active
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-3 divide-x divide-slate-100">
-                                    {[
-                                        {
-                                            value: '₹0',
-                                            label: 'Down Payment',
-                                            sub: 'On select models',
-                                            color: '#10B981',
-                                        },
-                                        {
-                                            value: '₹0',
-                                            label: 'Processing Fee',
-                                            sub: 'Zero documentation cost',
-                                            color: '#6366F1',
-                                        },
-                                        {
-                                            value: '₹0',
-                                            label: 'Foreclosure',
-                                            sub: 'Close anytime, free',
-                                            color: '#F59E0B',
-                                        },
-                                    ].map(item => (
-                                        <div key={item.label} className="p-3 text-center">
-                                            <div
-                                                className="text-2xl font-black italic tracking-tight"
-                                                style={{ color: item.color }}
-                                            >
-                                                {item.value}
-                                            </div>
-                                            <div className="text-[9px] font-black uppercase tracking-wider text-slate-700 mt-0.5">
-                                                {item.label}
-                                            </div>
-                                            <div className="text-[7px] text-slate-400 mt-0.5">{item.sub}</div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-
                             {/* How It Works — Referral Flow */}
                             <div>
-                                <div className="flex items-center gap-2 mb-2.5">
-                                    <div className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">
+                                <div className="flex items-center gap-3 mb-5 px-2">
+                                    <div className="w-8 h-px bg-slate-200" />
+                                    <div className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400">
                                         How You Earn
                                     </div>
-                                    <div className="flex-1 h-px bg-slate-100" />
+                                    <div className="flex-1 h-px bg-slate-200" />
                                 </div>
-                                <div className="grid grid-cols-3 gap-2">
+                                <div className="grid grid-cols-3 gap-5">
                                     {[
                                         {
                                             icon: Users,
                                             step: '01',
                                             title: 'Join Free',
                                             desc: 'Instant OTP signup. No commitments, no fees. Your membership is activated in 30 seconds.',
-                                            gradient: 'from-amber-50 to-orange-50',
-                                            border: 'border-amber-200',
-                                            accent: '#F4B000',
+                                            gradient: 'from-amber-200/20 to-orange-400/10',
+                                            accent: '#F59E0B',
                                         },
                                         {
                                             icon: Gift,
                                             step: '02',
                                             title: 'Refer & Share',
                                             desc: 'Share your referral with friends & family. Every successful referral earns you B-Coins instantly.',
-                                            gradient: 'from-emerald-50 to-teal-50',
-                                            border: 'border-emerald-200',
+                                            gradient: 'from-emerald-200/20 to-teal-400/10',
                                             accent: '#10B981',
                                         },
                                         {
                                             icon: Coins,
                                             step: '03',
                                             title: 'Redeem Value',
-                                            desc: '1 B-Coin = ₹1. Use towards accessories, service packages, or even your next vehicle purchase.',
-                                            gradient: 'from-violet-50 to-indigo-50',
-                                            border: 'border-violet-200',
-                                            accent: '#818CF8',
+                                            desc: 'Use B-Coins towards accessories, service packages, or even your next vehicle purchase.',
+                                            gradient: 'from-violet-200/20 to-indigo-400/10',
+                                            accent: '#8B5CF6',
                                         },
                                     ].map(step => {
                                         const Icon = step.icon;
                                         return (
                                             <div
                                                 key={step.step}
-                                                className={`p-3 rounded-xl bg-gradient-to-br ${step.gradient} border ${step.border}`}
+                                                className="p-5 rounded-3xl bg-white border border-slate-100 shadow-xl shadow-slate-200/40 relative overflow-hidden group"
                                             >
-                                                <div className="flex items-center gap-2 mb-2">
-                                                    <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-white shadow-sm border border-white/80">
-                                                        <Icon size={14} style={{ color: step.accent }} />
+                                                <div
+                                                    className={`absolute -top-10 -right-10 w-32 h-32 bg-gradient-to-bl ${step.gradient} blur-2xl rounded-full transition-all group-hover:scale-110 pointer-events-none`}
+                                                />
+                                                <div className="relative z-10 flex flex-col h-full">
+                                                    <div className="flex items-start justify-between mb-4">
+                                                        <div className="w-10 h-10 rounded-2xl flex items-center justify-center bg-slate-50 border border-slate-100/80 shadow-sm">
+                                                            <Icon size={18} style={{ color: step.accent }} />
+                                                        </div>
+                                                        <span className="text-[10px] font-black tracking-widest text-slate-300">
+                                                            {step.step}
+                                                        </span>
                                                     </div>
-                                                    <span
-                                                        className="text-[7px] font-black tracking-[0.2em] uppercase"
-                                                        style={{ color: step.accent }}
-                                                    >
-                                                        {step.step}
-                                                    </span>
+                                                    <div className="text-xs font-black text-slate-800 tracking-tight">
+                                                        {step.title}
+                                                    </div>
+                                                    <p className="text-[9px] text-slate-500 mt-2.5 leading-relaxed font-medium flex-1">
+                                                        {step.desc}
+                                                    </p>
                                                 </div>
-                                                <div className="text-[10px] font-black text-slate-800">
-                                                    {step.title}
-                                                </div>
-                                                <p className="text-[8px] text-slate-500 mt-1 leading-[1.4]">
-                                                    {step.desc}
-                                                </p>
                                             </div>
                                         );
                                     })}
@@ -1161,133 +1114,140 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                             </div>
 
                             {/* B-Coin Ledger */}
-                            <div>
-                                <div className="flex items-center gap-2 mb-2">
-                                    <div className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">
-                                        B-Coin Ledger
+                            <div className="p-6 rounded-[2rem] bg-white border border-slate-100 shadow-xl shadow-slate-200/30">
+                                <div className="flex items-center justify-between mb-6">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 p-[1px] shadow-md shadow-amber-500/20">
+                                            <div className="w-full h-full bg-white rounded-2xl flex items-center justify-center">
+                                                <Coins size={22} className="text-amber-500" />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <div className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">
+                                                B-Coin Ledger
+                                            </div>
+                                            <div className="text-xs text-slate-800 mt-1 font-bold">
+                                                Recent transactions
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="flex-1 h-px bg-slate-100" />
-                                    <div className="text-[8px] font-black uppercase tracking-widest text-slate-300">
-                                        Balance:{' '}
-                                        <span style={{ color: '#F4B000' }}>
+                                    <div className="px-5 py-3 rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200/60 shadow-inner">
+                                        <div className="text-[8px] font-black uppercase tracking-widest text-slate-400 text-center mb-1">
+                                            Available Balance
+                                        </div>
+                                        <div className="text-xl font-black text-amber-500 leading-none tabular-nums text-center">
                                             {walletAvailable.toLocaleString('en-IN')}
-                                        </span>
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="border border-slate-100 rounded-xl overflow-hidden">
-                                    {/* Table Header */}
-                                    <div className="grid grid-cols-[1fr_80px_70px_60px] gap-1 px-3 py-1.5 bg-slate-50 border-b border-slate-100">
-                                        <span className="text-[7px] font-black uppercase tracking-widest text-slate-400">
+
+                                <div className="border border-slate-100 rounded-2xl overflow-hidden bg-slate-50/50 shadow-sm">
+                                    <div className="grid grid-cols-[1fr_80px_80px_70px] gap-2 px-5 py-3 bg-white border-b border-slate-100">
+                                        <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">
                                             Source
                                         </span>
-                                        <span className="text-[7px] font-black uppercase tracking-widest text-slate-400">
+                                        <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 text-center">
                                             Type
                                         </span>
-                                        <span className="text-[7px] font-black uppercase tracking-widest text-slate-400">
+                                        <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 text-center">
                                             Date
                                         </span>
-                                        <span className="text-[7px] font-black uppercase tracking-widest text-slate-400 text-right">
+                                        <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 text-right">
                                             Coins
                                         </span>
                                     </div>
                                     {ledgerSafe.length > 0 ? (
-                                        <div className="divide-y divide-slate-50">
-                                            {ledgerSafe.slice(0, 5).map((tx: any, i: number) => {
-                                                const isPositive = (tx.delta || 0) > 0;
-                                                const sourceLabel = (tx.source_type || 'Transaction').replace(
-                                                    /_/g,
-                                                    ' '
-                                                );
-                                                const coinType = (tx.coin_type || 'SYSTEM').replace(/_/g, ' ');
-                                                const typeColors: Record<string, string> = {
-                                                    SYSTEM: 'bg-blue-50 text-blue-600 border-blue-200',
-                                                    REFERRAL: 'bg-emerald-50 text-emerald-600 border-emerald-200',
-                                                    SPONSORED: 'bg-violet-50 text-violet-600 border-violet-200',
-                                                    SIGNUP: 'bg-amber-50 text-amber-600 border-amber-200',
-                                                };
-                                                const typeStyle =
-                                                    typeColors[tx.coin_type || 'SYSTEM'] || typeColors.SYSTEM;
-                                                return (
-                                                    <div
-                                                        key={tx.id || i}
-                                                        className="grid grid-cols-[1fr_80px_70px_60px] gap-1 px-3 py-2 items-center"
-                                                    >
-                                                        <div className="flex items-center gap-1.5 min-w-0">
-                                                            <div
-                                                                className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 ${isPositive ? 'bg-emerald-50' : 'bg-red-50'}`}
-                                                            >
-                                                                {isPositive ? (
-                                                                    <TrendingUp
-                                                                        size={10}
-                                                                        className="text-emerald-500"
-                                                                    />
-                                                                ) : (
-                                                                    <TrendingDown size={10} className="text-red-400" />
-                                                                )}
-                                                            </div>
-                                                            <span className="text-[9px] font-bold text-slate-700 truncate capitalize">
-                                                                {sourceLabel}
-                                                            </span>
-                                                        </div>
-                                                        <span
-                                                            className={`text-[7px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full border w-fit ${typeStyle}`}
+                                        <div className="divide-y divide-slate-100 bg-white">
+                                            {[...ledgerSafe]
+                                                .sort(
+                                                    (a: any, b: any) =>
+                                                        new Date(b.created_at || 0).getTime() -
+                                                        new Date(a.created_at || 0).getTime()
+                                                )
+                                                .slice(0, 5)
+                                                .map((tx: any, i: number) => {
+                                                    const isPositive = (tx.delta || 0) > 0;
+                                                    const sourceLabel = (tx.source_type || 'Transaction').replace(
+                                                        /_/g,
+                                                        ' '
+                                                    );
+                                                    const coinType = (tx.coin_type || 'SYSTEM').replace(/_/g, ' ');
+                                                    const typeColors: Record<string, string> = {
+                                                        SYSTEM: 'bg-slate-100 text-slate-600 border-slate-200',
+                                                        REFERRAL: 'bg-emerald-50 text-emerald-600 border-emerald-200',
+                                                        SPONSORED: 'bg-violet-50 text-violet-600 border-violet-200',
+                                                        SIGNUP: 'bg-amber-50 text-amber-600 border-amber-200',
+                                                    };
+                                                    const typeStyle =
+                                                        typeColors[tx.coin_type || 'SYSTEM'] || typeColors.SYSTEM;
+                                                    return (
+                                                        <div
+                                                            key={tx.id || i}
+                                                            className="grid grid-cols-[1fr_80px_80px_70px] gap-2 px-5 py-4 items-center hover:bg-slate-50/80 transition-colors"
                                                         >
-                                                            {coinType}
-                                                        </span>
-                                                        <span className="text-[8px] text-slate-400 tabular-nums">
-                                                            {(() => {
-                                                                try {
-                                                                    return new Date(tx.created_at).toLocaleDateString(
-                                                                        'en-IN',
-                                                                        {
+                                                            <div className="flex items-center gap-3 min-w-0">
+                                                                <div
+                                                                    className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border shadow-sm ${isPositive ? 'bg-emerald-50 border-emerald-100/50' : 'bg-red-50 border-red-100/50'}`}
+                                                                >
+                                                                    {isPositive ? (
+                                                                        <TrendingUp
+                                                                            size={14}
+                                                                            className="text-emerald-500"
+                                                                        />
+                                                                    ) : (
+                                                                        <TrendingDown
+                                                                            size={14}
+                                                                            className="text-red-400"
+                                                                        />
+                                                                    )}
+                                                                </div>
+                                                                <span className="text-xs font-bold text-slate-700 truncate capitalize">
+                                                                    {sourceLabel}
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex justify-center">
+                                                                <span
+                                                                    className={`text-[8px] font-black uppercase tracking-wider px-2 py-1.5 rounded-full border shadow-sm ${typeStyle}`}
+                                                                >
+                                                                    {coinType}
+                                                                </span>
+                                                            </div>
+                                                            <span className="text-[10px] text-slate-500 font-medium tabular-nums text-center">
+                                                                {(() => {
+                                                                    try {
+                                                                        return new Date(
+                                                                            tx.created_at
+                                                                        ).toLocaleDateString('en-IN', {
                                                                             day: '2-digit',
                                                                             month: 'short',
                                                                             year: '2-digit',
-                                                                        }
-                                                                    );
-                                                                } catch {
-                                                                    return '—';
-                                                                }
-                                                            })()}
-                                                        </span>
-                                                        <span
-                                                            className={`text-[10px] font-black tabular-nums text-right ${isPositive ? 'text-emerald-600' : 'text-red-500'}`}
-                                                        >
-                                                            {isPositive ? '+' : ''}
-                                                            {tx.delta || 0}
-                                                        </span>
-                                                    </div>
-                                                );
-                                            })}
+                                                                        });
+                                                                    } catch {
+                                                                        return '—';
+                                                                    }
+                                                                })()}
+                                                            </span>
+                                                            <span
+                                                                className={`text-sm font-black tabular-nums text-right ${isPositive ? 'text-emerald-500' : 'text-red-500'}`}
+                                                            >
+                                                                {isPositive ? '+' : ''}
+                                                                {tx.delta || 0}
+                                                            </span>
+                                                        </div>
+                                                    );
+                                                })}
                                         </div>
                                     ) : (
-                                        <div className="py-6 text-center">
-                                            <div className="w-10 h-10 mx-auto rounded-2xl bg-slate-50 flex items-center justify-center border border-slate-100 mb-2">
-                                                <Coins size={18} className="text-slate-300" />
+                                        <div className="py-12 text-center bg-white">
+                                            <div className="w-14 h-14 mx-auto rounded-3xl bg-slate-50 flex items-center justify-center border border-slate-100 mb-4 shadow-inner">
+                                                <Coins size={24} className="text-slate-300" />
                                             </div>
-                                            <div className="text-[9px] font-bold text-slate-400">
-                                                No transactions yet
-                                            </div>
-                                            <div className="text-[8px] text-slate-300 mt-0.5">
-                                                Refer friends to start earning B-Coins
+                                            <div className="text-sm font-bold text-slate-600">No transactions yet</div>
+                                            <div className="text-[10px] font-medium text-slate-400 mt-1.5 max-w-[200px] mx-auto">
+                                                Refer friends or complete profile actions to start earning B-Coins
                                             </div>
                                         </div>
                                     )}
-                                </div>
-                            </div>
-
-                            {/* CTA */}
-                            <div className="flex items-center justify-between px-4 py-3 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200">
-                                <div>
-                                    <div className="text-[8px] font-black uppercase tracking-[0.3em] text-amber-700">
-                                        Explore the full O&apos;Circle experience
-                                    </div>
-                                    <div className="text-xs font-black text-slate-800 tracking-tight mt-0.5">
-                                        bookmy.bike/ocircle
-                                    </div>
-                                </div>
-                                <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center border border-amber-200 shadow-sm">
-                                    <Crown size={14} className="text-amber-600" />
                                 </div>
                             </div>
                         </div>
@@ -1593,9 +1553,7 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                                     : sotEmi > 0
                                       ? sotEmi
                                       : Math.round(grossLoanAmount * selectedFactor);
-                            const interestType = String(
-                                quote.finance?.interestType || pricing.financeInterestType || 'REDUCING'
-                            ).toUpperCase();
+                            const interestType = String(quote.finance?.interestType || '').toUpperCase();
                             const roiRaw = toNumber(quote.finance?.roi, 0);
                             const annualRate = roiRaw > 1 ? roiRaw / 100 : roiRaw;
                             const calculateIndicativeEmi = (tenure: number) => {
@@ -1617,40 +1575,19 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
 
                             return (
                                 <div className="space-y-4">
-                                    <div className="p-6 bg-indigo-50 rounded-[2rem] border border-indigo-100">
-                                        <div>
-                                            <div className="text-sm font-black text-slate-900">
-                                                {quote.finance.bankName ||
-                                                    quote.finance.bank ||
-                                                    'Standard Finance Scheme'}
-                                            </div>
-                                        </div>
-                                    </div>
-
                                     <div
                                         className="rounded-2xl border overflow-hidden"
                                         style={{
                                             borderColor: `${quote?.vehicle?.hexCode || '#F4B000'}30`,
                                         }}
                                     >
-                                        <div className="grid grid-cols-4">
+                                        <div className="grid grid-cols-3">
                                             <div className="px-3 py-4" style={{ backgroundColor: '#f59e0b30' }}>
                                                 <div className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1">
                                                     Down Payment
                                                 </div>
                                                 <div className="text-[15px] font-black text-slate-800">
                                                     {formatCurrency(downPayment)}
-                                                </div>
-                                            </div>
-                                            <div
-                                                className="px-3 py-4 border-l border-zinc-100"
-                                                style={{ backgroundColor: '#10b98130' }}
-                                            >
-                                                <div className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1">
-                                                    Net Loan Amount
-                                                </div>
-                                                <div className="text-[15px] font-black text-slate-800">
-                                                    {formatCurrency(netLoanAmount)}
                                                 </div>
                                             </div>
                                             <div
@@ -1692,27 +1629,24 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                                         icon={TrendingUp}
                                         iconColor="#6366f1"
                                     >
-                                        <div className="grid grid-cols-[44px_88px_92px_92px_92px_92px] items-center gap-3 py-2 px-6 border-b-2 border-zinc-200 mb-1">
+                                        <div className="grid grid-cols-5 items-center gap-3 py-2 px-6 border-b-2 border-zinc-200 mb-1">
                                             <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">
-                                                Fin
+                                                Financier
                                             </span>
                                             <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 text-center">
                                                 Tenure
                                             </span>
-                                            <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 text-right">
+                                            <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 text-center">
                                                 EMI
                                             </span>
-                                            <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 text-right">
-                                                Loan
-                                            </span>
-                                            <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 text-right">
+                                            <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 text-center">
                                                 Interest
                                             </span>
                                             <span className="text-[8px] font-black uppercase tracking-widest text-slate-400 text-right">
                                                 Total
                                             </span>
                                         </div>
-                                        {TENURES.map(t => {
+                                        {TENURES.map((t, i) => {
                                             const isSelected = t === selectedTenure;
                                             const row = rowByTenure.get(t);
                                             const emi =
@@ -1733,15 +1667,27 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                                                 toNumber(row?.interest, 0) > 0
                                                     ? toNumber(row?.interest, 0)
                                                     : Math.max(0, totalPaid - downPayment - rowGrossLoan);
-                                            const finCode = getFinancerCode(
-                                                String(row?.bank_name || row?.bankName || ''),
-                                                String(row?.bank_short_code || row?.bankShortCode || '')
-                                            );
+                                            const finNameRaw = String(row?.bank_name || row?.bankName || '');
+                                            const finWords = finNameRaw
+                                                .split(' ')
+                                                .filter(Boolean)
+                                                .slice(0, 2)
+                                                .join(' ');
+                                            const finLabel =
+                                                finWords ||
+                                                getFinancerCode(
+                                                    finNameRaw,
+                                                    String(row?.bank_short_code || row?.bankShortCode || '')
+                                                );
                                             return (
                                                 <div
                                                     key={t}
-                                                    className={`grid grid-cols-[44px_88px_92px_92px_92px_92px] items-center gap-3 py-2 px-6 ${
-                                                        isSelected ? 'rounded-lg border' : 'border-b border-zinc-50'
+                                                    className={`grid grid-cols-5 items-center gap-3 py-2.5 px-6 transition-colors ${
+                                                        isSelected
+                                                            ? 'rounded-xl border shadow-md relative z-10'
+                                                            : i % 2 === 0
+                                                              ? 'bg-slate-50/60 border-b border-slate-100/50'
+                                                              : 'bg-white border-b border-slate-50'
                                                     }`}
                                                     style={
                                                         isSelected
@@ -1754,10 +1700,10 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                                                     }
                                                 >
                                                     <span
-                                                        className={`text-[10px] ${isSelected ? 'font-black text-slate-900' : 'font-semibold text-slate-600'}`}
-                                                        title={row?.bank_name || row?.bankName || 'Financier'}
+                                                        className={`text-[10px] ${isSelected ? 'font-black text-slate-900' : 'font-bold text-slate-600'}`}
+                                                        title={finNameRaw || 'Financier'}
                                                     >
-                                                        {finCode}
+                                                        {finLabel}
                                                     </span>
                                                     <span
                                                         className={`text-[10px] text-center whitespace-nowrap ${isSelected ? 'font-black text-slate-900' : 'font-semibold text-slate-600'}`}
@@ -1765,17 +1711,12 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                                                         {t} months
                                                     </span>
                                                     <span
-                                                        className={`text-[10px] tabular-nums font-mono text-right ${isSelected ? 'font-black text-slate-900 text-[11px]' : 'font-bold text-slate-700'}`}
+                                                        className={`text-[10px] tabular-nums font-mono text-center ${isSelected ? 'font-black text-slate-900 text-[11px]' : 'font-bold text-slate-700'}`}
                                                     >
                                                         {formatCurrency(emi)}
                                                     </span>
                                                     <span
-                                                        className={`text-[10px] tabular-nums font-mono text-right ${isSelected ? 'font-semibold text-slate-800' : 'text-slate-500'}`}
-                                                    >
-                                                        {formatCurrency(rowGrossLoan)}
-                                                    </span>
-                                                    <span
-                                                        className={`text-[9px] tabular-nums font-mono text-right ${isSelected ? 'text-emerald-700' : 'text-red-400'}`}
+                                                        className={`text-[9px] tabular-nums font-mono text-center ${isSelected ? 'text-emerald-700' : 'text-red-400'}`}
                                                     >
                                                         +{formatCurrency(interest)}
                                                     </span>
@@ -1850,85 +1791,140 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                             <div className="space-y-6">
                                 <DossierGroup
                                     quote={quote}
-                                    title="Terms & Performance"
-                                    icon={Activity}
-                                    iconColor="#8b5cf6"
-                                >
-                                    <DossierRow
-                                        label="Financier"
-                                        value={quote.finance.bankName || quote.finance.bank || '—'}
-                                    />
-                                    <DossierRow
-                                        label="Status"
-                                        value={(quote.finance.status || 'IN_PROCESS').toUpperCase()}
-                                    />
-                                    <DossierRow
-                                        label="Scheme Name"
-                                        value={
-                                            quote.finance.schemeName ||
-                                            quote.finance.schemeCode ||
-                                            quote.finance.scheme ||
-                                            '—'
-                                        }
-                                    />
-                                    <DossierRow
-                                        label="Tenure"
-                                        value={quote.finance.tenureMonths || quote.finance.tenure || '—'}
-                                        isSub
-                                    />
-                                    <DossierRow
-                                        label="Monthly EMI"
-                                        value={formatCurrency(toNumber(quote.finance.emi, 0))}
-                                        isBold
-                                    />
-                                    <DossierRow
-                                        label="Rate of Interest"
-                                        value={
-                                            quote.finance.roi !== null && quote.finance.roi !== undefined
-                                                ? `${quote.finance.roi}%`
-                                                : '—'
-                                        }
-                                        isSub
-                                    />
-                                </DossierGroup>
-
-                                <DossierGroup quote={quote} title="Asset Settlement" icon={Target} iconColor="#f59e0b">
-                                    <DossierRow label="Asset Cost (Net SOT)" value={formatCurrency(baseOnRoad)} />
-                                    <DossierRow label="Offer Discount" value={formatCurrency(totalSavings)} isSub />
-                                    <DossierRow label="Total Payable" value={formatCurrency(offerOnRoad)} isBold />
-                                </DossierGroup>
-
-                                <DossierGroup
-                                    quote={quote}
-                                    title="Finance Pillars"
-                                    icon={TrendingUp}
-                                    iconColor="#10b981"
+                                    title="Settlement & Loan Breakdown"
+                                    icon={Target}
+                                    iconColor="#f59e0b"
+                                    hideHeader
                                 >
                                     {(() => {
-                                        const netLoan =
-                                            quote.finance.loanAmount ??
-                                            toNumber(pricing.finalTotal, 0) - toNumber(quote.finance.downPayment, 0);
-                                        const addOns = quote.finance.loanAddons ?? quote.finance.fundedAddons ?? 0;
+                                        const totalPayable = toNumber(offerOnRoad, 0);
+                                        const downPayment = toNumber(quote.finance.downPayment, 0);
+                                        const oCirclePrivileged = Math.abs(toNumber(totalSavings, 0));
+                                        const bCoinUsed = Math.abs(toNumber(pricing.coinDiscount, 0));
+                                        const discount = oCirclePrivileged + bCoinUsed;
+                                        const assetCostNetSot = totalPayable + discount;
+                                        const netLoan = toNumber(
+                                            quote.finance.loanAmount,
+                                            Math.max(0, totalPayable - downPayment)
+                                        );
+                                        const addOns = toNumber(
+                                            quote.finance.loanAddons ?? quote.finance.fundedAddons,
+                                            0
+                                        );
+                                        const upfrontCharges = toNumber(
+                                            quote.finance.upfrontCharges ?? quote.finance.processingFee,
+                                            0
+                                        );
+                                        const chargesBreakup = Array.isArray(quote.finance.chargesBreakup)
+                                            ? quote.finance.chargesBreakup
+                                            : [];
                                         const grossLoan = toNumber(
                                             quote.finance.grossLoanAmount,
-                                            toNumber(netLoan, 0) +
-                                                toNumber(addOns, 0) +
-                                                toNumber(quote.finance.upfrontCharges, 0)
+                                            netLoan + addOns + upfrontCharges
                                         );
+
                                         return (
                                             <>
                                                 <DossierRow
-                                                    label="Net Loan Amount"
-                                                    value={formatCurrency(toNumber(netLoan, 0))}
+                                                    label="Asset Cost (Net SOT)"
+                                                    value={formatCurrency(assetCostNetSot)}
+                                                    description="Base on-road value before offer adjustments"
                                                 />
                                                 <DossierRow
-                                                    label="Loan Add-ons"
-                                                    value={formatCurrency(toNumber(addOns, 0))}
+                                                    label="O'Circle Privileged"
+                                                    value={`-${formatCurrency(oCirclePrivileged)}`}
+                                                    description="Member privilege discount"
                                                     isSub
+                                                    isSaving
                                                 />
+                                                <DossierRow
+                                                    label="B-Coin Used"
+                                                    value={`-${formatCurrency(bCoinUsed)}`}
+                                                    description="Loyalty coin redemption applied"
+                                                    isSub
+                                                    isSaving
+                                                />
+                                                <DossierRow
+                                                    label="Total Payable"
+                                                    value={formatCurrency(totalPayable)}
+                                                    description="Amount payable after offer discount"
+                                                    isBold
+                                                />
+                                                <DossierRow
+                                                    label="Down Payment (You are paying)"
+                                                    value={`-${formatCurrency(downPayment)}`}
+                                                    description="Paid today; deducted from total payable"
+                                                    isSaving
+                                                />
+                                                <DossierRow
+                                                    label="Net Loan Amount"
+                                                    value={formatCurrency(netLoan)}
+                                                    description="Finance principal after down payment"
+                                                    isBold
+                                                />
+                                                <div className="px-6 py-2 border-b border-slate-100 bg-slate-50/40">
+                                                    <span className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">
+                                                        Loan Add-ons
+                                                    </span>
+                                                </div>
+                                                {addOns > 0 ? (
+                                                    <DossierRow
+                                                        label="Total Loan Add-ons"
+                                                        value={`+${formatCurrency(addOns)}`}
+                                                        description="Funded add-ons attached to the loan"
+                                                        isSub
+                                                    />
+                                                ) : (
+                                                    <div className="px-8 py-2.5 border-b border-slate-100 bg-slate-50/20">
+                                                        <span className="text-[10px] font-medium text-slate-500 bg-slate-100/70 rounded-md px-2 py-1 inline-block">
+                                                            Not applicable for this scheme
+                                                        </span>
+                                                    </div>
+                                                )}
+                                                <div className="px-6 py-2 border-b border-slate-100 bg-slate-50/40">
+                                                    <span className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">
+                                                        Upfront Obligations
+                                                    </span>
+                                                </div>
+                                                {chargesBreakup.length > 0 ? (
+                                                    chargesBreakup.map((c: any, idx: number) => {
+                                                        const hasOffer = c.offer && c.offer.value > 0;
+                                                        return (
+                                                            <div key={idx} className="flex flex-col">
+                                                                <DossierRow
+                                                                    label={c.label || c.name || 'Charge'}
+                                                                    value={`+${formatCurrency(toNumber(c.amount, 0))}`}
+                                                                    isSub
+                                                                />
+                                                                {hasOffer && (
+                                                                    <div className="px-8 pb-3 -mt-2">
+                                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-600 text-[9px] font-bold border border-emerald-100">
+                                                                            <Tag size={8} />
+                                                                            {c.offer.type === 'PERCENTAGE'
+                                                                                ? `${c.offer.value}% OFF`
+                                                                                : `₹${c.offer.value} OFF`}
+                                                                            {c.offer.description
+                                                                                ? ` (${c.offer.description})`
+                                                                                : ''}
+                                                                        </span>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })
+                                                ) : (
+                                                    <div className="px-8 py-2.5 border-b border-slate-100 bg-slate-50/20">
+                                                        <span className="text-[10px] font-medium text-slate-500 bg-slate-100/70 rounded-md px-2 py-1 inline-block">
+                                                            {upfrontCharges > 0
+                                                                ? `Itemized breakup unavailable (Total: ${formatCurrency(upfrontCharges)})`
+                                                                : 'No upfront breakup available'}
+                                                        </span>
+                                                    </div>
+                                                )}
                                                 <DossierRow
                                                     label="Gross Loan Amount"
-                                                    value={formatCurrency(toNumber(grossLoan, 0))}
+                                                    value={formatCurrency(grossLoan)}
+                                                    description="Final financed amount after all additions"
                                                     isBold
                                                 />
                                             </>
@@ -1938,35 +1934,72 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
 
                                 <DossierGroup
                                     quote={quote}
-                                    title="Upfront Obligations"
-                                    icon={Clock}
-                                    iconColor="#ec4899"
+                                    title="Terms & Performance"
+                                    icon={Activity}
+                                    iconColor="#8b5cf6"
+                                    hideHeader
                                 >
                                     <DossierRow
-                                        label="Total Upfront Charges"
-                                        value={formatCurrency(
-                                            toNumber(quote.finance.upfrontCharges ?? quote.finance.processingFee, 0)
-                                        )}
+                                        label="Financier"
+                                        value={quote.finance.bankName || quote.finance.bank || '—'}
                                     />
-                                    {Array.isArray(quote.finance.chargesBreakup) &&
-                                    quote.finance.chargesBreakup.length > 0 ? (
-                                        quote.finance.chargesBreakup.map((c: any, idx: number) => (
-                                            <DossierRow
-                                                key={idx}
-                                                label={c.label || c.name || 'Charge'}
-                                                value={formatCurrency(toNumber(c.amount, 0))}
-                                                isSub
-                                            />
-                                        ))
-                                    ) : (
-                                        <div className="px-8 py-4 text-zinc-400 text-[10px] uppercase italic text-center">
-                                            No upfront breakup available
-                                        </div>
-                                    )}
                                     <DossierRow
-                                        label="Down Payment"
-                                        value={formatCurrency(toNumber(quote.finance.downPayment, 0))}
-                                        isBold
+                                        label="Scheme Name"
+                                        value={(() => {
+                                            const scheme =
+                                                quote.finance.schemeName ||
+                                                quote.finance.schemeCode ||
+                                                quote.finance.scheme ||
+                                                '';
+                                            if (scheme.length === 9 && /^[A-Z0-9]+$/i.test(scheme)) {
+                                                return `${scheme.slice(0, 3)}-${scheme.slice(3, 6)}-${scheme.slice(6)}`;
+                                            }
+                                            return scheme || '—';
+                                        })()}
+                                    />
+                                    <DossierRow
+                                        label="Tenure"
+                                        value={quote.finance.tenureMonths || quote.finance.tenure || '—'}
+                                        description="Months"
+                                    />
+                                    <DossierRow
+                                        label="Monthly EMI"
+                                        value={
+                                            <span className="font-extrabold text-slate-900">
+                                                {formatCurrency(toNumber(quote.finance.emi, 0))}
+                                            </span>
+                                        }
+                                        description={(() => {
+                                            const day = quote.finance.emiDate || quote.finance.emiDay;
+                                            if (!day) return 'Monthly payment cycle';
+                                            const d = parseInt(day, 10);
+                                            if (isNaN(d)) return `On ${day} of every month`;
+                                            const suffix = ['th', 'st', 'nd', 'rd'];
+                                            const v = d % 100;
+                                            return `On ${d + (suffix[(v - 20) % 10] || suffix[v] || suffix[0])} of every month`;
+                                        })()}
+                                    />
+                                    <DossierRow
+                                        label="Rate of Interest"
+                                        value={
+                                            quote.finance.roi !== null && quote.finance.roi !== undefined
+                                                ? `${quote.finance.roi}%`
+                                                : '—'
+                                        }
+                                        description={(() => {
+                                            const type = String(quote.finance?.interestType || '').toUpperCase();
+                                            const roi = toNumber(quote.finance?.roi, 0);
+                                            if (!type) return 'Not specified';
+                                            if (type === 'FLAT' && roi > 0) {
+                                                return `Flat Annually | ${(roi / 12).toFixed(2)}% per month`;
+                                            }
+                                            if (type === 'REDUCING') return 'Reducing';
+                                            return type;
+                                        })()}
+                                    />
+                                    <DossierRow
+                                        label="Status"
+                                        value={quote.finance.status || 'In Principle Approved'}
                                     />
                                 </DossierGroup>
                             </div>
@@ -2037,8 +2070,7 @@ export default function DossierClient({ quote, wallet, ledger }: DossierClientPr
                                     scheme: {
                                         // computeFinanceMetrics expects percentage (e.g. 10.99), not decimal.
                                         interestRate: quote.finance.roi ? quote.finance.roi : 0,
-                                        interestType:
-                                            quote.finance?.interestType || pricing.financeInterestType || 'REDUCING',
+                                        interestType: quote.finance?.interestType || undefined,
                                     },
                                 }}
                                 displayOnRoad={offerOnRoad}

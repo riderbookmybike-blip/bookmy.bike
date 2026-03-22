@@ -72,11 +72,22 @@ export default function FinanceSummaryPanel({
     const { netLoan, grossLoan, totalFunded, totalInterest, totalOutflow, upfrontCharges, fundedCharges } = metrics;
 
     const calcAmt = (charge: any): number => {
+        let baseAmt = 0;
         if (charge.type === 'PERCENTAGE') {
             const basis = charge.calculationBasis === 'LOAN_AMOUNT' ? loanAmount : totalOnRoad;
-            return Math.round(basis * (charge.value / 100));
+            baseAmt = Math.round(basis * (charge.value / 100));
+        } else {
+            baseAmt = charge.value || 0;
         }
-        return charge.value || 0;
+
+        if (charge.offer && charge.offer.value > 0) {
+            const discount =
+                charge.offer.type === 'PERCENTAGE'
+                    ? Math.round((baseAmt * charge.offer.value) / 100)
+                    : charge.offer.value;
+            return Math.max(0, baseAmt - discount);
+        }
+        return baseAmt;
     };
 
     return (
@@ -118,12 +129,36 @@ export default function FinanceSummaryPanel({
                 />
                 <Row label="Net Loan Amount" value={`₹${netLoan.toLocaleString()}`} />
                 {totalFunded > 0 &&
-                    fundedCharges.map((c: any, i: number) => (
-                        <Row key={i} label={c.name} value={`+₹${calcAmt(c).toLocaleString()}`} accent="text-red-400" />
-                    ))}
-                {upfrontCharges.map((c: any, i: number) => (
-                    <Row key={i} label={c.name} value={`+₹${calcAmt(c).toLocaleString()}`} accent="text-red-400" />
-                ))}
+                    fundedCharges.map((c: any, i: number) => {
+                        const hasOffer = c.offer && c.offer.value > 0;
+                        const subText = hasOffer
+                            ? `${c.offer.type === 'PERCENTAGE' ? c.offer.value + '% OFF' : '₹' + c.offer.value + ' OFF'}${c.offer.description ? ' (' + c.offer.description + ')' : ''} - applied`
+                            : undefined;
+                        return (
+                            <Row
+                                key={i}
+                                label={c.name}
+                                value={`+₹${calcAmt(c).toLocaleString()}`}
+                                accent="text-red-400"
+                                sub={subText}
+                            />
+                        );
+                    })}
+                {upfrontCharges.map((c: any, i: number) => {
+                    const hasOffer = c.offer && c.offer.value > 0;
+                    const subText = hasOffer
+                        ? `${c.offer.type === 'PERCENTAGE' ? c.offer.value + '% OFF' : '₹' + c.offer.value + ' OFF'}${c.offer.description ? ' (' + c.offer.description + ')' : ''} - applied`
+                        : undefined;
+                    return (
+                        <Row
+                            key={100 + i}
+                            label={c.name}
+                            value={`+₹${calcAmt(c).toLocaleString()}`}
+                            accent="text-red-400"
+                            sub={subText}
+                        />
+                    );
+                })}
                 <Row label="Gross Loan Amount" value={`₹${grossLoan.toLocaleString()}`} accent="text-brand-primary" />
 
                 <div className="border-t border-slate-200/60" />

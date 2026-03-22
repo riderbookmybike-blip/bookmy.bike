@@ -23,6 +23,11 @@ export interface FinanceCharge {
     impact: 'UPFRONT' | 'FUNDED';
     calculationBasis?: 'LOAN_AMOUNT' | 'ON_ROAD';
     value: number;
+    offer?: {
+        type: 'FIXED' | 'PERCENTAGE';
+        value: number;
+        description?: string;
+    };
 }
 
 export interface FinanceMetricsInput {
@@ -61,11 +66,22 @@ export function computeFinanceMetrics(input: FinanceMetricsInput): FinanceMetric
     const allCharges: FinanceCharge[] = (scheme?.charges || []) as FinanceCharge[];
 
     const calcAmt = (charge: FinanceCharge): number => {
+        let baseAmt = 0;
         if (charge.type === 'PERCENTAGE') {
             const basis = charge.calculationBasis === 'LOAN_AMOUNT' ? loanAmount : totalOnRoad;
-            return Math.round(basis * (charge.value / 100));
+            baseAmt = Math.round(basis * (charge.value / 100));
+        } else {
+            baseAmt = charge.value || 0;
         }
-        return charge.value || 0;
+
+        if (charge.offer && charge.offer.value > 0) {
+            const discount =
+                charge.offer.type === 'PERCENTAGE'
+                    ? Math.round((baseAmt * charge.offer.value) / 100)
+                    : charge.offer.value;
+            return Math.max(0, baseAmt - discount);
+        }
+        return baseAmt;
     };
 
     const upfrontCharges = allCharges.filter(c => c.impact === 'UPFRONT');

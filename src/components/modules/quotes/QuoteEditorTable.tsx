@@ -51,6 +51,7 @@ import {
     ShieldCheck,
     Receipt,
     ShoppingBag,
+    Tag,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -6081,17 +6082,95 @@ export default function QuoteEditorTable({
                                                                             <span className="text-sm font-bold text-slate-700 dark:text-white">
                                                                                 {charge.name}
                                                                             </span>
-                                                                            <div className="text-[8px] text-slate-400 uppercase font-bold tracking-widest mt-0.5">
-                                                                                {charge.type === 'FIXED'
-                                                                                    ? 'Fixed'
-                                                                                    : `${charge.value}% of ${charge.calculationBasis?.replace(/_/g, ' ')}`}
+                                                                            <div className="text-[8px] text-slate-400 uppercase font-bold tracking-widest mt-0.5 flex flex-wrap items-center gap-2">
+                                                                                <span>
+                                                                                    {charge.type === 'FIXED'
+                                                                                        ? 'Fixed'
+                                                                                        : `${charge.value}% of ${charge.calculationBasis?.replace(/_/g, ' ')}`}
+                                                                                </span>
+                                                                                {charge.offer &&
+                                                                                    charge.offer.value > 0 && (
+                                                                                        <span className="text-emerald-500 bg-emerald-500/10 px-1 py-0.5 rounded flex items-center gap-1">
+                                                                                            <Tag size={8} />
+                                                                                            {charge.offer.type ===
+                                                                                            'PERCENTAGE'
+                                                                                                ? charge.offer.value +
+                                                                                                  '% OFF'
+                                                                                                : '₹' +
+                                                                                                  charge.offer.value +
+                                                                                                  ' OFF'}
+                                                                                        </span>
+                                                                                    )}
                                                                             </div>
                                                                         </div>
                                                                         <div className="flex items-center gap-3">
                                                                             <span className="text-sm font-black text-slate-900 dark:text-white">
-                                                                                {charge.type === 'FIXED'
-                                                                                    ? formatCurrency(charge.value)
-                                                                                    : `${charge.value}%`}
+                                                                                {(() => {
+                                                                                    let base = charge.value || 0;
+                                                                                    if (charge.type === 'PERCENTAGE') {
+                                                                                        const loanAmt =
+                                                                                            parseInt(
+                                                                                                entry.loanAmount
+                                                                                            ) || 0;
+                                                                                        const assetCost =
+                                                                                            parseInt(entry.assetCost) ||
+                                                                                            0;
+                                                                                        const gross =
+                                                                                            loanAmt +
+                                                                                            (entry.fundedAddons?.reduce(
+                                                                                                (s: number, a: any) =>
+                                                                                                    s +
+                                                                                                    (a.type === 'FIXED'
+                                                                                                        ? a.value
+                                                                                                        : 0),
+                                                                                                0
+                                                                                            ) || 0);
+                                                                                        let basis = loanAmt;
+                                                                                        if (
+                                                                                            charge.calculationBasis ===
+                                                                                            'GROSS_LOAN_AMOUNT'
+                                                                                        )
+                                                                                            basis = gross;
+                                                                                        else if (
+                                                                                            charge.calculationBasis ===
+                                                                                            'VEHICLE_PRICE'
+                                                                                        )
+                                                                                            basis = assetCost;
+                                                                                        base = Math.round(
+                                                                                            (basis * charge.value) / 100
+                                                                                        );
+                                                                                    }
+                                                                                    if (
+                                                                                        charge.offer &&
+                                                                                        charge.offer.value > 0
+                                                                                    ) {
+                                                                                        const discount =
+                                                                                            charge.offer.type ===
+                                                                                            'PERCENTAGE'
+                                                                                                ? Math.round(
+                                                                                                      (base *
+                                                                                                          charge.offer
+                                                                                                              .value) /
+                                                                                                          100
+                                                                                                  )
+                                                                                                : charge.offer.value;
+                                                                                        base = Math.max(
+                                                                                            0,
+                                                                                            base - discount
+                                                                                        );
+                                                                                    }
+                                                                                    if (
+                                                                                        charge.taxStatus ===
+                                                                                            'EXCLUSIVE' &&
+                                                                                        charge.taxRate
+                                                                                    ) {
+                                                                                        base =
+                                                                                            base +
+                                                                                            (base * charge.taxRate) /
+                                                                                                100;
+                                                                                    }
+                                                                                    return formatCurrency(base);
+                                                                                })()}
                                                                             </span>
                                                                             <button
                                                                                 onClick={() => {
@@ -6153,12 +6232,56 @@ export default function QuoteEditorTable({
                                                                     isBold
                                                                     label="Total Upfront"
                                                                     value={formatCurrency(
-                                                                        entry.upfrontCharges.reduce(
-                                                                            (sum, c) =>
-                                                                                sum +
-                                                                                (c.type === 'FIXED' ? c.value : 0),
-                                                                            0
-                                                                        )
+                                                                        entry.upfrontCharges.reduce((sum, c) => {
+                                                                            let base = c.value || 0;
+                                                                            if (c.type === 'PERCENTAGE') {
+                                                                                const loanAmt =
+                                                                                    parseInt(entry.loanAmount) || 0;
+                                                                                const assetCost =
+                                                                                    parseInt(entry.assetCost) || 0;
+                                                                                const gross =
+                                                                                    loanAmt +
+                                                                                    (entry.fundedAddons?.reduce(
+                                                                                        (s: number, a: any) =>
+                                                                                            s +
+                                                                                            (a.type === 'FIXED'
+                                                                                                ? a.value
+                                                                                                : 0),
+                                                                                        0
+                                                                                    ) || 0);
+                                                                                let basis = loanAmt;
+                                                                                if (
+                                                                                    c.calculationBasis ===
+                                                                                    'GROSS_LOAN_AMOUNT'
+                                                                                )
+                                                                                    basis = gross;
+                                                                                else if (
+                                                                                    c.calculationBasis ===
+                                                                                    'VEHICLE_PRICE'
+                                                                                )
+                                                                                    basis = assetCost;
+                                                                                base = Math.round(
+                                                                                    (basis * c.value) / 100
+                                                                                );
+                                                                            }
+                                                                            if (c.offer && c.offer.value > 0) {
+                                                                                const discount =
+                                                                                    c.offer.type === 'PERCENTAGE'
+                                                                                        ? Math.round(
+                                                                                              (base * c.offer.value) /
+                                                                                                  100
+                                                                                          )
+                                                                                        : c.offer.value;
+                                                                                base = Math.max(0, base - discount);
+                                                                            }
+                                                                            if (
+                                                                                c.taxStatus === 'EXCLUSIVE' &&
+                                                                                c.taxRate
+                                                                            ) {
+                                                                                base = base + (base * c.taxRate) / 100;
+                                                                            }
+                                                                            return sum + base;
+                                                                        }, 0)
                                                                     )}
                                                                     description={
                                                                         <span className="text-[8px] text-emerald-500 uppercase font-extrabold tracking-widest italic">
@@ -6348,6 +6471,15 @@ export default function QuoteEditorTable({
                                                                             </span>
                                                                         </div>
                                                                     }
+                                                                    description={
+                                                                        <span className="text-[8px] text-slate-400 uppercase font-bold tracking-widest italic">
+                                                                            Duration ({entry.tenure || 0} Months /{' '}
+                                                                            {(Number(entry.tenure || 0) / 12).toFixed(
+                                                                                1
+                                                                            )}{' '}
+                                                                            Years)
+                                                                        </span>
+                                                                    }
                                                                 />
                                                                 <PricingRow
                                                                     isBold
@@ -6378,8 +6510,29 @@ export default function QuoteEditorTable({
                                                                         </div>
                                                                     }
                                                                     description={
-                                                                        <span className="text-[8px] text-emerald-500 uppercase font-extrabold tracking-widest italic">
-                                                                            Approved Repayment Amount
+                                                                        <span className="text-[8px] text-emerald-500 uppercase font-extrabold tracking-widest italic flex flex-col gap-0.5">
+                                                                            <span>Approved Repayment Amount</span>
+                                                                            {entry.selectedScheme?.emiDate && (
+                                                                                <span className="text-slate-400">
+                                                                                    On {entry.selectedScheme.emiDate}
+                                                                                    {[1, 21, 31].includes(
+                                                                                        entry.selectedScheme.emiDate
+                                                                                    )
+                                                                                        ? 'st'
+                                                                                        : [2, 22].includes(
+                                                                                                entry.selectedScheme
+                                                                                                    .emiDate
+                                                                                            )
+                                                                                          ? 'nd'
+                                                                                          : [3, 23].includes(
+                                                                                                  entry.selectedScheme
+                                                                                                      .emiDate
+                                                                                              )
+                                                                                            ? 'rd'
+                                                                                            : 'th'}{' '}
+                                                                                    of every month
+                                                                                </span>
+                                                                            )}
                                                                         </span>
                                                                     }
                                                                 />
@@ -6412,8 +6565,27 @@ export default function QuoteEditorTable({
                                                                         </div>
                                                                     }
                                                                     description={
-                                                                        <span className="text-[8px] text-slate-400 uppercase font-black tracking-widest italic">
-                                                                            Actual IRR (System): {entry.roi ?? 0}%
+                                                                        <span className="text-[8px] text-slate-400 uppercase font-black tracking-widest italic flex flex-col gap-0.5">
+                                                                            <span
+                                                                                className={
+                                                                                    entry.selectedScheme
+                                                                                        ?.interestType === 'FLAT'
+                                                                                        ? 'text-blue-500'
+                                                                                        : 'text-amber-500'
+                                                                                }
+                                                                            >
+                                                                                {entry.selectedScheme?.interestType ===
+                                                                                'FLAT'
+                                                                                    ? 'FLAT'
+                                                                                    : 'REDUCING'}{' '}
+                                                                                ANNUALLY
+                                                                            </span>
+                                                                            <span>
+                                                                                {entry.selectedScheme?.interestType ===
+                                                                                'FLAT'
+                                                                                    ? `${(Number(entry.roi || 0) / 12).toFixed(2)}% PER MONTH`
+                                                                                    : `System IRR: ${entry.roi ?? 0}%`}
+                                                                            </span>
                                                                         </span>
                                                                     }
                                                                 />

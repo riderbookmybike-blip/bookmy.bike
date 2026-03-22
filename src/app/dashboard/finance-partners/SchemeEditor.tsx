@@ -61,6 +61,7 @@ export default function SchemeEditor({ initialScheme, onSave, onCancel, chargesM
     const [newTenureValue, setNewTenureValue] = useState<string>('');
     const [tenureInputText, setTenureInputText] = useState('');
     const [showTenureInput, setShowTenureInput] = useState<string | null>(null); // chargeId
+    const [editingOfferId, setEditingOfferId] = useState<string | null>(null); // chargeId
     const [debugResult, setDebugResult] = useState<any>(null);
 
     // Dynamic Charge Handlers
@@ -175,6 +176,11 @@ export default function SchemeEditor({ initialScheme, onSave, onCancel, chargesM
                         r => activeLoan >= (r.minAge || 0) && activeLoan <= (r.maxAge || 9999999) && r.tenure >= n
                     );
                     if (rule) amount = rule.rate;
+                }
+
+                if (ch.offer && ch.offer.value > 0) {
+                    const discount = ch.offer.type === 'PERCENTAGE' ? (amount * ch.offer.value) / 100 : ch.offer.value;
+                    amount = Math.max(0, amount - discount);
                 }
 
                 if (ch.taxStatus === 'EXCLUSIVE' && ch.taxRate) amount = amount + (amount * ch.taxRate) / 100;
@@ -619,7 +625,7 @@ export default function SchemeEditor({ initialScheme, onSave, onCancel, chargesM
                         </span>
                         Lending Criteria
                     </h3>
-                    <div className="grid grid-cols-3 gap-6">
+                    <div className="grid grid-cols-4 gap-6">
                         <div>
                             <label className="text-[10px] uppercase font-black text-slate-500 tracking-widest mb-2 block">
                                 ROI (%)
@@ -637,13 +643,37 @@ export default function SchemeEditor({ initialScheme, onSave, onCancel, chargesM
                             </label>
                             <select
                                 value={scheme.interestType}
-                                onChange={e => setScheme({ ...scheme, interestType: e.target.value as InterestType })}
-                                className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-[14px] px-4 py-3 text-slate-900 dark:text-white font-bold outline-none appearance-none focus:border-blue-500/50 transition-all"
+                                onChange={e =>
+                                    setScheme({ ...scheme, interestType: e.target.value as 'FLAT' | 'REDUCING' })
+                                }
+                                className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-[14px] px-4 py-3 text-slate-900 dark:text-white font-mono font-bold focus:border-emerald-500/50 focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all"
                             >
-                                <option value="REDUCING">Reducing</option>
-                                <option value="FLAT">Flat</option>
+                                <option value="FLAT">Flat Rate</option>
+                                <option value="REDUCING">Reducing Balance</option>
                             </select>
                         </div>
+                        <div>
+                            <label className="text-[10px] uppercase font-black text-slate-500 tracking-widest mb-2 block">
+                                EMI Date
+                            </label>
+                            <input
+                                type="number"
+                                min={1}
+                                max={31}
+                                placeholder="(e.g. 5)"
+                                value={scheme.emiDate || ''}
+                                onChange={e => {
+                                    let val: number | undefined = e.target.value ? Number(e.target.value) : undefined;
+                                    if (val !== undefined) {
+                                        if (val < 1) val = 1;
+                                        if (val > 31) val = 31;
+                                    }
+                                    setScheme({ ...scheme, emiDate: val });
+                                }}
+                                className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-[14px] px-4 py-3 text-slate-900 dark:text-white font-mono font-bold focus:border-emerald-500/50 focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all"
+                            />
+                        </div>
+
                         <div>
                             <label className="text-[10px] uppercase font-black text-slate-500 tracking-widest mb-2 block">
                                 Max LTV (%)
@@ -1072,11 +1102,137 @@ export default function SchemeEditor({ initialScheme, onSave, onCancel, chargesM
                                     {/* Delete Button */}
                                     <button
                                         onClick={() => removeCharge(charge.id)}
-                                        className="ml-4 w-9 h-9 rounded-xl bg-slate-100 dark:bg-white/5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 hover:border-red-200 dark:hover:border-red-500/20 transition-all flex items-center justify-center border border-transparent"
+                                        className="ml-4 w-9 h-9 flex-shrink-0 rounded-xl bg-slate-100 dark:bg-white/5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 hover:border-red-200 dark:hover:border-red-500/20 transition-all flex items-center justify-center border border-transparent"
                                         title="Remove from scheme"
                                     >
                                         <Trash2 size={16} />
                                     </button>
+                                </div>
+
+                                {/* OFFER SECTION */}
+                                <div className="mt-4 pt-4 border-t border-slate-100 dark:border-white/5">
+                                    {editingOfferId === charge.id ? (
+                                        <div className="bg-emerald-50/50 dark:bg-emerald-500/5 p-4 rounded-xl border border-emerald-200 dark:border-emerald-500/20 animate-in fade-in zoom-in-95 duration-200">
+                                            <div className="flex items-center justify-between mb-3">
+                                                <span className="text-[10px] font-black uppercase text-emerald-600 tracking-widest flex items-center gap-1.5">
+                                                    <Tag size={12} /> Configure Offer
+                                                </span>
+                                                <button
+                                                    onClick={() => setEditingOfferId(null)}
+                                                    className="text-slate-400 hover:text-slate-600"
+                                                >
+                                                    <Plus size={14} className="rotate-45" />
+                                                </button>
+                                            </div>
+                                            <div className="grid grid-cols-12 gap-3">
+                                                <div className="col-span-3">
+                                                    <select
+                                                        value={charge.offer?.type || 'PERCENTAGE'}
+                                                        onChange={e =>
+                                                            updateCharge(charge.id, {
+                                                                offer: {
+                                                                    ...charge.offer,
+                                                                    type: e.target.value as any,
+                                                                    value: charge.offer?.value || 0,
+                                                                },
+                                                            })
+                                                        }
+                                                        className="w-full bg-white dark:bg-slate-800 border border-emerald-200 dark:border-emerald-500/30 rounded-lg px-3 py-2 text-xs font-bold outline-none text-emerald-700 dark:text-emerald-400 appearance-none"
+                                                    >
+                                                        <option value="PERCENTAGE">% Off</option>
+                                                        <option value="FIXED">₹ Off</option>
+                                                    </select>
+                                                </div>
+                                                <div className="col-span-3">
+                                                    <input
+                                                        type="number"
+                                                        placeholder="Value"
+                                                        value={charge.offer?.value || ''}
+                                                        onChange={e =>
+                                                            updateCharge(charge.id, {
+                                                                offer: {
+                                                                    ...charge.offer,
+                                                                    type: charge.offer?.type || 'PERCENTAGE',
+                                                                    value: Number(e.target.value),
+                                                                },
+                                                            })
+                                                        }
+                                                        className="w-full bg-white dark:bg-slate-800 border border-emerald-200 dark:border-emerald-500/30 rounded-lg px-3 py-2 text-xs font-bold outline-none text-emerald-700 dark:text-emerald-400"
+                                                    />
+                                                </div>
+                                                <div className="col-span-4">
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Description (Optional)"
+                                                        value={charge.offer?.description || ''}
+                                                        onChange={e =>
+                                                            updateCharge(charge.id, {
+                                                                offer: {
+                                                                    ...(charge.offer || {
+                                                                        type: 'PERCENTAGE',
+                                                                        value: 0,
+                                                                    }),
+                                                                    description: e.target.value,
+                                                                },
+                                                            })
+                                                        }
+                                                        className="w-full bg-white dark:bg-slate-800 border border-emerald-200 dark:border-emerald-500/30 rounded-lg px-3 py-2 text-xs font-medium outline-none text-emerald-900 dark:text-emerald-100"
+                                                    />
+                                                </div>
+                                                <div className="col-span-2">
+                                                    <button
+                                                        onClick={() => setEditingOfferId(null)}
+                                                        className="w-full h-full bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-colors"
+                                                    >
+                                                        Done
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : charge.offer && charge.offer.value > 0 ? (
+                                        <div className="flex items-center justify-between bg-emerald-50 dark:bg-emerald-500/5 px-4 py-3 rounded-xl border border-emerald-200 dark:border-emerald-500/20 group">
+                                            <div>
+                                                <span className="text-[9px] font-black uppercase text-emerald-500 tracking-widest flex items-center gap-1.5 mb-1">
+                                                    <Tag size={10} /> Active Offer
+                                                </span>
+                                                <p className="text-sm font-black text-emerald-700 dark:text-emerald-400 flex items-center gap-2">
+                                                    {charge.offer.type === 'PERCENTAGE'
+                                                        ? `${charge.offer.value}% OFF`
+                                                        : `₹${charge.offer.value} OFF`}
+                                                    {charge.offer.description && (
+                                                        <span className="text-xs font-semibold text-emerald-600/80 dark:text-emerald-500/80 border-l border-emerald-200 dark:border-emerald-500/30 pl-2">
+                                                            {charge.offer.description}
+                                                        </span>
+                                                    )}
+                                                </p>
+                                            </div>
+                                            <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button
+                                                    onClick={() => setEditingOfferId(charge.id)}
+                                                    className="w-8 h-8 flex items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-200 transition-colors"
+                                                >
+                                                    <Settings size={14} />
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        const newCharge = { ...charge };
+                                                        delete newCharge.offer;
+                                                        updateCharge(charge.id, newCharge);
+                                                    }}
+                                                    className="w-8 h-8 flex items-center justify-center rounded-lg bg-red-50 dark:bg-red-500/10 text-red-500 hover:bg-red-100 hover:border-red-200 transition-colors"
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <button
+                                            onClick={() => setEditingOfferId(charge.id)}
+                                            className="text-[10px] font-black uppercase text-emerald-600 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-500/5 hover:bg-emerald-100 dark:hover:bg-emerald-500/10 px-4 py-2 rounded-xl border border-dashed border-emerald-200 dark:border-emerald-500/20 transition-all flex items-center gap-1.5"
+                                        >
+                                            <Plus size={12} /> Add Offer / Discount
+                                        </button>
+                                    )}
                                 </div>
 
                                 {/* MATRIX EDITOR (Spreadsheet Style) */}

@@ -30,6 +30,7 @@ export default function ChargesTab({
     const [editingChargeId, setEditingChargeId] = useState<string | null>(null);
     const [newCharge, setNewCharge] = useState<Partial<SchemeCharge>>({
         name: '',
+        description: '',
         type: 'FIXED',
         calculationBasis: 'LOAN_AMOUNT',
         impact: 'UPFRONT',
@@ -95,6 +96,7 @@ export default function ChargesTab({
                         ? {
                               ...c,
                               name: newCharge.name!,
+                              description: newCharge.description,
                               type: newCharge.type as any,
                               calculationBasis: newCharge.calculationBasis as any,
                               impact: newCharge.impact as any,
@@ -110,6 +112,7 @@ export default function ChargesTab({
             const charge: SchemeCharge = {
                 id: `c${Date.now()}`,
                 name: newCharge.name,
+                description: newCharge.description,
                 type: newCharge.type as any,
                 calculationBasis: newCharge.calculationBasis as any,
                 impact: newCharge.impact as any,
@@ -125,6 +128,7 @@ export default function ChargesTab({
         setEditingChargeId(null);
         setNewCharge({
             name: '',
+            description: '',
             type: 'FIXED',
             calculationBasis: 'LOAN_AMOUNT',
             impact: 'UPFRONT',
@@ -246,6 +250,7 @@ export default function ChargesTab({
                                                 setEditingChargeId(charge.id);
                                                 setNewCharge({
                                                     name: charge.name,
+                                                    description: charge.description,
                                                     type: charge.type,
                                                     calculationBasis: charge.calculationBasis,
                                                     impact: charge.impact,
@@ -365,6 +370,7 @@ export default function ChargesTab({
                                     setEditingChargeId(null);
                                     setNewCharge({
                                         name: '',
+                                        description: '',
                                         type: 'FIXED',
                                         calculationBasis: 'LOAN_AMOUNT',
                                         impact: 'UPFRONT',
@@ -379,17 +385,34 @@ export default function ChargesTab({
                         </div>
 
                         <div className="p-10 space-y-8">
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
-                                    Charge Name
-                                </label>
-                                <input
-                                    type="text"
-                                    placeholder="e.g. Processing Fee"
-                                    value={newCharge.name}
-                                    onChange={e => setNewCharge({ ...newCharge, name: e.target.value })}
-                                    className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-2xl px-6 py-4 text-sm font-black uppercase outline-none focus:border-blue-500 transition-all"
-                                />
+                            <div className="grid grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
+                                        Charge Name
+                                    </label>
+                                    <input
+                                        type="text"
+                                        placeholder="e.g. Processing Fee"
+                                        value={newCharge.name}
+                                        onChange={e => setNewCharge({ ...newCharge, name: e.target.value })}
+                                        className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-2xl px-6 py-4 text-sm font-black uppercase outline-none focus:border-blue-500 transition-all"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center justify-between">
+                                        Short Description
+                                        <span className="text-[9px] font-medium normal-case text-slate-400 bg-slate-100 dark:bg-white/5 px-1.5 py-0.5 rounded">
+                                            Optional
+                                        </span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        placeholder="e.g. Paid to RTO directly"
+                                        value={newCharge.description || ''}
+                                        onChange={e => setNewCharge({ ...newCharge, description: e.target.value })}
+                                        className="w-full bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-2xl px-6 py-4 text-sm outline-none focus:border-blue-500 transition-all"
+                                    />
+                                </div>
                             </div>
 
                             <div className="grid grid-cols-2 gap-6">

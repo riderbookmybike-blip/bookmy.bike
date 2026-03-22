@@ -1,6 +1,8 @@
 :root {
     --a4-width: 210mm;
     --a4-height: 297mm;
+    --a4-width-px: 794;
+    --a4-height-px: 1123;
     --brand-gold: #ffd700;
     --brand-gold-muted: #f4c430;
     --brand-black: #0b0d10;
@@ -8,15 +10,16 @@
 }
 
 .dossier-stage {
-    background: #0b0d10;
-    /* Darker backdrop for premium feel */
-    background-image: radial-gradient(circle at 50% 50%, #1a1c20 0%, #0b0d10 100%);
+    background: #ffffff;
+    background-image: none;
     padding: 48px 16px;
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 32px;
     min-height: 100vh;
+    width: 100%;
+    overflow-x: hidden;
 }
 
 .a4-page {
@@ -100,59 +103,21 @@
 /* Printing logic */
 @media screen and (max-width: 980px) {
     .dossier-stage {
+        --a4-scale: min(1, calc((100vw - 20px) / (var(--a4-width-px) * 1px)));
         padding: 16px 10px 32px;
-        background: #0b0d10;
+        background: #ffffff;
     }
 
     .a4-page {
-        width: 100%;
-        min-height: auto;
-        border-radius: 12px;
+        width: calc(var(--a4-width-px) * 1px);
+        min-height: calc(var(--a4-height-px) * 1px);
+        border-radius: 4px;
+        zoom: var(--a4-scale);
     }
 
     .a4-grid {
-        min-height: auto;
-        padding: 24px;
-    }
-}
-
-/* Phone-specific: tighten spacing, scale down large text */
-@media screen and (max-width: 640px) {
-    .dossier-stage {
-        padding: 8px 6px 24px;
-        gap: 16px;
-    }
-
-    .a4-grid {
-        padding: 16px;
-        gap: 12px;
-    }
-
-    /* Scale down the big hero text on page 1 */
-    .a4-page h1.text-6xl {
-        font-size: 2.5rem;
-        line-height: 1;
-    }
-
-    .a4-page h2.text-4xl {
-        font-size: 1.75rem;
-    }
-
-    /* Pricing ribbon on page 1 — stack vertically on phone */
-    .a4-page .flex-1.px-8.py-6 {
-        padding: 12px 16px;
-    }
-
-    /* Ensure pricing ribbon doesn't overflow */
-    .a4-page .bg-white\/70.backdrop-blur-xl.rounded-\[2\.5rem\] {
-        border-radius: 1.25rem;
-    }
-
-    /* Download/share footer bar — tighten */
-    .a4-footer {
-        padding-top: 8px;
-        flex-wrap: wrap;
-        gap: 8px;
+        min-height: calc(var(--a4-height-px) * 1px);
+        padding: 20mm 18mm 18mm;
     }
 }
 
