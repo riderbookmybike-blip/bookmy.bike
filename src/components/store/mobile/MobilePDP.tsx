@@ -75,6 +75,8 @@ export interface MobilePDPProps {
     quoteState?: 'IDLE' | 'SAVED' | 'DOWNLOADED';
     quoteActionDisabled?: boolean;
     quoteActionDisabledLabel?: string;
+    /** Phase 2: commercial values (price/EMI/CTAs) only visible once auth + serviceability resolved */
+    isCommercialReady?: boolean;
 }
 
 // ============================================================================
@@ -105,6 +107,7 @@ export const MobilePDP = ({
     quoteState = 'IDLE',
     quoteActionDisabled = false,
     quoteActionDisabledLabel,
+    isCommercialReady = true,
 }: MobilePDPProps) => {
     const { language } = useI18n();
     const [promoTimeLeftMs, setPromoTimeLeftMs] = useState(15 * 60 * 1000);
@@ -427,6 +430,7 @@ export const MobilePDP = ({
                     serviceability={serviceability}
                     isOpen={openContentCard === 'pricing'}
                     onToggle={() => toggleCard('pricing')}
+                    isCommercialReady={isCommercialReady}
                 />
 
                 {/* 6. Finance Card */}
@@ -451,6 +455,7 @@ export const MobilePDP = ({
                     footerEmi={footerEmi}
                     isOpen={openContentCard === 'finance-summary'}
                     onToggle={() => toggleCard('finance-summary')}
+                    isCommercialReady={isCommercialReady}
                 />
 
                 {/* 8. Config Cards — all 5 categories as independent cards */}

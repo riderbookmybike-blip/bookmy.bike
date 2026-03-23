@@ -18,7 +18,13 @@ import { useAnalytics } from '@/components/analytics/AnalyticsProvider';
 import { useTenant } from '@/lib/tenant/tenantContext';
 import { isHandheldPhoneUserAgent, isTvUserAgent } from '@/lib/utils/deviceUserAgent';
 import { buildPublicUrl } from '@/lib/utils/publicUrl';
-import { computeOClubPricing, OCLUB_SIGNUP_BONUS } from '@/lib/oclub/coin';
+import { computeOClubPricing } from '@/lib/oclub/coin';
+
+const PdpConsentGate = dynamic(() => import('@/components/store/PdpConsentGate'), { ssr: false });
+const PincodeGateModal = dynamic(
+    () => import('@/components/store/Personalize/PincodeGateModal').then(m => ({ default: m.PincodeGateModal })),
+    { ssr: false }
+);
 
 import { InsuranceRule } from '@/types/insurance';
 
@@ -152,6 +158,112 @@ export default function ProductClient({
     const [forceMobileLayout, setForceMobileLayout] = useState(false);
     const { trackEvent } = useAnalytics();
     const [showPdpLogin, setShowPdpLogin] = useState(false);
+
+    // ── Phase 2/4: PDP gate state machine ─────────────────────────────────────
+    // CONSENT           — not authenticated (PdpConsentGate modal)
+    // RESOLVING         — auth confirmed; checking pincode + serviceability
+    // PINCODE_REQUIRED  — authenticated, no pincode cached (PincodeGateModal)
+    // NON_SERVICEABLE   — pincode resolved but location not covered (banner + mask)
+    // READY             — fully resolved; commercial values visible
+    type PdpGateState = 'CONSENT' | 'RESOLVING' | 'PINCODE_REQUIRED' | 'NON_SERVICEABLE' | 'READY';
+    const [pdpGateState, setPdpGateState] = useState<PdpGateState>(isAuthenticated ? 'RESOLVING' : 'CONSENT');
+    // Bumped by handlePincodeResolved to force the resolver to re-run after a new
+    // pincode is submitted. Without this, the [isAuthenticated, isLoggedIn] deps
+    // would never change after initial auth and the resolver would silently skip.
+    const [pincodeVersion, setPincodeVersion] = useState(0);
+
+    // Resolve sequence: pincode present → serviceability → READY
+    // Runs once auth is confirmed (isAuthenticated from server OR isLoggedIn from wallet hook).
+    useEffect(() => {
+        if (!isAuthenticated && !isLoggedIn) {
+            setPdpGateState('CONSENT');
+            return;
+        }
+        // No early-exit on READY: pincodeVersion bump must always re-verify
+        // so that a pincode change in NON_SERVICEABLE flow re-runs the full check.
+
+        let cancelled = false;
+        const resolve = async () => {
+            setPdpGateState('RESOLVING');
+
+            try {
+                // 1. Read cached pincode (set by StoreLayoutClient bootstrapLocation)
+                let pincode: string | null = null;
+                try {
+                    const raw = localStorage.getItem('bkmb_user_pincode');
+                    pincode = raw ? (JSON.parse(raw)?.pincode ?? null) : null;
+                } catch {
+                    /* localStorage unavailable — treat as no pincode */
+                }
+
+                if (!pincode) {
+                    // Phase 4: authenticated but no pincode — mandatory capture
+                    if (!cancelled) setPdpGateState('PINCODE_REQUIRED');
+                    return;
+                }
+
+                // 2. Serviceability check
+                const { checkServiceability } = await import('@/actions/serviceArea');
+                const result = await checkServiceability(pincode);
+                if (cancelled) return;
+
+                // Phase 4: non-serviceable zones lock commercial values
+                if (!result?.isServiceable) {
+                    setPdpGateState('NON_SERVICEABLE');
+                    return;
+                }
+
+                setPdpGateState('READY');
+            } catch {
+                // API error — stay gated rather than silently unlocking commercial values.
+                // User can retry via "Change pincode" or page reload.
+                if (!cancelled) setPdpGateState('NON_SERVICEABLE');
+            }
+        };
+
+        resolve();
+        return () => {
+            cancelled = true;
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isAuthenticated, isLoggedIn, pincodeVersion]);
+    // ── End Phase 2/4 gate state ──────────────────────────────────────────────
+
+    /**
+     * handlePincodeResolved — called by PincodeGateModal onResolved.
+     * Re-runs serviceability check; transitions to READY or NON_SERVICEABLE.
+     */
+    const handlePincodeResolved = async (_confidence: string, pincode: string) => {
+        // Persist the pincode to localStorage so the resolver effect reads it
+        try {
+            const existing = JSON.parse(localStorage.getItem('bkmb_user_pincode') || '{}');
+            localStorage.setItem('bkmb_user_pincode', JSON.stringify({ ...existing, pincode }));
+        } catch {
+            /* ignore */
+        }
+        // Bump version to trigger the resolver effect — it will do the serviceability check
+        setPincodeVersion(v => v + 1);
+    };
+
+    /** handleRetryPincode — lets user re-enter pincode from NON_SERVICEABLE banner. */
+    const handleRetryPincode = () => setPdpGateState('PINCODE_REQUIRED');
+
+    // Broadcast commercial-ready state to other components (e.g. ShopperBottomNav)
+    // without prop drilling across the server/client boundary.
+    useEffect(() => {
+        window.dispatchEvent(
+            new CustomEvent('pdpCommercialReady', {
+                detail: { ready: pdpGateState === 'READY' },
+            })
+        );
+    }, [pdpGateState]);
+
+    // Listen for gate CTA click from ShopperBottomNav → open LoginSidebar.
+    useEffect(() => {
+        const handler = () => setShowPdpLogin(true);
+        window.addEventListener('pdpConsentLoginRequested', handler);
+        return () => window.removeEventListener('pdpConsentLoginRequested', handler);
+    }, []);
 
     /**
      * requireAuth — call this as the first line of any commercial action handler.
@@ -327,10 +439,9 @@ export default function ProductClient({
         isReferralActive,
         baseExShowroom,
     } = data;
+    // Phase 2: guest B-coin fallback removed — coins only shown after auth.
     const walletCoinsForDisplay =
-        !walletLoading && Number.isFinite(Number(isLoggedIn ? availableCoins : OCLUB_SIGNUP_BONUS))
-            ? Number(isLoggedIn ? availableCoins : OCLUB_SIGNUP_BONUS)
-            : 0;
+        isLoggedIn && !walletLoading && Number.isFinite(Number(availableCoins)) ? Number(availableCoins) : 0;
     const coinPricingForDisplay =
         walletCoinsForDisplay > 0 ? computeOClubPricing(Number(totalOnRoad || 0), walletCoinsForDisplay) : null;
     const modalDisplayOnRoadEstimate = coinPricingForDisplay?.effectivePrice ?? Number(totalOnRoad || 0);
@@ -1725,7 +1836,7 @@ export default function ProductClient({
         bestOffer, // Passing bestOffer to children
         otherOffers,
         serverPricing, // SSPP v1: Server-calculated pricing breakdown
-        walletCoins: !walletLoading ? (isLoggedIn ? availableCoins : OCLUB_SIGNUP_BONUS) : null,
+        walletCoins: isLoggedIn && !walletLoading ? availableCoins : null,
         showOClubPrompt: !walletLoading && !isLoggedIn,
         isLoggedIn: Boolean(isLoggedIn),
         isGated,
@@ -1742,6 +1853,8 @@ export default function ProductClient({
         quoteActionDisabled,
         quoteActionDisabledLabel,
         isPendingPrice: isHydrating || dealerFetchState === 'IDLE',
+        /** Phase 2: commercial values only visible once auth + serviceability resolves */
+        isCommercialReady: pdpGateState === 'READY',
     };
     const leadDealerMismatch = Boolean(
         leadMeta?.leadDealerId && sessionDealerId && leadMeta.leadDealerId !== sessionDealerId
@@ -1811,13 +1924,48 @@ export default function ProductClient({
                 style={{ display: 'none' }}
             />
             {/* ── END DEBUG BANNER (removed) ── */}
-            {/* Avoid transient price mismatch while wallet context is still resolving. */}
-            {walletLoading ? (
+            {/* Phase 2/4: Gate-state driven render
+                 CONSENT          → PdpConsentGate modal over blurred PDPSkeleton
+                 RESOLVING        → full-screen skeleton while resolving
+                 PINCODE_REQUIRED → PincodeGateModal (mandatory, non-dismissable)
+                 NON_SERVICEABLE  → PDP renders (specs visible) but commercial masked + banner
+                 READY            → full PDP with commercial values unlocked */}
+            {pdpGateState === 'CONSENT' ? (
+                <>
+                    <PDPSkeleton />
+                    <PdpConsentGate make={makeParam} model={modelParam} variant={variantParam} heroImage={undefined} />
+                </>
+            ) : pdpGateState === 'RESOLVING' || walletLoading ? (
                 <PDPSkeleton />
-            ) : forceMobileLayout ? (
-                <MobilePDP {...commonProps} />
             ) : (
-                <DesktopPDP {...commonProps} />
+                <>
+                    {/* NON_SERVICEABLE inline banner — shown over PDP, commercial stays masked */}
+                    {pdpGateState === 'NON_SERVICEABLE' && (
+                        <div
+                            data-testid="non-serviceable-banner"
+                            className="fixed top-0 inset-x-0 z-[80] flex items-center justify-between gap-3 px-4 py-2.5 bg-amber-50 border-b border-amber-200 shadow-sm"
+                        >
+                            <div className="flex items-center gap-2 min-w-0">
+                                <span className="text-amber-600 text-[13px] shrink-0">⚠️</span>
+                                <p className="text-[11px] font-black uppercase tracking-[0.12em] text-amber-800 leading-tight truncate">
+                                    Commercials locked until serviceable
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={handleRetryPincode}
+                                className="shrink-0 rounded-xl border border-amber-300 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-amber-800 hover:bg-amber-50 transition-all whitespace-nowrap"
+                            >
+                                Change pincode
+                            </button>
+                        </div>
+                    )}
+
+                    {/* PINCODE_REQUIRED — modal overlay */}
+                    <PincodeGateModal isOpen={pdpGateState === 'PINCODE_REQUIRED'} onResolved={handlePincodeResolved} />
+
+                    {forceMobileLayout ? <MobilePDP {...commonProps} /> : <DesktopPDP {...commonProps} />}
+                </>
             )}
 
             <LocationPicker

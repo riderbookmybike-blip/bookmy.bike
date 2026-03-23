@@ -34,6 +34,8 @@ export interface PdpPricingSectionProps {
     };
     isOpen?: boolean;
     onToggle?: () => void;
+    /** Phase 2: when false, price is masked in accordion header */
+    isCommercialReady?: boolean;
 }
 
 // Required key labels — used to determine which zero-value rows must still render
@@ -68,6 +70,7 @@ export function PdpPricingSection({
     serviceability,
     isOpen,
     onToggle,
+    isCommercialReady = true,
 }: PdpPricingSectionProps) {
     const { totalOnRoad, isReferralActive } = data;
     const [internalOpen, setInternalOpen] = useState(layout === 'desktop');
@@ -151,11 +154,17 @@ export function PdpPricingSection({
                             Pricing
                         </p>
                         <p className="text-[10px] font-mono tabular-nums text-slate-600 leading-snug mt-0.5">
-                            On Road ₹{localDisplayOnRoad.toLocaleString('en-IN')}
+                            {isCommercialReady ? (
+                                `On Road ₹${localDisplayOnRoad.toLocaleString('en-IN')}`
+                            ) : (
+                                <span className="italic text-slate-400">Login to view price</span>
+                            )}
                         </p>
                         <p className="text-[10px] text-slate-400 leading-tight mt-0.5 flex items-center gap-1">
                             <Logo variant="icon" size={8} customColor="#94a3b8" />
-                            <span>{bCoinEquivalent.toLocaleString('en-IN')} B-coins</span>
+                            <span>
+                                {isCommercialReady ? `${bCoinEquivalent.toLocaleString('en-IN')} B-coins` : '— B-coins'}
+                            </span>
                         </p>
                     </div>
                 </div>

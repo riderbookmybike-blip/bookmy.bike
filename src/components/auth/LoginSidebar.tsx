@@ -46,6 +46,8 @@ interface LoginSidebarProps {
     variant?: 'TERMINAL' | 'RETAIL';
     redirectTo?: string;
     tenantSlug?: string;
+    /** Open directly to this step instead of the default 'INITIAL' step. */
+    initialStep?: 'INITIAL' | 'SIGNUP';
 }
 
 export default function LoginSidebar({
@@ -54,6 +56,7 @@ export default function LoginSidebar({
     variant = 'RETAIL',
     redirectTo,
     tenantSlug: tenantSlugProp,
+    initialStep = 'INITIAL',
 }: LoginSidebarProps) {
     const router = useRouter();
     const { setTenantType, tenantId, activeRole, userRole, setUserRole, setActiveRole, setUserName } = useTenant();
@@ -230,7 +233,7 @@ export default function LoginSidebar({
 
     useEffect(() => {
         if (isOpen) {
-            setStep('INITIAL');
+            setStep(initialStep);
             setAuthMethod('PHONE');
             // Determine Marketplace vs Tenant context
             const pathname = window.location.pathname;

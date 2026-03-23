@@ -89,6 +89,8 @@ export interface PdpCommandBarProps {
     quoteActionDisabled?: boolean;
     quoteActionDisabledLabel?: string;
     isPendingPrice?: boolean;
+    /** Phase 2: when false, price values are masked and primary CTA is disabled */
+    isCommercialReady?: boolean;
 }
 
 // ── WhatsApp Phone Modal ─────────────────────────────────────────────────────
@@ -427,9 +429,15 @@ interface DesktopFinalOutcomeProps {
     displayOnRoad: number;
     bCoinEquivalent: number;
     isPendingPrice?: boolean;
+    isCommercialReady?: boolean;
 }
 
-function DesktopFinalOutcome({ displayOnRoad, bCoinEquivalent, isPendingPrice }: DesktopFinalOutcomeProps) {
+function DesktopFinalOutcome({
+    displayOnRoad,
+    bCoinEquivalent,
+    isPendingPrice,
+    isCommercialReady = true,
+}: DesktopFinalOutcomeProps) {
     return (
         <div className="h-full px-4 py-1.5 xl:py-2 w-full bg-slate-50 border border-slate-200 shadow-sm rounded-2xl flex items-center justify-between">
             {/* Left: On-Road Price */}
@@ -442,6 +450,8 @@ function DesktopFinalOutcome({ displayOnRoad, bCoinEquivalent, isPendingPrice }:
                 </div>
                 {isPendingPrice ? (
                     <div className="h-6 w-24 rounded bg-slate-200/50 animate-pulse mt-0.5" />
+                ) : !isCommercialReady ? (
+                    <p className="text-[11px] italic text-slate-400 mt-0.5">Login to view price</p>
                 ) : (
                     <div className="flex flex-col items-start gap-0.5 mt-0.5">
                         <span className="whitespace-nowrap tabular-nums font-black italic text-[#0f172a] text-[24px] md:text-[28px] leading-none">
@@ -662,6 +672,7 @@ export function PdpCommandBar({
     quoteActionDisabled = false,
     quoteActionDisabledLabel,
     isPendingPrice = false,
+    isCommercialReady = true,
 }: PdpCommandBarProps) {
     const isDesktop = layout === 'desktop';
 
@@ -676,7 +687,7 @@ export function PdpCommandBar({
         isGated,
         serviceability,
     });
-    const isDisabled = barState.isDisabled || quoteActionDisabled;
+    const isDisabled = !isCommercialReady || barState.isDisabled || quoteActionDisabled;
     const isTeamView = Boolean(onWaSend);
     // Desktop: IDLE → SAVE QUOTE, SAVED → DOWNLOAD DOSSIER, DOWNLOADED → SHARE QUOTE
     // Mobile:  IDLE → SAVE QUOTE, SAVED/DOWNLOADED → DOWNLOAD QUOTE
@@ -684,6 +695,21 @@ export function PdpCommandBar({
     const isDownloaded = quoteState === 'DOWNLOADED';
     const isDownloadModeMobile = !isDesktop && (isSaved || isDownloaded);
     const quoteActionsEnabled = quoteState !== 'IDLE';
+    const effectivePrimaryLabel = !isCommercialReady
+        ? 'LOGIN TO VIEW'
+        : isDisabled
+          ? quoteActionDisabledLabel || barState.primaryLabel
+          : isDesktop
+            ? isTeamView
+                ? 'SHARE QUOTE'
+                : isDownloaded
+                  ? 'SHARE QUOTE'
+                  : isSaved
+                    ? 'DOWNLOAD DOSSIER'
+                    : 'SAVE QUOTE'
+            : isDownloadModeMobile
+              ? 'DOWNLOAD QUOTE'
+              : 'SAVE QUOTE';
     const primaryAction = isDesktop
         ? isTeamView
             ? handleShareQuote
@@ -695,20 +721,8 @@ export function PdpCommandBar({
         : isDownloadModeMobile
           ? (handleDownloadQuote ?? handleSaveQuote)
           : handleSaveQuote;
-    const primaryLabel = isDisabled
-        ? quoteActionDisabledLabel || barState.primaryLabel
-        : isDesktop
-          ? isTeamView
-              ? 'SHARE QUOTE'
-              : isDownloaded
-                ? 'SHARE QUOTE'
-                : isSaved
-                  ? 'DOWNLOAD DOSSIER'
-                  : 'SAVE QUOTE'
-          : isDownloadModeMobile
-            ? 'DOWNLOAD QUOTE'
-            : 'SAVE QUOTE';
-    const bCoinEquivalent = coinsNeededForPrice(displayOnRoad);
+    const primaryLabel = effectivePrimaryLabel;
+    const bCoinEquivalent = isCommercialReady ? coinsNeededForPrice(displayOnRoad) : 0;
     const onRoadBase = barState.strikethroughPrice;
     const locationHeadline = locationInfo?.area || locationInfo?.taluka || locationInfo?.district || 'Set location';
     const locationSubline = [locationInfo?.taluka, locationInfo?.district, locationInfo?.pincode]
@@ -777,6 +791,7 @@ export function PdpCommandBar({
                                         displayOnRoad={displayOnRoad}
                                         bCoinEquivalent={bCoinEquivalent}
                                         isPendingPrice={isPendingPrice}
+                                        isCommercialReady={isCommercialReady}
                                     />
                                 </div>
 

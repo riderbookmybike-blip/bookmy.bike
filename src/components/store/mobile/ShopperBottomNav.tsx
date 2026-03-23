@@ -13,6 +13,7 @@ import {
     PhoneCall,
     SlidersHorizontal,
     LayoutGrid,
+    LogIn,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useDiscovery } from '@/contexts/DiscoveryContext';
@@ -104,6 +105,18 @@ export function ShopperBottomNav() {
     useEffect(() => {
         if (!isComparePage) setCompareViewMode('grid');
     }, [isComparePage]);
+
+    // ── Gate-aware commercial-ready signal ───────────────────────────────────
+    // Subscribes to pdpCommercialReady dispatched by ProductClient on every
+    // pdpGateState change. Uses stable handler stored in ref for strict cleanup.
+    const [isCommercialReady, setIsCommercialReady] = useState(false);
+    useEffect(() => {
+        const handler = (e: Event) => {
+            setIsCommercialReady((e as CustomEvent<{ ready: boolean }>).detail?.ready ?? false);
+        };
+        window.addEventListener('pdpCommercialReady', handler);
+        return () => window.removeEventListener('pdpCommercialReady', handler);
+    }, []); // stable: no deps, handler is function-scoped
 
     // ── PDP stage (session-only, resets on leaving PDP) ───────────────────────
     const [pdpStage, setPdpStage] = useState<PdpStage>(0);
@@ -203,6 +216,23 @@ export function ShopperBottomNav() {
         }
 
         if (isPdpPage) {
+            // Phase 4: gate override — show login CTA when commercial not yet unlocked
+            if (pdpStage === 0 && !isCommercialReady) {
+                return {
+                    label: 'Login to View Offers',
+                    icon: LogIn,
+                    bg: 'bg-[#F4B000]',
+                    shadow: 'shadow-[0_6px_28px_rgba(244,176,0,0.45)]',
+                    textColor: 'text-[#0b0d10]',
+                    shimmer: true,
+                    onClick: () =>
+                        window.dispatchEvent(
+                            new CustomEvent('pdpConsentLoginRequested', {
+                                detail: { source: 'bottom_nav', stage: 0 },
+                            })
+                        ),
+                };
+            }
             const stage = PDP_STAGES[pdpStage];
             return {
                 label: stage.label,
@@ -262,7 +292,16 @@ export function ShopperBottomNav() {
             onClick: () => router.push('/store/catalog'),
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isHomePage, isPdpPage, isCatalogPage, isComparePage, compareViewMode, pdpStage, pricingMode]);
+    }, [
+        isHomePage,
+        isPdpPage,
+        isCatalogPage,
+        isComparePage,
+        compareViewMode,
+        pdpStage,
+        pricingMode,
+        isCommercialReady,
+    ]);
 
     // ── EMI Modal state ─────────────────────────────────────────────────────────
     const [showEmiModal, setShowEmiModal] = useState(false);

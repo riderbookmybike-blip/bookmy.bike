@@ -123,9 +123,12 @@ export async function proxy(request: NextRequest) {
         return NextResponse.next();
     }
 
+    // ── SINGLE AUTH RESOLUTION (shared for all guards below) ──────────────────
+    // Initialised once here so the PDP hardblock and all downstream guards
+    // (isHardProtectedPath, isLegacyDashboard, tenant checks) reuse the same
+    // supabase client and the same auth.getUser() result — no duplicate calls.
     const response = NextResponse.next();
 
-    // Initialize Supabase to check Auth
     const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -154,6 +157,8 @@ export async function proxy(request: NextRequest) {
     const {
         data: { user },
     } = await supabase.auth.getUser();
+
+    // PDP gate moved to ProductClient (warm consent modal). No proxy redirect for PDP.
 
     const isLegacyDashboard = pathname === '/dashboard' || pathname.startsWith('/dashboard/');
     const isHardProtectedPath =

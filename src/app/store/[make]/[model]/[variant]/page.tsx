@@ -291,13 +291,20 @@ export default async function Page({ params, searchParams }: Props) {
     const resolvedParams = await params;
     const resolvedSearchParams = await searchParams;
 
-    // Soft Gate: PDP is public. Commercial actions are gated client-side via isAuthenticated prop.
-    // Server resolves user only to pass auth state — no redirect for unauthenticated users.
+    // Auth resolution — always needed: isAuthenticated is passed to ProductClient
+    // to initialise pdpGateState (CONSENT | RESOLVING | READY).
+    // Phase 2: no page-level redirect; PdpConsentGate modal handles unauthenticated UX.
+
     const authClient = await createClient();
     const {
         data: { user },
     } = await authClient.auth.getUser();
     const isAuthenticated = !!user;
+
+    // Phase 2 (Warm Consent): PDP is no longer redirected at page level.
+    // Unauthenticated users reach ProductClient → PdpConsentGate modal.
+    // Server actions (createLeadAction, createQuoteAction) still hard-check auth.
+    // isAuthenticated is passed to ProductClient so pdpGateState initialises correctly.
 
     const supabase = adminClient;
     const cookieStore = await cookies(); // Access cookies

@@ -150,6 +150,8 @@ interface DesktopPDPProps {
     quoteActionDisabled?: boolean;
     quoteActionDisabledLabel?: string;
     isPendingPrice?: boolean;
+    /** Phase 2: commercial values (price/EMI/CTAs) only visible once auth + serviceability resolved */
+    isCommercialReady?: boolean;
 }
 
 // FullLayoutDebugger extracted to ./Personalize/FullLayoutDebugger.tsx
@@ -202,6 +204,7 @@ export function DesktopPDP({
     quoteActionDisabled = false,
     quoteActionDisabledLabel,
     isPendingPrice = false,
+    isCommercialReady = true,
 }: DesktopPDPProps) {
     const params = useSearchParams();
     const { language } = useI18n();
@@ -1397,6 +1400,7 @@ export function DesktopPDP({
                 quoteActionDisabled={quoteActionDisabled}
                 quoteActionDisabledLabel={quoteActionDisabledLabel}
                 isPendingPrice={isPendingPrice}
+                isCommercialReady={isCommercialReady}
             />
         </div>
     );

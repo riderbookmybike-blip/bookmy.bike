@@ -8,6 +8,7 @@ import {
     validateBookingDealerContext,
     validateDealerAuthorization,
 } from '@/lib/crm/contextHardening';
+import { assertPdpGating } from '@/lib/crm/pdpGating';
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { checkServiceability } from './serviceArea';
@@ -3082,6 +3083,13 @@ export async function createLeadAction(data: {
     const referredByPhoneInput = toAppStorageFormat(data.referred_by_phone || '') || '';
     const referredByNameInput = (data.referred_by_name || '').trim();
     const authUser = await getAuthUser();
+
+    // Phase 5: PDP server enforcement (no-op when STRICT_PDP_GATING !== 'true')
+    const pdpGuard = await assertPdpGating(authUser?.id ?? null, data.customer_pincode);
+    if (!pdpGuard.ok) {
+        return { success: false, message: pdpGuard.message, code: pdpGuard.code };
+    }
+
     const selectedDealerId = null;
 
     // Strict sanitation
@@ -3748,7 +3756,7 @@ export async function createQuoteAction(data: {
     commercials: Record<string, any>;
     store_url?: string;
     source?: 'STORE_PDP' | 'LEADS';
-}): Promise<{ success: boolean; data?: any; message?: string; smsStatus?: QuoteSmsStatus }> {
+}): Promise<{ success: boolean; data?: any; message?: string; code?: string; smsStatus?: QuoteSmsStatus }> {
     const normalizedSource = normalizeLeadSource(data.source);
     if (!isPublicLeadSource(normalizedSource)) {
         return {
@@ -3758,6 +3766,16 @@ export async function createQuoteAction(data: {
     }
 
     const user = await getAuthUser();
+
+    // Phase 5: PDP server enforcement — pincode resolved from commercials payload
+    // Narrows the public lead-id bypass: STRICT mode requires auth + serviceable pincode
+    // even for lead-linked quotes.
+    const quotePincode = (data.commercials?.customer_pincode ?? data.commercials?.pincode ?? '') as string;
+    const pdpGuard = await assertPdpGating(user?.id ?? null, quotePincode || null);
+    if (!pdpGuard.ok) {
+        return { success: false, message: pdpGuard.message, code: pdpGuard.code };
+    }
+
     const safeLeadId = (data.lead_id || '').trim() || null;
     const isPublicMarketplaceQuote = !!safeLeadId && isPublicLeadSource(normalizedSource);
     if (!user && !isPublicMarketplaceQuote) {

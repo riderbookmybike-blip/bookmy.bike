@@ -15,6 +15,8 @@ export interface PdpFinanceSummarySectionProps {
     footerEmi: number;
     isOpen?: boolean;
     onToggle?: () => void;
+    /** Phase 2: when false, finance values are masked */
+    isCommercialReady?: boolean;
 }
 
 export function PdpFinanceSummarySection({
@@ -27,6 +29,7 @@ export function PdpFinanceSummarySection({
     footerEmi,
     isOpen,
     onToggle,
+    isCommercialReady = true,
 }: PdpFinanceSummarySectionProps) {
     const [internalOpen, setInternalOpen] = useState(false);
     const { initialFinance, userDownPayment, downPayment, loanAmount, emiTenure, annualInterest, interestType } = data;
@@ -116,6 +119,7 @@ export function PdpFinanceSummarySection({
         : `₹${(footerEmi || 0).toLocaleString('en-IN')}/mo × ${emiTenure}mo`;
 
     if (layout === 'desktop') {
+        if (!isCommercialReady) return null; // desktop: hide panel entirely until ready
         return (
             <div data-parity-section="finance-summary">
                 <FinanceSummaryPanel
@@ -157,10 +161,20 @@ export function PdpFinanceSummarySection({
                         <p className="text-[13px] font-black tracking-[0.04em] text-brand-primary leading-tight">
                             Finance Summary
                         </p>
-                        {financerName && (
-                            <p className="text-[10px] text-slate-600 leading-snug mt-0.5">{financerName}</p>
+                        {isCommercialReady ? (
+                            <>
+                                {financerName && (
+                                    <p className="text-[10px] text-slate-600 leading-snug mt-0.5">{financerName}</p>
+                                )}
+                                {schemeName && (
+                                    <p className="text-[10px] text-slate-400 leading-tight mt-0.5">{schemeName}</p>
+                                )}
+                            </>
+                        ) : (
+                            <p className="text-[10px] italic text-slate-400 leading-snug mt-0.5">
+                                Login to view EMI details
+                            </p>
                         )}
-                        {schemeName && <p className="text-[10px] text-slate-400 leading-tight mt-0.5">{schemeName}</p>}
                     </div>
                 </div>
                 <ChevronDown
@@ -172,18 +186,24 @@ export function PdpFinanceSummarySection({
             {open && (
                 <div className="px-5 pb-5">
                     <div className="border-t border-slate-200/60 pt-4">
-                        <FinanceSummaryPanel
-                            initialFinance={effectiveFinance}
-                            displayOnRoad={displayOnRoad}
-                            userDownPayment={effectiveDownPayment}
-                            loanAmount={loanAmount}
-                            totalOnRoad={totalOnRoad}
-                            totalSavings={totalSavings}
-                            coinPricing={coinPricing}
-                            emiTenure={emiTenure}
-                            annualInterest={effectiveAnnualInterest}
-                            interestType={effectiveInterestType}
-                        />
+                        {isCommercialReady ? (
+                            <FinanceSummaryPanel
+                                initialFinance={effectiveFinance}
+                                displayOnRoad={displayOnRoad}
+                                userDownPayment={effectiveDownPayment}
+                                loanAmount={loanAmount}
+                                totalOnRoad={totalOnRoad}
+                                totalSavings={totalSavings}
+                                coinPricing={coinPricing}
+                                emiTenure={emiTenure}
+                                annualInterest={effectiveAnnualInterest}
+                                interestType={effectiveInterestType}
+                            />
+                        ) : (
+                            <p className="text-[12px] italic text-slate-400 py-4 text-center">
+                                Login to unlock finance details
+                            </p>
+                        )}
                     </div>
                 </div>
             )}

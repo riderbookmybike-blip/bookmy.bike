@@ -343,7 +343,10 @@ export function PincodeGateModal({ isOpen, onResolved }: PincodeGateModalProps) 
     // ── AUTO GPS STATE ── silently detecting, show spinner
     if (modalState === 'AUTO_GPS') {
         return (
-            <div className="fixed inset-0 z-[1200] flex items-center justify-center p-4 md:p-6">
+            <div
+                className="fixed inset-0 z-[1200] flex items-center justify-center p-4 md:p-6"
+                data-testid="pincode-gate-modal"
+            >
                 <div className="absolute inset-0 bg-[#0b0d10]/95 backdrop-blur-3xl" />
                 <div className="relative w-full max-w-md bg-white rounded-[2.5rem] p-10 shadow-2xl border border-slate-200 animate-in zoom-in-95 duration-500 flex flex-col items-center gap-5 text-center">
                     <div className="w-16 h-16 bg-blue-50 rounded-3xl flex items-center justify-center">
@@ -364,7 +367,10 @@ export function PincodeGateModal({ isOpen, onResolved }: PincodeGateModalProps) 
     // ── NOT SERVICEABLE STATE ── GPS resolved but outside coverage
     if (modalState === 'NOT_SERVICEABLE') {
         return (
-            <div className="fixed inset-0 z-[1200] flex items-center justify-center p-4 md:p-6">
+            <div
+                className="fixed inset-0 z-[1200] flex items-center justify-center p-4 md:p-6"
+                data-testid="pincode-gate-modal"
+            >
                 <div className="absolute inset-0 bg-[#0b0d10]/95 backdrop-blur-3xl" />
                 <div className="relative w-full max-w-md bg-white rounded-[2.5rem] p-8 md:p-10 shadow-2xl border border-slate-200 animate-in zoom-in-95 slide-in-from-bottom-10 duration-500">
                     {/* Not serviceable header */}
@@ -461,7 +467,10 @@ export function PincodeGateModal({ isOpen, onResolved }: PincodeGateModalProps) 
 
     // ── MANUAL / GPS_LOADING STATE ── standard pincode input
     return (
-        <div className="fixed inset-0 z-[1200] flex items-center justify-center p-4 md:p-6">
+        <div
+            className="fixed inset-0 z-[1200] flex items-center justify-center p-4 md:p-6"
+            data-testid="pincode-gate-modal"
+        >
             <div className="absolute inset-0 bg-[#0b0d10]/95 backdrop-blur-3xl" />
 
             <div className="relative w-full max-w-md bg-white rounded-[2.5rem] p-8 md:p-10 shadow-2xl border border-slate-200 animate-in zoom-in-95 slide-in-from-bottom-10 duration-500">
