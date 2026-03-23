@@ -162,7 +162,10 @@ export async function proxy(request: NextRequest) {
 
     const isLegacyDashboard = pathname === '/dashboard' || pathname.startsWith('/dashboard/');
     const isHardProtectedPath =
-        pathname === '/profile' || pathname.startsWith('/dashboard/') || pathname.startsWith('/app/');
+        pathname === '/profile' ||
+        pathname.startsWith('/dashboard/') ||
+        pathname.startsWith('/app/') ||
+        pathname.startsWith('/aums/');
 
     if (isHardProtectedPath && !user) {
         const loginUrl = new URL('/login', request.url);
@@ -193,6 +196,28 @@ export async function proxy(request: NextRequest) {
         }
 
         return NextResponse.redirect(new URL('/', request.url));
+    }
+
+    // ── AUMS direct-path role guard (/aums/* routes) ─────────────────────────
+    // These routes don't go through the /app/{slug} parser, so tenantSlug is never
+    // set for them. We must explicitly check AUMS team membership here.
+    // Auth (user exists) is already guaranteed by isHardProtectedPath above.
+    if (pathname.startsWith('/aums/') && user) {
+        const { data: aumsMembership } = await supabase
+            .from('id_team')
+            .select('role, id_tenants!inner(slug)')
+            .eq('user_id', user.id)
+            .eq('id_tenants.slug', 'aums')
+            .eq('status', 'ACTIVE')
+            .maybeSingle();
+
+        const aumsRole = (aumsMembership?.role ?? '').toUpperCase();
+        if (!['SUPER_ADMIN', 'OWNER', 'ADMIN'].includes(aumsRole)) {
+            return NextResponse.rewrite(new URL('/403', request.url));
+        }
+
+        // Role verified — serve the page directly (no further tenant checks needed)
+        return response;
     }
 
     // Parse Tenant Slug from URL Path (NEW: Path-based routing)

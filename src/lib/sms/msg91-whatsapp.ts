@@ -4,6 +4,7 @@
  * Templates supported:
  *   1. bike_quote_summary — 16 body vars + document header (dossier quote)
  *   2. welcome            — 4 body vars + image header (onboarding welcome)
+ *   3. Campaign templates — fixed-text or single-var bulk broadcast (sendCampaignBatchWhatsApp)
  *
  * Integrated Number: 917447403491
  * Namespace: f197f829_dfac_4dd3_8188_81021b01b37b
@@ -16,6 +17,9 @@
  *
  * welcome template ENV (optional overrides — defaults match above):
  *   MSG91_WA_WELCOME_TEMPLATE    — welcome template name (default: welcome)
+ *
+ * campaign template ENV:
+ *   MSG91_WA_TEST_PHONE          — test recipient phone (10-digit or 91XXXXXXXXXX) for test batches
  */
 
 const WA_API_URL = 'https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/';
@@ -382,4 +386,135 @@ export async function sendWelcomeTemplateWhatsApp(data: WelcomeWhatsAppData): Pr
         console.error('[WhatsApp:welcome] Network error:', error);
         return { success: false, message: 'WhatsApp network error' };
     }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Campaign Batch Sender
+//
+// Used by AUMS campaign execution page for controlled bulk rollout.
+// Sends a fixed-body campaign template to all provided phone numbers.
+// No existing flows are affected — this is a new additive export.
+//
+// Template must be pre-approved in MSG91 with no body variables
+// (or pass an empty components map for fixed-text templates).
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface CampaignBatchResult {
+    sent: number;
+    failed: number;
+    skipped: number;
+    errors: Array<{ phone: string; message: string }>;
+}
+
+export async function sendCampaignBatchWhatsApp(
+    phones: string[],
+    templateName: string,
+    /** Optional body variable overrides — leave empty for fixed-text templates */
+    components: Record<string, { type: string; value: string; filename?: string }> = {}
+): Promise<CampaignBatchResult> {
+    const authKey = process.env.MSG91_AUTH_KEY;
+    const integratedNumber = process.env.MSG91_WA_INTEGRATED_NUMBER || DEFAULT_INTEGRATED_NUMBER;
+    const namespace = process.env.MSG91_WA_NAMESPACE || DEFAULT_NAMESPACE;
+
+    const result: CampaignBatchResult = { sent: 0, failed: 0, skipped: 0, errors: [] };
+
+    if (!authKey) {
+        console.warn('[WhatsApp:campaign] MSG91_AUTH_KEY not configured — batch skipped');
+        result.skipped = phones.length;
+        return result;
+    }
+
+    if (phones.length === 0) {
+        return result;
+    }
+
+    // Normalize phones → 91XXXXXXXXXX; skip invalids
+    const normalizedPhones: string[] = [];
+    for (const phone of phones) {
+        const digits = phone.replace(/\D/g, '');
+        const tenDigit = digits.slice(-10);
+        if (tenDigit.length < 10) {
+            result.skipped++;
+            result.errors.push({ phone, message: 'Invalid phone — skipped' });
+            continue;
+        }
+        normalizedPhones.push(`91${tenDigit}`);
+    }
+
+    if (normalizedPhones.length === 0) {
+        return result;
+    }
+
+    // Auto-attach image header for configured campaign templates (e.g. year ending sale).
+    // This is required when MSG91 template header type is IMAGE.
+    const imageHeaderTemplates = new Set(['year_ending_sale_activa_2026']);
+    const headerImageUrl = process.env.MSG91_WA_CAMPAIGN_HEADER_IMAGE_URL?.trim();
+    if (imageHeaderTemplates.has(templateName) && headerImageUrl) {
+        components = {
+            ...components,
+            header_1: {
+                type: 'image',
+                value: headerImageUrl,
+            },
+        };
+    }
+
+    const payload = {
+        integrated_number: integratedNumber,
+        content_type: 'template',
+        payload: {
+            messaging_product: 'whatsapp',
+            type: 'template',
+            template: {
+                name: templateName,
+                language: { code: 'en', policy: 'deterministic' },
+                namespace,
+                to_and_components: [
+                    {
+                        to: normalizedPhones,
+                        components,
+                    },
+                ],
+            },
+        },
+    };
+
+    try {
+        console.log('[WhatsApp:campaign] Sending batch →', {
+            template: templateName,
+            count: normalizedPhones.length,
+        });
+
+        const res = await fetch(WA_API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', authkey: authKey },
+            body: JSON.stringify(payload),
+        });
+
+        const text = await res.text();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let resData: any = null;
+        try {
+            resData = text ? JSON.parse(text) : null;
+        } catch {
+            /* non-JSON */
+        }
+
+        if (res.ok && (resData?.type === 'success' || resData?.status === 'success')) {
+            result.sent = normalizedPhones.length;
+            console.log(`[WhatsApp:campaign] Batch sent: ${result.sent}`);
+        } else {
+            result.failed = normalizedPhones.length;
+            const errMsg = resData?.message || resData?.errors || 'MSG91 batch error';
+            console.error('[WhatsApp:campaign] Batch failed:', { status: res.status, response: resData || text });
+            result.errors.push({ phone: 'batch', message: String(errMsg) });
+        }
+    } catch (error) {
+        result.failed = normalizedPhones.length;
+        const errMsg = error instanceof Error ? error.message : 'Network error';
+        console.error('[WhatsApp:campaign] Network error:', error);
+        result.errors.push({ phone: 'batch', message: errMsg });
+    }
+
+    return result;
 }

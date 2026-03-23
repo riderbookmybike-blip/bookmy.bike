@@ -118,6 +118,16 @@ export function ShopperBottomNav() {
         return () => window.removeEventListener('pdpCommercialReady', handler);
     }, []); // stable: no deps, handler is function-scoped
 
+    // ── Consent gate visibility — hides bottom nav when full-screen gate is up ─
+    const [isConsentGateVisible, setIsConsentGateVisible] = useState(false);
+    useEffect(() => {
+        const handler = (e: Event) => {
+            setIsConsentGateVisible((e as CustomEvent<{ visible: boolean }>).detail?.visible ?? false);
+        };
+        window.addEventListener('pdpConsentGateVisible', handler);
+        return () => window.removeEventListener('pdpConsentGateVisible', handler);
+    }, []);
+
     // ── PDP stage (session-only, resets on leaving PDP) ───────────────────────
     const [pdpStage, setPdpStage] = useState<PdpStage>(0);
     const prevPathRef = useRef(pathname);
@@ -323,6 +333,8 @@ export function ShopperBottomNav() {
     };
 
     if (!ctaConfig) return null;
+    // Hide bottom nav entirely when full-screen consent gate is active
+    if (isConsentGateVisible) return null;
 
     const Icon = ctaConfig.icon;
 

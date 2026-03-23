@@ -118,6 +118,195 @@ export type Database = {
                 };
                 Relationships: [];
             };
+            cam_whatsapp_campaigns: {
+                Row: {
+                    batch_delay_min: number;
+                    batch_size: number;
+                    created_at: string;
+                    created_by: string | null;
+                    eligible_count: number | null;
+                    failed_count: number;
+                    id: string;
+                    name: string;
+                    offer_end: string | null;
+                    offer_start: string | null;
+                    sent_count: number;
+                    status: string;
+                    template_name: string;
+                    template_status: string;
+                    test_batch_approved: boolean;
+                    updated_at: string;
+                };
+                Insert: {
+                    batch_delay_min?: number;
+                    batch_size?: number;
+                    created_at?: string;
+                    created_by?: string | null;
+                    eligible_count?: number | null;
+                    failed_count?: number;
+                    id?: string;
+                    name: string;
+                    offer_end?: string | null;
+                    offer_start?: string | null;
+                    sent_count?: number;
+                    status?: string;
+                    template_name: string;
+                    template_status?: string;
+                    test_batch_approved?: boolean;
+                    updated_at?: string;
+                };
+                Update: {
+                    batch_delay_min?: number;
+                    batch_size?: number;
+                    created_at?: string;
+                    created_by?: string | null;
+                    eligible_count?: number | null;
+                    failed_count?: number;
+                    id?: string;
+                    name?: string;
+                    offer_end?: string | null;
+                    offer_start?: string | null;
+                    sent_count?: number;
+                    status?: string;
+                    template_name?: string;
+                    template_status?: string;
+                    test_batch_approved?: boolean;
+                    updated_at?: string;
+                };
+                Relationships: [];
+            };
+            cam_whatsapp_logs: {
+                Row: {
+                    batch_number: number;
+                    campaign_id: string;
+                    completed_at: string | null;
+                    created_at: string;
+                    error_summary: string | null;
+                    failed_count: number;
+                    id: string;
+                    is_test: boolean;
+                    recipient_count: number;
+                    sent_count: number;
+                    started_at: string | null;
+                    status: string;
+                };
+                Insert: {
+                    batch_number: number;
+                    campaign_id: string;
+                    completed_at?: string | null;
+                    created_at?: string;
+                    error_summary?: string | null;
+                    failed_count?: number;
+                    id?: string;
+                    is_test?: boolean;
+                    recipient_count?: number;
+                    sent_count?: number;
+                    started_at?: string | null;
+                    status?: string;
+                };
+                Update: {
+                    batch_number?: number;
+                    campaign_id?: string;
+                    completed_at?: string | null;
+                    created_at?: string;
+                    error_summary?: string | null;
+                    failed_count?: number;
+                    id?: string;
+                    is_test?: boolean;
+                    recipient_count?: number;
+                    sent_count?: number;
+                    started_at?: string | null;
+                    status?: string;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'cam_whatsapp_logs_campaign_id_fkey';
+                        columns: ['campaign_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'cam_whatsapp_campaigns';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
+            cam_whatsapp_recipients: {
+                Row: {
+                    id: string;
+                    campaign_id: string;
+                    batch_log_id: string;
+                    member_id: string | null;
+                    phone: string;
+                    full_name: string | null;
+                    pincode: string | null;
+                    area: string | null;
+                    district: string | null;
+                    distance_km: number | null;
+                    send_status: string;
+                    sent_at: string;
+                    delivered_at: string | null;
+                    read_at: string | null;
+                    clicked_at: string | null;
+                    signup_at: string | null;
+                    login_at: string | null;
+                    created_at: string;
+                };
+                Insert: {
+                    id?: string;
+                    campaign_id: string;
+                    batch_log_id: string;
+                    member_id?: string | null;
+                    phone: string;
+                    full_name?: string | null;
+                    pincode?: string | null;
+                    area?: string | null;
+                    district?: string | null;
+                    distance_km?: number | null;
+                    send_status: string;
+                    sent_at?: string;
+                    delivered_at?: string | null;
+                    read_at?: string | null;
+                    clicked_at?: string | null;
+                    signup_at?: string | null;
+                    login_at?: string | null;
+                    created_at?: string;
+                };
+                Update: {
+                    id?: string;
+                    campaign_id?: string;
+                    batch_log_id?: string;
+                    member_id?: string | null;
+                    phone?: string;
+                    full_name?: string | null;
+                    pincode?: string | null;
+                    area?: string | null;
+                    district?: string | null;
+                    distance_km?: number | null;
+                    send_status?: string;
+                    sent_at?: string;
+                    delivered_at?: string | null;
+                    read_at?: string | null;
+                    clicked_at?: string | null;
+                    signup_at?: string | null;
+                    login_at?: string | null;
+                    created_at?: string;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'cam_whatsapp_recipients_campaign_id_fkey';
+                        columns: ['campaign_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'cam_whatsapp_campaigns';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'cam_whatsapp_recipients_batch_log_id_fkey';
+                        columns: ['batch_log_id'];
+                        isOneToOne: false;
+                        referencedRelation: 'cam_whatsapp_logs';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
+
             cat_accessory_suitable_for: {
                 Row: {
                     created_at: string;

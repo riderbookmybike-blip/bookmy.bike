@@ -22,7 +22,9 @@ export async function getOClubWallet(memberId: string) {
 export async function getOClubLedger(memberId: string, limit = 50) {
     const { data, error } = await adminClient
         .from('oclub_coin_ledger')
-        .select('id, coin_type, delta, status, source_type, source_id, sponsor_id, metadata, created_at')
+        .select(
+            'id, coin_type, delta, status, source_type, source_id, sponsor_id, metadata, expires_at, validity_days, created_at'
+        )
         .eq('member_id', memberId)
         .order('created_at', { ascending: false })
         .limit(limit);

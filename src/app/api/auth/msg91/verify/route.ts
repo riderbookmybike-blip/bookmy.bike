@@ -3,6 +3,7 @@ import { createServerClient } from '@supabase/ssr';
 import { adminClient } from '@/lib/supabase/admin';
 import { cookies } from 'next/headers';
 import { getAuthPassword } from '@/lib/auth/password-utils';
+import { markCampaignRecipientByMember } from '@/lib/campaigns/wa-tracking';
 
 export async function POST(req: NextRequest) {
     try {
@@ -341,6 +342,13 @@ export async function POST(req: NextRequest) {
             });
             if (sessionError) {
                 console.error('MSG91 Verify Session Error:', sessionError);
+            }
+
+            // Campaign attribution (best effort): mark latest recipient row for this member as logged in.
+            try {
+                await markCampaignRecipientByMember({ memberId: userId, event: 'login' });
+            } catch (err) {
+                console.error('[login] campaign login tracking failed:', err);
             }
 
             return NextResponse.json(payload);

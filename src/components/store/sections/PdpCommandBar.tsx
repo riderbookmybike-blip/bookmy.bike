@@ -462,18 +462,20 @@ function DesktopFinalOutcome({
                 )}
             </div>
 
-            {/* Center Divider */}
-            {bCoinEquivalent > 0 && !isPendingPrice && (
-                <div className="w-px h-8 bg-slate-200 mx-2 xl:mx-4 shrink-0 rounded-full" />
-            )}
+            {/* Center Divider — always show */}
+            <div className="w-px h-8 bg-slate-200 mx-2 xl:mx-4 shrink-0 rounded-full" />
 
-            {/* Right Panel: O'Circle */}
-            {!isPendingPrice && bCoinEquivalent > 0 && (
+            {/* Right Panel: O'Circle — always show */}
+            {!isPendingPrice && (
                 <div className="flex-1 flex flex-col items-start pl-2">
                     <p className="text-[8px] xl:text-[9px] font-black uppercase tracking-[0.15em] italic text-slate-500 leading-none mb-0.5 mt-0.5">
                         O'CIRCLE
                     </p>
-                    <div className="flex items-center gap-1 xl:gap-1.5 mt-0.5 xl:mt-0">
+                    <div
+                        className={`flex items-center gap-1 xl:gap-1.5 mt-0.5 xl:mt-0 ${
+                            bCoinEquivalent === 0 ? 'opacity-40' : ''
+                        }`}
+                    >
                         <div className="translate-y-px">
                             <Logo variant="icon" size={14} customColor="#0f172a" />
                         </div>

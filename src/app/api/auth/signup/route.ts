@@ -3,6 +3,7 @@ import { adminClient } from '@/lib/supabase/admin';
 import { getAuthPassword } from '@/lib/auth/password-utils';
 import { toAppStorageFormat, isValidPhone } from '@/lib/utils/phoneUtils';
 import { normalizeGeoCoordinates } from '@/lib/location/coordinates';
+import { markCampaignRecipientByMember } from '@/lib/campaigns/wa-tracking';
 
 export async function POST(req: NextRequest) {
     try {
@@ -244,6 +245,13 @@ export async function POST(req: NextRequest) {
             console.error('Signup Profile Error:', profileError);
             // Rollback? Deleting auth user might be dangerous if async, but ideally yes.
             // For now, allow it, but log error.
+        }
+
+        // Campaign attribution (best effort): mark latest recipient row for this member as signed up.
+        try {
+            await markCampaignRecipientByMember({ memberId: userId, event: 'signup' });
+        } catch (err) {
+            console.error('[signup] campaign signup tracking failed:', err);
         }
 
         try {

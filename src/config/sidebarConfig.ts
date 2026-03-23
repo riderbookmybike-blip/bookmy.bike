@@ -36,6 +36,7 @@ import {
     Bookmark,
     MessageCircle,
     BookOpen,
+    Send,
 } from 'lucide-react';
 import { TenantType } from '@/lib/tenant/tenantContext';
 
@@ -359,6 +360,19 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
                     'DEALERSHIP_ADMIN',
                     'DEALERSHIP_STAFF',
                 ],
+            },
+        ],
+    },
+    {
+        group: 'Campaigns',
+        items: [
+            {
+                title: 'WhatsApp Campaigns',
+                href: '/app/aums/campaigns',
+                icon: Send,
+                color: 'text-green-500',
+                allowedTenants: ['AUMS'],
+                allowedRoles: ['SUPER_ADMIN', 'MARKETPLACE_ADMIN', 'OWNER', 'ADMIN'],
             },
         ],
     },

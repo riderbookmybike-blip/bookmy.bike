@@ -2,8 +2,9 @@
 
 import React, { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, TrendingDown, Banknote, Gift, LogIn, UserPlus, Coins } from 'lucide-react';
+import { MapPin, TrendingDown, Banknote, Gift, LogIn, Coins, ShieldCheck } from 'lucide-react';
 import dynamic from 'next/dynamic';
+import Image from 'next/image';
 
 const LoginSidebar = dynamic(() => import('@/components/auth/LoginSidebar'), { ssr: false });
 
@@ -20,26 +21,18 @@ interface PdpConsentGateProps {
 }
 
 /**
- * PdpConsentGate
- * ──────────────
- * Overlay rendered when the user is authenticated (proxy.ts lets them in) but
- * commercial context (serviceability / offers) hasn't resolved yet, OR when the
- * PDP page loads while the user's session is freshly established.
- *
- * Design rules:
- *  - Specs / images visible beneath a subtle blur backdrop (warmth, not hard-block)
- *  - No redirect. User stays on page. LoginSidebar slides in on CTA click.
- *  - Referral from ?ref= URL param is captured into localStorage before the
- *    sidebar opens so LoginSidebar auto-populates referralCodeFromLink.
- *  - After login, LoginSidebar does window.location.href → page reloads with auth.
+ * PdpConsentGate — Full-screen premium overlay
+ * ─────────────────────────────────────────────
+ * Full viewport takeover with:
+ *  - Top half: hero image (or gradient fallback) with cinematic gradient overlay
+ *  - Bottom half: dark panel with benefit list, B-coin tease, single CTA
+ *  - No stacked pill buttons — single primary action at the bottom
  */
 export default function PdpConsentGate({ make, model, variant, heroImage, exShowroomFormatted }: PdpConsentGateProps) {
     const [isLoginOpen, setIsLoginOpen] = React.useState(false);
     const [sidebarInitialStep, setSidebarInitialStep] = React.useState<'INITIAL' | 'SIGNUP'>('INITIAL');
     const capturedRef = useRef(false);
 
-    // Capture ?ref= into localStorage so LoginSidebar auto-reads it on open.
-    // LoginSidebar already reads localStorage[REFERRAL_STORAGE_KEY] on isOpen change.
     useEffect(() => {
         if (capturedRef.current) return;
         capturedRef.current = true;
@@ -51,6 +44,14 @@ export default function PdpConsentGate({ make, model, variant, heroImage, exShow
         } catch {
             /* localStorage blocked in private mode */
         }
+    }, []);
+
+    // Signal ShopperBottomNav to hide its duplicate login CTA while gate is visible
+    useEffect(() => {
+        window.dispatchEvent(new CustomEvent('pdpConsentGateVisible', { detail: { visible: true } }));
+        return () => {
+            window.dispatchEvent(new CustomEvent('pdpConsentGateVisible', { detail: { visible: false } }));
+        };
     }, []);
 
     const vehicleLabel = [make, model, variant].map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ');
@@ -79,105 +80,126 @@ export default function PdpConsentGate({ make, model, variant, heroImage, exShow
             icon: TrendingDown,
             label: 'Live discounts',
             sub: exShowroomFormatted
-                ? `Save on ₹${exShowroomFormatted} on-road price`
+                ? `Save on ₹${exShowroomFormatted} on-road`
                 : 'Up to ₹10,000 for serviceable zones',
+        },
+        {
+            icon: ShieldCheck,
+            label: 'Zero booking fee',
+            sub: 'Reserve your slot, pay at dealer',
         },
     ];
 
     return (
         <>
-            {/* Backdrop — soft blur, specs/images remain visible beneath */}
+            {/* Full-screen dark backdrop */}
             <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="fixed inset-0 z-40 bg-slate-900/60 backdrop-blur-[6px]"
+                className="fixed inset-0 z-40 bg-[#080a0f]/80 backdrop-blur-[8px]"
                 aria-hidden="true"
             />
 
-            {/* Consent Modal */}
             <AnimatePresence>
                 <motion.div
-                    initial={{ opacity: 0, y: 40, scale: 0.97 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-                    className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+                    initial={{ opacity: 0, y: 60 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                    className="fixed inset-0 z-50 flex flex-col"
                     role="dialog"
                     aria-modal="true"
                     aria-labelledby="pdp-consent-heading"
                 >
-                    <div className="relative w-full max-w-sm rounded-3xl bg-white shadow-2xl overflow-hidden">
-                        {/* Gradient accent strip — hardcoded so it never depends on CSS token resolution */}
-                        <div className="h-1 w-full bg-gradient-to-r from-[#F4B000] via-rose-400 to-orange-400" />
+                    {/* ── TOP HALF: Hero visual ── */}
+                    <div className="relative flex-[0_0_42%] w-full overflow-hidden bg-[#0f1117]">
+                        {heroImage ? (
+                            <Image
+                                src={heroImage}
+                                alt={vehicleLabel}
+                                fill
+                                className="object-contain object-center"
+                                priority
+                                sizes="100vw"
+                            />
+                        ) : (
+                            /* Fallback gradient when no hero image */
+                            <div className="absolute inset-0 bg-gradient-to-br from-[#1a1200] via-[#0f1117] to-[#0a0c12]" />
+                        )}
 
-                        <div className="px-6 pt-5 pb-6 space-y-5">
+                        {/* Cinematic gradient fade into bottom panel */}
+                        <div className="absolute inset-x-0 bottom-0 h-36 bg-gradient-to-t from-[#0f1117] to-transparent" />
+
+                        {/* Vehicle label watermark at top */}
+                        <div className="absolute top-0 inset-x-0 h-24 bg-gradient-to-b from-[#080a0f]/70 to-transparent flex items-start px-5 pt-5">
+                            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#F4B000]/80">
+                                Personalised Offers
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* ── BOTTOM HALF: Dark content panel ── */}
+                    <div className="flex-1 bg-[#0f1117] flex flex-col overflow-y-auto">
+                        <div className="px-5 pt-4 pb-2 space-y-5">
                             {/* Heading */}
                             <div>
-                                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400 mb-1">
-                                    Personalised Offers
-                                </p>
                                 <h2
                                     id="pdp-consent-heading"
-                                    className="text-[17px] font-black text-slate-900 leading-snug"
+                                    className="text-[22px] font-black text-white leading-tight tracking-tight"
                                 >
                                     Unlock your best deal on <span className="text-[#F4B000]">{vehicleLabel}</span>
                                 </h2>
-                            </div>
-
-                            {/* Benefit list */}
-                            <ul className="space-y-3">
-                                {benefits.map(({ icon: Icon, label, sub }) => (
-                                    <li key={label} className="flex items-start gap-3">
-                                        <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-[#F4B000]/10">
-                                            <Icon className="h-3.5 w-3.5 text-[#b88900]" strokeWidth={2.5} />
-                                        </span>
-                                        <div>
-                                            <p className="text-[13px] font-bold text-slate-800 leading-tight">
-                                                {label}
-                                            </p>
-                                            <p className="text-[11px] text-slate-500">{sub}</p>
-                                        </div>
-                                    </li>
-                                ))}
-                            </ul>
-
-                            {/* New user B-coin value prop */}
-                            <div className="flex items-center gap-2.5 rounded-2xl bg-amber-50 border border-amber-200 px-3.5 py-2.5">
-                                <Coins className="h-4 w-4 text-amber-600 shrink-0" strokeWidth={2.5} />
-                                <p className="text-[12px] text-amber-800 font-semibold leading-snug">
-                                    New signup → <span className="font-black">13 B-Coins credited</span>{' '}
-                                    <span className="font-normal text-amber-700">(₹1,000 discount equivalent)</span>
+                                <p className="mt-1 text-[12px] text-slate-400">
+                                    Login once. Get personalised pricing, EMI & offers — instantly.
                                 </p>
                             </div>
 
-                            {/* Referral banner — only shown when ?ref= present */}
-                            <ReferralBanner />
-
-                            <div className="flex flex-col gap-2.5 pt-1">
-                                {/* CTA 1 — LOGIN (primary, high contrast: black text on brand yellow) */}
-                                <button
-                                    type="button"
-                                    id="pdp-consent-login-btn"
-                                    data-testid="pdp-consent-login"
-                                    onClick={handleOpenLogin}
-                                    className="flex items-center justify-center gap-2 w-full rounded-2xl bg-[#F4B000] py-3.5 text-[13px] font-black uppercase tracking-[0.14em] text-[#0b0d10] shadow-md hover:bg-[#e0a500] active:scale-[0.98] transition-all"
-                                >
-                                    <LogIn className="h-4 w-4" strokeWidth={2.5} />
-                                    LOGIN TO VIEW OFFERS
-                                </button>
-                                {/* CTA 2 — SIGN UP (secondary, dark border + white bg) */}
-                                <button
-                                    type="button"
-                                    id="pdp-consent-signup-btn"
-                                    data-testid="pdp-consent-signup"
-                                    onClick={handleOpenSignup}
-                                    className="flex items-center justify-center gap-2 w-full rounded-2xl border-2 border-[#cbd5e1] bg-white py-3.5 text-[13px] font-black uppercase tracking-[0.14em] text-[#0f172a] hover:border-[#94a3b8] hover:bg-slate-50 active:scale-[0.98] transition-all"
-                                >
-                                    <UserPlus className="h-4 w-4" strokeWidth={2.5} />
-                                    NEW HERE? SIGN UP
-                                </button>
+                            {/* Benefit grid — 2×2 on mobile */}
+                            <div className="grid grid-cols-2 gap-2.5">
+                                {benefits.map(({ icon: Icon, label, sub }) => (
+                                    <div
+                                        key={label}
+                                        className="flex flex-col gap-2 rounded-2xl bg-white/5 border border-white/8 px-3.5 py-3"
+                                    >
+                                        <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#F4B000]/15">
+                                            <Icon className="h-4 w-4 text-[#F4B000]" strokeWidth={2.5} />
+                                        </span>
+                                        <div>
+                                            <p className="text-[12px] font-bold text-white leading-snug">{label}</p>
+                                            <p className="text-[10.5px] text-slate-400 mt-0.5 leading-snug">{sub}</p>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
 
-                            <p className="text-center text-[10px] text-slate-400">
+                            {/* B-coin value prop */}
+                            <div className="flex items-center gap-2.5 rounded-2xl bg-amber-400/10 border border-amber-400/20 px-3.5 py-2.5">
+                                <Coins className="h-4 w-4 text-[#F4B000] shrink-0" strokeWidth={2.5} />
+                                <p className="text-[11.5px] text-amber-200 font-semibold leading-snug">
+                                    New signup → <span className="font-black text-[#F4B000]">13 B-Coins credited</span>{' '}
+                                    <span className="font-normal text-amber-300/70">(₹1,000 discount equivalent)</span>
+                                </p>
+                            </div>
+
+                            {/* Referral banner */}
+                            <ReferralBanner />
+                        </div>
+
+                        {/* Spacer pushes CTA to bottom */}
+                        <div className="flex-1" />
+
+                        {/* ── Sticky bottom CTA ── */}
+                        <div className="px-5 pb-8 pt-4 bg-gradient-to-t from-[#080a0f] to-transparent space-y-2">
+                            <button
+                                type="button"
+                                id="pdp-consent-login-btn"
+                                data-testid="pdp-consent-login"
+                                onClick={handleOpenLogin}
+                                className="w-full flex items-center justify-center gap-2.5 rounded-2xl bg-[#F4B000] py-4 text-[14px] font-black uppercase tracking-[0.15em] text-[#0b0d10] shadow-[0_4px_24px_rgba(244,176,0,0.35)] hover:bg-[#e0a500] hover:shadow-[0_4px_32px_rgba(244,176,0,0.5)] active:scale-[0.98] transition-all duration-200"
+                            >
+                                <LogIn className="h-4.5 w-4.5" strokeWidth={2.5} />
+                                Login to View Offers
+                            </button>
+                            <p className="text-center text-[10.5px] text-slate-500">
                                 No spam · Just accurate pricing for your area
                             </p>
                         </div>
@@ -214,11 +236,11 @@ function ReferralBanner() {
     if (!code) return null;
 
     return (
-        <div className="flex items-center gap-2.5 rounded-2xl bg-green-50 border border-green-200 px-3.5 py-2.5">
-            <Gift className="h-4 w-4 text-green-600 shrink-0" strokeWidth={2.5} />
-            <p className="text-[12px] text-green-800 font-semibold leading-snug">
+        <div className="flex items-center gap-2.5 rounded-2xl bg-green-400/10 border border-green-400/20 px-3.5 py-2.5">
+            <Gift className="h-4 w-4 text-green-400 shrink-0" strokeWidth={2.5} />
+            <p className="text-[11.5px] text-green-200 font-semibold leading-snug">
                 Referral <span className="font-black">{code}</span> detected —{' '}
-                <span className="font-normal text-green-700">bonus auto-applies after signup</span>
+                <span className="font-normal text-green-300/70">bonus auto-applies after signup</span>
             </p>
         </div>
     );

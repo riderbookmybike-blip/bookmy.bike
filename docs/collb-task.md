@@ -74,6 +74,32 @@ Antigravity should treat this file as **read-only**.
    - **STOP** migration work until P0/P1 bugs above are closed and Ajit confirms.
    - If rename already applied, provide rollback/compat plan and wait for approval before changes.
 
+10. **P0: AUMS WhatsApp Campaign Execution Page**
+   - **Objective:** Build dedicated campaign execution page with controlled batch rollout.
+   - **Locked route:** `/aums/campaigns/[campaign-id]`
+   - **Required features on same page:**
+     - campaign detail + batch controls
+     - test batch approval gate (`test -> approve -> next batch`)
+     - pause/resume/stop controls
+     - live logs (batch-level status and counters)
+   - **Safety requirements:**
+     - serviceable + active + valid WhatsApp recipients only
+     - exclude opted-out and blacklist
+     - prevent accidental full blast
+     - duplicate-trigger/idempotency guard
+   - **Reference docs:**
+     - `docs/tasks/aums_whatsapp_campaign_page_antigravity_20260323.md`
+     - `whatsapp.md`
+   - **Template contract clarification (locked):**
+     - `year_ending_sale_activa_2026` should be treated as fixed-text for current rollout.
+     - Implement sender contract with optional template components support so future variable templates work without refactor.
+     - If components are empty, send template with recipient phone only.
+   - **DB naming contract (locked):**
+     - Use `cam_whatsapp` prefix for new persistence tables.
+     - Example naming: `cam_whatsapp_campaigns`, `cam_whatsapp_logs`.
+   - **Execution prompt:**
+     - `@antigravity Execute docs/tasks/aums_whatsapp_campaign_page_antigravity_20260323.md end-to-end. Build dedicated AUMS route /aums/campaigns/[campaign-id] with campaign detail + batch controls, test batch approval gate, pause/resume/stop runtime controls, and live logs. Reuse existing MSG91 integration safely, preserve existing WhatsApp flows, and return unified implementation report with files changed, commands run, failures, and risks.`
+
 ## Completed Tasks
 - Phase 1 migration (pricing_sot_json_final)
 - Phase 2 publishPrices JSON write (after BH fix)

@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getAuthUser } from '@/lib/auth/resolver';
 import MemberHubClient from './MemberHubClient';
 import { getOClubLedger, getOClubWallet } from '@/actions/oclub';
+import { getMemberTimeline } from '@/actions/member-tracker';
 
 export const metadata: Metadata = {
     title: "O' Circle — Zero Downpayment Membership | BookMyBike",
@@ -107,7 +108,11 @@ export default async function OCirclePage({ searchParams }: { searchParams?: Pro
         .eq('member_id', user.id)
         .order('is_current', { ascending: false });
 
-    const [walletRes, ledgerRes] = await Promise.all([getOClubWallet(user.id), getOClubLedger(user.id, 40)]);
+    const [walletRes, ledgerRes, activityTimeline] = await Promise.all([
+        getOClubWallet(user.id),
+        getOClubLedger(user.id, 40),
+        getMemberTimeline(user.id, 100),
+    ]);
     const wallet = walletRes.success ? walletRes.wallet : null;
     const ledger = ledgerRes.success ? ledgerRes.ledger || [] : [];
 
@@ -123,6 +128,7 @@ export default async function OCirclePage({ searchParams }: { searchParams?: Pro
             ledger={ledger}
             memberContacts={memberContacts || []}
             memberAddresses={memberAddresses || []}
+            activityTimeline={activityTimeline}
         />
     );
 }
