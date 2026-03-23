@@ -3759,8 +3759,8 @@ export async function createQuoteAction(data: {
 
     const user = await getAuthUser();
     const safeLeadId = (data.lead_id || '').trim() || null;
-    const isGuestMarketplaceQuote = !user && data.source === 'STORE_PDP' && !!safeLeadId;
-    if (!user && !isGuestMarketplaceQuote) {
+    const isPublicMarketplaceQuote = !!safeLeadId && isPublicLeadSource(normalizedSource);
+    if (!user && !isPublicMarketplaceQuote) {
         return {
             success: false,
             message: 'Authentication required to generate a quote.',
@@ -3772,7 +3772,7 @@ export async function createQuoteAction(data: {
         .select('unified_context_strict_mode, default_owner_tenant_id')
         .single();
     const isStrict = settings?.unified_context_strict_mode !== false; // Active by default
-    let resolvedTenantId = settings?.default_owner_tenant_id || null;
+    let resolvedTenantId = (data.tenant_id || '').trim() || settings?.default_owner_tenant_id || null;
 
     const createdBy = user?.id || null;
     let actorMember: { id: string; role: string | null } | null = null;
@@ -3794,10 +3794,11 @@ export async function createQuoteAction(data: {
     const comms: any = normalizeCommercialsPayload(data.commercials);
 
     if (safeLeadId) {
-        const { data: lead } = await supabase
+        // Use admin client so public/guest quote flow is not blocked by crm_leads RLS read policies.
+        const { data: lead } = await adminClient
             .from('crm_leads')
             .select(
-                'customer_id, customer_name, customer_phone, referred_by_id, selected_dealer_tenant_id, owner_tenant_id'
+                'customer_id, customer_name, customer_phone, referred_by_id, tenant_id, selected_dealer_tenant_id, owner_tenant_id'
             )
             .eq('is_deleted', false)
             .eq('id', safeLeadId)
@@ -3807,7 +3808,7 @@ export async function createQuoteAction(data: {
             leadCustomerPhone = lead.customer_phone || null;
             leadCustomerName = lead.customer_name || null;
             if (!resolvedTenantId) {
-                resolvedTenantId = lead.selected_dealer_tenant_id || lead.owner_tenant_id || null;
+                resolvedTenantId = lead.selected_dealer_tenant_id || lead.owner_tenant_id || lead.tenant_id || null;
             }
 
             // Hardening: Enforce dealer context matching
@@ -3829,6 +3830,30 @@ export async function createQuoteAction(data: {
 
             leadReferrerId = lead.referred_by_id || null;
         }
+    }
+
+    if (!resolvedTenantId && createdBy) {
+        const [{ data: membership }, { data: memberTenantLink }, { data: memberProfile }] = await Promise.all([
+            adminClient
+                .from('memberships')
+                .select('tenant_id')
+                .eq('user_id', createdBy)
+                .eq('status', 'ACTIVE')
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle(),
+            adminClient
+                .from('id_member_tenants')
+                .select('tenant_id')
+                .eq('member_id', createdBy)
+                .eq('status', 'ACTIVE')
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle(),
+            adminClient.from('id_members').select('tenant_id').eq('id', createdBy).maybeSingle(),
+        ]);
+
+        resolvedTenantId = membership?.tenant_id || memberTenantLink?.tenant_id || memberProfile?.tenant_id || null;
     }
 
     if (!resolvedTenantId) {
@@ -3968,7 +3993,7 @@ export async function createQuoteAction(data: {
         return { success: false, message: getErrorMessage(error) };
     }
 
-    await logQuoteEvent(quote.id, 'Quote Created', null, isGuestMarketplaceQuote ? 'customer' : 'team', {
+    await logQuoteEvent(quote.id, 'Quote Created', null, isPublicMarketplaceQuote ? 'customer' : 'team', {
         source: data.source || 'CRM',
         finance_mode:
             (data.commercials as any)?.finance?.scheme_id || (data.commercials as any)?.finance?.bank_id
