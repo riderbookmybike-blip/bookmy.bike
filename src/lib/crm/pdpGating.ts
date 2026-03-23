@@ -10,7 +10,7 @@
  *   3. NOT_SERVICEABLE   — pincode present but outside coverage
  */
 
-export type GatingCode = 'UNAUTHENTICATED' | 'LOCATION_REQUIRED' | 'NOT_SERVICEABLE';
+export type GatingCode = 'UNAUTHENTICATED' | 'LOCATION_REQUIRED' | 'NOT_SERVICEABLE' | 'SERVICEABILITY_UNAVAILABLE';
 
 export type GatingResult = { ok: true } | { ok: false; code: GatingCode; message: string };
 
@@ -61,9 +61,13 @@ export async function assertPdpGating(
             };
         }
     } catch {
-        // Fail-open: on serviceability API error prefer not to block the action.
-        // Server enforcement is defense-in-depth; client-side gate already blocks UI.
-        console.warn('[pdpGating] serviceability check failed — allowing through');
+        // Fail-closed on API error: aligns with Phase 4 client-side NON_SERVICEABLE-on-error.
+        // STRICT mode means strict — a transient outage should not silently unlock commercial actions.
+        return {
+            ok: false,
+            code: 'SERVICEABILITY_UNAVAILABLE',
+            message: 'Serviceability service temporarily unavailable. Please try again.',
+        };
     }
 
     return { ok: true };

@@ -86,11 +86,14 @@ describe('assertPdpGating', () => {
     });
 
     // ── Bonus: fail-open on serviceability API error ──────────────────────────
-    it('(+) flag=true, serviceability API throws → fail-open (ok)', async () => {
+    it('(+) flag=true, serviceability API throws → fail-closed (SERVICEABILITY_UNAVAILABLE)', async () => {
         setStrictGating('true');
         mockCheck.mockRejectedValueOnce(new Error('network timeout'));
         const result = await assertPdpGating('user-uuid-123', '411001');
-        // Fail-open: server error should not block the user
-        expect(result.ok).toBe(true);
+        expect(result.ok).toBe(false);
+        if (!result.ok) {
+            expect(result.code).toBe('SERVICEABILITY_UNAVAILABLE');
+            expect(result.message).toMatch(/temporarily unavailable/i);
+        }
     });
 });
