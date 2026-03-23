@@ -140,7 +140,10 @@ export function CompactProductCard({
             : discountBasedDelta;
 
     const hasMultipleVariants = variantCount > 1;
-    const currentMonth = new Intl.DateTimeFormat('en-US', { month: 'long' }).format(new Date());
+    const currentMonth = new Intl.DateTimeFormat('en-US', {
+        month: 'long',
+        timeZone: 'Asia/Kolkata',
+    }).format(new Date());
     const offerCtaText = `Check ${currentMonth} Offers`;
     const ctaLabel = hasMultipleVariants ? 'Know More' : offerCtaText;
     const href = hasMultipleVariants

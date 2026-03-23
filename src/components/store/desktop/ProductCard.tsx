@@ -172,7 +172,10 @@ export const ProductCard = ({
     const [isNavigating, setIsNavigating] = useState(false);
     const navFeedbackTimerRef = useRef<number | null>(null);
     const pathname = usePathname();
-    const currentMonth = new Intl.DateTimeFormat('en-US', { month: 'long' }).format(new Date());
+    const currentMonth = new Intl.DateTimeFormat('en-US', {
+        month: 'long',
+        timeZone: 'Asia/Kolkata',
+    }).format(new Date());
     const offerCtaText = `Check ${currentMonth} Offers`;
 
     const triggerNavigationFeedback = useCallback(() => {
