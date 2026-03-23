@@ -1,38 +1,23 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
-import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Home, Heart, CreditCard, Banknote, X, Pencil, Bike, Sparkles, Zap as ZapIcon, Search } from 'lucide-react';
+import {
+    ArrowRight,
+    Bike,
+    CreditCard,
+    Banknote,
+    BookmarkPlus,
+    Download,
+    CalendarCheck,
+    PhoneCall,
+    SlidersHorizontal,
+    LayoutGrid,
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MotorcycleIcon } from '@/components/icons/MotorcycleIcon';
-import { useFavorites } from '@/lib/favorites/favoritesContext';
 import { useDiscovery } from '@/contexts/DiscoveryContext';
-import { VehicleSearchOverlay } from '@/components/store/mobile/VehicleSearchOverlay';
 
-// ─── Pricing constants ────────────────────────────────────────────────────────
-const DP_MIN = 5000;
-const DP_MAX = 200000;
-const DP_STEP = 5000;
-const TENURE_OPTIONS = [12, 18, 24, 36, 48, 60];
-
-// ─── Tabs ─────────────────────────────────────────────────────────────────────
-const STATIC_TABS = [
-    { key: 'home', label: 'Home', icon: Home, href: '/' },
-    { key: 'ride', label: 'Ride', icon: MotorcycleIcon, href: '/store/catalog' },
-    { key: 'search', label: 'Search', icon: Search, href: null },
-    { key: 'pricing', label: 'EMI', icon: CreditCard, href: null },
-    { key: 'wishlist', label: 'Favorites', icon: Heart, href: '/store/compare/favorites' },
-] as const;
-
-const BODY_TYPE_OPTIONS = [
-    { key: 'ALL', label: 'All', svg: null, flip: false },
-    { key: 'MOTORCYCLE', label: 'Motorcycle', svg: '/media/motorcycle.svg', flip: true },
-    { key: 'SCOOTER', label: 'Scooter', svg: '/media/scooter.svg', flip: true },
-    { key: 'MOPED', label: 'Moped', svg: '/media/moped.svg', flip: false },
-] as const;
-
-// ─── LocalStorage helpers ─────────────────────────────────────────────────────
+// ─── Pricing helpers ──────────────────────────────────────────────────────────
 function readPricing() {
     try {
         const raw = localStorage.getItem('bkmb_pricing_prefs');
@@ -40,7 +25,7 @@ function readPricing() {
     } catch {
         /* ignore */
     }
-    return { mode: 'finance', downpayment: 999, tenure: 36 };
+    return { mode: 'finance', downpayment: 10000, tenure: 36 };
 }
 function writePricing(payload: unknown) {
     try {
@@ -50,455 +35,385 @@ function writePricing(payload: unknown) {
     }
 }
 
+// ─── PDP stage type ───────────────────────────────────────────────────────────
+type PdpStage = 0 | 1 | 2 | 3;
+
+// Stage meta — labels, icons, colours
+const PDP_STAGES: {
+    label: string;
+    icon: React.ElementType;
+    event: string;
+    bg: string;
+    shadow: string;
+    text: string;
+}[] = [
+    {
+        label: 'Save Quote',
+        icon: BookmarkPlus,
+        event: 'pdpSaveQuoteRequested',
+        bg: 'bg-[#FFD700]',
+        shadow: 'shadow-[0_6px_28px_rgba(255,215,0,0.45)]',
+        text: 'text-[#0b0d10]',
+    },
+    {
+        label: 'Download Quote',
+        icon: Download,
+        event: 'pdpDownloadQuoteRequested',
+        bg: 'bg-[#1a1a2e]',
+        shadow: 'shadow-[0_6px_28px_rgba(0,0,0,0.4)]',
+        text: 'text-white',
+    },
+    {
+        label: 'Confirm Booking',
+        icon: CalendarCheck,
+        event: 'pdpBookingRequested',
+        bg: 'bg-emerald-500',
+        shadow: 'shadow-[0_6px_28px_rgba(16,185,129,0.45)]',
+        text: 'text-white',
+    },
+    {
+        label: 'Request Callback',
+        icon: PhoneCall,
+        event: 'pdpCallbackRequested',
+        bg: 'bg-violet-600',
+        shadow: 'shadow-[0_6px_28px_rgba(124,58,237,0.45)]',
+        text: 'text-white',
+    },
+];
+
 export function ShopperBottomNav() {
     const pathname = usePathname();
     const router = useRouter();
-    const { favorites } = useFavorites();
+    const { pricingMode, setPricingMode } = useDiscovery();
 
-    const tabs = useMemo(() => STATIC_TABS.map(tab => tab), []);
+    // ── Page detection ────────────────────────────────────────────────────────
+    const isHomePage = useMemo(() => pathname === '/' || pathname === '/store', [pathname]);
 
-    // ── Pricing state ─────────────────────────────────────────────────────────
-    const [downpayment, setDownpayment] = useState(999);
-    const [tenure, setTenure] = useState(36);
-    const [sheetOpen, setSheetOpen] = useState(false);
-    const [rideSheetOpen, setRideSheetOpen] = useState(false);
-    const sheetRef = useRef<HTMLDivElement>(null);
-    const rideSheetRef = useRef<HTMLDivElement>(null);
-    const [isSearchOpen, setIsSearchOpen] = useState(false);
-    const [editingDp, setEditingDp] = useState(false);
-    const [dpRaw, setDpRaw] = useState('');
-    const dpInputRef = useRef<HTMLInputElement>(null);
-    const { offerMode, setOfferMode, pricingMode, setPricingMode } = useDiscovery();
+    const isPdpPage = useMemo(() => {
+        if (!pathname) return false;
+        const parts = pathname.split('/').filter(Boolean);
+        return parts.length === 4 && parts[0] === 'store';
+    }, [pathname]);
 
-    const handleBodyTypeSelect = (type: string) => {
-        setRideSheetOpen(false);
-        const bodyTypes = type === 'ALL' ? [] : [type];
-        window.dispatchEvent(new CustomEvent('catalogBodyTypeChanged', { detail: { bodyTypes } }));
-        if (!pathname?.startsWith('/store/catalog')) {
-            router.push('/store/catalog');
+    const isCatalogPage = useMemo(() => !!pathname?.startsWith('/store/catalog'), [pathname]);
+
+    const isComparePage = useMemo(() => !!pathname?.startsWith('/store/compare'), [pathname]);
+
+    // ── Compare view-mode toggle (grid ↔ list) ────────────────────────────────
+    const [compareViewMode, setCompareViewMode] = useState<'grid' | 'list'>('grid');
+    useEffect(() => {
+        if (!isComparePage) setCompareViewMode('grid');
+    }, [isComparePage]);
+
+    // ── PDP stage (session-only, resets on leaving PDP) ───────────────────────
+    const [pdpStage, setPdpStage] = useState<PdpStage>(0);
+    const prevPathRef = useRef(pathname);
+
+    useEffect(() => {
+        // Reset stage when navigating away from PDP
+        if (!isPdpPage) {
+            setPdpStage(0);
         }
-    };
+        prevPathRef.current = pathname;
+    }, [pathname, isPdpPage]);
+
+    // Listen for success events fired by MobilePDP after each action completes
+    useEffect(() => {
+        const onStageAdvanced = (e: Event) => {
+            const stage = (e as CustomEvent<{ stage: PdpStage }>).detail?.stage;
+            if (stage !== undefined) {
+                setPdpStage(stage);
+            }
+        };
+        window.addEventListener('pdpStageAdvanced', onStageAdvanced);
+        return () => window.removeEventListener('pdpStageAdvanced', onStageAdvanced);
+    }, []);
+
+    // ── Downpayment / tenure (needed for dispatchPricing) ────────────────────
+    const [downpayment, setDownpayment] = useState(10000);
+    const [tenure, setTenure] = useState(36);
 
     useEffect(() => {
         const saved = readPricing();
-        // pricingMode is now managed by DiscoveryContext via useEffect on searchParams
         setDownpayment(saved.downpayment || 10000);
         setTenure(saved.tenure || 36);
     }, []);
 
-    const dispatchPricing = (mode: 'cash' | 'finance', dp: number, ten: number) => {
-        const payload = { mode, downpayment: dp, tenure: ten };
+    // ── Pricing dispatch (keeps DiscoveryContext + all listeners in sync) ─────
+    const dispatchPricing = (mode: 'cash' | 'finance') => {
+        const payload = { mode, downpayment, tenure };
         writePricing(payload);
+        setPricingMode(mode);
         window.dispatchEvent(new CustomEvent('discoveryPricingChanged', { detail: payload }));
     };
 
-    const handlePricingTabClick = () => {
-        if (sheetOpen) {
-            // Sheet is open → close it
-            setSheetOpen(false);
-        } else {
-            // Sheet is closed → switch to finance if needed and open sheet
-            if (pricingMode === 'cash') {
-                setPricingMode('finance');
-                dispatchPricing('finance', downpayment, tenure);
-            }
-            setIsSearchOpen(false);
-            setRideSheetOpen(false);
-            setSheetOpen(true);
+    // ── CTA config ────────────────────────────────────────────────────────────
+    type CtaConfig = {
+        label: string;
+        subLabel?: string;
+        icon: React.ElementType;
+        bg: string;
+        shadow: string;
+        textColor: string;
+        shimmer: boolean;
+        onClick: () => void;
+    };
+
+    const ctaConfig = useMemo((): CtaConfig | null => {
+        if (isHomePage) {
+            return {
+                label: 'Explore Bikes',
+                icon: Bike,
+                bg: 'bg-[#FFD700]',
+                shadow: 'shadow-[0_6px_28px_rgba(255,215,0,0.45)]',
+                textColor: 'text-[#0b0d10]',
+                shimmer: true,
+                onClick: () => router.push('/store/catalog'),
+            };
         }
-    };
 
-    const handlePricingTabLongPress = () => {
-        // Long press or double-tap opens the config sheet (for DP/tenure tuning)
-        if (pricingMode === 'cash') {
-            setPricingMode('finance');
-            dispatchPricing('finance', downpayment, tenure);
+        if (isPdpPage) {
+            const stage = PDP_STAGES[pdpStage];
+            return {
+                label: stage.label,
+                icon: stage.icon,
+                bg: stage.bg,
+                shadow: stage.shadow,
+                textColor: stage.text,
+                shimmer: pdpStage === 0,
+                onClick: () => window.dispatchEvent(new CustomEvent(stage.event)),
+            };
         }
-        setSheetOpen(true);
-    };
 
-    const handleDpChange = (val: number) => {
-        setDownpayment(val);
-        dispatchPricing(pricingMode, val, tenure);
-    };
-    const handleTenureChange = (val: number) => {
-        setTenure(val);
-        dispatchPricing(pricingMode, downpayment, val);
-    };
+        if (isComparePage) {
+            const isGrid = compareViewMode === 'grid';
+            return {
+                label: isGrid ? 'Compare Variants' : 'Card View',
+                subLabel: isGrid ? 'side-by-side list view' : 'back to cards',
+                icon: isGrid ? SlidersHorizontal : LayoutGrid,
+                bg: isGrid ? 'bg-indigo-600' : 'bg-slate-700',
+                shadow: isGrid ? 'shadow-[0_4px_20px_rgba(79,70,229,0.45)]' : 'shadow-[0_4px_20px_rgba(30,41,59,0.4)]',
+                textColor: 'text-white',
+                shimmer: false,
+                onClick: () => {
+                    const next = isGrid ? 'list' : 'grid';
+                    setCompareViewMode(next);
+                    window.dispatchEvent(
+                        new CustomEvent(next === 'list' ? 'compareForceListView' : 'compareForceGridView')
+                    );
+                },
+            };
+        }
 
-    // Close sheets on outside tap
-    useEffect(() => {
-        if (!sheetOpen && !rideSheetOpen) return;
-        const handler = (e: MouseEvent) => {
-            if (sheetOpen && sheetRef.current && !sheetRef.current.contains(e.target as Node)) {
-                setSheetOpen(false);
-            }
-            if (rideSheetOpen && rideSheetRef.current && !rideSheetRef.current.contains(e.target as Node)) {
-                setRideSheetOpen(false);
-            }
+        if (isCatalogPage) {
+            const isCash = pricingMode === 'cash';
+            return {
+                label: isCash ? 'Switch to Loan' : 'Switch to Cash',
+                subLabel: isCash ? 'view EMI & downpayment options' : 'view full on-road price',
+                icon: isCash ? CreditCard : Banknote,
+                bg: isCash ? 'bg-[#FFD700]' : 'bg-emerald-500',
+                shadow: isCash
+                    ? 'shadow-[0_4px_20px_rgba(255,215,0,0.5)]'
+                    : 'shadow-[0_4px_20px_rgba(16,185,129,0.45)]',
+                textColor: isCash ? 'text-[#0b0d10]' : 'text-white',
+                shimmer: false,
+                onClick: () => dispatchPricing(isCash ? 'finance' : 'cash'),
+            };
+        }
+
+        // Other pages — fallback explore
+        return {
+            label: 'Explore Bikes',
+            icon: Bike,
+            bg: 'bg-[#FFD700]',
+            shadow: 'shadow-[0_6px_28px_rgba(255,215,0,0.45)]',
+            textColor: 'text-[#0b0d10]',
+            shimmer: false,
+            onClick: () => router.push('/store/catalog'),
         };
-        document.addEventListener('mousedown', handler);
-        return () => document.removeEventListener('mousedown', handler);
-    }, [sheetOpen, rideSheetOpen]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isHomePage, isPdpPage, isCatalogPage, isComparePage, compareViewMode, pdpStage, pricingMode]);
 
-    const isTabActive = (href: string) => {
-        if (!pathname) return false;
-        if (href === '/') return pathname === '/' || pathname === '/store';
-        return pathname.startsWith(href);
+    // ── EMI Modal state ─────────────────────────────────────────────────────────
+    const [showEmiModal, setShowEmiModal] = useState(false);
+    const [modalDownpayment, setModalDownpayment] = useState(downpayment);
+    const [modalTenure, setModalTenure] = useState(tenure);
+    const TENURE_OPTIONS = [6, 12, 18, 24, 36, 48, 60];
+
+    const applyEmiSettings = () => {
+        setDownpayment(modalDownpayment);
+        setTenure(modalTenure);
+        writePricing({ mode: 'finance', downpayment: modalDownpayment, tenure: modalTenure });
+        setPricingMode('finance');
+        window.dispatchEvent(
+            new CustomEvent('discoveryPricingChanged', {
+                detail: { mode: 'finance', downpayment: modalDownpayment, tenure: modalTenure },
+            })
+        );
+        setShowEmiModal(false);
+    };
+
+    if (!ctaConfig) return null;
+
+    const Icon = ctaConfig.icon;
+
+    const handleCtaClick = () => {
+        if (isCatalogPage && pricingMode === 'cash') {
+            setModalDownpayment(downpayment);
+            setModalTenure(tenure);
+            setShowEmiModal(true);
+        } else {
+            ctaConfig.onClick();
+        }
     };
 
     return (
         <>
-            {/* ── Search Overlay ── */}
-            <VehicleSearchOverlay open={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+            {/* ── EMI Configurator Bottom Sheet ── */}
+            <AnimatePresence>
+                {showEmiModal && (
+                    <>
+                        {/* Backdrop */}
+                        <motion.div
+                            key="emi-backdrop"
+                            className="fixed inset-0 z-[60] bg-black/50"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setShowEmiModal(false)}
+                        />
+                        {/* Sheet */}
+                        <motion.div
+                            key="emi-sheet"
+                            className="fixed bottom-0 left-0 right-0 z-[70] bg-white rounded-t-3xl px-5 pt-5 pb-[env(safe-area-inset-bottom,16px)]"
+                            initial={{ y: '100%' }}
+                            animate={{ y: 0 }}
+                            exit={{ y: '100%' }}
+                            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                        >
+                            {/* Handle */}
+                            <div className="w-10 h-1 rounded-full bg-slate-200 mx-auto mb-5" />
 
-            {/* ── Ride Body Type Sheet ── */}
-            {rideSheetOpen && (
-                <div
-                    className="fixed inset-x-0 bottom-[60px] z-[60]"
-                    style={{ paddingBottom: 'env(safe-area-inset-bottom,0px)' }}
-                >
-                    <div
-                        ref={rideSheetRef}
-                        className="mx-3 mb-3 rounded-3xl overflow-hidden ring-1 ring-slate-200/50"
-                        style={{
-                            background: 'rgba(255,255,255,0.92)',
-                            backdropFilter: 'blur(48px) saturate(180%)',
-                            boxShadow: '0 -4px 40px rgba(0,0,0,0.08), 0 8px 32px rgba(0,0,0,0.10)',
-                        }}
-                    >
-                        <div className="h-[3px] w-full bg-gradient-to-r from-slate-300 via-slate-500 to-slate-300" />
-                        <div className="px-5 pt-4 pb-5">
-                            <div className="flex items-center justify-between mb-4">
-                                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">
-                                    Choose Type
-                                </span>
-                                <button
-                                    onClick={() => setRideSheetOpen(false)}
-                                    className="w-7 h-7 flex items-center justify-center rounded-full bg-slate-100 text-slate-400 active:bg-slate-200 transition-colors"
-                                >
-                                    <X size={13} strokeWidth={2.5} />
-                                </button>
+                            <h3 className="text-[15px] font-black uppercase tracking-[0.1em] text-slate-900 mb-1">
+                                Finance Options
+                            </h3>
+                            <p className="text-[11px] text-slate-400 font-medium mb-5">
+                                Set your downpayment & tenure before switching to loan view
+                            </p>
+
+                            {/* Downpayment */}
+                            <label className="block text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 mb-2">
+                                Downpayment
+                            </label>
+                            <div className="flex items-center gap-2 mb-1">
+                                <span className="text-[13px] font-bold text-slate-400">₹</span>
+                                <input
+                                    type="number"
+                                    value={modalDownpayment}
+                                    onChange={e => setModalDownpayment(Number(e.target.value))}
+                                    className="flex-1 text-[18px] font-black text-slate-900 border-b-2 border-slate-200 focus:border-[#FFD700] outline-none pb-1 bg-transparent"
+                                    step={1000}
+                                    min={0}
+                                />
                             </div>
-                            <div className="grid grid-cols-4 gap-2">
-                                {BODY_TYPE_OPTIONS.map(opt => (
+                            <div className="flex gap-2 mb-6 mt-3">
+                                {[0, 5000, 10000, 25000, 50000].map(amt => (
                                     <button
-                                        key={opt.key}
-                                        onClick={() => handleBodyTypeSelect(opt.key)}
-                                        className="flex flex-col items-center gap-2 py-3 px-2 rounded-2xl bg-slate-50 border border-slate-100 hover:border-slate-300 active:bg-slate-100 transition-all"
+                                        key={amt}
+                                        onClick={() => setModalDownpayment(amt)}
+                                        className={`flex-1 py-1.5 rounded-lg text-[10px] font-black border transition-all ${
+                                            modalDownpayment === amt
+                                                ? 'bg-[#FFD700] border-[#FFD700] text-black'
+                                                : 'border-slate-200 text-slate-500'
+                                        }`}
                                     >
-                                        {opt.svg ? (
-                                            <img
-                                                src={opt.svg}
-                                                alt={opt.label}
-                                                className={`w-7 h-7 object-contain ${opt.flip ? 'scale-x-[-1]' : ''}`}
-                                            />
-                                        ) : (
-                                            <MotorcycleIcon size={22} className="text-slate-600" />
-                                        )}
-                                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-700">
-                                            {opt.label}
-                                        </span>
+                                        {amt === 0 ? 'NIL' : `₹${amt >= 1000 ? `${amt / 1000}K` : amt}`}
                                     </button>
                                 ))}
                             </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-            {/* ── EMI Pricing Sheet — Light Glassmorphism ── */}
-            {sheetOpen && pricingMode === 'finance' && (
-                <div
-                    className="fixed inset-x-0 bottom-[60px] z-[60]"
-                    style={{ paddingBottom: 'env(safe-area-inset-bottom,0px)' }}
-                >
-                    <div
-                        ref={sheetRef}
-                        className="mx-3 mb-3 rounded-3xl overflow-hidden ring-1 ring-amber-200/50"
-                        style={{
-                            background: 'rgba(255,255,255,0.88)',
-                            backdropFilter: 'blur(48px) saturate(180%)',
-                            boxShadow: '0 -4px 40px rgba(251,191,36,0.12), 0 8px 32px rgba(0,0,0,0.10)',
-                        }}
-                    >
-                        {/* Gold accent stripe */}
-                        <div
-                            className="h-[3px] w-full"
-                            style={{ background: 'linear-gradient(90deg,#F4B000,#FFD700,#F4B000)' }}
-                        />
-
-                        <div className="px-5 pt-4 pb-5">
-                            {/* Handle + Close */}
-                            <div className="flex items-center justify-between mb-4">
-                                <div className="w-7" />
-                                <div className="w-8 h-1 rounded-full bg-amber-200/70" />
-                                <button
-                                    onClick={() => setSheetOpen(false)}
-                                    className="w-7 h-7 flex items-center justify-center rounded-full bg-slate-100 text-slate-400 active:bg-slate-200 transition-colors"
-                                >
-                                    <X size={13} strokeWidth={2.5} />
-                                </button>
-                            </div>
-
-                            {/* Finance / Cash toggle (Single-button Flip) */}
-                            <button
-                                onClick={() => {
-                                    const next = pricingMode === 'finance' ? 'cash' : 'finance';
-                                    setPricingMode(next);
-                                    dispatchPricing(next, downpayment, tenure);
-                                    if (next === 'cash') setSheetOpen(false);
-                                }}
-                                className="w-full flex items-center justify-center gap-3 p-3 bg-white shadow-sm border border-black/5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all duration-200 active:scale-[0.98] mb-3"
-                            >
-                                {pricingMode === 'finance' ? (
-                                    <>
-                                        <Banknote size={14} className="text-emerald-500" />
-                                        <span className="text-slate-900">Cash Mode</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <ZapIcon size={14} className="text-amber-500" />
-                                        <span className="text-slate-900">Finance Mode</span>
-                                    </>
-                                )}
-                            </button>
-
-                            {/* Offer Mode Selection (Single-button Flip) */}
-                            <button
-                                onClick={() =>
-                                    setOfferMode(offerMode === 'BEST_OFFER' ? 'FAST_DELIVERY' : 'BEST_OFFER')
-                                }
-                                className="w-full flex items-center justify-center gap-3 p-3 bg-white shadow-sm border border-black/5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all duration-200 active:scale-[0.98] mb-6"
-                            >
-                                {offerMode === 'BEST_OFFER' ? (
-                                    <>
-                                        <ZapIcon size={14} className="text-blue-500" />
-                                        <span className="text-slate-900">Fast Delivery</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <Sparkles size={14} className="text-amber-500" />
-                                        <span className="text-slate-900">Best Offer</span>
-                                    </>
-                                )}
-                            </button>
-
-                            {/* Downpayment */}
-                            <div className="mb-5">
-                                <div className="flex items-end justify-between mb-3">
-                                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-600">
-                                        Downpayment
-                                    </span>
-                                    {editingDp ? (
-                                        <div className="flex items-baseline gap-0.5">
-                                            <span className="text-xl font-black text-amber-400">₹</span>
-                                            <input
-                                                ref={dpInputRef}
-                                                type="number"
-                                                value={dpRaw}
-                                                onChange={e => setDpRaw(e.target.value)}
-                                                onBlur={() => {
-                                                    const val = Math.min(
-                                                        DP_MAX,
-                                                        Math.max(DP_MIN, Math.round(Number(dpRaw) / DP_STEP) * DP_STEP)
-                                                    );
-                                                    if (!isNaN(val)) {
-                                                        setDownpayment(val);
-                                                        dispatchPricing(pricingMode, val, tenure);
-                                                    }
-                                                    setEditingDp(false);
-                                                }}
-                                                onKeyDown={e => {
-                                                    if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
-                                                }}
-                                                className="w-28 text-2xl font-black text-slate-900 text-right border-b-2 border-amber-400 outline-none bg-transparent"
-                                                autoFocus
-                                            />
-                                        </div>
-                                    ) : (
-                                        <button
-                                            onClick={() => {
-                                                setDpRaw(String(downpayment));
-                                                setEditingDp(true);
-                                            }}
-                                            className="flex items-center gap-1.5"
-                                        >
-                                            <span className="text-2xl font-black text-slate-900 tracking-tight">
-                                                ₹{downpayment.toLocaleString('en-IN')}
-                                            </span>
-                                            <Pencil size={12} className="text-amber-400 mb-0.5" strokeWidth={2.5} />
-                                        </button>
-                                    )}
-                                </div>
-
-                                {/* Slider — dynamic track fill */}
-                                <input
-                                    type="range"
-                                    min={DP_MIN}
-                                    max={DP_MAX}
-                                    step={DP_STEP}
-                                    value={downpayment}
-                                    onChange={e => handleDpChange(Number(e.target.value))}
-                                    className="w-full h-2 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#F4B000] [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:shadow-amber-300/40 [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-[#F4B000] [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white"
-                                    style={{
-                                        background: (() => {
-                                            const pct = ((downpayment - DP_MIN) / (DP_MAX - DP_MIN)) * 100;
-                                            return `linear-gradient(to right, #F4B000 0%, #F4B000 ${pct}%, #e2e8f0 ${pct}%, #e2e8f0 100%)`;
-                                        })(),
-                                        WebkitAppearance: 'none',
-                                    }}
-                                />
-                            </div>
 
                             {/* Tenure */}
-                            <div>
-                                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-600 block mb-3">
-                                    Tenure (Months)
-                                </span>
-                                <div className="grid grid-cols-6 gap-2">
-                                    {TENURE_OPTIONS.map(t => (
-                                        <button
-                                            key={t}
-                                            onClick={() => handleTenureChange(t)}
-                                            className={`py-2.5 rounded-2xl text-[11px] font-black tracking-tight transition-all duration-200 ${
-                                                tenure === t
-                                                    ? 'bg-[#FFD700] text-black shadow-md shadow-amber-200/60 scale-105'
-                                                    : 'bg-slate-100/80 text-slate-700 active:bg-slate-200'
-                                            }`}
-                                        >
-                                            {t}
-                                        </button>
-                                    ))}
-                                </div>
+                            <label className="block text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 mb-2">
+                                Loan Tenure (months)
+                            </label>
+                            <div className="grid grid-cols-7 gap-1.5 mb-7">
+                                {TENURE_OPTIONS.map(t => (
+                                    <button
+                                        key={t}
+                                        onClick={() => setModalTenure(t)}
+                                        className={`py-2.5 rounded-xl text-[11px] font-black transition-all ${
+                                            modalTenure === t
+                                                ? 'bg-slate-900 text-white'
+                                                : 'bg-slate-100 text-slate-500'
+                                        }`}
+                                    >
+                                        {t}
+                                    </button>
+                                ))}
                             </div>
-                        </div>
-                    </div>
-                </div>
-            )}
 
-            {/* ── Bottom Nav Bar ── */}
+                            {/* Apply */}
+                            <button
+                                onClick={applyEmiSettings}
+                                className="w-full py-4 rounded-2xl bg-emerald-500 text-white font-black text-[13px] uppercase tracking-[0.1em] shadow-[0_4px_20px_rgba(16,185,129,0.4)] active:scale-[0.98] transition-transform"
+                            >
+                                Apply & Switch to Loan View
+                            </button>
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
+
             <nav
-                className="fixed bottom-0 left-0 right-0 z-[55] bg-white/95 backdrop-blur-2xl border-t border-slate-200"
+                className="fixed bottom-0 left-0 right-0 z-[55]"
                 style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
             >
-                <div className="flex items-stretch justify-around h-[60px]">
-                    {tabs.map(tab => {
-                        const isPricing = tab.key === 'pricing';
-                        const isWishlist = tab.key === 'wishlist';
-                        const isSearch = tab.key === 'search';
-                        const active = isPricing
-                            ? sheetOpen
-                            : isSearch
-                              ? isSearchOpen
-                              : tab.href
-                                ? isTabActive(tab.href)
-                                : false;
+                <div className="h-[60px] flex items-center">
+                    <AnimatePresence mode="wait">
+                        <motion.button
+                            key={`${isHomePage}-${isPdpPage}-${isCatalogPage}-${pdpStage}-${pricingMode}`}
+                            onClick={handleCtaClick}
+                            initial={{ opacity: 0, y: 8, scale: 0.97 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                            transition={{ type: 'spring', stiffness: 320, damping: 26 }}
+                            whileTap={{ scale: 0.97 }}
+                            className={`
+                                w-full h-[60px] rounded-none flex items-center justify-center gap-3
+                                relative overflow-hidden
+                                ${ctaConfig.bg} ${ctaConfig.shadow} ${ctaConfig.textColor}
+                                transition-shadow duration-300
+                            `}
+                        >
+                            {/* Shimmer sweep */}
+                            {ctaConfig.shimmer && (
+                                <motion.div
+                                    className="absolute top-0 bottom-0 left-0 w-[3px] bg-gradient-to-b from-transparent via-white/70 to-transparent blur-[1px]"
+                                    animate={{ x: [0, 500] }}
+                                    transition={{
+                                        repeat: Infinity,
+                                        duration: 5,
+                                        ease: 'linear',
+                                        delay: 2,
+                                        repeatDelay: 2,
+                                    }}
+                                />
+                            )}
 
-                        const Icon = tab.icon;
-                        const cls = `flex flex-col items-center justify-center flex-1 gap-1 transition-all duration-300 min-h-[44px] relative ${
-                            active ? 'text-[#D6A900]' : 'text-slate-500 active:text-slate-700'
-                        }`;
-
-                        if (isSearch) {
-                            return (
-                                <button
-                                    key={tab.key}
-                                    onClick={() => {
-                                        setSheetOpen(false);
-                                        setRideSheetOpen(false);
-                                        setIsSearchOpen(true);
-                                    }}
-                                    className={cls}
-                                >
-                                    <div className="relative">
-                                        <Icon size={20} strokeWidth={isSearchOpen ? 2.5 : 1.5} />
-                                    </div>
-                                    <span
-                                        className={`text-[9px] tracking-[0.15em] uppercase ${isSearchOpen ? 'font-black' : 'font-semibold'}`}
-                                    >
-                                        {tab.label}
-                                    </span>
-                                    {isSearchOpen && (
-                                        <div className="absolute top-1 w-1 h-1 rounded-full bg-[#FFD700] shadow-[0_0_6px_#FFD700]" />
-                                    )}
-                                </button>
-                            );
-                        }
-
-                        if (isPricing) {
-                            const PricingIcon = pricingMode === 'finance' ? CreditCard : Banknote;
-                            let longPressTimer: ReturnType<typeof setTimeout> | null = null;
-                            let didLongPress = false;
-                            return (
-                                <button
-                                    key={tab.key}
-                                    onClick={() => {
-                                        if (didLongPress) {
-                                            didLongPress = false;
-                                            return;
-                                        }
-                                        handlePricingTabClick();
-                                    }}
-                                    onTouchStart={() => {
-                                        didLongPress = false;
-                                        longPressTimer = setTimeout(() => {
-                                            didLongPress = true;
-                                            handlePricingTabLongPress();
-                                        }, 500);
-                                    }}
-                                    onTouchEnd={() => {
-                                        if (longPressTimer) clearTimeout(longPressTimer);
-                                    }}
-                                    className={cls}
-                                >
-                                    <div className="relative">
-                                        <PricingIcon size={20} strokeWidth={sheetOpen ? 2.5 : 1.5} />
-                                        {active && (
-                                            <div className="absolute top-0 -right-2 w-1 h-1 rounded-full bg-[#FFD700] shadow-[0_0_6px_#FFD700]" />
-                                        )}
-                                    </div>
-                                    <span
-                                        className={`text-[9px] tracking-[0.15em] uppercase ${sheetOpen ? 'font-black' : 'font-semibold'}`}
-                                    >
-                                        {pricingMode === 'finance' ? 'Cash' : 'EMI'}
-                                    </span>
-                                    {sheetOpen && (
-                                        <div className="absolute top-1 w-1 h-1 rounded-full bg-[#FFD700] shadow-[0_0_6px_#FFD700]" />
-                                    )}
-                                </button>
-                            );
-                        }
-                        const content = (
-                            <>
-                                <div className="relative">
-                                    <Icon size={20} strokeWidth={active ? 2.5 : 1.5} />
-                                    {isWishlist && favorites.length > 0 && (
-                                        <span className="absolute -top-1.5 -right-2.5 w-4 h-4 bg-rose-500 text-white text-[8px] font-black rounded-full flex items-center justify-center border border-white">
-                                            {favorites.length > 9 ? '9+' : favorites.length}
-                                        </span>
-                                    )}
-                                </div>
-                                <span
-                                    className={`text-[9px] tracking-[0.15em] uppercase ${active ? 'font-black' : 'font-semibold'}`}
-                                >
-                                    {tab.label}
+                            <Icon size={18} className="relative z-10 shrink-0" />
+                            <div className="relative z-10 flex flex-col items-start leading-none">
+                                <span className="text-[13px] font-black uppercase tracking-[0.12em]">
+                                    {ctaConfig.label}
                                 </span>
-                                {active && (
-                                    <div className="absolute top-1 w-1 h-1 rounded-full bg-[#FFD700] shadow-[0_0_6px_#FFD700]" />
+                                {ctaConfig.subLabel && (
+                                    <span className="text-[9px] font-semibold tracking-wide opacity-60 mt-0.5 normal-case">
+                                        {ctaConfig.subLabel}
+                                    </span>
                                 )}
-                            </>
-                        );
-
-                        if (tab.href) {
-                            return (
-                                <Link key={tab.key} href={tab.href} className={cls}>
-                                    {content}
-                                </Link>
-                            );
-                        }
-
-                        return null;
-                    })}
+                            </div>
+                            <ArrowRight size={16} className="relative z-10 shrink-0 opacity-70" />
+                        </motion.button>
+                    </AnimatePresence>
                 </div>
             </nav>
         </>
