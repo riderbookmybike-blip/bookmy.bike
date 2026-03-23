@@ -646,7 +646,7 @@ export default async function Page({ params, searchParams }: Props) {
                   .select('sku_id, ex_showroom')
                   .in('sku_id', accessoryIds)
                   .eq('state_code', stateCode)
-                  .eq('publish_stage', 'PUBLISHED')
+                  .in('publish_stage', ['PUBLISHED', 'LIVE'])
             : Promise.resolve({ data: [] }),
     ]);
     const compatRows = compatResult.data || [];
