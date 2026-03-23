@@ -141,13 +141,8 @@ export function ProfileDropdown({
     const [studiosSectionOpen, setStudiosSectionOpen] = useState(false);
     const [financersSectionOpen, setFinancersSectionOpen] = useState(false);
 
-    // O'Circle vs Business mode toggle (persisted)
-    const [businessMode, setBusinessMode] = useState(() => {
-        if (typeof window === 'undefined') return true;
-        const savedMode = localStorage.getItem('bkmb_sidebar_mode');
-        if (!savedMode) return true;
-        return savedMode === 'business';
-    });
+    // O'Circle vs Business mode toggle: default to The Crew when toggle is available.
+    const [businessMode, setBusinessMode] = useState(true);
     const toggleMode = () => {
         setBusinessMode(prev => {
             const next = !prev;

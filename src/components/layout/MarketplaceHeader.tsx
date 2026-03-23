@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Heart, Home as HomeIcon, Menu } from 'lucide-react';
+import { Heart, Home as HomeIcon, Menu, Search } from 'lucide-react';
 import { MotorcycleIcon } from '@/components/icons/MotorcycleIcon';
 import { Logo } from '@/components/brand/Logo';
 import { AppHeaderShell } from './AppHeaderShell';
@@ -93,8 +93,15 @@ export const MarketplaceHeader = ({ onLoginClick }: MarketplaceHeaderProps) => {
                             />
                         </div>
 
-                        {/* ── Mobile: hamburger button ── */}
+                        {/* ── Mobile: search + hamburger buttons ── */}
                         <div className="lg:hidden flex items-center gap-2">
+                            <button
+                                className="w-10 h-10 rounded-full flex items-center justify-center text-white/90 hover:text-white border border-white/25 hover:border-white/50 transition-all"
+                                onClick={() => window.dispatchEvent(new CustomEvent('openMobileSearch'))}
+                                aria-label="Search bikes"
+                            >
+                                <Search size={18} />
+                            </button>
                             <button
                                 className="w-10 h-10 rounded-full flex items-center justify-center text-white/90 hover:text-white border border-white/25 hover:border-white/50 transition-all"
                                 onClick={() => setIsSidebarOpen(prev => !prev)}

@@ -9,6 +9,10 @@ const ShopperBottomNav = dynamic(
     () => import('@/components/store/mobile/ShopperBottomNav').then(m => ({ default: m.ShopperBottomNav })),
     { ssr: false }
 );
+const VehicleSearchOverlay = dynamic(
+    () => import('@/components/store/mobile/VehicleSearchOverlay').then(m => ({ default: m.VehicleSearchOverlay })),
+    { ssr: false }
+);
 import { FavoritesProvider } from '@/lib/favorites/favoritesContext';
 import { usePathname } from 'next/navigation';
 import { ColorProvider } from '@/contexts/ColorContext';
@@ -37,11 +41,17 @@ const readLatLng = (value: any): { lat: number | null; lng: number | null } => {
 
 export default function StoreLayoutClient({ children }: StoreLayoutClientProps) {
     const [isLoginOpen, setIsLoginOpen] = useState(false);
+    const [isSearchOpen, setIsSearchOpen] = useState(false);
 
     useEffect(() => {
         const handleOpenLogin = () => setIsLoginOpen(true);
+        const handleOpenSearch = () => setIsSearchOpen(true);
         window.addEventListener('openLogin', handleOpenLogin);
-        return () => window.removeEventListener('openLogin', handleOpenLogin);
+        window.addEventListener('openMobileSearch', handleOpenSearch);
+        return () => {
+            window.removeEventListener('openLogin', handleOpenLogin);
+            window.removeEventListener('openMobileSearch', handleOpenSearch);
+        };
     }, []);
 
     useEffect(() => {
@@ -176,7 +186,6 @@ export default function StoreLayoutClient({ children }: StoreLayoutClientProps) 
 
     const pathname = usePathname();
     const isLandingPage = pathname === '/store' || pathname === '/' || pathname?.match(/^\/d[2-8]$/);
-    const hideFooter = false; // Always show footer
 
     return (
         <FavoritesProvider>
@@ -205,7 +214,15 @@ export default function StoreLayoutClient({ children }: StoreLayoutClientProps) 
                             <ShopperBottomNav />
                         </div>
 
-                        {!hideFooter && <MarketplaceFooter />}
+                        {/* Footer: always on desktop, only on landing page on mobile */}
+                        <div className={isLandingPage ? '' : 'hidden lg:block'}>
+                            <MarketplaceFooter />
+                        </div>
+
+                        {/* Global mobile search portal — triggered by header Search icon */}
+                        <div className="lg:hidden">
+                            <VehicleSearchOverlay open={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+                        </div>
 
                         {/* Global Login Sidebar */}
                         <LoginSidebar isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} variant="RETAIL" />

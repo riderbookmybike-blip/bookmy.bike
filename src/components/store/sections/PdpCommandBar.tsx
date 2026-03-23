@@ -752,11 +752,12 @@ export function PdpCommandBar({
                     className={`relative overflow-hidden ${
                         isDesktop
                             ? 'rounded-t-[32px] bg-white border-t border-slate-200 shadow-[0_-10px_40px_rgba(0,0,0,0.05)]'
-                            : 'rounded-2xl border-white/[0.08] bg-[#0b0d10]/85 backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.45),inset_0_0_0_1px_rgba(255,255,255,0.06)]'
+                            : 'rounded-2xl border border-white/40 bg-white/80 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.12),inset_0_0_0_1px_rgba(255,255,255,0.6)]'
                     }`}
                 >
+                    {/* Glass shimmer overlay */}
                     <div
-                        className={`pointer-events-none absolute inset-0 ${isDesktop ? 'bg-gradient-to-b from-slate-50 to-transparent' : 'bg-[linear-gradient(135deg,rgba(255,255,255,0.06),rgba(255,255,255,0.01)_65%)]'}`}
+                        className={`pointer-events-none absolute inset-0 ${isDesktop ? 'bg-gradient-to-b from-slate-50 to-transparent' : 'bg-[linear-gradient(135deg,rgba(255,255,255,0.55),rgba(255,255,255,0.05)_60%,rgba(255,255,255,0.2))]'}`}
                     />
                     {isDesktop ? (
                         <div className="relative z-10 hidden md:flex items-center justify-center w-full px-4 lg:px-8 py-3 lg:py-4 border-t border-white">
@@ -830,16 +831,32 @@ export function PdpCommandBar({
                             <button
                                 onClick={authAwarePrimaryAction}
                                 disabled={isDisabled}
-                                className={`w-full h-[52px] px-6 font-black text-[13px] uppercase tracking-[0.14em] rounded-full shadow-xl flex items-center justify-center gap-2 transition-all group shrink-0
+                                className={`relative w-full h-[52px] px-6 font-black text-[13px] uppercase tracking-[0.14em] rounded-full shadow-xl flex items-center justify-center gap-2 transition-all group shrink-0 overflow-hidden
                                     ${
                                         isDisabled
                                             ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
                                             : 'bg-[#FFD700] text-[#0b0d10] shadow-[0_4px_24px_rgba(255,215,0,0.4)]'
                                     }`}
                             >
-                                {primaryLabel === 'DOWNLOAD QUOTE' ? 'DOWNLOAD DOSSIER' : primaryLabel}
-                                {!isLoggedIn && !isDisabled && <Lock size={14} className="ml-1 opacity-70" />}
-                                <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                                {/* Shimmer sweep */}
+                                {!isDisabled && (
+                                    <motion.div
+                                        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent"
+                                        initial={{ x: '-100%', skewX: -15 }}
+                                        animate={{ x: '200%' }}
+                                        transition={{ repeat: Infinity, duration: 2.2, ease: 'easeInOut', delay: 0.8 }}
+                                    />
+                                )}
+                                <span className="relative z-10">
+                                    {primaryLabel === 'DOWNLOAD QUOTE' ? 'DOWNLOAD DOSSIER' : primaryLabel}
+                                </span>
+                                {!isLoggedIn && !isDisabled && (
+                                    <Lock size={14} className="relative z-10 ml-1 opacity-70" />
+                                )}
+                                <ArrowRight
+                                    size={16}
+                                    className="relative z-10 group-hover:translate-x-1 transition-transform"
+                                />
                             </button>
                         </div>
                     )}

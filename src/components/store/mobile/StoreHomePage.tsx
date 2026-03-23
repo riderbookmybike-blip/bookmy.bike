@@ -253,13 +253,12 @@ export function StoreHomePage({
                         priority
                         sizes="100vw"
                     />
-                    {/* Immersive Dark Overlay for Text Readability */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-black/10" />
                 </motion.div>
 
-                {/* Localized readability mask behind hero copy */}
+                {/* Localized readability mask */}
                 <div className="pointer-events-none absolute inset-0 z-[1] flex items-center justify-center">
-                    <div className="h-[360px] w-[min(90vw,980px)] rounded-full bg-black/28 blur-3xl md:h-[440px] md:w-[min(76vw,1080px)]" />
+                    <div className="h-[360px] w-[min(90vw,980px)] rounded-full bg-black/20 blur-3xl md:h-[440px] md:w-[min(76vw,1080px)]" />
                 </div>
 
                 {/* Floating Gold Accent Line */}
@@ -271,9 +270,9 @@ export function StoreHomePage({
                     style={{ background: `linear-gradient(90deg, transparent, ${GOLD}, transparent)` }}
                 />
 
-                {/* Hero Content */}
-                <div className="relative z-10 pb-[110px] md:pb-0 pt-[140px] md:pt-0 flex flex-col gap-5 md:items-center md:text-center md:max-w-3xl lg:max-w-4xl md:mx-auto page-container">
-                    {/* Tag line */}
+                {/* Hero Content — all together, bottom-anchored on mobile */}
+                <div className="relative z-10 pb-[84px] md:pb-0 flex flex-col gap-4 md:gap-5 md:items-center md:text-center md:max-w-3xl lg:max-w-4xl md:mx-auto page-container">
+                    {/* Badge — all screens */}
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -331,12 +330,12 @@ export function StoreHomePage({
                             : 'Compare on-road prices, get instant quotes, and book your bike — all in one place.'}
                     </motion.p>
 
-                    {/* Quick Filter Pills */}
+                    {/* Quick Filter Pills — desktop only */}
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.8, delay: 0.7 }}
-                        className="flex gap-2.5 mt-2 md:gap-4 md:mt-4"
+                        className="hidden md:flex gap-2.5 mt-2 md:gap-4 md:mt-4"
                     >
                         {['Scooter', 'Motorcycle', 'Moped'].map(type => (
                             <Link
@@ -349,11 +348,12 @@ export function StoreHomePage({
                         ))}
                     </motion.div>
 
-                    {/* CTA Group */}
+                    {/* CTA — desktop only */}
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.8, delay: 0.8 }}
+                        className="hidden md:block"
                     >
                         <Link
                             href={withLead('/store/catalog')}
@@ -365,19 +365,19 @@ export function StoreHomePage({
                         </Link>
                     </motion.div>
 
-                    {/* Stat Ticker — Glassmorphic */}
+                    {/* Stat Ticker */}
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 1.2, duration: 0.6 }}
-                        className="inline-flex items-center justify-center gap-x-4 md:gap-x-6 px-5 py-2.5 md:px-8 md:py-3 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md mt-6 md:mt-8"
+                        transition={{ delay: 1.0, duration: 0.6 }}
+                        className="inline-flex items-center justify-between gap-x-3 md:gap-x-6 px-4 py-3 md:px-8 md:py-3 rounded-2xl border border-white/10 bg-white/10 backdrop-blur-md w-full md:w-auto md:mt-8"
                     >
                         {[
                             `${skuCount || '130'}+ Models`,
                             `${MARKET_METRICS.avgSavings} Avg Savings`,
                             '4-Hour Delivery',
                         ].map((stat: string, i: number) => (
-                            <div key={stat} className="flex items-center gap-3 md:gap-4">
+                            <div key={stat} className="flex items-center gap-2 md:gap-4">
                                 {i > 0 && <span className="text-white/20">|</span>}
                                 <span className="text-[10px] md:text-xs font-bold uppercase tracking-[0.12em] text-white/80">
                                     {stat}
@@ -387,12 +387,12 @@ export function StoreHomePage({
                     </motion.div>
                 </div>
 
-                {/* Scroll Indicator */}
+                {/* Scroll Indicator — desktop only */}
                 <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1, y: [0, 8, 0] }}
                     transition={{ opacity: { delay: 2 }, y: { repeat: Infinity, duration: 2, ease: 'easeInOut' } }}
-                    className="absolute bottom-6 md:bottom-8 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-1.5"
+                    className="hidden md:flex absolute bottom-6 md:bottom-8 left-1/2 -translate-x-1/2 z-10 flex-col items-center gap-1.5"
                 >
                     <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/70">
                         Browse Categories

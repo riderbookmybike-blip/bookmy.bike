@@ -749,6 +749,8 @@ export default function ProductClient({
             window.open(`/q/${dossierId}`, '_blank', 'noopener,noreferrer');
             // Advance state machine: SAVED → DOWNLOADED (CTA becomes SHARE QUOTE)
             setQuotePhase('DOWNLOADED');
+            // ── Advance CTA bar to stage 2 on SUCCESS only ──
+            window.dispatchEvent(new CustomEvent('pdpStageAdvanced', { detail: { stage: 2 } }));
             trackEvent('INTENT_SIGNAL', 'pdp_download_dossier', {
                 ...buildPdpIntentMetadata(),
                 dossier_id: dossierId,
@@ -1365,6 +1367,8 @@ export default function ProductClient({
             setQuotePhase('SAVED');
             notifySmsStatus((quoteResult as any)?.smsStatus);
             toast.success(`Quote ${displayId} saved`);
+            // ── Advance CTA bar to stage 1 on SUCCESS only ──
+            window.dispatchEvent(new CustomEvent('pdpStageAdvanced', { detail: { stage: 1 } }));
         } catch (error) {
             if (isAbortError(error)) return;
             console.error('Direct quote save error:', error);
@@ -1458,6 +1462,8 @@ export default function ProductClient({
                             });
                             toast.success(`Quote ${displayId} created successfully! 🎉`);
                             notifySmsStatus((quoteResult as any)?.smsStatus);
+                            // ── Advance CTA bar to stage 1 (Save → Download) on SUCCESS only ──
+                            window.dispatchEvent(new CustomEvent('pdpStageAdvanced', { detail: { stage: 1 } }));
                             // Optionally redirect to quotes page or show success message
                             router.push('/profile?tab=quotes');
                             return;
