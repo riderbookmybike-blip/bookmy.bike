@@ -48,6 +48,7 @@ import dynamic from 'next/dynamic';
 const LoginSidebar = dynamic(() => import('@/components/auth/LoginSidebar'), { ssr: false });
 import { getDefaultAvatar } from '@/lib/avatars';
 import { formatMembershipCardCode } from '@/lib/oclub/membershipCardIdentity';
+import { buildReferralUrl } from '@/lib/constants/referral';
 
 interface ProfileClientProps {
     user: any;
@@ -195,7 +196,7 @@ export default function ProfileClient({
     };
 
     const handleInviteFriend = async () => {
-        const shareUrl = `${window.location.origin}?ref=${membershipId}`;
+        const shareUrl = buildReferralUrl('https://www.bookmy.bike', membershipId);
         const shareData = {
             title: "Join The O' Circle at BookMyBike",
             text: `Hey! Join me on BookMyBike and get exclusive O' Circle benefits on your next bike booking. Use my O' Circle Membership ID: ${membershipId}`,
@@ -219,7 +220,7 @@ export default function ProfileClient({
     };
 
     const handleSocialShare = (platform: string) => {
-        const shareUrl = `${window.location.origin}?ref=${membershipId}`;
+        const shareUrl = buildReferralUrl('https://www.bookmy.bike', membershipId);
         const shareText = `Hey! Join me on BookMyBike and get exclusive O' Circle benefits on your next bike booking. Use my O' Circle Membership ID: ${membershipId}`;
         const fullMessage = `${shareText}\n${shareUrl}`;
 

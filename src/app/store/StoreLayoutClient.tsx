@@ -28,19 +28,7 @@ interface StoreLayoutClientProps {
     initialDevice: 'phone' | 'desktop';
 }
 
-const REFERRAL_STORAGE_KEY = 'bkmb_referral_code';
-const REFERRAL_QUERY_KEYS = ['ref', 'referral', 'referral_code', 'code'] as const;
-const REFERRAL_CODE_PATTERN = /^[A-Z0-9_-]{3,32}$/;
-
-const extractReferralFromSearchParams = (params: URLSearchParams): string => {
-    for (const key of REFERRAL_QUERY_KEYS) {
-        const value = String(params.get(key) || '')
-            .trim()
-            .toUpperCase();
-        if (REFERRAL_CODE_PATTERN.test(value)) return value;
-    }
-    return '';
-};
+import { REFERRAL_STORAGE_KEY, extractReferralFromParams } from '@/lib/constants/referral';
 
 const readLatLng = (value: any): { lat: number | null; lng: number | null } => {
     const latRaw = value?.lat ?? value?.latitude;
@@ -205,7 +193,7 @@ export default function StoreLayoutClient({ children }: StoreLayoutClientProps) 
     useEffect(() => {
         if (!searchParams) return;
         try {
-            const referral = extractReferralFromSearchParams(searchParams);
+            const referral = extractReferralFromParams(searchParams);
             if (referral) {
                 localStorage.setItem(REFERRAL_STORAGE_KEY, referral);
             }
