@@ -20,7 +20,6 @@ import {
     ShieldCheck,
     Sparkles,
     User,
-    Wallet,
 } from 'lucide-react';
 import { getDefaultAvatar } from '@/lib/avatars';
 import { updateSelfMemberCanonical, uploadMemberImage } from '@/actions/members';
@@ -40,6 +39,7 @@ type MemberHubClientProps = {
     ledger: any[];
     memberContacts: any[];
     memberAddresses: any[];
+    activityTimeline?: any[];
 };
 
 const formatINR = (n: number | null | undefined) => `₹${Number(n || 0).toLocaleString('en-IN')}`;
@@ -70,6 +70,7 @@ export default function MemberHubClient({
     ledger,
     memberContacts,
     memberAddresses,
+    activityTimeline = [],
 }: MemberHubClientProps) {
     const basePreferences = (
         member?.preferences && typeof member.preferences === 'object' ? member.preferences : {}
@@ -149,14 +150,14 @@ export default function MemberHubClient({
             { id: 'profile', label: 'Profile', Icon: User, count: undefined },
             { id: 'quotes', label: 'Quotes', Icon: FileText, count: quotes.length },
             { id: 'bookings', label: 'Bookings', Icon: Bike, count: bookings.length },
-            { id: 'referral', label: 'Referral', Icon: Sparkles, count: ledger.length || undefined },
+            { id: 'referral', label: "O'Circle", Icon: Sparkles, count: ledger.length || undefined },
             { id: 'documents', label: 'Documents', Icon: IdCard, count: memberDocuments.length || undefined },
             { id: 'notes', label: 'Notes', Icon: Receipt, count: undefined },
             {
                 id: 'timeline',
                 label: 'Timeline',
                 Icon: CalendarClock,
-                count: quotes.length + bookings.length + payments.length || undefined,
+                count: activityTimeline.length || undefined,
             },
         ];
 
@@ -891,70 +892,196 @@ export default function MemberHubClient({
 
                         {/* ════════ REFERRAL ════════ */}
                         {activeTab === 'referral' && (
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                <div className="rounded-[24px] border border-slate-200 bg-white p-6 shadow-sm space-y-4">
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <Wallet size={16} className="text-indigo-600" />
-                                        <h3 className="text-base font-black text-slate-900">O&apos;Circle Wallet</h3>
-                                    </div>
-                                    <div className="rounded-2xl bg-gradient-to-r from-indigo-500 to-blue-600 p-5 text-white">
-                                        <p className="text-[10px] font-black uppercase tracking-widest opacity-70">
-                                            Available B-Coins
-                                        </p>
-                                        <p className="text-4xl font-black mt-1">
-                                            {totalAvailableCoins.toLocaleString('en-IN')}
-                                        </p>
-                                    </div>
-                                    <div className="rounded-2xl bg-emerald-50 border border-emerald-100 p-4">
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600">
-                                            Lifetime Earned
-                                        </p>
-                                        <p className="text-2xl font-black text-emerald-700">
-                                            {Number(wallet?.lifetime_earned || 0).toLocaleString('en-IN')}
-                                        </p>
-                                    </div>
-                                </div>
-                                <div className="lg:col-span-2 rounded-[24px] border border-slate-200 bg-white shadow-sm overflow-hidden">
+                            <div>
+                                <div className="rounded-[24px] border border-slate-200 bg-white shadow-sm overflow-hidden">
                                     <div className="p-5 border-b border-slate-100 flex items-center gap-3">
                                         <Sparkles size={16} className="text-amber-500" />
-                                        <h3 className="text-base font-black text-slate-900">Earnings Activity</h3>
-                                        <span className="ml-auto text-xs font-bold text-slate-400">
-                                            {ledger.length} entries
-                                        </span>
+                                        <h3 className="text-base font-black text-slate-900">O&apos;Circle Privilege</h3>
+                                    </div>
+                                    {/* Column headers */}
+                                    <div className="hidden md:grid grid-cols-[1.5fr_140px_90px_72px_72px_72px] gap-6 px-6 py-3 bg-slate-50 border-b border-slate-100 text-[11px] font-semibold text-slate-400">
+                                        <span>Transaction</span>
+                                        <span>Date</span>
+                                        <span>Validity</span>
+                                        <span className="text-right">Credit</span>
+                                        <span className="text-right">Debit</span>
+                                        <span className="text-right">Balance</span>
                                     </div>
                                     {ledger.length === 0 ? (
                                         <div className="py-12 text-center text-slate-400 text-sm font-semibold">
                                             No earnings activity yet.
                                         </div>
                                     ) : (
-                                        <div className="divide-y divide-slate-100 max-h-[480px] overflow-auto">
-                                            {ledger.map((row: any) => (
-                                                <div
-                                                    key={row.id}
-                                                    className="px-5 py-3.5 flex items-center justify-between hover:bg-slate-50 transition-colors"
-                                                >
-                                                    <div>
-                                                        <p className="text-xs font-black text-slate-900 uppercase tracking-wide">
-                                                            {row.source_type || 'Activity'}
-                                                        </p>
-                                                        <p className="text-[11px] text-slate-400 mt-0.5">
-                                                            {formatDate(row.created_at)} •{' '}
-                                                            <span
-                                                                className={`font-bold ${row.status === 'AVAILABLE' ? 'text-emerald-600' : 'text-amber-500'}`}
-                                                            >
-                                                                {row.status || 'POSTED'}
-                                                            </span>
-                                                        </p>
+                                        (() => {
+                                            const sourceLabel: Record<string, string> = {
+                                                SIGNUP: 'Welcome Bonus',
+                                                REFERRAL_LEAD: "O'Circle",
+                                            };
+                                            const toLabel = (s: string) =>
+                                                sourceLabel[s] ??
+                                                s
+                                                    .toLowerCase()
+                                                    .replace(/_/g, ' ')
+                                                    .replace(/\b\w/g, c => c.toUpperCase());
+                                            const now = new Date();
+                                            const fmtDate = (d: Date) =>
+                                                d.toLocaleDateString('en-IN', {
+                                                    day: '2-digit',
+                                                    month: 'short',
+                                                    year: 'numeric',
+                                                });
+
+                                            type EntryRow = {
+                                                id: string;
+                                                label: string;
+                                                date: Date;
+                                                validity: number | null;
+                                                isLifetime: boolean;
+                                                credit: number | null;
+                                                debit: number | null;
+                                                balance: number;
+                                                muted: boolean;
+                                            };
+                                            const entries: EntryRow[] = [];
+                                            let running = 0;
+
+                                            const sorted = [...ledger].reverse();
+                                            sorted.forEach((row: any) => {
+                                                const delta = Number(row.delta || 0);
+                                                const exp = row.expires_at ? new Date(row.expires_at) : null;
+                                                const isExpired = exp && exp < now;
+
+                                                running += delta;
+                                                entries.push({
+                                                    id: `${row.id}-cr`,
+                                                    label: toLabel(row.source_type || 'Activity'),
+                                                    date: new Date(row.created_at),
+                                                    validity: row.validity_days ?? null,
+                                                    isLifetime: !exp,
+                                                    credit: delta > 0 ? delta : null,
+                                                    debit: delta < 0 ? Math.abs(delta) : null,
+                                                    balance: running,
+                                                    muted: false,
+                                                });
+
+                                                if (exp && isExpired) {
+                                                    running -= delta;
+                                                    entries.push({
+                                                        id: `${row.id}-dr`,
+                                                        label: toLabel(row.source_type || 'Activity'),
+                                                        date: exp,
+                                                        validity: null,
+                                                        isLifetime: false,
+                                                        credit: null,
+                                                        debit: delta > 0 ? delta : null,
+                                                        balance: running,
+                                                        muted: true,
+                                                    });
+                                                }
+                                            });
+
+                                            return (
+                                                <>
+                                                    <div className="max-h-[540px] overflow-auto">
+                                                        {entries.map((entry, i) => {
+                                                            const isFirst =
+                                                                i === 0 ||
+                                                                entries[i - 1].muted !== entry.muted ||
+                                                                entries[i - 1].label !== entry.label;
+                                                            return (
+                                                                <div
+                                                                    key={entry.id}
+                                                                    className={`px-6 py-3.5 grid grid-cols-1 md:grid-cols-[1.5fr_140px_90px_72px_72px_72px] gap-2 md:gap-6 md:items-center border-b border-slate-100 last:border-0 transition-colors ${
+                                                                        entry.muted
+                                                                            ? 'border-l-2 border-l-rose-300 bg-rose-50/30 hover:bg-rose-50/60'
+                                                                            : 'hover:bg-slate-50/80'
+                                                                    }`}
+                                                                >
+                                                                    {/* Label */}
+                                                                    <div className="flex items-center gap-2">
+                                                                        <p
+                                                                            className={`text-[13px] font-bold ${
+                                                                                entry.muted
+                                                                                    ? 'text-slate-400'
+                                                                                    : 'text-slate-800'
+                                                                            }`}
+                                                                        >
+                                                                            {entry.label}
+                                                                        </p>
+                                                                        {entry.muted && (
+                                                                            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-rose-100 text-rose-400">
+                                                                                Expired
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+
+                                                                    {/* Date */}
+                                                                    <p
+                                                                        className={`text-[12px] font-medium ${
+                                                                            entry.muted
+                                                                                ? 'text-rose-400'
+                                                                                : 'text-slate-500'
+                                                                        }`}
+                                                                    >
+                                                                        {fmtDate(entry.date)}
+                                                                    </p>
+
+                                                                    {/* Validity */}
+                                                                    <div>
+                                                                        {entry.validity !== null ? (
+                                                                            <span className="text-[11px] font-semibold text-slate-500">
+                                                                                {entry.validity} days
+                                                                            </span>
+                                                                        ) : entry.isLifetime ? (
+                                                                            <span className="inline-flex text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
+                                                                                Lifetime
+                                                                            </span>
+                                                                        ) : (
+                                                                            <span className="text-slate-300 text-xs">
+                                                                                —
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+
+                                                                    {/* Credit */}
+                                                                    <p className="text-[13px] font-bold text-right text-emerald-600">
+                                                                        {entry.credit ? (
+                                                                            `+${entry.credit.toLocaleString('en-IN')}`
+                                                                        ) : (
+                                                                            <span className="text-slate-200 text-xs">
+                                                                                —
+                                                                            </span>
+                                                                        )}
+                                                                    </p>
+
+                                                                    {/* Debit */}
+                                                                    <p className="text-[13px] font-bold text-right text-rose-500">
+                                                                        {entry.debit ? (
+                                                                            `-${entry.debit.toLocaleString('en-IN')}`
+                                                                        ) : (
+                                                                            <span className="text-slate-200 text-xs">
+                                                                                —
+                                                                            </span>
+                                                                        )}
+                                                                    </p>
+
+                                                                    {/* Balance */}
+                                                                    <p
+                                                                        className={`text-[13px] font-black text-right ${
+                                                                            entry.balance === 0
+                                                                                ? 'text-slate-400'
+                                                                                : 'text-slate-800'
+                                                                        }`}
+                                                                    >
+                                                                        {entry.balance.toLocaleString('en-IN')}
+                                                                    </p>
+                                                                </div>
+                                                            );
+                                                        })}
                                                     </div>
-                                                    <p
-                                                        className={`text-sm font-black ${Number(row.delta || 0) >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}
-                                                    >
-                                                        {Number(row.delta || 0) >= 0 ? '+' : ''}
-                                                        {Number(row.delta || 0).toLocaleString('en-IN')}
-                                                    </p>
-                                                </div>
-                                            ))}
-                                        </div>
+                                                </>
+                                            );
+                                        })()
                                     )}
                                 </div>
                             </div>
@@ -1064,82 +1191,150 @@ export default function MemberHubClient({
                         )}
 
                         {/* ════════ TIMELINE ════════ */}
-                        {activeTab === 'timeline' && (
-                            <div className="rounded-[24px] border border-slate-200 bg-white shadow-sm overflow-hidden">
-                                <div className="p-6 border-b border-slate-100 flex items-center gap-3">
-                                    <CalendarClock size={18} className="text-indigo-600" />
-                                    <h2 className="text-lg font-black text-slate-900">Transaction Timeline</h2>
-                                    <span className="ml-auto text-xs font-bold text-slate-400">
-                                        {quotes.length + bookings.length + payments.length} entries
-                                    </span>
-                                </div>
-                                <div className="divide-y divide-slate-100">
-                                    {[
-                                        ...quotes
-                                            .slice(0, 10)
-                                            .map((q: any) => ({
-                                                type: 'QUOTE',
-                                                id: q.display_id || q.id,
-                                                date: q.created_at,
-                                                amount: q.on_road_price,
-                                                Icon: FileText,
-                                                color: 'text-indigo-500',
-                                            })),
-                                        ...bookings
-                                            .slice(0, 10)
-                                            .map((b: any) => ({
-                                                type: 'BOOKING',
-                                                id: b.display_id || b.id,
-                                                date: b.created_at,
-                                                amount: b.grand_total,
-                                                Icon: Bike,
-                                                color: 'text-emerald-500',
-                                            })),
-                                        ...payments
-                                            .slice(0, 10)
-                                            .map((p: any) => ({
-                                                type: 'PAYMENT',
-                                                id: p.display_id || p.id,
-                                                date: p.created_at,
-                                                amount: p.amount,
-                                                Icon: CreditCard,
-                                                color: 'text-amber-500',
-                                            })),
-                                    ]
-                                        .sort(
-                                            (a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()
-                                        )
-                                        .map((item, idx) => (
-                                            <div
-                                                key={`${item.type}-${item.id}-${idx}`}
-                                                className="px-6 py-4 flex items-center gap-4 hover:bg-slate-50 transition-colors"
-                                            >
-                                                <div
-                                                    className={`w-8 h-8 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center shrink-0 ${item.color}`}
-                                                >
-                                                    <item.Icon size={15} />
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="text-xs font-black text-slate-900">
-                                                        {item.type} • {item.id}
-                                                    </p>
-                                                    <p className="text-[11px] text-slate-400">
-                                                        {formatDate(item.date)}
-                                                    </p>
-                                                </div>
-                                                <p className="text-sm font-black text-slate-900 shrink-0">
-                                                    {formatINR(Number(item.amount || 0))}
+                        {activeTab === 'timeline' &&
+                            (() => {
+                                // Group events into sessions
+                                const fmtTime = (d: string) =>
+                                    new Date(d).toLocaleTimeString('en-IN', {
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                        hour12: true,
+                                    });
+                                const fmtDur = (ms: number) => {
+                                    const s = Math.round(ms / 1000);
+                                    if (s < 60) return `${s}s`;
+                                    const m = Math.floor(s / 60);
+                                    if (m < 60) return `${m}m ${s % 60}s`;
+                                    return `${Math.floor(m / 60)}h ${m % 60}m`;
+                                };
+
+                                // Reverse to oldest-first for grouping, then re-reverse for display
+                                const sorted = [...activityTimeline].sort(
+                                    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+                                );
+
+                                // Group into sessions
+                                type Session = { start: any; end: any | null; pages: any[] };
+                                const sessions: Session[] = [];
+                                let cur: Session | null = null;
+                                sorted.forEach(ev => {
+                                    if (ev.event_type === 'SESSION_START') {
+                                        cur = { start: ev, end: null, pages: [] };
+                                        sessions.push(cur);
+                                    } else if (ev.event_type === 'PAGE_VIEW' && cur) {
+                                        cur.pages.push(ev);
+                                    } else if (ev.event_type === 'SESSION_END' && cur) {
+                                        cur.end = ev;
+                                        cur = null;
+                                    }
+                                });
+
+                                const reversedSessions = [...sessions].reverse();
+
+                                return (
+                                    <div className="rounded-[24px] border border-slate-200 bg-white shadow-sm overflow-hidden">
+                                        <div className="p-5 border-b border-slate-100 flex items-center gap-3">
+                                            <CalendarClock size={16} className="text-indigo-500" />
+                                            <h2 className="text-base font-black text-slate-900">Online Activity</h2>
+                                            <span className="ml-auto text-[11px] font-semibold text-slate-400">
+                                                {sessions.length} session{sessions.length !== 1 ? 's' : ''}
+                                            </span>
+                                        </div>
+
+                                        {sessions.length === 0 ? (
+                                            <div className="py-16 text-center">
+                                                <p className="text-slate-400 text-sm font-semibold">
+                                                    No activity recorded yet.
+                                                </p>
+                                                <p className="text-slate-300 text-xs mt-1">
+                                                    Activity will appear after the member visits the store.
                                                 </p>
                                             </div>
-                                        ))}
-                                    {quotes.length + bookings.length + payments.length === 0 && (
-                                        <div className="py-20 text-center text-slate-400 text-sm font-semibold">
-                                            No activity yet.
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        )}
+                                        ) : (
+                                            <div className="divide-y divide-slate-100 max-h-[600px] overflow-auto">
+                                                {reversedSessions.map((sess, si) => {
+                                                    const startDate = new Date(sess.start.created_at);
+                                                    const durMs = sess.end?.payload?.total_duration_ms;
+                                                    const device = sess.start.payload?.device || 'unknown';
+                                                    const deviceIcon =
+                                                        device === 'mobile' ? '📱' : device === 'tablet' ? '📟' : '🖥️';
+                                                    return (
+                                                        <div key={si} className="px-5 py-4">
+                                                            {/* Session header */}
+                                                            <div className="flex items-center gap-2.5 mb-3">
+                                                                <div className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+                                                                <p className="text-[12px] font-bold text-slate-700">
+                                                                    {startDate.toLocaleDateString('en-IN', {
+                                                                        day: '2-digit',
+                                                                        month: 'short',
+                                                                        year: 'numeric',
+                                                                    })}{' '}
+                                                                    &nbsp;
+                                                                    <span className="text-slate-400 font-medium">
+                                                                        {fmtTime(sess.start.created_at)}
+                                                                    </span>
+                                                                </p>
+                                                                <span className="text-base">{deviceIcon}</span>
+                                                                {durMs && (
+                                                                    <span className="ml-auto text-[11px] font-semibold text-slate-400">
+                                                                        {fmtDur(durMs)}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+
+                                                            {/* Pages visited */}
+                                                            {sess.pages.length > 0 && (
+                                                                <div className="ml-4 border-l-2 border-slate-100 pl-4 space-y-2">
+                                                                    {sess.pages.map((pg: any, pi: number) => {
+                                                                        const url: string = pg.payload?.url || '/';
+                                                                        const dur: number =
+                                                                            pg.payload?.duration_ms || 0;
+                                                                        const label =
+                                                                            url
+                                                                                .replace('/store', '')
+                                                                                .replace(/\?.*/, '') || '/';
+                                                                        return (
+                                                                            <div
+                                                                                key={pi}
+                                                                                className="flex items-center gap-2"
+                                                                            >
+                                                                                <div className="w-1.5 h-1.5 rounded-full bg-slate-300 shrink-0" />
+                                                                                <p
+                                                                                    className="text-[11px] font-medium text-slate-600 truncate flex-1"
+                                                                                    title={url}
+                                                                                >
+                                                                                    {label || 'Home'}
+                                                                                </p>
+                                                                                {dur > 0 && (
+                                                                                    <span className="text-[10px] text-slate-400 shrink-0">
+                                                                                        {fmtDur(dur)}
+                                                                                    </span>
+                                                                                )}
+                                                                            </div>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            )}
+
+                                                            {/* Session end */}
+                                                            {sess.end && (
+                                                                <div className="flex items-center gap-2 mt-3">
+                                                                    <div className="w-2 h-2 rounded-full bg-rose-300 shrink-0" />
+                                                                    <p className="text-[11px] text-slate-400 font-medium">
+                                                                        Left at {fmtTime(sess.end.created_at)}
+                                                                        {' · '}
+                                                                        {sess.end.payload?.page_count || 0} pages
+                                                                    </p>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })()}
                     </div>
                 </main>
             </div>

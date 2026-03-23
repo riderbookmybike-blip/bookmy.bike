@@ -23,6 +23,10 @@ import { resolveLocation } from '@/utils/locationResolver';
 import { DealershipGate } from '@/components/store/DealershipGate';
 import Script from 'next/script';
 import { migrateLegacyStorageKeys } from '@/lib/constants/storage';
+const MemberTrackerAuto = dynamic(
+    () => import('@/components/store/MemberTrackerAuto').then(m => ({ default: m.MemberTrackerAuto })),
+    { ssr: false }
+);
 
 interface StoreLayoutClientProps {
     children: React.ReactNode;
@@ -224,6 +228,9 @@ export default function StoreLayoutClient({ children }: StoreLayoutClientProps) 
                             strategy="afterInteractive"
                         />
                         <MarketplaceHeader onLoginClick={() => setIsLoginOpen(true)} />
+
+                        {/* Member Activity Tracker — invisible, marketplace-level */}
+                        <MemberTrackerAuto />
 
                         {/* Dealership Gate — blocks marketplace for staff without active dealership */}
                         <DealershipGate />
