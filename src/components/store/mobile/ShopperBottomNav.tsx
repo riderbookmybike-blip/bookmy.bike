@@ -117,6 +117,36 @@ export function ShopperBottomNav() {
         prevPathRef.current = pathname;
     }, [pathname, isPdpPage]);
 
+    // Reset pdpStage when user navigates back via browser (bfcache restore or visibilitychange)
+    useEffect(() => {
+        const handlePageShow = (e: PageTransitionEvent) => {
+            // e.persisted = true means page was restored from bfcache (back/forward nav)
+            if (e.persisted && isPdpPage) {
+                setPdpStage(0);
+            }
+        };
+        // Also handle in-app back navigation where pathname stays same but page re-focuses
+        const handleVisibility = () => {
+            if (document.visibilityState === 'visible' && isPdpPage) {
+                // Only reset if we came from a non-PDP context (i.e., the stage was accumulated elsewhere)
+                // We reset to 0 conservatively — the MobilePDP will re-fire pdpStageAdvanced if needed
+                setPdpStage(prev => {
+                    // If stage was advanced (>0) and we're returning to PDP fresh, reset
+                    if (prev > 0 && prevPathRef.current !== pathname) {
+                        return 0;
+                    }
+                    return prev;
+                });
+            }
+        };
+        window.addEventListener('pageshow', handlePageShow);
+        document.addEventListener('visibilitychange', handleVisibility);
+        return () => {
+            window.removeEventListener('pageshow', handlePageShow);
+            document.removeEventListener('visibilitychange', handleVisibility);
+        };
+    }, [isPdpPage, pathname]);
+
     // Listen for success events fired by MobilePDP after each action completes
     useEffect(() => {
         const onStageAdvanced = (e: Event) => {

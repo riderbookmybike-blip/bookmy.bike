@@ -313,6 +313,9 @@ export function formatSpecValue(val: string | null, label?: string): string {
         SEMI_DIGITAL: 'Semi-Digital',
         SEMI_DIGITAL_ANALOG: 'Semi-Digital & Analog',
         TELESCOPIC: 'Telescopic',
+        TUBE_TYPE: 'Tube Type',
+        TUBELESS: 'Tubeless',
+        MANUAL: 'Manual',
     };
 
     let display = val.trim();

@@ -506,6 +506,22 @@ export default function ProductClient({
     // 3-step bottom bar state machine: IDLE → SAVED → DOWNLOADED
     type QuotePhase = 'IDLE' | 'SAVED' | 'DOWNLOADED';
     const [quotePhase, setQuotePhase] = useState<QuotePhase>(() => (leadMeta?.displayId ? 'SAVED' : 'IDLE'));
+
+    // Reset quote state machine when the user navigates to a different variant
+    // (e.g., back navigation from a different PDP). Without this, stale SAVED/DOWNLOADED
+    // phase persists and the CTA bar shows wrong action until hard refresh.
+    const variantKeyRef = useRef(`${makeParam}/${modelParam}/${variantParam}`);
+    useEffect(() => {
+        const newKey = `${makeParam}/${modelParam}/${variantParam}`;
+        if (variantKeyRef.current !== newKey) {
+            variantKeyRef.current = newKey;
+            setQuotePhase(leadMeta?.displayId ? 'SAVED' : 'IDLE');
+            setSavedQuoteDisplayId(null);
+            setShowQuoteSuccess(false);
+            // Also reset bottom bar stage via custom event so ShopperBottomNav syncs
+            window.dispatchEvent(new CustomEvent('pdpStageAdvanced', { detail: { stage: 0 } }));
+        }
+    }, [makeParam, modelParam, variantParam, leadMeta?.displayId]);
     const [showEmailModal, setShowEmailModal] = useState(false);
     const [showReferralModal, setShowReferralModal] = useState(false);
     const [showLocationPicker, setShowLocationPicker] = useState(false);
