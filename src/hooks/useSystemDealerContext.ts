@@ -359,7 +359,7 @@ export function useSystemDealerContext({
                 let userLng: number | null = initialCoords.lng;
 
                 if (!district || !Number.isFinite(userLat) || !Number.isFinite(userLng)) {
-                    const cached = localStorage.getItem('bkmb_user_pincode');
+                    const cached = localStorage.getItem('bmb_user_pincode');
                     if (cached) {
                         const parsed = JSON.parse(cached);
                         district = district || parsed?.district || parsed?.taluka || parsed?.city;

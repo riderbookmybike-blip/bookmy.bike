@@ -2,7 +2,7 @@
 
 import { cookies } from 'next/headers';
 
-const COOKIE_NAME = 'bkmb_user_pincode';
+const COOKIE_NAME = 'bmb_user_pincode';
 
 export async function setLocationCookie(location: string | Record<string, unknown>) {
     const cookieStore = await cookies();

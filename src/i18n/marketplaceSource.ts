@@ -52,7 +52,7 @@ export const MARKETPLACE_SOURCE_STRINGS = [
     'authorization',
     'AVG. SAVINGS',
     'Best Mileage',
-    'bkmb_user_pincode',
+    'bmb_user_pincode',
     'booking_id',
     'bookings_count',
     'BookMyBike v1.0.0',

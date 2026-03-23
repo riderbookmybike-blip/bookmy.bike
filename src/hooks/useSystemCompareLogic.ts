@@ -128,7 +128,7 @@ export function useSystemCompareLogic(isWishlist = false) {
     // ── Finance state (localStorage-backed, synced across tabs) ──
     const [downpayment, _setDownpayment] = useState(() => {
         if (typeof window !== 'undefined') {
-            const stored = localStorage.getItem('bkmb_downpayment');
+            const stored = localStorage.getItem('bmb_downpayment');
             if (stored) return parseInt(stored);
         }
         return 999;
@@ -137,7 +137,7 @@ export function useSystemCompareLogic(isWishlist = false) {
     const setDownpayment = useCallback((val: number) => {
         _setDownpayment(val);
         if (typeof window !== 'undefined') {
-            localStorage.setItem('bkmb_downpayment', String(val));
+            localStorage.setItem('bmb_downpayment', String(val));
             window.dispatchEvent(new CustomEvent('bkmb_dp_changed', { detail: val }));
         }
     }, []);

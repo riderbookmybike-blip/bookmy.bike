@@ -459,7 +459,7 @@ export const UniversalCatalog = ({
                 manuallySet?: boolean;
                 source?: string;
             }) => {
-                localStorage.setItem('bkmb_user_pincode', JSON.stringify(payload));
+                localStorage.setItem('bmb_user_pincode', JSON.stringify(payload));
                 try {
                     await setLocationCookie({
                         pincode: payload.pincode,
@@ -585,12 +585,12 @@ export const UniversalCatalog = ({
             };
 
             let cachedData: any = null;
-            const cached = localStorage.getItem('bkmb_user_pincode');
+            const cached = localStorage.getItem('bmb_user_pincode');
             if (cached) {
                 try {
                     cachedData = JSON.parse(cached);
                 } catch {
-                    localStorage.removeItem('bkmb_user_pincode');
+                    localStorage.removeItem('bmb_user_pincode');
                     cachedData = null;
                 }
             }
@@ -1448,7 +1448,7 @@ export const UniversalCatalog = ({
                     });
 
                     localStorage.setItem(
-                        'bkmb_user_pincode',
+                        'bmb_user_pincode',
                         JSON.stringify({
                             pincode,
                             taluka: result.location || taluka,

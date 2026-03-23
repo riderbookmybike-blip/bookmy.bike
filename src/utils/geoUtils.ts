@@ -12,10 +12,7 @@ export function calculateDistance(lat1: number, lon1: number, lat2: number, lon2
     const dLon = (lon2 - lon1) * (Math.PI / 180);
     const a =
         Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(lat1 * (Math.PI / 180)) *
-        Math.cos(lat2 * (Math.PI / 180)) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
+        Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
 }
@@ -24,12 +21,12 @@ export function calculateDistance(lat1: number, lon1: number, lat2: number, lon2
 const DEFAULT_HUB = {
     lat: 18.9067,
     lng: 72.8147,
-    name: 'Mumbai Colaba'
+    name: 'Mumbai Colaba',
 };
 
 export function getHubLocation() {
     if (typeof window === 'undefined') return DEFAULT_HUB;
-    const stored = localStorage.getItem('bkmb_service_hub');
+    const stored = localStorage.getItem('bmb_service_hub');
     if (stored) {
         try {
             return JSON.parse(stored);

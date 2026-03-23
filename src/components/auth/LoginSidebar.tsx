@@ -35,7 +35,7 @@ import {
     normalizeReferralCode,
     extractReferralFromParams,
 } from '@/lib/constants/referral';
-const LOGIN_NEXT_STORAGE_KEY = 'bkmb_login_next';
+import { LOGIN_NEXT_KEY as LOGIN_NEXT_STORAGE_KEY } from '@/lib/constants/storage';
 
 const toSafeInternalPath = (value?: string | null): string | null => {
     const v = String(value || '').trim();
@@ -1198,7 +1198,7 @@ export default function LoginSidebar({
                                                                 state: resolvedFallbackLocation.state,
                                                             });
                                                             localStorage.setItem(
-                                                                'bkmb_user_pincode',
+                                                                'bmb_user_pincode',
                                                                 JSON.stringify(resolvedFallbackLocation)
                                                             );
                                                             window.dispatchEvent(new CustomEvent('locationChanged'));

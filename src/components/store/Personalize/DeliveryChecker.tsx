@@ -2,8 +2,6 @@ import React, { useState } from 'react';
 import { MapPin, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { getPincodeDetails } from '@/actions/pincode';
 
-
-
 export default function DeliveryChecker() {
     const [pincode, setPincode] = useState('');
     const [status, setStatus] = useState<'IDLE' | 'LOADING' | 'VALID' | 'INVALID'>('IDLE');
@@ -26,9 +24,9 @@ export default function DeliveryChecker() {
                     area: locData.area,
                     taluka: locData.taluka,
                     state: locData.state,
-                    stateCode: locData.state_code || '' // Ensure state_code is handled if available
+                    stateCode: locData.state_code || '', // Ensure state_code is handled if available
                 };
-                localStorage.setItem('bkmb_user_pincode', JSON.stringify(storageData));
+                localStorage.setItem('bmb_user_pincode', JSON.stringify(storageData));
 
                 // Dispatch event for reactive updates
                 window.dispatchEvent(new Event('locationChanged'));
@@ -55,7 +53,7 @@ export default function DeliveryChecker() {
                         maxLength={6}
                         placeholder="Enter Pincode"
                         value={pincode}
-                        onChange={(e) => {
+                        onChange={e => {
                             const val = e.target.value.replace(/\D/g, '');
                             setPincode(val);
                             if (val.length !== 6) setStatus('IDLE');
@@ -63,7 +61,10 @@ export default function DeliveryChecker() {
                         className="bg-transparent text-sm font-black italic text-white placeholder:text-slate-700 outline-none w-28 uppercase tracking-wider"
                     />
                     {status === 'IDLE' && pincode.length === 6 && (
-                        <button onClick={checkPincode} className="text-[10px] font-bold text-blue-500 uppercase hover:text-white transition-colors">
+                        <button
+                            onClick={checkPincode}
+                            className="text-[10px] font-bold text-blue-500 uppercase hover:text-white transition-colors"
+                        >
                             Check
                         </button>
                     )}

@@ -43,7 +43,7 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
 
         const nextPath = searchParams.get('next');
         if (nextPath && nextPath.startsWith('/') && !nextPath.startsWith('//')) {
-            localStorage.setItem('bkmb_login_next', nextPath);
+            localStorage.setItem('bmb_login_next', nextPath);
         }
 
         setIsLoginOpen(true);

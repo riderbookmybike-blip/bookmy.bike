@@ -33,7 +33,7 @@ export function isCatalogCTABlocked(showLocationGate: boolean, status: Serviceab
 }
 
 /**
- * Check if a parsed localStorage bkmb_user_pincode payload has a resolved location.
+ * Check if a parsed localStorage bmb_user_pincode payload has a resolved location.
  * Accepts both lat/lng coords and a valid 6-digit pincode.
  */
 export function hasResolvedLocationPayload(value: unknown): boolean {
@@ -53,7 +53,7 @@ export function hasResolvedLocationPayload(value: unknown): boolean {
 export function readLocationFromStorage(): boolean {
     if (typeof window === 'undefined') return false;
     try {
-        const raw = localStorage.getItem('bkmb_user_pincode');
+        const raw = localStorage.getItem('bmb_user_pincode');
         if (!raw) return false;
         return hasResolvedLocationPayload(JSON.parse(raw));
     } catch {

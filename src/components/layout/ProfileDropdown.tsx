@@ -51,6 +51,7 @@ import { formatMembershipCardCode } from '@/lib/oclub/membershipCardIdentity';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { uploadMemberImage } from '@/actions/members';
 import { buildReferralUrl } from '@/lib/constants/referral';
+import { INDIAN_MOBILE_PATTERN } from '@/lib/utils/phoneUtils';
 
 const ADMIN_ROLES = new Set(['OWNER', 'ADMIN', 'SUPER_ADMIN', 'DEALERSHIP_ADMIN', 'MARKETPLACE_ADMIN']);
 
@@ -147,7 +148,7 @@ export function ProfileDropdown({
     const toggleMode = () => {
         setBusinessMode(prev => {
             const next = !prev;
-            localStorage.setItem('bkmb_sidebar_mode', next ? 'business' : 'ocircle');
+            localStorage.setItem('bmb_sidebar_mode', next ? 'business' : 'ocircle');
             return next;
         });
     };
@@ -289,7 +290,7 @@ ${referralUrl}`;
     const sendWelcomeWa = async () => {
         if (!user) return;
         const digits = waPhone.replace(/\D/g, '').slice(-10);
-        if (!/^[6-9]\d{9}$/.test(digits)) {
+        if (!INDIAN_MOBILE_PATTERN.test(digits)) {
             setWaError('Enter a valid 10-digit mobile number (starts with 6-9)');
             return;
         }
@@ -808,7 +809,7 @@ ${referralUrl}`;
 
     useEffect(() => {
         const handleLocationChange = () => {
-            const stored = localStorage.getItem('bkmb_user_pincode');
+            const stored = localStorage.getItem('bmb_user_pincode');
             if (stored) {
                 try {
                     const parsed = JSON.parse(stored);
@@ -1166,7 +1167,7 @@ ${referralUrl}`;
         if (!hasWorkspaceAccess && businessMode) {
             setBusinessMode(false);
             if (typeof window !== 'undefined') {
-                localStorage.setItem('bkmb_sidebar_mode', 'ocircle');
+                localStorage.setItem('bmb_sidebar_mode', 'ocircle');
             }
         }
     }, [hasWorkspaceAccess, businessMode]);

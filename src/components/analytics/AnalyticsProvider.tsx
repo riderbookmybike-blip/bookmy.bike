@@ -34,7 +34,7 @@ export const useAnalytics = () => {
 };
 
 const INTERNAL_QUERY_PARAM = 'internal_test';
-const INTERNAL_STORAGE_KEY = 'bkmb_internal_test';
+const INTERNAL_STORAGE_KEY = 'bmb_internal_test';
 const PROD_HOSTS = new Set(['bookmy.bike', 'www.bookmy.bike']);
 
 const getEnvironment = (): 'production' | 'prelaunch' => {
@@ -124,10 +124,10 @@ export default function AnalyticsProvider({ children }: { children: React.ReactN
 
     // 1. Initialize Session
     useEffect(() => {
-        let sid = sessionStorage.getItem('bkmb_session_id');
+        let sid = sessionStorage.getItem('bmb_session_id');
         if (!sid) {
             sid = uuidv4();
-            sessionStorage.setItem('bkmb_session_id', sid);
+            sessionStorage.setItem('bmb_session_id', sid);
         }
         sessionIdRef.current = sid;
 
@@ -219,7 +219,7 @@ export default function AnalyticsProvider({ children }: { children: React.ReactN
                 // Anonymous: at least tag with cached location so recordings are geo-labeled
                 clarityTag('auth_state', 'anonymous');
                 try {
-                    const cached = localStorage.getItem('bkmb_user_pincode');
+                    const cached = localStorage.getItem('bmb_user_pincode');
                     if (cached) {
                         const loc = JSON.parse(cached);
                         const district = loc?.district || loc?.taluka || loc?.city || null;
@@ -271,7 +271,7 @@ export default function AnalyticsProvider({ children }: { children: React.ReactN
             } = await supabase.auth.getUser();
             let locationData = null;
             try {
-                const locationCache = localStorage.getItem('bkmb_user_pincode');
+                const locationCache = localStorage.getItem('bmb_user_pincode');
                 if (locationCache) {
                     const parsed = JSON.parse(locationCache);
                     // Handle legacy numeric/string pincode or new object

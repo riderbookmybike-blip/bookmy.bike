@@ -190,7 +190,7 @@ export default function ProductClient({
                 // 1. Read cached pincode (set by StoreLayoutClient bootstrapLocation)
                 let pincode: string | null = null;
                 try {
-                    const raw = localStorage.getItem('bkmb_user_pincode');
+                    const raw = localStorage.getItem('bmb_user_pincode');
                     pincode = raw ? (JSON.parse(raw)?.pincode ?? null) : null;
                 } catch {
                     /* localStorage unavailable — treat as no pincode */
@@ -236,8 +236,8 @@ export default function ProductClient({
     const handlePincodeResolved = async (_confidence: string, pincode: string) => {
         // Persist the pincode to localStorage so the resolver effect reads it
         try {
-            const existing = JSON.parse(localStorage.getItem('bkmb_user_pincode') || '{}');
-            localStorage.setItem('bkmb_user_pincode', JSON.stringify({ ...existing, pincode }));
+            const existing = JSON.parse(localStorage.getItem('bmb_user_pincode') || '{}');
+            localStorage.setItem('bmb_user_pincode', JSON.stringify({ ...existing, pincode }));
         } catch {
             /* ignore */
         }
@@ -492,10 +492,10 @@ export default function ProductClient({
     const sendImmediateIntentSignal = React.useCallback((eventName: string, metadata: Record<string, unknown>) => {
         if (typeof window === 'undefined') return;
 
-        let sessionId = sessionStorage.getItem('bkmb_session_id');
+        let sessionId = sessionStorage.getItem('bmb_session_id');
         if (!sessionId && typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
             sessionId = crypto.randomUUID();
-            sessionStorage.setItem('bkmb_session_id', sessionId);
+            sessionStorage.setItem('bmb_session_id', sessionId);
         }
         if (!sessionId) return;
 
@@ -644,7 +644,7 @@ export default function ProductClient({
     useEffect(() => {
         if (typeof window === 'undefined') return;
         try {
-            const cached = localStorage.getItem('bkmb_user_pincode');
+            const cached = localStorage.getItem('bmb_user_pincode');
             if (!cached) return;
             const parsed = JSON.parse(cached);
             setCachedLocationHint({
@@ -659,7 +659,7 @@ export default function ProductClient({
     useEffect(() => {
         const syncLocationState = () => {
             try {
-                const cached = localStorage.getItem('bkmb_user_pincode');
+                const cached = localStorage.getItem('bmb_user_pincode');
                 const parsed = cached ? JSON.parse(cached) : null;
                 setCachedLocationHint({
                     district: parsed?.district || parsed?.taluka || parsed?.city || undefined,
@@ -719,7 +719,7 @@ export default function ProductClient({
                 ...payload,
                 source_confidence: (() => {
                     try {
-                        return JSON.parse(localStorage.getItem('bkmb_user_pincode') || '{}')?.source_confidence || null;
+                        return JSON.parse(localStorage.getItem('bmb_user_pincode') || '{}')?.source_confidence || null;
                     } catch {
                         return null;
                     }
@@ -816,7 +816,7 @@ export default function ProductClient({
         if (!existingState) {
             let stateValue: string | null = initialLocation?.state || null;
             if (!stateValue && typeof window !== 'undefined') {
-                const cached = localStorage.getItem('bkmb_user_pincode');
+                const cached = localStorage.getItem('bmb_user_pincode');
                 if (cached) {
                     try {
                         const parsed = JSON.parse(cached);
@@ -1983,7 +1983,7 @@ export default function ProductClient({
                         lat: lat ?? null,
                         lng: lng ?? null,
                     };
-                    localStorage.setItem('bkmb_user_pincode', JSON.stringify(nextLocation));
+                    localStorage.setItem('bmb_user_pincode', JSON.stringify(nextLocation));
                     window.dispatchEvent(new Event('locationChanged'));
                     setDealerRetryCount(c => c + 1);
                 }}

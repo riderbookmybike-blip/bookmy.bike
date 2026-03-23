@@ -42,7 +42,8 @@ import { OCircleLogo } from '@/components/common/OCircleLogo';
 import { coinsNeededForPrice } from '@/lib/oclub/coin';
 import { buildCommandBarState } from '../Personalize/pdpComputations';
 
-const LOGIN_NEXT_STORAGE_KEY = 'bkmb_login_next';
+import { LOGIN_NEXT_KEY as LOGIN_NEXT_STORAGE_KEY } from '@/lib/constants/storage';
+import { INDIAN_MOBILE_PATTERN } from '@/lib/utils/phoneUtils';
 
 export interface PdpCommandBarProps {
     layout: 'desktop' | 'mobile';
@@ -111,7 +112,7 @@ function WhatsAppPhoneModal({ onClose, onSend }: WhatsAppPhoneModalProps) {
         digits = digits.replace(/^0+/, '');
         return digits.slice(0, 10);
     })();
-    const isValidIndianMobile = /^[6-9]\d{9}$/.test(normalizedPhone);
+    const isValidIndianMobile = INDIAN_MOBILE_PATTERN.test(normalizedPhone);
 
     const handleSubmit = async () => {
         if (!isValidIndianMobile) {

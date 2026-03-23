@@ -64,7 +64,7 @@ export function LocationPicker({ isOpen, onClose, onLocationSet, initialPincode 
                 }
 
                 // localStorage fallback for older components if needed (cleaning gradually)
-                localStorage.setItem('bkmb_user_pincode', JSON.stringify(resolved));
+                localStorage.setItem('bmb_user_pincode', JSON.stringify(resolved));
 
                 const taluka = resolved.taluka || resolved.district || pincode;
                 onLocationSet(pincode, taluka, resolved.lat, resolved.lng);

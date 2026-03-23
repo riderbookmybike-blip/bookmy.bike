@@ -29,7 +29,7 @@ import { useAnalytics } from '@/components/analytics/AnalyticsProvider';
 export type PincodeSourceConfidence = 'USER_EXACT' | 'GEO_RESOLVED';
 
 interface PincodeGateChipProps {
-    /** Pincode from bkmb_user_pincode localStorage cache */
+    /** Pincode from bmb_user_pincode localStorage cache */
     cachedPincode?: string;
     /** Called after a successful pincode resolve — triggers locationChanged + dealer re-fetch */
     onResolved: (confidence: PincodeSourceConfidence, pincode: string) => void;
@@ -94,7 +94,7 @@ export function PincodeGateChip({
         };
 
         // 1. LocalStorage (sync, always first)
-        localStorage.setItem('bkmb_user_pincode', JSON.stringify(payload));
+        localStorage.setItem('bmb_user_pincode', JSON.stringify(payload));
 
         // 2. Cookie (best-effort, server action)
         try {

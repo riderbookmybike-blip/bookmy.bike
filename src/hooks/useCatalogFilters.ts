@@ -88,7 +88,7 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
     // Dynamic EMI States
     const [downpayment, _setDownpayment] = useState(() => {
         if (typeof window !== 'undefined') {
-            const stored = localStorage.getItem('bkmb_downpayment');
+            const stored = localStorage.getItem('bmb_downpayment');
             if (stored) return parseInt(stored);
         }
         const dp = searchParams.get('dp');
@@ -98,7 +98,7 @@ export function useCatalogFilters(initialVehicles: ProductVariant[] = []) {
         _setDownpayment(prev => {
             const next = typeof val === 'function' ? val(prev) : val;
             if (typeof window !== 'undefined') {
-                localStorage.setItem('bkmb_downpayment', String(next));
+                localStorage.setItem('bmb_downpayment', String(next));
                 window.dispatchEvent(new CustomEvent('bkmb_dp_changed', { detail: next }));
             }
             return next;

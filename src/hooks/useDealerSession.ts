@@ -15,7 +15,7 @@ export interface DealerSession {
     source: 'URL' | 'STORAGE' | 'PRIMARY' | 'DEFAULT' | 'NONE';
 }
 
-const STORAGE_KEY = 'bkmb_active_dealer_context_v2';
+const STORAGE_KEY = 'bmb_active_dealer_context_v2';
 const COOKIE_NAME = 'bmb_dealer_session';
 
 function writeDealerSessionCookie(payload: {
@@ -91,7 +91,7 @@ export function useDealerSession() {
 
         // 3. Check Location (Pincode/District)
         let district: string | null = null;
-        const storedPincode = localStorage.getItem('bkmb_user_pincode');
+        const storedPincode = localStorage.getItem('bmb_user_pincode');
         if (storedPincode) {
             try {
                 const parsed = JSON.parse(storedPincode);

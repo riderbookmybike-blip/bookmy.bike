@@ -49,7 +49,8 @@ interface LeadCaptureModalProps {
 type LeadStep = 'PHONE' | 'DETAILS';
 
 let crmActionsPromise: Promise<typeof import('@/actions/crm')> | null = null;
-const LOGIN_NEXT_STORAGE_KEY = 'bkmb_login_next';
+import { LOGIN_NEXT_KEY as LOGIN_NEXT_STORAGE_KEY } from '@/lib/constants/storage';
+
 const BOOKMYBIKE_WHATSAPP_NUMBER = '917447403491';
 
 function getCrmActions() {

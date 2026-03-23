@@ -37,7 +37,7 @@ function hasResolvedLocationSignal(value: any): boolean {
 function readCachedLocation(): boolean {
     if (typeof window === 'undefined') return false;
     try {
-        const cached = localStorage.getItem('bkmb_user_pincode');
+        const cached = localStorage.getItem('bmb_user_pincode');
         if (!cached) return false;
         return hasResolvedLocationSignal(JSON.parse(cached));
     } catch {
@@ -124,7 +124,7 @@ export function PdpLocationGate({ initialLocation, children }: PdpLocationGatePr
         };
 
         // 1. localStorage
-        localStorage.setItem('bkmb_user_pincode', JSON.stringify(payload));
+        localStorage.setItem('bmb_user_pincode', JSON.stringify(payload));
 
         // 2. Cookie (best-effort)
         try {

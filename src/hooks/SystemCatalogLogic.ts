@@ -50,7 +50,7 @@ export function useSystemCatalogLogic(
             return { stateCode: null, district: null };
         }
 
-        const cached = localStorage.getItem('bkmb_user_pincode');
+        const cached = localStorage.getItem('bmb_user_pincode');
         if (!cached) {
             return { stateCode: null, district: null };
         }

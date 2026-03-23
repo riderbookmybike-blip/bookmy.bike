@@ -36,7 +36,7 @@ export const DiscoveryProvider = ({ children }: { children: ReactNode }) => {
 
     // On mount (client only): read saved preference and apply it
     useEffect(() => {
-        const storedPricing = localStorage.getItem('bkmb_pricing_mode');
+        const storedPricing = localStorage.getItem('bmb_pricing_mode');
         const urlMode = searchParams.get('mode');
 
         // URL param takes priority over localStorage
@@ -46,7 +46,7 @@ export const DiscoveryProvider = ({ children }: { children: ReactNode }) => {
             setPricingMode(storedPricing);
         }
 
-        const storedOfferMode = localStorage.getItem('bkmb_offer_mode');
+        const storedOfferMode = localStorage.getItem('bmb_offer_mode');
         const urlOffer = searchParams.get('offer');
 
         if (urlOffer === 'BEST_OFFER' || urlOffer === 'FAST_DELIVERY') {
@@ -58,11 +58,11 @@ export const DiscoveryProvider = ({ children }: { children: ReactNode }) => {
 
     // Persist changes to localStorage
     useEffect(() => {
-        localStorage.setItem('bkmb_pricing_mode', pricingMode);
+        localStorage.setItem('bmb_pricing_mode', pricingMode);
     }, [pricingMode]);
 
     useEffect(() => {
-        localStorage.setItem('bkmb_offer_mode', offerMode);
+        localStorage.setItem('bmb_offer_mode', offerMode);
     }, [offerMode]);
 
     const [locationLabel, setLocationLabel] = useState<string | null>(null);

@@ -21,7 +21,7 @@ import { useDiscovery } from '@/contexts/DiscoveryContext';
 // ─── Pricing helpers ──────────────────────────────────────────────────────────
 function readPricing() {
     try {
-        const raw = localStorage.getItem('bkmb_pricing_prefs');
+        const raw = localStorage.getItem('bmb_pricing_prefs');
         if (raw) return JSON.parse(raw);
     } catch {
         /* ignore */
@@ -30,7 +30,7 @@ function readPricing() {
 }
 function writePricing(payload: unknown) {
     try {
-        localStorage.setItem('bkmb_pricing_prefs', JSON.stringify(payload));
+        localStorage.setItem('bmb_pricing_prefs', JSON.stringify(payload));
     } catch {
         /* ignore */
     }

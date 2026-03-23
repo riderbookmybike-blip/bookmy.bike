@@ -1,3 +1,10 @@
+/**
+ * Canonical Indian mobile number pattern.
+ * 10 digits, starting with 6–9. No country code.
+ * Import this instead of defining inline regex.
+ */
+export const INDIAN_MOBILE_PATTERN = /^[6-9]\d{9}$/;
+
 export const normalizePhone = (input: string | null | undefined): string => {
     if (!input) return '';
     const digits = input.replace(/\D/g, '');
@@ -16,9 +23,9 @@ export const formatPhone = (input: string | null | undefined, style: 'compact' |
     return `+91 ${p1} ${p2}`;
 };
 
+/** Strict validation: 10 digits starting with 6–9 (Indian mobile). */
 export const isValidPhone = (input: string | null | undefined): boolean => {
-    const clean = normalizePhone(input);
-    return clean.length === 10;
+    return INDIAN_MOBILE_PATTERN.test(normalizePhone(input));
 };
 
 export const toAppStorageFormat = (input: string | null | undefined): string => {

@@ -8,7 +8,7 @@
  *   https://www.bookmy.bike/store?ref=<REFERRAL_CODE>
  *
  * Storage key in localStorage (shared across all readers):
- *   bkmb_referral_code
+ *   bmb_referral_code
  *
  * Pattern: uppercase alphanumeric + hyphen + underscore, 3–32 chars.
  * This matches id_members.referral_code values generated at signup.
@@ -18,7 +18,7 @@
 export const REFERRAL_QUERY_KEY = 'ref' as const;
 
 /** localStorage key used to persist captured referral codes across page loads. */
-export const REFERRAL_STORAGE_KEY = 'bkmb_referral_code' as const;
+export const REFERRAL_STORAGE_KEY = 'bmb_referral_code' as const;
 
 /**
  * Validation pattern for referral codes.

@@ -62,12 +62,12 @@ export default function StoreLayoutClient({ children }: StoreLayoutClientProps) 
             if (typeof window === 'undefined') return;
             try {
                 let cachedData: any = null;
-                const cached = localStorage.getItem('bkmb_user_pincode');
+                const cached = localStorage.getItem('bmb_user_pincode');
                 if (cached) {
                     try {
                         cachedData = JSON.parse(cached);
                     } catch {
-                        localStorage.removeItem('bkmb_user_pincode');
+                        localStorage.removeItem('bmb_user_pincode');
                     }
                 }
 
@@ -89,7 +89,7 @@ export default function StoreLayoutClient({ children }: StoreLayoutClientProps) 
                                 lat: resolved.lat,
                                 lng: resolved.lng,
                             };
-                            localStorage.setItem('bkmb_user_pincode', JSON.stringify(cachedData));
+                            localStorage.setItem('bmb_user_pincode', JSON.stringify(cachedData));
                             window.dispatchEvent(new Event('locationChanged'));
                         }
                     }
@@ -134,7 +134,7 @@ export default function StoreLayoutClient({ children }: StoreLayoutClientProps) 
                         source: 'PROFILE',
                     };
 
-                    localStorage.setItem('bkmb_user_pincode', JSON.stringify(payload));
+                    localStorage.setItem('bmb_user_pincode', JSON.stringify(payload));
                     await setLocationCookie({
                         pincode: payload.pincode,
                         taluka: payload.taluka,
@@ -165,7 +165,7 @@ export default function StoreLayoutClient({ children }: StoreLayoutClientProps) 
                                 lat: resolved.lat,
                                 lng: resolved.lng,
                             };
-                            localStorage.setItem('bkmb_user_pincode', JSON.stringify(cachedData));
+                            localStorage.setItem('bmb_user_pincode', JSON.stringify(cachedData));
                             window.dispatchEvent(new Event('locationChanged'));
                         }
                     }

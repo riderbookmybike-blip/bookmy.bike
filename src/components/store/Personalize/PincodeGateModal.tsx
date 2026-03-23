@@ -190,7 +190,7 @@ export function PincodeGateModal({ isOpen, onResolved }: PincodeGateModalProps) 
             source: confidence,
         };
 
-        localStorage.setItem('bkmb_user_pincode', JSON.stringify(payload));
+        localStorage.setItem('bmb_user_pincode', JSON.stringify(payload));
 
         try {
             await setLocationCookie({

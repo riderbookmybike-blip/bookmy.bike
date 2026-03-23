@@ -1,7 +1,7 @@
 // Google Maps Integration Strategy
 
 // Cache key for minimizing API costs
-const LOCATION_CACHE_KEY = 'bkmb_user_pincode';
+const LOCATION_CACHE_KEY = 'bmb_user_pincode';
 
 interface GeocodeResult {
     pincode: string | null;

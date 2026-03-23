@@ -328,7 +328,7 @@ export default async function Page({ params, searchParams }: Props) {
         stateCode,
     };
     const pincodeFromQuery = resolvedSearchParams.pincode;
-    const locationCookie = cookieStore.get('bkmb_user_pincode')?.value;
+    const locationCookie = cookieStore.get('bmb_user_pincode')?.value;
     let pincodeForLookup = String(pincodeFromQuery || '').trim();
     if (!pincodeForLookup && locationCookie) {
         try {

@@ -103,7 +103,7 @@ export default function SidebarHUD({
 
     React.useEffect(() => {
         const checkCurrentServiceability = async () => {
-            const cached = localStorage.getItem('bkmb_user_pincode');
+            const cached = localStorage.getItem('bmb_user_pincode');
             if (!cached) {
                 setServiceability({ isServiceable: false, status: 'UNSET' });
                 return;

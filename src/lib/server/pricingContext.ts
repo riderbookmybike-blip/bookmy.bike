@@ -40,7 +40,7 @@ export const normalizeStateCode = (state?: string | null, stateCode?: string | n
 
 const resolveStateFromCookie = async () => {
     const cookieStore = await cookies();
-    const locationCookie = cookieStore.get('bkmb_user_pincode')?.value;
+    const locationCookie = cookieStore.get('bmb_user_pincode')?.value;
     if (!locationCookie) return 'MH';
     try {
         const data = JSON.parse(locationCookie);
