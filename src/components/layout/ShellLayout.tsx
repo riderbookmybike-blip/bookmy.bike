@@ -14,6 +14,7 @@ import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { CrmReadOnlyGuard } from '@/components/layout/CrmReadOnlyGuard';
 import { MobileViewBanner } from '@/components/layout/MobileViewBanner';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
+import { LOGIN_NEXT_KEY, migrateLegacyStorageKeys } from '@/lib/constants/storage';
 
 export default function ShellLayout({ children }: { children: React.ReactNode }) {
     const { tenantType, userRole, activeRole, isSidebarExpanded, setIsSidebarExpanded, tenantConfig } = useTenant();
@@ -30,6 +31,7 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
 
     useEffect(() => {
         setMounted(true);
+        migrateLegacyStorageKeys();
     }, []);
 
     useEffect(() => {
@@ -43,7 +45,7 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
 
         const nextPath = searchParams.get('next');
         if (nextPath && nextPath.startsWith('/') && !nextPath.startsWith('//')) {
-            localStorage.setItem('bmb_login_next', nextPath);
+            localStorage.setItem(LOGIN_NEXT_KEY, nextPath);
         }
 
         setIsLoginOpen(true);

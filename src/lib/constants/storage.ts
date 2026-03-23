@@ -16,7 +16,7 @@
 export const LOCATION_KEY = 'bmb_user_pincode' as const;
 
 /** Legacy key name (pre-SOT). Used only for one-time migration. */
-const LEGACY_LOCATION_KEY = 'bmb_user_pincode' as const;
+const LEGACY_LOCATION_KEY = 'bkmb_user_pincode' as const;
 
 // ── Auth / Navigation ───────────────────────────────────────────────────────
 /** localStorage key for post-login redirect path. */
@@ -52,7 +52,7 @@ export const DEALER_CONTEXT_KEY = 'bmb_active_dealer_context_v2' as const;
 export function migrateLegacyStorageKeys(): void {
     if (typeof window === 'undefined') return;
     try {
-        // bmb_user_pincode → bmb_user_pincode
+        // bkmb_user_pincode -> bmb_user_pincode
         const legacyLocation = localStorage.getItem(LEGACY_LOCATION_KEY);
         if (legacyLocation && !localStorage.getItem(LOCATION_KEY)) {
             localStorage.setItem(LOCATION_KEY, legacyLocation);

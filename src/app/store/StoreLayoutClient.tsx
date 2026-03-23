@@ -22,6 +22,7 @@ import { setLocationCookie } from '@/actions/locationCookie';
 import { resolveLocation } from '@/utils/locationResolver';
 import { DealershipGate } from '@/components/store/DealershipGate';
 import Script from 'next/script';
+import { migrateLegacyStorageKeys } from '@/lib/constants/storage';
 
 interface StoreLayoutClientProps {
     children: React.ReactNode;
@@ -55,6 +56,10 @@ export default function StoreLayoutClient({ children }: StoreLayoutClientProps) 
             window.removeEventListener('openLogin', handleOpenLogin);
             window.removeEventListener('openMobileSearch', handleOpenSearch);
         };
+    }, []);
+
+    useEffect(() => {
+        migrateLegacyStorageKeys();
     }, []);
 
     useEffect(() => {
