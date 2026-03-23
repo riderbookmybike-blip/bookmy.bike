@@ -148,17 +148,25 @@ export function PdpFinanceSummarySection({
             data-parity-section="finance-summary"
             className="glass-panel bg-white/90 rounded-3xl border border-slate-200 shadow-xl overflow-hidden"
         >
-            <button onClick={handleToggle} className="w-full flex items-center justify-between px-5 py-4 text-left">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-brand-primary/10 text-brand-primary flex items-center justify-center">
-                        <Landmark size={18} />
+            <button onClick={handleToggle} className="w-full flex items-center justify-between px-5 py-3.5 text-left">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="w-9 h-9 shrink-0 rounded-xl bg-brand-primary/10 text-brand-primary flex items-center justify-center">
+                        <Landmark size={16} />
                     </div>
-                    <div>
-                        <p className="text-sm font-black tracking-[0.05em] text-brand-primary">Finance Summary</p>
-                        <p className="text-[11px] text-slate-500">{financeHeaderSubtitle}</p>
+                    <div className="min-w-0 flex-1">
+                        <p className="text-[13px] font-black tracking-[0.04em] text-brand-primary leading-tight">
+                            Finance Summary
+                        </p>
+                        {financerName && (
+                            <p className="text-[10px] text-slate-600 leading-snug mt-0.5">{financerName}</p>
+                        )}
+                        {schemeName && <p className="text-[10px] text-slate-400 leading-tight mt-0.5">{schemeName}</p>}
                     </div>
                 </div>
-                <ChevronDown size={18} className={`text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+                <ChevronDown
+                    size={16}
+                    className={`text-slate-400 transition-transform shrink-0 ml-2 ${open ? 'rotate-180' : ''}`}
+                />
             </button>
 
             {open && (

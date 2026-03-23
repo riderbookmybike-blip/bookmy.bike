@@ -141,25 +141,28 @@ export function PdpPricingSection({
             data-parity-section="pricing"
             className="glass-panel bg-white/90 rounded-3xl border border-slate-200 shadow-xl overflow-hidden"
         >
-            <button onClick={handleToggle} className="w-full flex items-center justify-between px-5 py-4 text-left">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-brand-primary/10 text-brand-primary flex items-center justify-center">
-                        <Zap size={18} />
+            <button onClick={handleToggle} className="w-full flex items-center justify-between px-5 py-3.5 text-left">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="w-9 h-9 shrink-0 rounded-xl bg-brand-primary/10 text-brand-primary flex items-center justify-center">
+                        <Zap size={16} />
                     </div>
-                    <div>
-                        <p className="text-sm font-black tracking-[0.05em] text-brand-primary">Pricing</p>
-                        <span className="text-[11px] font-semibold font-mono tabular-nums text-slate-600 flex items-center gap-1.5">
-                            <span className="leading-none">On Road</span>
-                            <span className="leading-none">₹ {localDisplayOnRoad.toLocaleString('en-IN')}</span>
-                            <span className="text-slate-300">•</span>
-                            <Logo variant="icon" size={10} customColor="#475569" />
-                            <span className="leading-none text-slate-600">
-                                {bCoinEquivalent.toLocaleString('en-IN')}
-                            </span>
-                        </span>
+                    <div className="min-w-0 flex-1">
+                        <p className="text-[13px] font-black tracking-[0.04em] text-brand-primary leading-tight">
+                            Pricing
+                        </p>
+                        <p className="text-[10px] font-mono tabular-nums text-slate-600 leading-snug mt-0.5">
+                            On Road ₹{localDisplayOnRoad.toLocaleString('en-IN')}
+                        </p>
+                        <p className="text-[10px] text-slate-400 leading-tight mt-0.5 flex items-center gap-1">
+                            <Logo variant="icon" size={8} customColor="#94a3b8" />
+                            <span>{bCoinEquivalent.toLocaleString('en-IN')} B-coins</span>
+                        </p>
                     </div>
                 </div>
-                <ChevronDown size={18} className={`text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+                <ChevronDown
+                    size={16}
+                    className={`text-slate-400 transition-transform shrink-0 ${open ? 'rotate-180' : ''}`}
+                />
             </button>
 
             {open &&

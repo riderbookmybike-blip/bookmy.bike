@@ -46,8 +46,10 @@ function getConfigCards(data: any) {
     const fmt = (v: number) => `₹${v.toLocaleString('en-IN')}`;
     const getBadge = (v: number) => (v > 0 ? fmt(v) : 'Free');
 
-    // Build accessory subtext: "Side Stand, Floor Matt & +5"
-    let accSubtext = 'Add Extras';
+    // Build accessory subtext: "Side Stand, Floor Matt & +5" or count
+    const totalAvailableAcc = (activeAccessories || []).length;
+    let accSubtext = totalAvailableAcc > 0 ? `${totalAvailableAcc} accessories to select` : 'Add Extras';
+    let accBadge = accTotal > 0 ? fmt(accTotal) : ''; // No 'Free' for accessories
     const allActive = (activeAccessories || []).filter((a: any) => a.isMandatory || selectedAccessories.includes(a.id));
     if (allActive.length > 0) {
         const toTitle = (s: string) => s.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
@@ -76,13 +78,15 @@ function getConfigCards(data: any) {
             id: 'ACCESSORIES',
             label: 'Accessories',
             subtext: accSubtext,
-            totalLabel: getBadge(accTotal),
+            subtext2: accBadge || 'Optional extras',
+            totalLabel: accBadge,
             icon: Package,
         },
         {
             id: 'INSURANCE',
             label: 'Insurance',
             subtext: INSURANCE_SUBTITLE,
+            subtext2: getBadge(insTotal),
             totalLabel: getBadge(insTotal),
             icon: Shield,
         },
@@ -99,6 +103,7 @@ function getConfigCards(data: any) {
                 else if (regType === 'COMPANY') label = 'Corporate Registration';
                 return label;
             })(),
+            subtext2: getBadge(rtoTotal),
             totalLabel: getBadge(rtoTotal),
             icon: ClipboardList,
         },
@@ -115,6 +120,7 @@ function getConfigCards(data: any) {
                 const rest = active.length - 2;
                 return rest > 0 ? `${shown} & +${rest}` : shown;
             })(),
+            subtext2: getBadge(svcTotal),
             totalLabel: getBadge(svcTotal),
             icon: Wrench,
         },
@@ -129,6 +135,7 @@ function getConfigCards(data: any) {
                 const rest = items.length - 2;
                 return rest > 0 ? `${shown} & +${rest}` : shown;
             })(),
+            subtext2: getBadge(wtyTotal),
             totalLabel: getBadge(wtyTotal),
             icon: Gift,
         },
@@ -296,30 +303,34 @@ export function PdpConfigSection({
                     >
                         <button
                             onClick={() => selectMobileCard(cardStateId)}
-                            className="w-full flex items-center justify-between px-5 py-4 text-left"
+                            className="w-full flex items-center justify-between px-5 py-3.5 text-left"
                         >
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-2xl bg-brand-primary/10 text-brand-primary flex items-center justify-center">
-                                    <Icon size={18} />
+                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                                <div className="w-9 h-9 shrink-0 rounded-xl bg-brand-primary/10 text-brand-primary flex items-center justify-center">
+                                    <Icon size={16} />
                                 </div>
-                                <div className="min-w-0">
-                                    <p className="text-sm font-black tracking-[0.05em] text-brand-primary">
+                                <div className="min-w-0 flex-1">
+                                    <p className="text-[13px] font-black tracking-[0.04em] text-brand-primary leading-tight">
                                         {card.label}
                                     </p>
-                                    <p className="text-[11px] font-semibold text-slate-600 truncate">{card.subtext}</p>
+                                    <p className="text-[10px] text-slate-600 line-clamp-2 leading-snug mt-0.5">
+                                        {card.subtext}
+                                    </p>
+                                    {card.subtext2 && (
+                                        <p
+                                            className={`text-[10px] font-semibold leading-tight mt-0.5 ${
+                                                card.subtext2 === 'Free' ? 'text-emerald-500' : 'text-slate-400'
+                                            }`}
+                                        >
+                                            {card.subtext2}
+                                        </p>
+                                    )}
                                 </div>
                             </div>
-                            <div className="flex items-center gap-3">
-                                {card.totalLabel && (
-                                    <span className="text-[11px] font-black tracking-tight tabular-nums text-slate-900 bg-slate-100 px-2 py-1 rounded-md">
-                                        {card.totalLabel}
-                                    </span>
-                                )}
-                                <ChevronDown
-                                    size={18}
-                                    className={`text-slate-400 transition-transform ${isCategoryOpen ? 'rotate-180' : ''}`}
-                                />
-                            </div>
+                            <ChevronDown
+                                size={16}
+                                className={`text-slate-400 transition-transform shrink-0 ml-2 ${isCategoryOpen ? 'rotate-180' : ''}`}
+                            />
                         </button>
                         {isCategoryOpen && (
                             <div className="px-5 pb-5">

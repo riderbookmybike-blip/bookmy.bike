@@ -10,7 +10,7 @@ import { useI18n } from '@/components/providers/I18nProvider';
 import { toDevanagariScript } from '@/lib/i18n/transliterate';
 import { computeOClubPricing } from '@/lib/oclub/coin';
 import { Logo } from '@/components/brand/Logo';
-import { buildPdpCommonState, buildCommandBarState } from '../Personalize/pdpComputations';
+import { buildPdpCommonState } from '../Personalize/pdpComputations';
 import AmortizationPanel from '../Personalize/AmortizationPanel';
 
 // Shared responsive section components
@@ -20,7 +20,6 @@ import {
     PdpFinanceSummarySection,
     PdpConfigSection,
     PdpSpecsSection,
-    PdpCommandBar,
     ParitySnapshot,
 } from '../sections';
 
@@ -144,6 +143,31 @@ export const MobilePDP = ({
         updateQuantity,
     } = handlers;
 
+    // ── CTA bar event bridge ──────────────────────────────────────────────────
+    // Each event is dispatched by ShopperBottomNav when the user taps the CTA.
+    // Handlers are called only if defined (optional handlers guarded).
+    useEffect(() => {
+        const onSave = () => handleSaveQuote();
+        const onDownload = () => handleDownloadQuote?.();
+        const onCallback = () => {
+            // Stage 3: open WhatsApp direct with prefilled msg
+            const BOOKMYBIKE_WA = '919028888666';
+            const msg = encodeURIComponent(
+                "Hi! I've saved and reviewed my quote on BookMyBike. Can you help me with the booking?"
+            );
+            window.open(`https://wa.me/${BOOKMYBIKE_WA}?text=${msg}`, '_blank', 'noopener,noreferrer');
+            // Stage 3 is terminal — no further advance
+        };
+        window.addEventListener('pdpSaveQuoteRequested', onSave);
+        window.addEventListener('pdpDownloadQuoteRequested', onDownload);
+        window.addEventListener('pdpCallbackRequested', onCallback);
+        return () => {
+            window.removeEventListener('pdpSaveQuoteRequested', onSave);
+            window.removeEventListener('pdpDownloadQuoteRequested', onDownload);
+            window.removeEventListener('pdpCallbackRequested', onCallback);
+        };
+    }, [handleSaveQuote, handleDownloadQuote]);
+
     const activeColorConfig = colors.find((c: any) => c.id === selectedColor) || colors[0];
     const displayMake = scriptText(makeParam);
     const displayModel = scriptText(modelParam);
@@ -167,25 +191,13 @@ export const MobilePDP = ({
     const { coinPricing, displayOnRoad, bCoinEquivalent, totalSavings, footerEmi, deliveryByLabel, studioIdLabel } =
         commonState;
 
-    // ── Command bar compute (shared with FloatingCommandBar via same fn) ──
-    const commandBarState = buildCommandBarState({
-        displayOnRoad,
-        totalOnRoad: data.totalOnRoad ?? 0,
-        totalSavings,
-        coinPricing,
-        footerEmi,
-        emiTenure,
-        isGated: isGated ?? false,
-        serviceability,
-    });
-
     // Single-open card state (string-based so adding future cards is trivial)
     // null = all closed, string = that card is open
     const [openContentCard, setOpenContentCard] = useState<string | null>('pricing');
     const toggleCard = (id: string) => setOpenContentCard(prev => (prev === id ? null : id));
 
     return (
-        <div className="min-h-screen bg-slate-50 text-slate-900 pb-14 font-sans selection:bg-[#F4B000]/30 selection:text-black">
+        <div className="min-h-screen bg-slate-50 text-slate-900 pb-[60px] font-sans selection:bg-[#F4B000]/30 selection:text-black">
             {/* Cinematic Color Mesh Background — matches Desktop PDP */}
             <div className="fixed inset-0 pointer-events-none z-0">
                 <div
@@ -233,7 +245,7 @@ export const MobilePDP = ({
 
             {/* 2. Edge-to-Edge Hero Image */}
             <div
-                className="relative w-full aspect-[4/3] pt-12 flex items-center justify-center overflow-hidden transition-colors duration-700"
+                className="relative w-full aspect-[3/2] flex items-center justify-center overflow-hidden transition-colors duration-700"
                 style={{ backgroundColor: `${activeColorConfig?.hex || '#e2e8f0'}26` }}
             >
                 <motion.div
@@ -281,7 +293,6 @@ export const MobilePDP = ({
                     {displayModel}
                 </h1>
                 <p className="text-[12px] font-bold text-[#F4B000] uppercase tracking-wider mb-2">{displayVariant}</p>
-                <p className="text-[10px] font-semibold text-slate-500">*Price shown for Maharashtra state</p>
             </div>
 
             {/* Location control moved into bottom command bar */}
@@ -498,44 +509,6 @@ export const MobilePDP = ({
                     )}
                 </div>
             </div>
-
-            {/* 11. Unified Command Bar — with guard behaviors (G4) */}
-            <PdpCommandBar
-                layout="mobile"
-                getProductImage={getProductImage}
-                displayModel={displayModel}
-                displayVariant={displayVariant}
-                displayColor={displayColor}
-                activeColorConfig={activeColorConfig || { hex: '#000' }}
-                displayOnRoad={commandBarState.displayOnRoad}
-                totalOnRoad={data.totalOnRoad ?? 0}
-                totalSavings={commandBarState.totalSavings}
-                totalSurge={data.totalSurge ?? 0}
-                coinPricing={coinPricing}
-                showOClubPrompt={showOClubPrompt ?? false}
-                isLoggedIn={isLoggedIn}
-                footerEmi={commandBarState.footerEmi}
-                emiTenure={emiTenure}
-                handleShareQuote={handleShareQuote}
-                handleSaveQuote={handleSaveQuote}
-                handleDownloadQuote={handleDownloadQuote}
-                handleReachUsQuote={handleReachUsQuote}
-                handleBookingRequest={handleBookingRequest}
-                serviceability={serviceability}
-                isGated={isGated ?? false}
-                locationInfo={{
-                    pincode: cachedPincode || serviceability?.pincode || initialLocation?.pincode,
-                    area: (initialLocation as any)?.area || (initialLocation as any)?.locality,
-                    taluka: serviceability?.taluka || initialLocation?.taluka,
-                    district: initialLocation?.district,
-                }}
-                onEditLocation={onRetryLocation}
-                deliveryByLabel={deliveryByLabel}
-                studioIdLabel={studioIdLabel}
-                quoteState={quoteState}
-                quoteActionDisabled={quoteActionDisabled}
-                quoteActionDisabledLabel={quoteActionDisabledLabel}
-            />
         </div>
     );
 };
