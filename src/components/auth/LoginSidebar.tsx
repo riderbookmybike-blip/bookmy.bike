@@ -29,8 +29,9 @@ import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { getErrorMessage } from '@/lib/utils/errorMessage';
 import { resolveLocation } from '@/utils/locationResolver';
 
-const REFERRAL_CODE_PATTERN = /^[A-Z0-9-]{4,32}$/;
+const REFERRAL_CODE_PATTERN = /^[A-Z0-9_-]{3,32}$/;
 const REFERRAL_STORAGE_KEY = 'bkmb_referral_code';
+const REFERRAL_QUERY_KEYS = ['ref', 'referral', 'referral_code', 'code'] as const;
 const LOGIN_NEXT_STORAGE_KEY = 'bkmb_login_next';
 
 const toSafeInternalPath = (value?: string | null): string | null => {
@@ -131,6 +132,13 @@ export default function LoginSidebar({
         String(value || '')
             .trim()
             .toUpperCase();
+    const extractReferralFromQuery = (params: URLSearchParams) => {
+        for (const key of REFERRAL_QUERY_KEYS) {
+            const value = normalizeReferralCode(params.get(key));
+            if (value) return value;
+        }
+        return '';
+    };
     const getEffectiveReferralCode = () => normalizeReferralCode(referralCodeFromLink || referralCode);
     const hasReferralFromLink = !!normalizeReferralCode(referralCodeFromLink);
     const getResolvedSignupLocation = () => {
@@ -264,7 +272,7 @@ export default function LoginSidebar({
             setShowEmailFallback(false);
             setSecurityTimer(0);
 
-            const referralFromQuery = normalizeReferralCode(searchParams.get('ref'));
+            const referralFromQuery = extractReferralFromQuery(searchParams);
             const referralFromStorage = normalizeReferralCode(localStorage.getItem(REFERRAL_STORAGE_KEY));
             const resolvedReferral = referralFromQuery || referralFromStorage;
             if (REFERRAL_CODE_PATTERN.test(resolvedReferral)) {

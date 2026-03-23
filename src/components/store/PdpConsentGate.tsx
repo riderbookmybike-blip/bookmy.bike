@@ -8,6 +8,18 @@ import dynamic from 'next/dynamic';
 const LoginSidebar = dynamic(() => import('@/components/auth/LoginSidebar'), { ssr: false });
 
 const REFERRAL_STORAGE_KEY = 'bkmb_referral_code';
+const REFERRAL_QUERY_KEYS = ['ref', 'referral', 'referral_code', 'code'] as const;
+
+function extractReferralFromUrl(search: string): string {
+    const params = new URLSearchParams(search);
+    for (const key of REFERRAL_QUERY_KEYS) {
+        const value = String(params.get(key) || '')
+            .trim()
+            .toUpperCase();
+        if (value && /^[A-Z0-9_-]{3,32}$/.test(value)) return value;
+    }
+    return '';
+}
 
 interface PdpConsentGateProps {
     make: string;
@@ -44,8 +56,8 @@ export default function PdpConsentGate({ make, model, variant, heroImage, exShow
         if (capturedRef.current) return;
         capturedRef.current = true;
         try {
-            const ref = new URLSearchParams(window.location.search).get('ref')?.trim().toUpperCase();
-            if (ref && /^[A-Z0-9-]{4,32}$/.test(ref)) {
+            const ref = extractReferralFromUrl(window.location.search);
+            if (ref) {
                 localStorage.setItem(REFERRAL_STORAGE_KEY, ref);
             }
         } catch {
@@ -202,8 +214,8 @@ function ReferralBanner() {
 
     useEffect(() => {
         try {
-            const fromUrl = new URLSearchParams(window.location.search).get('ref')?.trim().toUpperCase();
-            if (fromUrl && /^[A-Z0-9-]{4,32}$/.test(fromUrl)) {
+            const fromUrl = extractReferralFromUrl(window.location.search);
+            if (fromUrl) {
                 setCode(fromUrl);
             }
         } catch {

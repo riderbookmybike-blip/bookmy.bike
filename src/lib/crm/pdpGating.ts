@@ -12,7 +12,9 @@
 
 export type GatingCode = 'UNAUTHENTICATED' | 'LOCATION_REQUIRED' | 'NOT_SERVICEABLE' | 'SERVICEABILITY_UNAVAILABLE';
 
-export type GatingResult = { ok: true } | { ok: false; code: GatingCode; message: string };
+export type GatingResult =
+    | { ok: true; latencyMs: number }
+    | { ok: false; code: GatingCode; message: string; latencyMs: number };
 
 /**
  * assertPdpGating
@@ -27,7 +29,7 @@ export async function assertPdpGating(
 ): Promise<GatingResult> {
     // No-op when strict gating is disabled (default dev / backward-compat path)
     if (process.env.STRICT_PDP_GATING !== 'true') {
-        return { ok: true };
+        return { ok: true, latencyMs: 0 };
     }
 
     // Guard 1: Authentication required
@@ -36,6 +38,7 @@ export async function assertPdpGating(
             ok: false,
             code: 'UNAUTHENTICATED',
             message: 'Login required to save quotes or submit a lead.',
+            latencyMs: 0,
         };
     }
 
@@ -46,29 +49,34 @@ export async function assertPdpGating(
             ok: false,
             code: 'LOCATION_REQUIRED',
             message: 'Please enter your delivery pincode to continue.',
+            latencyMs: 0,
         };
     }
 
-    // Guard 3: Serviceability check
+    // Guard 3: Serviceability check (timed)
+    const t0 = Date.now();
     try {
         const { checkServiceability } = await import('@/actions/serviceArea');
         const result = await checkServiceability(cleanPincode);
+        const latencyMs = Date.now() - t0;
         if (!result?.isServiceable) {
             return {
                 ok: false,
                 code: 'NOT_SERVICEABLE',
                 message: `We don't currently serve pincode ${cleanPincode}. Please update your delivery location.`,
+                latencyMs,
             };
         }
+        return { ok: true, latencyMs };
     } catch {
+        const latencyMs = Date.now() - t0;
         // Fail-closed on API error: aligns with Phase 4 client-side NON_SERVICEABLE-on-error.
         // STRICT mode means strict — a transient outage should not silently unlock commercial actions.
         return {
             ok: false,
             code: 'SERVICEABILITY_UNAVAILABLE',
             message: 'Serviceability service temporarily unavailable. Please try again.',
+            latencyMs,
         };
     }
-
-    return { ok: true };
 }

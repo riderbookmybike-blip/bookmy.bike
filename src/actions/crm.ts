@@ -8,7 +8,36 @@ import {
     validateBookingDealerContext,
     validateDealerAuthorization,
 } from '@/lib/crm/contextHardening';
-import { assertPdpGating } from '@/lib/crm/pdpGating';
+import { assertPdpGating, type GatingResult } from '@/lib/crm/pdpGating';
+
+/**
+ * logPdpGateBlock — fire-and-forget audit log for PDP gate rejections.
+ * Writes to audit_logs (structured JSONB) and emits a console.error for Vercel log drain.
+ * Never throws — must not block the action return.
+ */
+function logPdpGateBlock(
+    guard: Extract<GatingResult, { ok: false }>,
+    action: 'createLeadAction' | 'createQuoteAction',
+    actorUserId: string | null,
+    pincode: string | null
+) {
+    const meta = { code: guard.code, action, pincode, latencyMs: guard.latencyMs };
+    console.error('[pdp-gate-block]', JSON.stringify(meta));
+    // Fire-and-forget — non-blocking audit insert
+    adminClient
+        .from('audit_logs')
+        .insert({
+            user_id: actorUserId ?? undefined,
+            actor_id: actorUserId ?? undefined,
+            action: 'PDP_GATE_BLOCKED',
+            entity_type: action,
+            entity_id: pincode ?? 'unknown',
+            metadata: meta,
+        })
+        .then(({ error }) => {
+            if (error) console.error('[pdp-gate-block] audit insert failed:', error.message);
+        });
+}
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { checkServiceability } from './serviceArea';
@@ -3087,6 +3116,7 @@ export async function createLeadAction(data: {
     // Phase 5: PDP server enforcement (no-op when STRICT_PDP_GATING !== 'true')
     const pdpGuard = await assertPdpGating(authUser?.id ?? null, data.customer_pincode);
     if (!pdpGuard.ok) {
+        logPdpGateBlock(pdpGuard, 'createLeadAction', authUser?.id ?? null, data.customer_pincode ?? null);
         return { success: false, message: pdpGuard.message, code: pdpGuard.code };
     }
 
@@ -3773,6 +3803,7 @@ export async function createQuoteAction(data: {
     const quotePincode = (data.commercials?.customer_pincode ?? data.commercials?.pincode ?? '') as string;
     const pdpGuard = await assertPdpGating(user?.id ?? null, quotePincode || null);
     if (!pdpGuard.ok) {
+        logPdpGateBlock(pdpGuard, 'createQuoteAction', user?.id ?? null, quotePincode || null);
         return { success: false, message: pdpGuard.message, code: pdpGuard.code };
     }
 
