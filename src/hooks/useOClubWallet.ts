@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useAuth } from '@/components/providers/AuthProvider';
 
 export interface OClubWalletSummary {
     availableCoins: number;
@@ -12,10 +13,17 @@ export interface OClubWalletSummary {
 }
 
 export function useOClubWallet() {
+    const { user } = useAuth();
     const [wallet, setWallet] = useState<OClubWalletSummary | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        if (!user?.id) {
+            setWallet(null);
+            setLoading(false);
+            return;
+        }
+
         let active = true;
         const load = async () => {
             try {
@@ -52,7 +60,7 @@ export function useOClubWallet() {
         return () => {
             active = false;
         };
-    }, []);
+    }, [user?.id]);
 
     return {
         wallet,

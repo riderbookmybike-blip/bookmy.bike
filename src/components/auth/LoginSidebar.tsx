@@ -29,9 +29,12 @@ import { motion, AnimatePresence, Variants } from 'framer-motion';
 import { getErrorMessage } from '@/lib/utils/errorMessage';
 import { resolveLocation } from '@/utils/locationResolver';
 
-const REFERRAL_CODE_PATTERN = /^[A-Z0-9_-]{3,32}$/;
-const REFERRAL_STORAGE_KEY = 'bkmb_referral_code';
-const REFERRAL_QUERY_KEYS = ['ref', 'referral', 'referral_code', 'code'] as const;
+import {
+    REFERRAL_CODE_PATTERN,
+    REFERRAL_STORAGE_KEY,
+    normalizeReferralCode,
+    extractReferralFromParams,
+} from '@/lib/constants/referral';
 const LOGIN_NEXT_STORAGE_KEY = 'bkmb_login_next';
 
 const toSafeInternalPath = (value?: string | null): string | null => {
@@ -128,17 +131,6 @@ export default function LoginSidebar({
     const inputRef = useRef<HTMLInputElement>(null);
     const OTP_LENGTH = 4;
 
-    const normalizeReferralCode = (value?: string | null) =>
-        String(value || '')
-            .trim()
-            .toUpperCase();
-    const extractReferralFromQuery = (params: URLSearchParams) => {
-        for (const key of REFERRAL_QUERY_KEYS) {
-            const value = normalizeReferralCode(params.get(key));
-            if (value) return value;
-        }
-        return '';
-    };
     const getEffectiveReferralCode = () => normalizeReferralCode(referralCodeFromLink || referralCode);
     const hasReferralFromLink = !!normalizeReferralCode(referralCodeFromLink);
     const getResolvedSignupLocation = () => {
@@ -272,7 +264,7 @@ export default function LoginSidebar({
             setShowEmailFallback(false);
             setSecurityTimer(0);
 
-            const referralFromQuery = extractReferralFromQuery(searchParams);
+            const referralFromQuery = extractReferralFromParams(searchParams);
             const referralFromStorage = normalizeReferralCode(localStorage.getItem(REFERRAL_STORAGE_KEY));
             const resolvedReferral = referralFromQuery || referralFromStorage;
             if (REFERRAL_CODE_PATTERN.test(resolvedReferral)) {
@@ -884,7 +876,7 @@ export default function LoginSidebar({
                         </div>
 
                         {/* Grainy Texture Over Glass */}
-                        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.08] mix-blend-overlay pointer-events-none z-0" />
+                        <div className="absolute inset-0 bg-[url('/images/noise.svg')] opacity-[0.08] mix-blend-overlay pointer-events-none z-0" />
 
                         {/* Header */}
                         {/* Header - Empty to keep close button but remove Logo from top */}

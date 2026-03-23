@@ -242,6 +242,7 @@ export function StoreHomePage({
             <section
                 ref={heroRef}
                 className="relative h-[calc(100dvh-var(--header-h))] min-h-[calc(100svh-var(--header-h))] flex flex-col justify-end md:justify-center md:items-center overflow-hidden"
+                style={{ position: 'relative' }}
             >
                 {/* Parallax Background */}
                 <motion.div className="absolute inset-0" style={{ scale: heroScale, opacity: heroOpacity }}>
@@ -450,9 +451,9 @@ export function StoreHomePage({
                                             <Image
                                                 src={cat.img}
                                                 alt={cat.title}
-                                                width={96}
-                                                height={64}
-                                                className="object-contain drop-shadow-lg md:w-full md:h-full"
+                                                fill
+                                                sizes="(min-width: 768px) 28rem, 96px"
+                                                className="object-contain drop-shadow-lg"
                                             />
                                         </div>
 

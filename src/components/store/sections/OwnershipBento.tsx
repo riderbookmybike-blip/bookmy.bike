@@ -19,7 +19,7 @@ export function OwnershipBento() {
                 <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full h-[70%] bg-[radial-gradient(circle_at_50%_100%,rgba(139,92,246,0.15),transparent_70%)]" />
 
                 {/* Grainy Texture */}
-                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.05] mix-blend-overlay" />
+                <div className="absolute inset-0 bg-[url('/images/noise.svg')] opacity-[0.05] mix-blend-overlay" />
             </div>
 
             <div className="page-container relative z-10">

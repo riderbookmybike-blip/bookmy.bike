@@ -283,7 +283,7 @@ export const ModernFooter = () => {
             {/* 1. Dynamic Mesh Background */}
             <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-40">
                 <div className="absolute -top-[20%] -left-[10%] w-[120%] h-[120%] bg-[radial-gradient(circle_at_50%_50%,rgba(255,215,0,0.05)_0%,transparent_60%)]" />
-                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] mix-blend-overlay" />
+                <div className="absolute inset-0 bg-[url('/images/noise.svg')] opacity-[0.03] mix-blend-overlay" />
             </div>
 
             {/* Ambient Background Glow removed */}

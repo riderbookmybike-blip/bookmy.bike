@@ -50,6 +50,7 @@ import { useAuth } from '@/components/providers/AuthProvider';
 import { formatMembershipCardCode } from '@/lib/oclub/membershipCardIdentity';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { uploadMemberImage } from '@/actions/members';
+import { buildReferralUrl } from '@/lib/constants/referral';
 
 const ADMIN_ROLES = new Set(['OWNER', 'ADMIN', 'SUPER_ADMIN', 'DEALERSHIP_ADMIN', 'MARKETPLACE_ADMIN']);
 
@@ -169,8 +170,7 @@ export function ProfileDropdown({
 
     const referralUrl = useMemo(() => {
         if (!referralCode) return '';
-        const baseUrl = 'https://www.bookmy.bike';
-        return `${baseUrl}/store?ref=${encodeURIComponent(referralCode)}`;
+        return buildReferralUrl('https://www.bookmy.bike', referralCode);
     }, [referralCode]);
 
     const referralText = useMemo(() => {

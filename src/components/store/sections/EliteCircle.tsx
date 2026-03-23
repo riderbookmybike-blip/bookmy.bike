@@ -71,7 +71,7 @@ export function EliteCircle() {
                 <div className="absolute inset-0 bg-white opacity-100 transition-colors duration-1000" />
                 {/* Standardized 'Bottom-Up' Ruby Soft Tint (Light Theme) */}
                 <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full h-[80%] bg-[radial-gradient(circle_at_50%_100%,rgba(153,27,27,0.06),transparent_75%)] transition-all duration-1000" />
-                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.02] mix-blend-multiply" />
+                <div className="absolute inset-0 bg-[url('/images/noise.svg')] opacity-[0.02] mix-blend-multiply" />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-50 via-transparent to-black/5 transition-colors duration-1000" />
             </div>
 

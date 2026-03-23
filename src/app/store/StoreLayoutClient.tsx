@@ -14,7 +14,7 @@ const VehicleSearchOverlay = dynamic(
     { ssr: false }
 );
 import { FavoritesProvider } from '@/lib/favorites/favoritesContext';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { ColorProvider } from '@/contexts/ColorContext';
 import { DiscoveryProvider } from '@/contexts/DiscoveryContext';
 import { getSelfMemberLocation } from '@/actions/members';
@@ -27,6 +27,20 @@ interface StoreLayoutClientProps {
     children: React.ReactNode;
     initialDevice: 'phone' | 'desktop';
 }
+
+const REFERRAL_STORAGE_KEY = 'bkmb_referral_code';
+const REFERRAL_QUERY_KEYS = ['ref', 'referral', 'referral_code', 'code'] as const;
+const REFERRAL_CODE_PATTERN = /^[A-Z0-9_-]{3,32}$/;
+
+const extractReferralFromSearchParams = (params: URLSearchParams): string => {
+    for (const key of REFERRAL_QUERY_KEYS) {
+        const value = String(params.get(key) || '')
+            .trim()
+            .toUpperCase();
+        if (REFERRAL_CODE_PATTERN.test(value)) return value;
+    }
+    return '';
+};
 
 const readLatLng = (value: any): { lat: number | null; lng: number | null } => {
     const latRaw = value?.lat ?? value?.latitude;
@@ -42,6 +56,7 @@ const readLatLng = (value: any): { lat: number | null; lng: number | null } => {
 export default function StoreLayoutClient({ children }: StoreLayoutClientProps) {
     const [isLoginOpen, setIsLoginOpen] = useState(false);
     const [isSearchOpen, setIsSearchOpen] = useState(false);
+    const searchParams = useSearchParams();
 
     useEffect(() => {
         const handleOpenLogin = () => setIsLoginOpen(true);
@@ -183,6 +198,21 @@ export default function StoreLayoutClient({ children }: StoreLayoutClientProps) 
 
         bootstrapLocation();
     }, []);
+
+    // Global referral capture for all /store pages.
+    // This ensures links like /store?ref=XXXX persist referral into localStorage
+    // before user navigates deeper to PDP or opens LoginSidebar.
+    useEffect(() => {
+        if (!searchParams) return;
+        try {
+            const referral = extractReferralFromSearchParams(searchParams);
+            if (referral) {
+                localStorage.setItem(REFERRAL_STORAGE_KEY, referral);
+            }
+        } catch {
+            // Ignore storage failures (private mode policies, etc.)
+        }
+    }, [searchParams]);
 
     const pathname = usePathname();
     const isLandingPage = pathname === '/store' || pathname === '/' || pathname?.match(/^\/d[2-8]$/);
