@@ -3,7 +3,7 @@
 import { adminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 
-export type MemberEventType = 'SESSION_START' | 'SESSION_END' | 'PAGE_VIEW';
+export type MemberEventType = 'SESSION_START' | 'SESSION_END' | 'PAGE_VIEW' | 'HEARTBEAT';
 
 /**
  * Auth-hardened tracker: ignores the client-passed memberId and instead
@@ -34,12 +34,31 @@ export async function trackMemberEvent(
         }
 
         await adminClient.from('id_member_events').insert({
-            member_id: user.id, // always use the server-resolved id
+            member_id: user.id,
             tenant_id: null,
             event_type: eventType,
             payload: payload as any,
             created_by: null,
         });
+
+        // Upsert presence row — gives AUMS realtime push instantly
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const presenceTable = (adminClient as any).from('id_member_presence');
+        if (eventType === 'SESSION_END') {
+            await presenceTable.delete().eq('member_id', user.id);
+        } else {
+            await presenceTable.upsert(
+                {
+                    member_id: user.id,
+                    current_url: (payload.url as string) ?? null,
+                    device: (payload.device as string) ?? null,
+                    session_id: (payload.session_id as string) ?? null,
+                    event_type: eventType,
+                    updated_at: new Date().toISOString(),
+                },
+                { onConflict: 'member_id' }
+            );
+        }
     } catch {
         // fire-and-forget — never block the user
     }

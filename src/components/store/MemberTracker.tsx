@@ -93,7 +93,21 @@ export function MemberTracker({ memberId }: MemberTrackerProps) {
         };
     }, [memberId]);
 
-    // PAGE_VIEW — on route change (records time spent on the PREVIOUS page)
+    // HEARTBEAT — every 5 min so AUMS "Live Now" stays accurate while member is idle on a page
+    useEffect(() => {
+        if (!memberId) return;
+        const interval = setInterval(
+            () => {
+                trackMemberEvent(memberId, 'HEARTBEAT', {
+                    session_id: sessionIdRef.current,
+                    url: pathname,
+                });
+            },
+            5 * 60 * 1000
+        );
+        return () => clearInterval(interval);
+    }, [memberId, pathname]);
+
     useEffect(() => {
         if (!memberId) return;
         const prev = prevPathRef.current;
