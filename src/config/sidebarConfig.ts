@@ -376,7 +376,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
         items: [
             {
                 title: 'WhatsApp Campaigns',
-                href: '/app/aums/campaigns',
+                href: '/aums/campaigns',
                 icon: Send,
                 color: 'text-green-500',
                 allowedTenants: ['AUMS'],
@@ -437,18 +437,11 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
             },
             {
                 title: 'Service Areas',
-                href: '/superadmin/service-area',
+                href: '/aums/service-area',
                 icon: MapPin,
                 color: 'text-red-500',
-                allowedTenants: ['MARKETPLACE', 'AUMS'],
-                allowedRoles: [
-                    'OWNER',
-                    'ADMIN',
-                    'SUPER_ADMIN',
-                    'MARKETPLACE_ADMIN',
-                    'DEALERSHIP_ADMIN',
-                    'DEALERSHIP_STAFF',
-                ],
+                allowedTenants: ['AUMS'],
+                allowedRoles: ['OWNER', 'ADMIN', 'SUPER_ADMIN', 'MARKETPLACE_ADMIN'],
             },
             {
                 title: 'Finance Status',
@@ -619,7 +612,7 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
             },
             {
                 title: 'Template Studio',
-                href: '/app/aums/dashboard/admin/templates',
+                href: '/aums/dashboard/admin/templates',
                 icon: LayoutDashboard,
                 color: 'text-indigo-600',
                 allowedTenants: ['AUMS'],

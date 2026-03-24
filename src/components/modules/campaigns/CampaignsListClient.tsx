@@ -74,7 +74,7 @@ export function CampaignsListClient({ campaigns }: Props) {
                 batch_size: batchSize,
                 batch_delay_min: batchDelay,
             });
-            if (res.success && res.id) router.push(`/app/aums/campaigns/${res.id}`);
+            if (res.success && res.id) router.push(`/aums/campaigns/${res.id}`);
             else setFormError(res.error ?? 'Failed to create campaign');
         });
     };
@@ -157,7 +157,7 @@ export function CampaignsListClient({ campaigns }: Props) {
                             return (
                                 <Link
                                     key={c.id}
-                                    href={`/app/aums/campaigns/${c.id}`}
+                                    href={`/aums/campaigns/${c.id}`}
                                     className="group bg-white rounded-2xl border border-slate-200/80 px-6 py-4 flex items-center gap-5 shadow-sm hover:shadow-md hover:border-emerald-200 transition-all"
                                 >
                                     {/* Status dot */}

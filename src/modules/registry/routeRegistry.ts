@@ -57,8 +57,8 @@ export const ROUTE_REGISTRY: Record<string, RegisteredRoute> = {
     'admin-users': { path: '/dashboard/users', label: 'System Users', icon: Users },
     'admin-audit': { path: '/audit-logs', label: 'Audit Logs', icon: History },
     'admin-brand': { path: '/dashboard/design-system', label: 'Brand Guidelines', icon: Tags },
-    'admin-service-area': { path: '/superadmin/service-area', label: 'Service Areas', icon: MapPin },
-    'admin-templates': { path: '/app/aums/dashboard/admin/templates', label: 'Template Studio', icon: LayoutDashboard },
+    'admin-service-area': { path: '/aums/service-area', label: 'Service Areas', icon: MapPin },
+    'admin-templates': { path: '/aums/dashboard/admin/templates', label: 'Template Studio', icon: LayoutDashboard },
 
     // --- CONTENT ---
     'content-blog': { path: '/dashboard/blog', label: 'Blog Management', icon: ScrollText },

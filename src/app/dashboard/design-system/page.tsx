@@ -1,7 +1,35 @@
 'use client';
 
 import React from 'react';
-import { Copy, Check, Palette, Moon, Sun, RefreshCw, Bike, Search, User, ChevronRight, ArrowRight, X, Menu, Shield, Zap, Star, Heart, Package, Tag, Clock, Activity, MoreHorizontal, Filter, Download, FileJson, FileType, FileText } from 'lucide-react';
+import {
+    Copy,
+    Check,
+    Palette,
+    Moon,
+    Sun,
+    RefreshCw,
+    Bike,
+    Search,
+    User,
+    ChevronRight,
+    ArrowRight,
+    X,
+    Menu,
+    Shield,
+    Zap,
+    Star,
+    Heart,
+    Package,
+    Tag,
+    Clock,
+    Activity,
+    MoreHorizontal,
+    Filter,
+    Download,
+    FileJson,
+    FileType,
+    FileText,
+} from 'lucide-react';
 import { Logo } from '@/components/brand/Logo';
 import tokens from '@/config/design-tokens';
 import ProductCard from '@/components/registry/ProductCard';
@@ -13,7 +41,7 @@ import TablePreview from '@/components/registry/TablePreview';
 
 /**
  * AUMS Brand Guidelines "Vault"
- * 
+ *
  * Accessible only to SuperAdmins via Dashboard.
  * Reference for all Brand Assets.
  */
@@ -38,18 +66,23 @@ export default function BrandGuidelinesPage() {
         {
             title: 'Component Registry',
             desc: 'Single source of truth for reusable UI components, variants, and usage.',
-            items: ['ProductCard', 'LeadCard', 'QuoteCard', 'BookingCard', 'Header', 'Footer', 'Table', 'StatusBadge']
+            items: ['ProductCard', 'LeadCard', 'QuoteCard', 'BookingCard', 'Header', 'Footer', 'Table', 'StatusBadge'],
         },
         {
             title: 'UI Contracts',
             desc: 'Explicit data-field mapping for every component to avoid new ad-hoc UI.',
-            items: ['image → product.image_url', 'price → product.price', 'title → product.name', 'cta → /store/[make]/[model]/[variant]']
+            items: [
+                'image → product.image_url',
+                'price → product.price',
+                'title → product.name',
+                'cta → /store/[make]/[model]/[variant]',
+            ],
         },
         {
             title: 'Layout Templates',
             desc: 'Standard page structures to reuse across CRM + Marketplace.',
-            items: ['V1: Cards + Info', 'V2: List', 'V3: Grid', 'V4: Kanban', 'V5: List + Detail']
-        }
+            items: ['V1: Cards + Info', 'V2: List', 'V3: Grid', 'V4: Kanban', 'V5: List + Detail'],
+        },
     ];
 
     const layoutTemplates = [
@@ -176,7 +209,6 @@ export default function BrandGuidelinesPage() {
 
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-900 font-sans p-8 md:p-12 space-y-16 pb-40">
-
             {/* Header */}
             <header className="space-y-4 border-b border-slate-200 dark:border-white/10 pb-8">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs font-black uppercase tracking-widest">
@@ -189,12 +221,12 @@ export default function BrandGuidelinesPage() {
                     Design System + UI Contracts + Component Registry
                 </h2>
                 <p className="text-lg text-slate-500 dark:text-slate-400 max-w-2xl">
-                    The single source of truth for the {tokens.meta.name} brand.
-                    Use these tokens to ensure consistency across the entire ecosystem.
+                    The single source of truth for the {tokens.meta.name} brand. Use these tokens to ensure consistency
+                    across the entire ecosystem.
                 </p>
                 <div className="pt-4">
                     <a
-                        href="/app/aums/dashboard/admin/templates"
+                        href="/aums/dashboard/admin/templates"
                         className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-slate-200 dark:border-white/10 bg-white/70 dark:bg-white/5 text-xs font-black uppercase tracking-widest text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-white/10 transition-colors"
                     >
                         Open Template Studio
@@ -206,7 +238,9 @@ export default function BrandGuidelinesPage() {
             <section className="space-y-8">
                 <div className="space-y-2">
                     <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-3">
-                        <span className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs">00</span>
+                        <span className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs">
+                            00
+                        </span>
                         Design System Registry
                     </h2>
                     <p className="text-slate-500">Master reference for reusable UI, contracts, and templates.</p>
@@ -214,8 +248,13 @@ export default function BrandGuidelinesPage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {registryCards.map(card => (
-                        <div key={card.title} className="bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-200 dark:border-white/5 shadow-sm space-y-4">
-                            <h3 className="text-sm font-black uppercase tracking-widest text-slate-900 dark:text-white">{card.title}</h3>
+                        <div
+                            key={card.title}
+                            className="bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-200 dark:border-white/5 shadow-sm space-y-4"
+                        >
+                            <h3 className="text-sm font-black uppercase tracking-widest text-slate-900 dark:text-white">
+                                {card.title}
+                            </h3>
                             <p className="text-xs text-slate-500 dark:text-slate-400">{card.desc}</p>
                             <div className="flex flex-wrap gap-2">
                                 {card.items.map(item => (
@@ -234,8 +273,12 @@ export default function BrandGuidelinesPage() {
                 <div className="space-y-6">
                     <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                         <div className="space-y-1">
-                            <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">Component Preview Library</h3>
-                            <p className="text-xs text-slate-500">These are the only approved cards/badges/tables. Do not create new ones.</p>
+                            <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                                Component Preview Library
+                            </h3>
+                            <p className="text-xs text-slate-500">
+                                These are the only approved cards/badges/tables. Do not create new ones.
+                            </p>
                         </div>
                         <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl w-fit">
                             <button
@@ -273,7 +316,9 @@ export default function BrandGuidelinesPage() {
             <section className="space-y-8">
                 <div className="space-y-2">
                     <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-3">
-                        <span className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center text-xs">00b</span>
+                        <span className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center text-xs">
+                            00b
+                        </span>
                         UI Contracts
                     </h2>
                     <p className="text-slate-500">Data mapping rules to keep UI consistent across pages.</p>
@@ -291,10 +336,17 @@ export default function BrandGuidelinesPage() {
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-white/5">
                             {contractRows.map(row => (
-                                <tr key={`${row.component}-${row.field}`} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
-                                    <td className="px-6 py-4 font-black text-slate-900 dark:text-white">{row.component}</td>
+                                <tr
+                                    key={`${row.component}-${row.field}`}
+                                    className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
+                                >
+                                    <td className="px-6 py-4 font-black text-slate-900 dark:text-white">
+                                        {row.component}
+                                    </td>
                                     <td className="px-6 py-4 text-slate-600 dark:text-slate-300">{row.field}</td>
-                                    <td className="px-6 py-4 font-mono text-slate-500 dark:text-slate-400">{row.source}</td>
+                                    <td className="px-6 py-4 font-mono text-slate-500 dark:text-slate-400">
+                                        {row.source}
+                                    </td>
                                     <td className="px-6 py-4 text-slate-500 dark:text-slate-400">{row.format}</td>
                                 </tr>
                             ))}
@@ -307,16 +359,25 @@ export default function BrandGuidelinesPage() {
             <section className="space-y-8">
                 <div className="space-y-2">
                     <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-3">
-                        <span className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-xs">00c</span>
+                        <span className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-xs">
+                            00c
+                        </span>
                         Layout Templates
                     </h2>
-                    <p className="text-slate-500">Use these layouts for CRM + Marketplace pages to avoid new ad-hoc structures.</p>
+                    <p className="text-slate-500">
+                        Use these layouts for CRM + Marketplace pages to avoid new ad-hoc structures.
+                    </p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {layoutTemplates.map(template => (
-                        <div key={template.id} className="bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-200 dark:border-white/5 shadow-sm space-y-3">
-                            <div className="text-[10px] font-black uppercase tracking-widest text-indigo-600">{template.id}</div>
+                        <div
+                            key={template.id}
+                            className="bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-200 dark:border-white/5 shadow-sm space-y-3"
+                        >
+                            <div className="text-[10px] font-black uppercase tracking-widest text-indigo-600">
+                                {template.id}
+                            </div>
                             <h3 className="text-lg font-black text-slate-900 dark:text-white">{template.title}</h3>
                             <p className="text-xs text-slate-500 dark:text-slate-400">{template.desc}</p>
                         </div>
@@ -328,7 +389,9 @@ export default function BrandGuidelinesPage() {
             <section className="space-y-8">
                 <div className="space-y-2">
                     <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-3">
-                        <span className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center text-xs">01</span>
+                        <span className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center text-xs">
+                            01
+                        </span>
                         Logo Variants
                     </h2>
                     <p className="text-slate-500">Official logomarks for different contexts and backgrounds.</p>
@@ -397,7 +460,9 @@ export default function BrandGuidelinesPage() {
             <section className="space-y-8">
                 <div className="space-y-2">
                     <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-3">
-                        <span className="w-8 h-8 rounded-lg bg-purple-600 text-white flex items-center justify-center text-xs">02</span>
+                        <span className="w-8 h-8 rounded-lg bg-purple-600 text-white flex items-center justify-center text-xs">
+                            02
+                        </span>
                         Live Logo Tester
                     </h2>
                     <p className="text-slate-500">Separately customize the icon and the .bike suffix.</p>
@@ -407,7 +472,6 @@ export default function BrandGuidelinesPage() {
                     <div className="flex flex-col md:flex-row h-[500px]">
                         {/* Controls Panel */}
                         <div className="w-full md:w-1/3 bg-slate-50 dark:bg-slate-900/50 p-8 border-b md:border-b-0 md:border-r border-slate-200 dark:border-white/5 flex flex-col gap-6 overflow-y-auto">
-
                             <div className="space-y-2">
                                 <label className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
                                     <span className="w-3 h-3 rounded-full bg-slate-400"></span> Icon Color
@@ -416,13 +480,13 @@ export default function BrandGuidelinesPage() {
                                     <input
                                         type="color"
                                         value={iconColor}
-                                        onChange={(e) => setIconColor(e.target.value)}
+                                        onChange={e => setIconColor(e.target.value)}
                                         className="w-10 h-10 rounded-lg cursor-pointer border-0 p-0 bg-transparent"
                                     />
                                     <input
                                         type="text"
                                         value={iconColor}
-                                        onChange={(e) => setIconColor(e.target.value)}
+                                        onChange={e => setIconColor(e.target.value)}
                                         className="bg-transparent border-none p-0 text-sm font-mono font-bold text-slate-600 dark:text-slate-300 focus:ring-0 w-24 uppercase"
                                     />
                                 </div>
@@ -436,13 +500,13 @@ export default function BrandGuidelinesPage() {
                                     <input
                                         type="color"
                                         value={bikeColor}
-                                        onChange={(e) => setBikeColor(e.target.value)}
+                                        onChange={e => setBikeColor(e.target.value)}
                                         className="w-10 h-10 rounded-lg cursor-pointer border-0 p-0 bg-transparent"
                                     />
                                     <input
                                         type="text"
                                         value={bikeColor}
-                                        onChange={(e) => setBikeColor(e.target.value)}
+                                        onChange={e => setBikeColor(e.target.value)}
                                         className="bg-transparent border-none p-0 text-sm font-mono font-bold text-slate-600 dark:text-slate-300 focus:ring-0 w-24 uppercase"
                                     />
                                 </div>
@@ -460,21 +524,22 @@ export default function BrandGuidelinesPage() {
                                     <input
                                         type="color"
                                         value={bookmyColor}
-                                        onChange={(e) => setBookmyColor(e.target.value)}
+                                        onChange={e => setBookmyColor(e.target.value)}
                                         className="w-10 h-10 rounded-lg cursor-pointer border-0 p-0 bg-transparent"
                                     />
                                     <input
                                         type="text"
                                         value={bookmyColor}
-                                        onChange={(e) => setBookmyColor(e.target.value)}
+                                        onChange={e => setBookmyColor(e.target.value)}
                                         className="bg-transparent border-none p-0 text-sm font-mono font-bold text-slate-600 dark:text-slate-300 focus:ring-0 w-24 uppercase"
                                     />
                                 </div>
                             </div>
 
-
                             <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-white/10">
-                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Background</label>
+                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest">
+                                    Background
+                                </label>
                                 <div className="flex gap-2">
                                     <button
                                         onClick={() => setPlaygroundBg('light')}
@@ -506,14 +571,21 @@ export default function BrandGuidelinesPage() {
                         </div>
 
                         {/* Preview Panel */}
-                        <div className={`w-full md:w-2/3 relative flex items-center justify-center transition-colors duration-500 ${playgroundBg === 'light' ? 'bg-white' : playgroundBg === 'dark' ? 'bg-[#020617]' : 'bg-[url("/images/grid.png")]'
-                            }`}>
+                        <div
+                            className={`w-full md:w-2/3 relative flex items-center justify-center transition-colors duration-500 ${
+                                playgroundBg === 'light'
+                                    ? 'bg-white'
+                                    : playgroundBg === 'dark'
+                                      ? 'bg-[#020617]'
+                                      : 'bg-[url("/images/grid.png")]'
+                            }`}
+                        >
                             <div className="scale-150 transform transition-all duration-300">
                                 <Logo
                                     customColors={{
                                         icon: iconColor,
                                         bike: bikeColor,
-                                        bookmy: bookmyColor
+                                        bookmy: bookmyColor,
                                     }}
                                     variant="full"
                                     size={80}
@@ -521,7 +593,11 @@ export default function BrandGuidelinesPage() {
                             </div>
 
                             <div className="absolute bottom-8 right-8 flex flex-col gap-2 text-right opacity-50">
-                                <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${playgroundBg === 'dark' ? 'text-white' : 'text-slate-900'}`}>Live Preview</span>
+                                <span
+                                    className={`text-[10px] font-black uppercase tracking-[0.2em] ${playgroundBg === 'dark' ? 'text-white' : 'text-slate-900'}`}
+                                >
+                                    Live Preview
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -533,10 +609,14 @@ export default function BrandGuidelinesPage() {
                 <div className="flex items-start justify-between">
                     <div className="space-y-2">
                         <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-3">
-                            <span className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-xs">02b</span>
+                            <span className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-xs">
+                                02b
+                            </span>
                             Live Context Preview
                         </h2>
-                        <p className="text-slate-500">Your custom logo colors from above applied to actual Header & Footer.</p>
+                        <p className="text-slate-500">
+                            Your custom logo colors from above applied to actual Header & Footer.
+                        </p>
                     </div>
 
                     {/* Theme Toggle */}
@@ -559,29 +639,42 @@ export default function BrandGuidelinesPage() {
                 {/* Header Preview with Custom Colors */}
                 <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                        <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Header Preview ({previewTheme === 'dark' ? 'Dark' : 'Light'} Mode)</span>
-                        <span className="text-[10px] font-mono text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded">MarketplaceHeader.tsx</span>
+                        <span className="text-xs font-black text-slate-400 uppercase tracking-widest">
+                            Header Preview ({previewTheme === 'dark' ? 'Dark' : 'Light'} Mode)
+                        </span>
+                        <span className="text-[10px] font-mono text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded">
+                            MarketplaceHeader.tsx
+                        </span>
                     </div>
-                    <div className={`rounded-2xl border shadow-lg overflow-hidden transition-colors duration-300 ${previewTheme === 'dark' ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-200'}`}>
+                    <div
+                        className={`rounded-2xl border shadow-lg overflow-hidden transition-colors duration-300 ${previewTheme === 'dark' ? 'bg-slate-900 border-white/10' : 'bg-white border-slate-200'}`}
+                    >
                         <div className="flex items-center justify-between px-6 py-4">
                             <div className="flex items-center gap-8">
                                 <Logo
                                     customColors={{
                                         icon: iconColor,
                                         bike: bikeColor,
-                                        bookmy: previewTheme === 'dark' ? '#FFFFFF' : bookmyColor
+                                        bookmy: previewTheme === 'dark' ? '#FFFFFF' : bookmyColor,
                                     }}
                                     variant="full"
                                     size={36}
                                 />
                                 <nav className="hidden md:flex items-center gap-6">
-                                    {['Home', 'Compare', 'Zero'].map((item) => (
-                                        <span key={item} className={`text-sm font-medium cursor-pointer transition-colors ${previewTheme === 'dark' ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`}>{item}</span>
+                                    {['Home', 'Compare', 'Zero'].map(item => (
+                                        <span
+                                            key={item}
+                                            className={`text-sm font-medium cursor-pointer transition-colors ${previewTheme === 'dark' ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`}
+                                        >
+                                            {item}
+                                        </span>
                                     ))}
                                 </nav>
                             </div>
                             <div className="flex items-center gap-4">
-                                <button className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-bold uppercase tracking-wide ${previewTheme === 'dark' ? 'border-white/20 text-white bg-white/10' : 'border-slate-200 text-slate-700 bg-slate-50'}`}>
+                                <button
+                                    className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-bold uppercase tracking-wide ${previewTheme === 'dark' ? 'border-white/20 text-white bg-white/10' : 'border-slate-200 text-slate-700 bg-slate-50'}`}
+                                >
                                     <User size={14} /> Sign In
                                 </button>
                             </div>
@@ -592,27 +685,43 @@ export default function BrandGuidelinesPage() {
                 {/* Footer Preview with Custom Colors */}
                 <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                        <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Footer Preview ({previewTheme === 'dark' ? 'Dark' : 'Light'} Mode)</span>
-                        <span className="text-[10px] font-mono text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded">Footer.tsx</span>
+                        <span className="text-xs font-black text-slate-400 uppercase tracking-widest">
+                            Footer Preview ({previewTheme === 'dark' ? 'Dark' : 'Light'} Mode)
+                        </span>
+                        <span className="text-[10px] font-mono text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded">
+                            Footer.tsx
+                        </span>
                     </div>
-                    <div className={`rounded-2xl border shadow-lg overflow-hidden transition-colors duration-300 p-8 ${previewTheme === 'dark' ? 'bg-slate-950 border-white/5' : 'bg-white border-slate-200'}`}>
+                    <div
+                        className={`rounded-2xl border shadow-lg overflow-hidden transition-colors duration-300 p-8 ${previewTheme === 'dark' ? 'bg-slate-950 border-white/5' : 'bg-white border-slate-200'}`}
+                    >
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
                             <div className="space-y-4">
                                 <Logo
                                     customColors={{
                                         icon: iconColor,
                                         bike: bikeColor,
-                                        bookmy: previewTheme === 'dark' ? '#FFFFFF' : bookmyColor
+                                        bookmy: previewTheme === 'dark' ? '#FFFFFF' : bookmyColor,
                                     }}
                                     variant="full"
                                     size={40}
                                 />
-                                <p className={`text-xs leading-relaxed ${previewTheme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>India's premier marketplace for the next generation of riders.</p>
+                                <p
+                                    className={`text-xs leading-relaxed ${previewTheme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}
+                                >
+                                    India's premier marketplace for the next generation of riders.
+                                </p>
                             </div>
-                            {['Portfolio', 'Brands', 'Legal'].map((section) => (
+                            {['Portfolio', 'Brands', 'Legal'].map(section => (
                                 <div key={section} className="space-y-3">
-                                    <h4 className={`text-xs font-black uppercase tracking-widest ${previewTheme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>{section}</h4>
-                                    <div className={`space-y-2 text-sm ${previewTheme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}>
+                                    <h4
+                                        className={`text-xs font-black uppercase tracking-widest ${previewTheme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}
+                                    >
+                                        {section}
+                                    </h4>
+                                    <div
+                                        className={`space-y-2 text-sm ${previewTheme === 'dark' ? 'text-slate-500' : 'text-slate-400'}`}
+                                    >
                                         <p className="hover:opacity-70 cursor-pointer">Link One</p>
                                         <p className="hover:opacity-70 cursor-pointer">Link Two</p>
                                         <p className="hover:opacity-70 cursor-pointer">Link Three</p>
@@ -620,8 +729,12 @@ export default function BrandGuidelinesPage() {
                                 </div>
                             ))}
                         </div>
-                        <div className={`border-t mt-8 pt-6 flex items-center justify-between ${previewTheme === 'dark' ? 'border-white/5' : 'border-slate-100'}`}>
-                            <p className={`text-xs ${previewTheme === 'dark' ? 'text-slate-600' : 'text-slate-400'}`}>© 2026 BookMy.Bike Technologies. Built for Excellence.</p>
+                        <div
+                            className={`border-t mt-8 pt-6 flex items-center justify-between ${previewTheme === 'dark' ? 'border-white/5' : 'border-slate-100'}`}
+                        >
+                            <p className={`text-xs ${previewTheme === 'dark' ? 'text-slate-600' : 'text-slate-400'}`}>
+                                © 2026 BookMy.Bike Technologies. Built for Excellence.
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -631,35 +744,44 @@ export default function BrandGuidelinesPage() {
             <section className="space-y-8">
                 <div className="space-y-2">
                     <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-3">
-                        <span className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-600 to-indigo-600 text-white flex items-center justify-center text-xs">02c</span>
+                        <span className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-600 to-indigo-600 text-white flex items-center justify-center text-xs">
+                            02c
+                        </span>
                         Header Transparency Lab
                     </h2>
-                    <p className="text-slate-500">Fine-tune header background color, transparency, and blur for the perfect look.</p>
+                    <p className="text-slate-500">
+                        Fine-tune header background color, transparency, and blur for the perfect look.
+                    </p>
                 </div>
 
                 <div className="bg-white dark:bg-slate-800 rounded-[2.5rem] overflow-hidden border border-slate-200 dark:border-white/5 shadow-2xl">
                     <div className="flex flex-col lg:flex-row">
                         {/* Controls Sidebar */}
                         <div className="w-full lg:w-80 bg-slate-50 dark:bg-slate-900/50 p-8 border-b lg:border-b-0 lg:border-r border-slate-200 dark:border-white/5 space-y-6">
-                            <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Adjust Controls</h3>
+                            <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">
+                                Adjust Controls
+                            </h3>
 
                             {/* Background Color */}
                             <div className="space-y-2">
                                 <label className="text-xs font-bold text-slate-500 flex items-center gap-2">
-                                    <span className="w-3 h-3 rounded-full" style={{ backgroundColor: headerBgColor }}></span>
+                                    <span
+                                        className="w-3 h-3 rounded-full"
+                                        style={{ backgroundColor: headerBgColor }}
+                                    ></span>
                                     Background Color
                                 </label>
                                 <div className="flex items-center gap-3 bg-white dark:bg-black/20 p-2 rounded-xl border border-slate-200 dark:border-white/5">
                                     <input
                                         type="color"
                                         value={headerBgColor}
-                                        onChange={(e) => setHeaderBgColor(e.target.value)}
+                                        onChange={e => setHeaderBgColor(e.target.value)}
                                         className="w-10 h-10 rounded-lg cursor-pointer border-0 p-0 bg-transparent"
                                     />
                                     <input
                                         type="text"
                                         value={headerBgColor}
-                                        onChange={(e) => setHeaderBgColor(e.target.value)}
+                                        onChange={e => setHeaderBgColor(e.target.value)}
                                         className="bg-transparent border-none p-0 text-sm font-mono font-bold text-slate-600 dark:text-slate-300 focus:ring-0 w-24 uppercase"
                                     />
                                 </div>
@@ -668,20 +790,23 @@ export default function BrandGuidelinesPage() {
                             {/* Text Color */}
                             <div className="space-y-2">
                                 <label className="text-xs font-bold text-slate-500 flex items-center gap-2">
-                                    <span className="w-3 h-3 rounded-full" style={{ backgroundColor: headerTextColor }}></span>
+                                    <span
+                                        className="w-3 h-3 rounded-full"
+                                        style={{ backgroundColor: headerTextColor }}
+                                    ></span>
                                     Text Color
                                 </label>
                                 <div className="flex items-center gap-3 bg-white dark:bg-black/20 p-2 rounded-xl border border-slate-200 dark:border-white/5">
                                     <input
                                         type="color"
                                         value={headerTextColor}
-                                        onChange={(e) => setHeaderTextColor(e.target.value)}
+                                        onChange={e => setHeaderTextColor(e.target.value)}
                                         className="w-10 h-10 rounded-lg cursor-pointer border-0 p-0 bg-transparent"
                                     />
                                     <input
                                         type="text"
                                         value={headerTextColor}
-                                        onChange={(e) => setHeaderTextColor(e.target.value)}
+                                        onChange={e => setHeaderTextColor(e.target.value)}
                                         className="bg-transparent border-none p-0 text-sm font-mono font-bold text-slate-600 dark:text-slate-300 focus:ring-0 w-24 uppercase"
                                     />
                                 </div>
@@ -691,14 +816,16 @@ export default function BrandGuidelinesPage() {
                             <div className="space-y-3">
                                 <div className="flex items-center justify-between">
                                     <label className="text-xs font-bold text-slate-500">Background Opacity</label>
-                                    <span className="text-xs font-mono font-black text-indigo-600">{headerOpacity}%</span>
+                                    <span className="text-xs font-mono font-black text-indigo-600">
+                                        {headerOpacity}%
+                                    </span>
                                 </div>
                                 <input
                                     type="range"
                                     min="0"
                                     max="100"
                                     value={headerOpacity}
-                                    onChange={(e) => setHeaderOpacity(Number(e.target.value))}
+                                    onChange={e => setHeaderOpacity(Number(e.target.value))}
                                     className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-600"
                                 />
                                 <div className="flex justify-between text-[10px] text-slate-400">
@@ -718,7 +845,7 @@ export default function BrandGuidelinesPage() {
                                     min="0"
                                     max="40"
                                     value={headerBlur}
-                                    onChange={(e) => setHeaderBlur(Number(e.target.value))}
+                                    onChange={e => setHeaderBlur(Number(e.target.value))}
                                     className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-600"
                                 />
                                 <div className="flex justify-between text-[10px] text-slate-400">
@@ -731,42 +858,66 @@ export default function BrandGuidelinesPage() {
                             <div className="space-y-3">
                                 <div className="flex items-center justify-between">
                                     <label className="text-xs font-bold text-slate-500">Border Opacity</label>
-                                    <span className="text-xs font-mono font-black text-indigo-600">{headerBorderOpacity}%</span>
+                                    <span className="text-xs font-mono font-black text-indigo-600">
+                                        {headerBorderOpacity}%
+                                    </span>
                                 </div>
                                 <input
                                     type="range"
                                     min="0"
                                     max="100"
                                     value={headerBorderOpacity}
-                                    onChange={(e) => setHeaderBorderOpacity(Number(e.target.value))}
+                                    onChange={e => setHeaderBorderOpacity(Number(e.target.value))}
                                     className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-600"
                                 />
                             </div>
 
                             {/* Quick Presets */}
                             <div className="space-y-3 pt-4 border-t border-slate-200 dark:border-white/10">
-                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Quick Presets</label>
+                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest">
+                                    Quick Presets
+                                </label>
                                 <div className="grid grid-cols-2 gap-2">
                                     <button
-                                        onClick={() => { setHeaderBgColor('#000000'); setHeaderOpacity(30); setHeaderBlur(12); setHeaderTextColor('#FFFFFF'); }}
+                                        onClick={() => {
+                                            setHeaderBgColor('#000000');
+                                            setHeaderOpacity(30);
+                                            setHeaderBlur(12);
+                                            setHeaderTextColor('#FFFFFF');
+                                        }}
                                         className="px-3 py-2 rounded-xl bg-black text-white text-[10px] font-bold uppercase"
                                     >
                                         Glass Dark
                                     </button>
                                     <button
-                                        onClick={() => { setHeaderBgColor('#FFFFFF'); setHeaderOpacity(80); setHeaderBlur(20); setHeaderTextColor('#000000'); }}
+                                        onClick={() => {
+                                            setHeaderBgColor('#FFFFFF');
+                                            setHeaderOpacity(80);
+                                            setHeaderBlur(20);
+                                            setHeaderTextColor('#000000');
+                                        }}
                                         className="px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-[10px] font-bold uppercase"
                                     >
                                         Glass Light
                                     </button>
                                     <button
-                                        onClick={() => { setHeaderBgColor('#000000'); setHeaderOpacity(100); setHeaderBlur(0); setHeaderTextColor('#FFFFFF'); }}
+                                        onClick={() => {
+                                            setHeaderBgColor('#000000');
+                                            setHeaderOpacity(100);
+                                            setHeaderBlur(0);
+                                            setHeaderTextColor('#FFFFFF');
+                                        }}
                                         className="px-3 py-2 rounded-xl bg-slate-900 text-white text-[10px] font-bold uppercase"
                                     >
                                         Solid Black
                                     </button>
                                     <button
-                                        onClick={() => { setHeaderBgColor('#000000'); setHeaderOpacity(0); setHeaderBlur(0); setHeaderTextColor('#FFFFFF'); }}
+                                        onClick={() => {
+                                            setHeaderBgColor('#000000');
+                                            setHeaderOpacity(0);
+                                            setHeaderBlur(0);
+                                            setHeaderTextColor('#FFFFFF');
+                                        }}
                                         className="px-3 py-2 rounded-xl bg-gradient-to-r from-slate-200 to-slate-300 text-slate-600 text-[10px] font-bold uppercase"
                                     >
                                         Transparent
@@ -776,16 +927,24 @@ export default function BrandGuidelinesPage() {
 
                             {/* Generated CSS Output */}
                             <div className="space-y-3 pt-4 border-t border-slate-200 dark:border-white/10">
-                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Generated Tailwind</label>
+                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest">
+                                    Generated Tailwind
+                                </label>
                                 <div className="bg-slate-900 rounded-xl p-4 text-[10px] font-mono text-emerald-400 overflow-x-auto">
                                     <code>
-                                        bg-[{headerBgColor}]/{headerOpacity}<br />
-                                        backdrop-blur-[{headerBlur}px]<br />
+                                        bg-[{headerBgColor}]/{headerOpacity}
+                                        <br />
+                                        backdrop-blur-[{headerBlur}px]
+                                        <br />
                                         border-white/{headerBorderOpacity}
                                     </code>
                                 </div>
                                 <button
-                                    onClick={() => copyToClipboard(`bg-[${headerBgColor}]/${headerOpacity} backdrop-blur-[${headerBlur}px] border-white/${headerBorderOpacity}`)}
+                                    onClick={() =>
+                                        copyToClipboard(
+                                            `bg-[${headerBgColor}]/${headerOpacity} backdrop-blur-[${headerBlur}px] border-white/${headerBorderOpacity}`
+                                        )
+                                    }
                                     className="w-full py-2 rounded-xl border border-slate-200 dark:border-white/10 text-xs font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors flex items-center justify-center gap-2"
                                 >
                                     <Copy size={12} /> Copy Classes
@@ -801,7 +960,9 @@ export default function BrandGuidelinesPage() {
                                 <div className="absolute inset-0 flex items-center justify-center">
                                     <div className="text-center space-y-4 opacity-50">
                                         <Bike size={120} className="mx-auto text-white/30" />
-                                        <p className="text-white/50 text-lg font-bold uppercase tracking-widest">Page Content</p>
+                                        <p className="text-white/50 text-lg font-bold uppercase tracking-widest">
+                                            Page Content
+                                        </p>
                                     </div>
                                 </div>
                             </div>
@@ -810,10 +971,12 @@ export default function BrandGuidelinesPage() {
                             <div
                                 className="relative z-10 flex items-center justify-between px-6 py-4 border-b transition-all duration-300"
                                 style={{
-                                    backgroundColor: `${headerBgColor}${Math.round(headerOpacity * 2.55).toString(16).padStart(2, '0')}`,
+                                    backgroundColor: `${headerBgColor}${Math.round(headerOpacity * 2.55)
+                                        .toString(16)
+                                        .padStart(2, '0')}`,
                                     backdropFilter: `blur(${headerBlur}px)`,
                                     WebkitBackdropFilter: `blur(${headerBlur}px)`,
-                                    borderColor: `rgba(255, 255, 255, ${headerBorderOpacity / 100})`
+                                    borderColor: `rgba(255, 255, 255, ${headerBorderOpacity / 100})`,
                                 }}
                             >
                                 <div className="flex items-center gap-8">
@@ -821,13 +984,13 @@ export default function BrandGuidelinesPage() {
                                         customColors={{
                                             icon: iconColor,
                                             bike: bikeColor,
-                                            bookmy: headerTextColor
+                                            bookmy: headerTextColor,
                                         }}
                                         variant="full"
                                         size={36}
                                     />
                                     <nav className="hidden md:flex items-center gap-6">
-                                        {['Home', 'Catalog', 'Compare', 'Zero'].map((item) => (
+                                        {['Home', 'Catalog', 'Compare', 'Zero'].map(item => (
                                             <span
                                                 key={item}
                                                 className="text-sm font-medium cursor-pointer transition-colors hover:opacity-70"
@@ -844,7 +1007,7 @@ export default function BrandGuidelinesPage() {
                                         style={{
                                             borderColor: `${headerTextColor}40`,
                                             color: headerTextColor,
-                                            backgroundColor: `${headerTextColor}15`
+                                            backgroundColor: `${headerTextColor}15`,
                                         }}
                                     >
                                         <User size={14} /> Sign In
@@ -865,24 +1028,33 @@ export default function BrandGuidelinesPage() {
             <section className="space-y-8">
                 <div className="space-y-2">
                     <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-3">
-                        <span className="w-8 h-8 rounded-lg bg-pink-600 text-white flex items-center justify-center text-xs">03</span>
+                        <span className="w-8 h-8 rounded-lg bg-pink-600 text-white flex items-center justify-center text-xs">
+                            03
+                        </span>
                         Typography
                     </h2>
-                    <p className="text-slate-500">The primary typeface is <span className="font-bold text-slate-900 dark:text-white">Inter</span>, optimized for legibility and modern aesthetics.</p>
+                    <p className="text-slate-500">
+                        The primary typeface is <span className="font-bold text-slate-900 dark:text-white">Inter</span>,
+                        optimized for legibility and modern aesthetics.
+                    </p>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     {/* Headings Card */}
                     <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-8 border border-slate-200 dark:border-white/5 space-y-8">
                         <div className="border-b border-slate-100 dark:border-white/5 pb-4 mb-4">
-                            <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Brand Headings</span>
+                            <span className="text-xs font-black text-slate-400 uppercase tracking-widest">
+                                Brand Headings
+                            </span>
                         </div>
 
                         <div className="space-y-6">
                             <div className="space-y-2">
                                 <p className="text-xs text-slate-400 font-mono">Display / 900 / Italic / Uppercase</p>
                                 <h1 className="text-5xl md:text-6xl font-black uppercase italic tracking-tighter text-slate-900 dark:text-white">
-                                    The Future<br />of Mobility.
+                                    The Future
+                                    <br />
+                                    of Mobility.
                                 </h1>
                             </div>
                             <div className="space-y-2">
@@ -904,26 +1076,44 @@ export default function BrandGuidelinesPage() {
                     <div className="space-y-8">
                         <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-8 border border-slate-200 dark:border-white/5 space-y-6">
                             <div className="border-b border-slate-100 dark:border-white/5 pb-4 mb-4">
-                                <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Weights & Body</span>
+                                <span className="text-xs font-black text-slate-400 uppercase tracking-widest">
+                                    Weights & Body
+                                </span>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <div className="h-12 flex items-center"><span className="font-black text-2xl">Aa</span> <span className="ml-2 text-xs text-slate-400">900 Black</span></div>
-                                    <div className="h-12 flex items-center"><span className="font-bold text-2xl">Aa</span> <span className="ml-2 text-xs text-slate-400">700 Bold</span></div>
-                                    <div className="h-12 flex items-center"><span className="font-medium text-2xl">Aa</span> <span className="ml-2 text-xs text-slate-400">500 Medium</span></div>
-                                    <div className="h-12 flex items-center"><span className="font-normal text-2xl">Aa</span> <span className="ml-2 text-xs text-slate-400">400 Regular</span></div>
+                                    <div className="h-12 flex items-center">
+                                        <span className="font-black text-2xl">Aa</span>{' '}
+                                        <span className="ml-2 text-xs text-slate-400">900 Black</span>
+                                    </div>
+                                    <div className="h-12 flex items-center">
+                                        <span className="font-bold text-2xl">Aa</span>{' '}
+                                        <span className="ml-2 text-xs text-slate-400">700 Bold</span>
+                                    </div>
+                                    <div className="h-12 flex items-center">
+                                        <span className="font-medium text-2xl">Aa</span>{' '}
+                                        <span className="ml-2 text-xs text-slate-400">500 Medium</span>
+                                    </div>
+                                    <div className="h-12 flex items-center">
+                                        <span className="font-normal text-2xl">Aa</span>{' '}
+                                        <span className="ml-2 text-xs text-slate-400">400 Regular</span>
+                                    </div>
                                 </div>
                                 <div className="space-y-4">
                                     <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-                                        <strong className="text-slate-900 dark:text-white">Body Text (sm):</strong> The quick brown fox jumps over the lazy dog. AUMS uses standardized line heights for optimal readability.
+                                        <strong className="text-slate-900 dark:text-white">Body Text (sm):</strong> The
+                                        quick brown fox jumps over the lazy dog. AUMS uses standardized line heights for
+                                        optimal readability.
                                     </p>
                                     <p className="text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-                                        <strong className="text-slate-900 dark:text-white">Caption (xs):</strong> Used for secondary information, timestamps, and metadata.
+                                        <strong className="text-slate-900 dark:text-white">Caption (xs):</strong> Used
+                                        for secondary information, timestamps, and metadata.
                                     </p>
                                     <div className="p-3 bg-slate-100 dark:bg-black/20 rounded-lg">
                                         <p className="font-mono text-xs text-slate-600 dark:text-slate-400">
-                                            // Monospace (JetBrains Mono)<br />
+                                            // Monospace (JetBrains Mono)
+                                            <br />
                                             const futuristic = true;
                                         </p>
                                     </div>
@@ -938,10 +1128,15 @@ export default function BrandGuidelinesPage() {
             <section className="space-y-8">
                 <div className="space-y-2">
                     <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-3">
-                        <span className="w-8 h-8 rounded-lg bg-orange-500 text-white flex items-center justify-center text-xs">04</span>
+                        <span className="w-8 h-8 rounded-lg bg-orange-500 text-white flex items-center justify-center text-xs">
+                            04
+                        </span>
                         Iconography
                     </h2>
-                    <p className="text-slate-500">We use <span className="font-bold text-slate-900 dark:text-white">Lucide React</span> for our icon system. Icons should be clear, consistent, and used to enhance navigation or comprehension.</p>
+                    <p className="text-slate-500">
+                        We use <span className="font-bold text-slate-900 dark:text-white">Lucide React</span> for our
+                        icon system. Icons should be clear, consistent, and used to enhance navigation or comprehension.
+                    </p>
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
@@ -957,9 +1152,12 @@ export default function BrandGuidelinesPage() {
                         { name: 'Shield', Icon: Shield },
                         { name: 'Zap', Icon: Zap },
                         { name: 'Star', Icon: Star },
-                        { name: 'Heart', Icon: Heart }
+                        { name: 'Heart', Icon: Heart },
                     ].map(({ name, Icon }) => (
-                        <div key={name} className="flex flex-col items-center justify-center p-6 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-white/5 space-y-3 group hover:border-blue-500 hover:shadow-lg transition-all">
+                        <div
+                            key={name}
+                            className="flex flex-col items-center justify-center p-6 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-white/5 space-y-3 group hover:border-blue-500 hover:shadow-lg transition-all"
+                        >
                             <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-white/10 flex items-center justify-center text-slate-600 dark:text-slate-300 group-hover:bg-blue-600 group-hover:text-white transition-colors">
                                 <Icon size={20} />
                             </div>
@@ -968,7 +1166,13 @@ export default function BrandGuidelinesPage() {
                     ))}
                     <div className="col-span-full p-4 bg-blue-50 dark:bg-blue-900/10 rounded-xl flex items-center gap-4 text-sm text-blue-700 dark:text-blue-300">
                         <div className="font-bold">Usage Note:</div>
-                        Use <code className="bg-white dark:bg-black/20 px-2 py-0.5 rounded">stroke-width={'{1.5}'}</code> for a refined look or <code className="bg-white dark:bg-black/20 px-2 py-0.5 rounded">stroke-width={'{2}'}</code> for active states.
+                        Use{' '}
+                        <code className="bg-white dark:bg-black/20 px-2 py-0.5 rounded">
+                            stroke-width={'{1.5}'}
+                        </code>{' '}
+                        for a refined look or{' '}
+                        <code className="bg-white dark:bg-black/20 px-2 py-0.5 rounded">stroke-width={'{2}'}</code> for
+                        active states.
                     </div>
                 </div>
             </section>
@@ -977,7 +1181,9 @@ export default function BrandGuidelinesPage() {
             <section className="space-y-8">
                 <div className="space-y-2">
                     <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-3">
-                        <span className="w-8 h-8 rounded-lg bg-teal-500 text-white flex items-center justify-center text-xs">05</span>
+                        <span className="w-8 h-8 rounded-lg bg-teal-500 text-white flex items-center justify-center text-xs">
+                            05
+                        </span>
                         Data Tables
                     </h2>
                     <p className="text-slate-500">Standardized table definitions for different application contexts.</p>
@@ -1019,34 +1225,60 @@ export default function BrandGuidelinesPage() {
                                 {/* Price Breakup Table - Adjusted to match Image 1 (Clean List) */}
                                 <div className="space-y-6">
                                     <div className="flex items-center justify-between">
-                                        <h3 className="text-sm font-black uppercase tracking-wider text-slate-500">Price Breakdown</h3>
+                                        <h3 className="text-sm font-black uppercase tracking-wider text-slate-500">
+                                            Price Breakdown
+                                        </h3>
                                         <span className="text-xs font-bold text-slate-400">Bangalore</span>
                                     </div>
                                     <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm border border-slate-100 dark:border-white/5 space-y-4">
                                         <div className="flex justify-between items-center py-1">
-                                            <span className="text-sm font-medium text-slate-600 dark:text-slate-300">Ex-Showroom Price</span>
-                                            <span className="text-sm font-bold text-slate-900 dark:text-white font-mono">₹78,000</span>
+                                            <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                                                Ex-Showroom Price
+                                            </span>
+                                            <span className="text-sm font-bold text-slate-900 dark:text-white font-mono">
+                                                ₹78,000
+                                            </span>
                                         </div>
                                         <div className="flex justify-between items-center py-1">
-                                            <span className="text-sm font-medium text-slate-600 dark:text-slate-300">RTO Registration</span>
-                                            <span className="text-sm font-bold text-slate-900 dark:text-white font-mono">₹9,360</span>
+                                            <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                                                RTO Registration
+                                            </span>
+                                            <span className="text-sm font-bold text-slate-900 dark:text-white font-mono">
+                                                ₹9,360
+                                            </span>
                                         </div>
                                         <div className="flex justify-between items-center py-1">
-                                            <span className="text-sm font-medium text-slate-600 dark:text-slate-300">Insurance (Mandatory)</span>
-                                            <span className="text-sm font-bold text-slate-900 dark:text-white font-mono">₹5,500</span>
+                                            <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                                                Insurance (Mandatory)
+                                            </span>
+                                            <span className="text-sm font-bold text-slate-900 dark:text-white font-mono">
+                                                ₹5,500
+                                            </span>
                                         </div>
                                         <div className="flex justify-between items-center py-1">
-                                            <span className="text-sm font-medium text-slate-600 dark:text-slate-300">Legal & Handling Charges</span>
-                                            <span className="text-sm font-bold text-slate-900 dark:text-white font-mono">₹1,200</span>
+                                            <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                                                Legal & Handling Charges
+                                            </span>
+                                            <span className="text-sm font-bold text-slate-900 dark:text-white font-mono">
+                                                ₹1,200
+                                            </span>
                                         </div>
                                         <div className="flex justify-between items-center py-1">
-                                            <span className="text-sm font-medium text-slate-600 dark:text-slate-300">Offers Applied</span>
-                                            <span className="text-sm font-bold text-emerald-500 font-mono">-₹2,500</span>
+                                            <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                                                Offers Applied
+                                            </span>
+                                            <span className="text-sm font-bold text-emerald-500 font-mono">
+                                                -₹2,500
+                                            </span>
                                         </div>
                                         <div className="h-px bg-slate-100 dark:bg-white/10 my-2" />
                                         <div className="flex justify-between items-center pt-2">
-                                            <span className="text-base font-black uppercase tracking-tight text-slate-900 dark:text-white">On-Road Price</span>
-                                            <span className="text-xl font-black text-blue-600 dark:text-blue-400 font-mono">₹91,560</span>
+                                            <span className="text-base font-black uppercase tracking-tight text-slate-900 dark:text-white">
+                                                On-Road Price
+                                            </span>
+                                            <span className="text-xl font-black text-blue-600 dark:text-blue-400 font-mono">
+                                                ₹91,560
+                                            </span>
                                         </div>
                                     </div>
                                 </div>
@@ -1054,8 +1286,12 @@ export default function BrandGuidelinesPage() {
                                 {/* EMI Plans - Adjusted to match Image 2 (Selectable Rows) */}
                                 <div className="space-y-6">
                                     <div className="flex items-center justify-between">
-                                        <h3 className="text-sm font-black uppercase tracking-wider text-slate-500">Finance Options</h3>
-                                        <span className="text-xs font-bold text-blue-600 dark:text-blue-400">Powered by HDFC</span>
+                                        <h3 className="text-sm font-black uppercase tracking-wider text-slate-500">
+                                            Finance Options
+                                        </h3>
+                                        <span className="text-xs font-bold text-blue-600 dark:text-blue-400">
+                                            Powered by HDFC
+                                        </span>
                                     </div>
                                     <div className="space-y-3">
                                         {/* Option 1 */}
@@ -1064,25 +1300,37 @@ export default function BrandGuidelinesPage() {
                                                 <div className="w-5 h-5 rounded-full border-2 border-slate-300 dark:border-slate-600 group-hover:border-blue-500 transition-colors" />
                                                 <div>
                                                     <div className="flex items-baseline gap-2">
-                                                        <span className="text-lg font-black text-slate-900 dark:text-white font-mono">₹1,615</span>
-                                                        <span className="text-[10px] font-bold text-slate-400 uppercase">Per Month</span>
+                                                        <span className="text-lg font-black text-slate-900 dark:text-white font-mono">
+                                                            ₹1,615
+                                                        </span>
+                                                        <span className="text-[10px] font-bold text-slate-400 uppercase">
+                                                            Per Month
+                                                        </span>
                                                     </div>
                                                 </div>
                                             </div>
                                             <div className="text-right">
-                                                <span className="text-sm font-black text-slate-700 dark:text-slate-200 italic">60 MONTHS</span>
+                                                <span className="text-sm font-black text-slate-700 dark:text-slate-200 italic">
+                                                    60 MONTHS
+                                                </span>
                                             </div>
                                         </div>
 
                                         {/* Option 2 (Active) */}
                                         <div className="relative group flex items-center justify-between p-5 bg-blue-600 dark:bg-blue-600 rounded-xl border border-blue-600 shadow-xl shadow-blue-500/20 cursor-pointer transform scale-[1.02] transition-all">
-                                            <div className="absolute -top-3 right-4 bg-blue-800 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">Recommended</div>
+                                            <div className="absolute -top-3 right-4 bg-blue-800 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">
+                                                Recommended
+                                            </div>
                                             <div className="flex items-center gap-4">
                                                 <div className="w-5 h-5 rounded-full border-[5px] border-white bg-transparent" />
                                                 <div>
                                                     <div className="flex items-baseline gap-2">
-                                                        <span className="text-2xl font-black text-white font-mono">₹2,463</span>
-                                                        <span className="text-[10px] font-bold text-blue-200 uppercase">Per Month</span>
+                                                        <span className="text-2xl font-black text-white font-mono">
+                                                            ₹2,463
+                                                        </span>
+                                                        <span className="text-[10px] font-bold text-blue-200 uppercase">
+                                                            Per Month
+                                                        </span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -1097,13 +1345,19 @@ export default function BrandGuidelinesPage() {
                                                 <div className="w-5 h-5 rounded-full border-2 border-slate-300 dark:border-slate-600 group-hover:border-blue-500 transition-colors" />
                                                 <div>
                                                     <div className="flex items-baseline gap-2">
-                                                        <span className="text-lg font-black text-slate-900 dark:text-white font-mono">₹3,530</span>
-                                                        <span className="text-[10px] font-bold text-slate-400 uppercase">Per Month</span>
+                                                        <span className="text-lg font-black text-slate-900 dark:text-white font-mono">
+                                                            ₹3,530
+                                                        </span>
+                                                        <span className="text-[10px] font-bold text-slate-400 uppercase">
+                                                            Per Month
+                                                        </span>
                                                     </div>
                                                 </div>
                                             </div>
                                             <div className="text-right">
-                                                <span className="text-sm font-black text-slate-700 dark:text-slate-200 italic">24 MONTHS</span>
+                                                <span className="text-sm font-black text-slate-700 dark:text-slate-200 italic">
+                                                    24 MONTHS
+                                                </span>
                                             </div>
                                         </div>
                                     </div>
@@ -1123,14 +1377,23 @@ export default function BrandGuidelinesPage() {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100 dark:divide-white/5">
-                                        {[1, 2, 3].map((i) => (
-                                            <tr key={i} className="group hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+                                        {[1, 2, 3].map(i => (
+                                            <tr
+                                                key={i}
+                                                className="group hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
+                                            >
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center gap-3">
-                                                        <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-xs font-bold">JD</div>
+                                                        <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-xs font-bold">
+                                                            JD
+                                                        </div>
                                                         <div>
-                                                            <div className="font-bold text-slate-900 dark:text-white">John Doe</div>
-                                                            <div className="text-xs text-slate-500">john@example.com</div>
+                                                            <div className="font-bold text-slate-900 dark:text-white">
+                                                                John Doe
+                                                            </div>
+                                                            <div className="text-xs text-slate-500">
+                                                                john@example.com
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </td>
@@ -1173,7 +1436,9 @@ export default function BrandGuidelinesPage() {
                                                         <Bike size={20} className="text-slate-400" />
                                                     </div>
                                                     <div>
-                                                        <div className="font-bold text-slate-900 dark:text-white text-base">Royal Enfield Classic 350</div>
+                                                        <div className="font-bold text-slate-900 dark:text-white text-base">
+                                                            Royal Enfield Classic 350
+                                                        </div>
                                                         <div className="text-xs text-slate-500">SKU: RE-CLS-350</div>
                                                     </div>
                                                 </div>
@@ -1195,7 +1460,9 @@ export default function BrandGuidelinesPage() {
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 text-right">
-                                                <button className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline">Manage</button>
+                                                <button className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline">
+                                                    Manage
+                                                </button>
                                             </td>
                                         </tr>
                                         {/* Duplicate row for effect */}
@@ -1206,7 +1473,9 @@ export default function BrandGuidelinesPage() {
                                                         <Bike size={20} className="text-slate-400" />
                                                     </div>
                                                     <div>
-                                                        <div className="font-bold text-slate-900 dark:text-white text-base">Honda Activa 6G</div>
+                                                        <div className="font-bold text-slate-900 dark:text-white text-base">
+                                                            Honda Activa 6G
+                                                        </div>
                                                         <div className="text-xs text-slate-500">SKU: HON-ACT-6G</div>
                                                     </div>
                                                 </div>
@@ -1228,7 +1497,9 @@ export default function BrandGuidelinesPage() {
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 text-right">
-                                                <button className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline">Manage</button>
+                                                <button className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline">
+                                                    Manage
+                                                </button>
                                             </td>
                                         </tr>
                                     </tbody>
@@ -1282,7 +1553,9 @@ export default function BrandGuidelinesPage() {
             <section className="space-y-8">
                 <div className="space-y-2">
                     <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-3">
-                        <span className="w-8 h-8 rounded-lg bg-aums-red flex items-center justify-center text-white text-xs">06</span>
+                        <span className="w-8 h-8 rounded-lg bg-aums-red flex items-center justify-center text-white text-xs">
+                            06
+                        </span>
                         Color Palette
                     </h2>
                     <p className="text-slate-500">Click any swatch to copy its utility class or hex code.</p>
@@ -1290,8 +1563,15 @@ export default function BrandGuidelinesPage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     {Object.entries(tokens.colors.aums).map(([name, hex]) => (
-                        <div key={name} className="group bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-200 dark:border-white/5 hover:shadow-xl transition-all cursor-pointer" onClick={() => copyToClipboard(hex)}>
-                            <div className="h-32 rounded-xl mb-4 relative overflow-hidden" style={{ backgroundColor: hex }}>
+                        <div
+                            key={name}
+                            className="group bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-200 dark:border-white/5 hover:shadow-xl transition-all cursor-pointer"
+                            onClick={() => copyToClipboard(hex)}
+                        >
+                            <div
+                                className="h-32 rounded-xl mb-4 relative overflow-hidden"
+                                style={{ backgroundColor: hex }}
+                            >
                                 <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20 text-white">
                                     {copied === hex ? <Check size={24} /> : <Copy size={24} />}
                                 </div>
@@ -1312,29 +1592,44 @@ export default function BrandGuidelinesPage() {
 }
 
 // Helper Component for Logo Grid
-function LogoCard({ title, bg, children }: { title: string, bg: string, children: React.ReactNode }) {
+function LogoCard({ title, bg, children }: { title: string; bg: string; children: React.ReactNode }) {
     return (
-        <div className={`rounded-3xl border border-slate-200 dark:border-white/5 overflow-hidden flex flex-col h-[300px] group relative`}>
-            <div className={`flex-1 ${bg} flex items-center justify-center p-8 relative transition-all duration-500 overflow-hidden`}>
+        <div
+            className={`rounded-3xl border border-slate-200 dark:border-white/5 overflow-hidden flex flex-col h-[300px] group relative`}
+        >
+            <div
+                className={`flex-1 ${bg} flex items-center justify-center p-8 relative transition-all duration-500 overflow-hidden`}
+            >
                 <div className="group-hover:scale-110 transition-transform duration-500 group-hover:opacity-30 blur-0 group-hover:blur-sm">
                     {children}
                 </div>
 
                 {/* Download Overlay */}
                 <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10 gap-2">
-                    <button className="w-12 h-12 rounded-full bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xl flex items-center justify-center hover:scale-110 transition-transform" title="Download SVG">
+                    <button
+                        className="w-12 h-12 rounded-full bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xl flex items-center justify-center hover:scale-110 transition-transform"
+                        title="Download SVG"
+                    >
                         <FileJson size={20} className="text-blue-600" />
                     </button>
-                    <button className="w-12 h-12 rounded-full bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xl flex items-center justify-center hover:scale-110 transition-transform" title="Download PNG">
+                    <button
+                        className="w-12 h-12 rounded-full bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xl flex items-center justify-center hover:scale-110 transition-transform"
+                        title="Download PNG"
+                    >
                         <FileType size={20} className="text-emerald-600" />
                     </button>
-                    <button className="w-12 h-12 rounded-full bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xl flex items-center justify-center hover:scale-110 transition-transform" title="Download PDF">
+                    <button
+                        className="w-12 h-12 rounded-full bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xl flex items-center justify-center hover:scale-110 transition-transform"
+                        title="Download PDF"
+                    >
                         <FileText size={20} className="text-red-500" />
                     </button>
                 </div>
             </div>
             <div className="p-4 bg-white dark:bg-slate-800 border-t border-slate-100 dark:border-white/5">
-                <p className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider text-center">{title}</p>
+                <p className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider text-center">
+                    {title}
+                </p>
                 <div className="flex justify-center gap-3 mt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                     <span className="text-[10px] font-mono text-slate-400">SVG</span>
                     <span className="text-[10px] font-mono text-slate-400">PNG</span>
@@ -1362,7 +1657,9 @@ function RegistryPreviewCard({
         <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 border border-slate-200 dark:border-white/5 shadow-sm space-y-4">
             <div className="flex items-start justify-between gap-4">
                 <div>
-                    <h3 className="text-sm font-black uppercase tracking-widest text-slate-900 dark:text-white">{title}</h3>
+                    <h3 className="text-sm font-black uppercase tracking-widest text-slate-900 dark:text-white">
+                        {title}
+                    </h3>
                     <p className="text-xs text-slate-500 dark:text-slate-400">{usage}</p>
                 </div>
                 <span className="text-[10px] font-mono text-slate-400 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-white/10 px-2 py-1 rounded">

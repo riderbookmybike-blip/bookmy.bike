@@ -156,7 +156,7 @@ export async function getPresenceForPage(memberIds: string[]): Promise<PresenceR
 }
 
 export type LiveMemberRow = {
-    member_id: string;
+    member_id: string; // real UUID for members; anon_session_id for guests
     current_url: string | null;
     device: string | null;
     event_type: string | null;
@@ -169,6 +169,7 @@ export type LiveMemberRow = {
     first_visit_at: string | null;
     last_visit_at: string | null;
     total_time_ms: number;
+    is_anon: boolean; // true = anonymous visitor, false = authenticated member
 };
 
 /** Returns all active members (last 60 min) with identity + session + lifetime stats */
@@ -179,33 +180,44 @@ export async function getLiveMembersWithDetails(): Promise<LiveMemberRow[]> {
     const pc = adminClient as any;
     const sixtyMinAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
 
-    const { data: presenceRows, error: presErr } = await pc
-        .from('id_member_presence')
-        .select('member_id, current_url, device, event_type, session_id, updated_at')
-        .gte('updated_at', sixtyMinAgo)
-        .neq('event_type', 'SESSION_END')
-        .order('updated_at', { ascending: false });
+    // Fetch authenticated member presence + anonymous presence in parallel
+    const [{ data: presenceRows, error: presErr }, { data: anonRows }] = await Promise.all([
+        pc
+            .from('id_member_presence')
+            .select('member_id, current_url, device, event_type, session_id, updated_at')
+            .gte('updated_at', sixtyMinAgo)
+            .neq('event_type', 'SESSION_END')
+            .order('updated_at', { ascending: false }),
+        pc
+            .from('id_anon_presence')
+            .select('anon_session_id, current_url, device, event_type, session_id, updated_at')
+            .gte('updated_at', sixtyMinAgo)
+            .neq('event_type', 'SESSION_END')
+            .order('updated_at', { ascending: false }),
+    ]);
 
     if (presErr) throw presErr;
-    if (!presenceRows?.length) return [];
 
-    const memberIds = presenceRows.map((r: any) => r.member_id as string);
+    const memberIds = (presenceRows || []).map((r: any) => r.member_id as string);
 
-    const [membersRes, sessionStartsRes, lifetimeRes] = await Promise.all([
-        adminClient.from('id_members').select('id, full_name, display_id, primary_phone').in('id', memberIds),
-        adminClient
-            .from('id_member_events')
-            .select('member_id, created_at')
-            .in('member_id', memberIds)
-            .eq('event_type', 'SESSION_START')
-            .gte('created_at', sixtyMinAgo)
-            .order('created_at', { ascending: false }),
-        adminClient
-            .from('id_member_events')
-            .select('member_id, event_type, created_at, payload')
-            .in('member_id', memberIds)
-            .in('event_type', ['SESSION_START', 'PAGE_VIEW']),
-    ]);
+    const [membersRes, sessionStartsRes, lifetimeRes] =
+        memberIds.length > 0
+            ? await Promise.all([
+                  adminClient.from('id_members').select('id, full_name, display_id, primary_phone').in('id', memberIds),
+                  adminClient
+                      .from('id_member_events')
+                      .select('member_id, created_at')
+                      .in('member_id', memberIds)
+                      .eq('event_type', 'SESSION_START')
+                      .gte('created_at', sixtyMinAgo)
+                      .order('created_at', { ascending: false }),
+                  adminClient
+                      .from('id_member_events')
+                      .select('member_id, event_type, created_at, payload')
+                      .in('member_id', memberIds)
+                      .in('event_type', ['SESSION_START', 'PAGE_VIEW']),
+              ])
+            : [{ data: [] }, { data: [] }, { data: [] }];
 
     const memberMap = new Map((membersRes.data || []).map((m: any) => [m.id, m]));
 
@@ -227,7 +239,7 @@ export async function getLiveMembersWithDetails(): Promise<LiveMemberRow[]> {
         statsMap.set(id, s);
     }
 
-    return presenceRows.map((p: any) => {
+    const memberRows: LiveMemberRow[] = (presenceRows || []).map((p: any) => {
         const m = (memberMap.get(p.member_id) || {}) as any;
         const st = statsMap.get(p.member_id);
         return {
@@ -244,6 +256,29 @@ export async function getLiveMembersWithDetails(): Promise<LiveMemberRow[]> {
             first_visit_at: st?.first ?? null,
             last_visit_at: st?.last ?? null,
             total_time_ms: st?.totalMs ?? 0,
+            is_anon: false,
         };
     });
+
+    const guestRows: LiveMemberRow[] = (anonRows || []).map((a: any) => ({
+        member_id: a.anon_session_id, // use anon_session_id as the display key
+        current_url: a.current_url ?? null,
+        device: a.device ?? null,
+        event_type: a.event_type ?? null,
+        updated_at: a.updated_at,
+        session_id: a.session_id ?? null,
+        full_name: null,
+        display_id: null,
+        primary_phone: null,
+        session_start_at: null,
+        first_visit_at: null,
+        last_visit_at: null,
+        total_time_ms: 0,
+        is_anon: true,
+    }));
+
+    // Members first (known users), then guests — both sorted by updated_at desc
+    return [...memberRows, ...guestRows].sort(
+        (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+    );
 }

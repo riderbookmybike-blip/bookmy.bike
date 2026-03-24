@@ -1,66 +1,70 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { MemberTracker } from './MemberTracker';
+import { mergeAnonSession } from '@/actions/member-tracker';
+import { ANON_SESSION_KEY } from '@/lib/constants/storage';
 
-declare global {
-    interface Window {
-        Tawk_API?: {
-            setAttributes?: (attrs: Record<string, string>, cb?: () => void) => void;
-            onLoad?: () => void;
-        };
+function getOrCreateAnonSessionId(): string {
+    if (typeof window === 'undefined') return crypto.randomUUID();
+    let id = localStorage.getItem(ANON_SESSION_KEY);
+    if (!id) {
+        id = crypto.randomUUID();
+        localStorage.setItem(ANON_SESSION_KEY, id);
     }
+    return id;
 }
 
 /**
- * Subscribes to Supabase auth state changes so tracking starts even when
- * the user logs in mid-session (e.g., via sidebar OTP flow).
- * Also links member identity to Tawk.to for real-time visitor dashboard.
+ * Always-on tracker:
+ * - Anonymous visitors tracked via anon_session_id from localStorage
+ * - On login, merges anon events into the member's record (only rotates key on confirmed success)
  */
 export function MemberTrackerAuto() {
     const [memberId, setMemberId] = useState<string | null>(null);
+    const [anonSessionId, setAnonSessionId] = useState<string>('');
+    const mergedRef = useRef(false);
 
     useEffect(() => {
+        // Init anon session ID once on client
+        setAnonSessionId(getOrCreateAnonSessionId());
+
         const supabase = createClient();
+
+        // Seed from existing session (already logged in on mount)
+        supabase.auth.getSession().then(({ data }) => {
+            setMemberId(data.session?.user?.id ?? null);
+        });
 
         const {
             data: { subscription },
-        } = supabase.auth.onAuthStateChange(async (_event, session) => {
-            const uid = session?.user?.id ?? null;
-            setMemberId(uid);
+        } = supabase.auth.onAuthStateChange((event, session) => {
+            const userId = session?.user?.id ?? null;
+            setMemberId(userId);
 
-            if (uid) {
-                // Fetch member name + phone for Tawk.to identity
-                const { data } = await supabase
-                    .from('id_members')
-                    .select('full_name, primary_phone')
-                    .eq('id', uid)
-                    .maybeSingle();
-
-                const setTawkIdentity = () => {
-                    if (typeof window !== 'undefined' && window.Tawk_API?.setAttributes) {
-                        window.Tawk_API.setAttributes(
-                            {
-                                name: data?.full_name || 'Member',
-                                ...(data?.primary_phone ? { phone: data.primary_phone } : {}),
-                            },
-                            () => {}
-                        );
-                    }
-                };
-
-                // Tawk may still be loading — retry via onLoad if not ready
-                if (typeof window !== 'undefined' && window.Tawk_API?.setAttributes) {
-                    setTawkIdentity();
-                } else if (typeof window !== 'undefined') {
-                    window.Tawk_API = window.Tawk_API || {};
-                    const prev = window.Tawk_API.onLoad;
-                    window.Tawk_API.onLoad = () => {
-                        prev?.();
-                        setTawkIdentity();
-                    };
+            // On sign-in: merge anon session into authenticated member
+            if (event === 'SIGNED_IN' && userId && !mergedRef.current) {
+                mergedRef.current = true; // prevent duplicate merge calls
+                const currentAnonId = localStorage.getItem(ANON_SESSION_KEY);
+                if (currentAnonId) {
+                    mergeAnonSession(currentAnonId).then(result => {
+                        if (result.ok) {
+                            // Confirmed success — rotate the anon key
+                            localStorage.removeItem(ANON_SESSION_KEY);
+                            const freshId = crypto.randomUUID();
+                            localStorage.setItem(ANON_SESSION_KEY, freshId);
+                            setAnonSessionId(freshId);
+                        }
+                        // ok === false → keep existing anon ID for continuity
+                    });
                 }
+            }
+
+            // On sign-out: reset merge guard so next login can merge fresh anon session
+            if (event === 'SIGNED_OUT') {
+                mergedRef.current = false;
+                setAnonSessionId(getOrCreateAnonSessionId());
             }
         });
 
@@ -69,6 +73,8 @@ export function MemberTrackerAuto() {
         };
     }, []);
 
-    if (!memberId) return null;
-    return <MemberTracker memberId={memberId} />;
+    // Don't render until anon ID is ready (avoids SSR mismatch)
+    if (!anonSessionId) return null;
+
+    return <MemberTracker memberId={memberId} anonSessionId={anonSessionId} />;
 }

@@ -36,6 +36,9 @@ export const PRICING_PREFS_KEY = 'bmb_pricing_prefs' as const;
 /** sessionStorage key for analytics session ID. */
 export const SESSION_ID_KEY = 'bmb_session_id' as const;
 
+/** localStorage key for anonymous visitor session ID (persists across pages until login). */
+export const ANON_SESSION_KEY = 'bmb_anon_session_id' as const;
+
 /** localStorage key for internal test flag (analytics traffic filtering). */
 export const INTERNAL_TEST_KEY = 'bmb_internal_test' as const;
 

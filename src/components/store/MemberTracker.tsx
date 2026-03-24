@@ -2,10 +2,11 @@
 
 import { useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
-import { trackMemberEvent } from '@/actions/member-tracker';
+import { trackMemberEvent, trackAnonEvent } from '@/actions/member-tracker';
 
 interface MemberTrackerProps {
-    memberId: string;
+    memberId?: string | null;
+    anonSessionId: string;
 }
 
 function getDeviceType(): string {
@@ -21,45 +22,45 @@ function getPageTitle(): string {
     return document.title || '';
 }
 
-export function MemberTracker({ memberId }: MemberTrackerProps) {
+export function MemberTracker({ memberId, anonSessionId }: MemberTrackerProps) {
     const pathname = usePathname();
     const sessionStartRef = useRef<number>(Date.now());
     const pageStartRef = useRef<number>(Date.now());
     const prevPathRef = useRef<string>(pathname);
     const pageCountRef = useRef<number>(0);
     const firedSessionStartRef = useRef(false);
-    // One-time guard: SESSION_END must fire exactly once per tracker lifetime
     const sessionEndFiredRef = useRef(false);
-    // Tab-scoped session identifier — stable for this component lifetime
     const sessionIdRef = useRef<string>(crypto.randomUUID());
+
+    // Unified tracker — routes to auth or anon path
+    const track = (eventType: Parameters<typeof trackMemberEvent>[1], payload: Record<string, unknown>) => {
+        if (memberId) {
+            trackMemberEvent(memberId, eventType, payload);
+        } else {
+            trackAnonEvent(anonSessionId, eventType, payload);
+        }
+    };
 
     // SESSION_START — once per mount
     useEffect(() => {
-        if (!memberId || firedSessionStartRef.current) return;
+        if (firedSessionStartRef.current) return;
         firedSessionStartRef.current = true;
         const now = Date.now();
         sessionStartRef.current = now;
         pageStartRef.current = now;
         const sessionId = sessionIdRef.current;
 
-        // Fire SESSION_START
-        trackMemberEvent(memberId, 'SESSION_START', {
+        track('SESSION_START', {
             session_id: sessionId,
             device: getDeviceType(),
             url: window.location.pathname,
         });
-        // Note: the landing page will be captured as PAGE_VIEW on either:
-        // - the next route change (with real duration), or
-        // - unmount (last-page flush below).
-        // We do NOT emit a zero-duration PAGE_VIEW here to avoid double-logging.
 
-        // SESSION_END — deduped via sessionEndFiredRef
         const handleEnd = () => {
             if (sessionEndFiredRef.current) return;
             sessionEndFiredRef.current = true;
-
             const totalMs = Date.now() - sessionStartRef.current;
-            trackMemberEvent(memberId, 'SESSION_END', {
+            track('SESSION_END', {
                 session_id: sessionId,
                 total_duration_ms: totalMs,
                 page_count: pageCountRef.current,
@@ -76,29 +77,26 @@ export function MemberTracker({ memberId }: MemberTrackerProps) {
         return () => {
             document.removeEventListener('visibilitychange', handleVisibility);
             window.removeEventListener('beforeunload', handleEnd);
-
-            // Flush the last page's duration before unmount
             const lastPageDurationMs = Date.now() - pageStartRef.current;
             if (lastPageDurationMs > 0 && prevPathRef.current) {
-                pageCountRef.current += 1; // count this page toward SESSION_END.page_count
-                trackMemberEvent(memberId, 'PAGE_VIEW', {
+                pageCountRef.current += 1;
+                track('PAGE_VIEW', {
                     session_id: sessionId,
                     url: prevPathRef.current,
                     title: getPageTitle(),
                     duration_ms: lastPageDurationMs,
                 });
             }
-
             handleEnd();
         };
-    }, [memberId]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [memberId, anonSessionId]);
 
-    // HEARTBEAT — every 5 min so AUMS "Live Now" stays accurate while member is idle on a page
+    // HEARTBEAT — every 5 min
     useEffect(() => {
-        if (!memberId) return;
         const interval = setInterval(
             () => {
-                trackMemberEvent(memberId, 'HEARTBEAT', {
+                track('HEARTBEAT', {
                     session_id: sessionIdRef.current,
                     url: pathname,
                 });
@@ -106,27 +104,26 @@ export function MemberTracker({ memberId }: MemberTrackerProps) {
             5 * 60 * 1000
         );
         return () => clearInterval(interval);
-    }, [memberId, pathname]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [memberId, anonSessionId, pathname]);
 
+    // PAGE_VIEW on route change
     useEffect(() => {
-        if (!memberId) return;
         const prev = prevPathRef.current;
-
         if (prev && prev !== pathname) {
             const durationMs = Date.now() - pageStartRef.current;
             pageCountRef.current += 1;
-            trackMemberEvent(memberId, 'PAGE_VIEW', {
+            track('PAGE_VIEW', {
                 session_id: sessionIdRef.current,
                 url: prev,
                 title: getPageTitle(),
                 duration_ms: durationMs,
             });
         }
-
-        // Reset for new page
         prevPathRef.current = pathname;
         pageStartRef.current = Date.now();
-    }, [pathname, memberId]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [pathname]);
 
-    return null; // invisible tracker
+    return null;
 }

@@ -14,6 +14,7 @@ import {
     SlidersHorizontal,
     LayoutGrid,
     LogIn,
+    MapPin,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useDiscovery } from '@/contexts/DiscoveryContext';
@@ -117,6 +118,20 @@ export function ShopperBottomNav() {
         window.addEventListener('pdpCommercialReady', handler);
         return () => window.removeEventListener('pdpCommercialReady', handler);
     }, []); // stable: no deps, handler is function-scoped
+
+    // ── Catalog serviceability signal ─────────────────────────────────────────
+    const [catalogServiceability, setCatalogServiceability] = useState<{
+        status: string;
+        location: string | null;
+    }>({ status: 'loading', location: null });
+    useEffect(() => {
+        const handler = (e: Event) => {
+            const detail = (e as CustomEvent<{ status: string; location: string | null }>).detail;
+            setCatalogServiceability({ status: detail.status, location: detail.location });
+        };
+        window.addEventListener('catalogServiceabilityChanged', handler);
+        return () => window.removeEventListener('catalogServiceabilityChanged', handler);
+    }, []);
 
     // ── Consent gate visibility — hides bottom nav when full-screen gate is up ─
     const [isConsentGateVisible, setIsConsentGateVisible] = useState(false);
@@ -276,6 +291,20 @@ export function ShopperBottomNav() {
         }
 
         if (isCatalogPage) {
+            // Non-serviceable: prompt user to change location
+            if (catalogServiceability.status === 'unserviceable') {
+                const loc = catalogServiceability.location;
+                return {
+                    label: 'Change Location',
+                    subLabel: loc ? `${loc} — not serviceable` : 'your area is not covered',
+                    icon: MapPin,
+                    bg: 'bg-amber-500',
+                    shadow: 'shadow-[0_4px_20px_rgba(245,158,11,0.5)]',
+                    textColor: 'text-white',
+                    shimmer: true,
+                    onClick: () => window.dispatchEvent(new CustomEvent('openCatalogLocationPicker')),
+                };
+            }
             const isCash = pricingMode === 'cash';
             return {
                 label: isCash ? 'Switch to Loan' : 'Switch to Cash',
@@ -311,6 +340,8 @@ export function ShopperBottomNav() {
         pdpStage,
         pricingMode,
         isCommercialReady,
+        catalogServiceability.status,
+        catalogServiceability.location,
     ]);
 
     // ── EMI Modal state ─────────────────────────────────────────────────────────
@@ -339,7 +370,7 @@ export function ShopperBottomNav() {
     const Icon = ctaConfig.icon;
 
     const handleCtaClick = () => {
-        if (isCatalogPage && pricingMode === 'cash') {
+        if (isCatalogPage && pricingMode === 'cash' && catalogServiceability.status !== 'unserviceable') {
             setModalDownpayment(downpayment);
             setModalTenure(tenure);
             setShowEmiModal(true);
@@ -452,7 +483,7 @@ export function ShopperBottomNav() {
                 <div className="h-[60px] flex items-center">
                     <AnimatePresence mode="wait">
                         <motion.button
-                            key={`${isHomePage}-${isPdpPage}-${isCatalogPage}-${pdpStage}-${pricingMode}`}
+                            key={`${isHomePage}-${isPdpPage}-${isCatalogPage}-${pdpStage}-${pricingMode}-${catalogServiceability.status}-${catalogServiceability.location ?? ''}`}
                             onClick={handleCtaClick}
                             initial={{ opacity: 0, y: 8, scale: 0.97 }}
                             animate={{ opacity: 1, y: 0, scale: 1 }}
