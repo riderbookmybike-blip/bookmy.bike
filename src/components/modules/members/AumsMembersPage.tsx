@@ -6,7 +6,12 @@ import StatsHeader from '@/components/modules/shared/StatsHeader';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { Activity, UserCheck, Users } from 'lucide-react';
 import { toast } from 'sonner';
-import { getAllPlatformMembers, getPlatformPresenceSummary, getPresenceForPage } from '@/actions/aums-presence';
+import {
+    getAllPlatformMembers,
+    getPlatformPresenceSummary,
+    getPresenceForPage,
+    type PresenceRow,
+} from '@/actions/aums-presence';
 import { formatDisplayId } from '@/utils/displayId';
 import { createClient } from '@/lib/supabase/client';
 
@@ -19,13 +24,7 @@ type MemberRow = {
 };
 
 // presence row from id_member_presence realtime
-type PresenceRow = {
-    member_id: string;
-    current_url: string | null;
-    device: string | null;
-    event_type: string | null;
-    updated_at: string;
-};
+type PresenceMapRow = PresenceRow;
 
 type PresenceFilter = 'all' | 'live' | 'recent';
 
@@ -54,7 +53,7 @@ export default function AumsMembersPage() {
     const [filter, setFilter] = useState<PresenceFilter>('all');
 
     // Presence state — keyed by member_id
-    const [presence, setPresence] = useState<Map<string, PresenceRow>>(new Map());
+    const [presence, setPresence] = useState<Map<string, PresenceMapRow>>(new Map());
     const [liveNowCount, setLiveNowCount] = useState(0);
     const [active1hCount, setActive1hCount] = useState(0);
 
@@ -130,25 +129,17 @@ export default function AumsMembersPage() {
         return () => window.clearInterval(t);
     }, [refreshCounts]);
 
-    // Bootstrap presence for current page members
+    // Fix 1: Bootstrap presence for current page — seeds BOTH live AND recent members
     useEffect(() => {
         if (!members.length) return;
         const ids = members.map(m => m.id);
         getPresenceForPage(ids)
-            .then(result => {
+            .then(rows => {
                 setPresence(prev => {
                     const next = new Map(prev);
-                    // Seed from server — fill any member_id that had real presence
-                    result.liveIds.forEach(id => {
-                        if (!next.has(id)) {
-                            next.set(id, {
-                                member_id: id,
-                                current_url: null,
-                                device: null,
-                                event_type: 'SESSION_START',
-                                updated_at: new Date().toISOString(),
-                            });
-                        }
+                    rows.forEach(row => {
+                        // Seed all rows from presence table — live, recent, all
+                        next.set(row.member_id, row);
                     });
                     return next;
                 });

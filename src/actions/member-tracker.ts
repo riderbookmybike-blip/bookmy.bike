@@ -41,23 +41,19 @@ export async function trackMemberEvent(
             created_by: null,
         });
 
-        // Upsert presence row — gives AUMS realtime push instantly
+        // Upsert presence via COALESCE RPC — never erases device/url on HEARTBEAT or PAGE_VIEW
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const presenceTable = (adminClient as any).from('id_member_presence');
+        const presenceClient = adminClient as any;
         if (eventType === 'SESSION_END') {
-            await presenceTable.delete().eq('member_id', user.id);
+            await presenceClient.from('id_member_presence').delete().eq('member_id', user.id);
         } else {
-            await presenceTable.upsert(
-                {
-                    member_id: user.id,
-                    current_url: (payload.url as string) ?? null,
-                    device: (payload.device as string) ?? null,
-                    session_id: (payload.session_id as string) ?? null,
-                    event_type: eventType,
-                    updated_at: new Date().toISOString(),
-                },
-                { onConflict: 'member_id' }
-            );
+            await presenceClient.rpc('upsert_member_presence', {
+                p_member_id: user.id,
+                p_current_url: (payload.url as string) ?? null,
+                p_device: (payload.device as string) ?? null,
+                p_session_id: (payload.session_id as string) ?? null,
+                p_event_type: eventType,
+            });
         }
     } catch {
         // fire-and-forget — never block the user

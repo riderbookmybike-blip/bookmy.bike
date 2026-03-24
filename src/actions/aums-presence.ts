@@ -102,25 +102,30 @@ export async function getPlatformPresenceSummary() {
     };
 }
 
-export async function getPresenceForPage(memberIds: string[]) {
+type PresenceRow = {
+    member_id: string;
+    current_url: string | null;
+    device: string | null;
+    session_id: string | null;
+    event_type: string | null;
+    updated_at: string;
+};
+
+export type { PresenceRow };
+
+export async function getPresenceForPage(memberIds: string[]): Promise<PresenceRow[]> {
     await assertAumsAdminAccess();
 
     const ids = Array.from(new Set((memberIds || []).filter(Boolean)));
-    if (ids.length === 0) {
-        return { liveIds: [] as string[], recentIds: [] as string[] };
-    }
+    if (ids.length === 0) return [];
 
-    const { data, error } = await (adminClient as any).rpc('aums_presence_for_members', { member_ids: ids });
+    // Query id_member_presence directly — consistent with realtime + 10-min UI window
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (adminClient as any)
+        .from('id_member_presence')
+        .select('member_id, current_url, device, session_id, event_type, updated_at')
+        .in('member_id', ids);
+
     if (error) throw error;
-
-    const liveIds: string[] = [];
-    const recentIds: string[] = [];
-    for (const row of (data || []) as any[]) {
-        const memberId = String((row as any).member_id || '');
-        if (!memberId) continue;
-        if ((row as any).is_live) liveIds.push(memberId);
-        if ((row as any).is_recent) recentIds.push(memberId);
-    }
-
-    return { liveIds, recentIds };
+    return (data || []) as PresenceRow[];
 }
