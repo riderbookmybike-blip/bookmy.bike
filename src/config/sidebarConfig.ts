@@ -105,10 +105,18 @@ const ALL_SIDEBAR_GROUPS: SidebarGroup[] = [
         items: [
             {
                 title: 'Members',
+                href: '/aums/members',
+                icon: UserCheck,
+                color: 'text-violet-500',
+                allowedTenants: ['AUMS'],
+                allowedRoles: ['OWNER', 'ADMIN', 'SUPER_ADMIN'],
+            },
+            {
+                title: 'Members',
                 href: '/members',
                 icon: UserCheck,
                 color: 'text-violet-500', // Unique
-                allowedTenants: ['DEALER', 'MARKETPLACE', 'AUMS', 'BANK'],
+                allowedTenants: ['DEALER', 'MARKETPLACE', 'BANK'],
                 allowedRoles: [
                     'OWNER',
                     'ADMIN',

@@ -49,6 +49,7 @@ import AnalyticsScripts from '@/components/analytics/AnalyticsScripts';
 import { Toaster } from 'sonner';
 import { Analytics } from '@vercel/analytics/next';
 import { SpeedInsights } from '@vercel/speed-insights/next';
+import Script from 'next/script';
 
 const themeBootstrapScript = `
 (() => {
@@ -97,6 +98,24 @@ export default function RootLayout({
                 </ThemeProvider>
                 <Analytics />
                 <SpeedInsights />
+                {/* Tawk.to real-time visitor tracking */}
+                <Script
+                    id="tawkto"
+                    strategy="afterInteractive"
+                    dangerouslySetInnerHTML={{
+                        __html: `
+                            var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();
+                            (function(){
+                                var s1=document.createElement("script"),s0=document.getElementsByTagName("script")[0];
+                                s1.async=true;
+                                s1.src='https://embed.tawk.to/69c2329983db181c34d2c88f/1jkf9ba8n';
+                                s1.charset='UTF-8';
+                                s1.setAttribute('crossorigin','*');
+                                s0.parentNode.insertBefore(s1,s0);
+                            })();
+                        `,
+                    }}
+                />
             </body>
         </html>
     );
