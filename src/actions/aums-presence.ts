@@ -154,3 +154,58 @@ export async function getPresenceForPage(memberIds: string[]): Promise<PresenceR
     if (error) throw error;
     return (data || []) as PresenceRow[];
 }
+
+export type LiveMemberRow = {
+    member_id: string;
+    current_url: string | null;
+    device: string | null;
+    event_type: string | null;
+    updated_at: string;
+    full_name: string | null;
+    display_id: string | null;
+    primary_phone: string | null;
+};
+
+/** Returns all currently live/recent members joined with id_members — for pinned top section */
+export async function getLiveMembersWithDetails(): Promise<LiveMemberRow[]> {
+    await assertAumsAdminAccess();
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const presenceClient = adminClient as any;
+    const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+
+    const { data: presenceRows, error } = await presenceClient
+        .from('id_member_presence')
+        .select('member_id, current_url, device, event_type, updated_at')
+        .gte('updated_at', tenMinAgo)
+        .neq('event_type', 'SESSION_END')
+        .order('updated_at', { ascending: false });
+
+    if (error) throw error;
+    if (!presenceRows?.length) return [];
+
+    const memberIds = presenceRows.map((r: any) => r.member_id as string);
+
+    const { data: members, error: membersError } = await adminClient
+        .from('id_members')
+        .select('id, full_name, display_id, primary_phone')
+        .in('id', memberIds);
+
+    if (membersError) throw membersError;
+
+    const memberMap = new Map((members || []).map((m: any) => [m.id, m]));
+
+    return presenceRows.map((p: any) => {
+        const m = memberMap.get(p.member_id) || {};
+        return {
+            member_id: p.member_id,
+            current_url: p.current_url ?? null,
+            device: p.device ?? null,
+            event_type: p.event_type ?? null,
+            updated_at: p.updated_at,
+            full_name: (m as any).full_name ?? null,
+            display_id: (m as any).display_id ?? null,
+            primary_phone: (m as any).primary_phone ?? null,
+        };
+    });
+}
