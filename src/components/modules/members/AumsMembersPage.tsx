@@ -39,6 +39,8 @@ type MemberRow = {
     total_time_ms: number;
     last_active_at: string | null;
     pdp_interests: string[];
+    share_earn_clicks: number;
+    referral_link_clicks: number;
 };
 
 type PresenceMapRow = PresenceRow;
@@ -190,6 +192,8 @@ function MemberTableRow({
     lastActiveAt,
     sessionStartAt,
     pdpInterests,
+    shareEarnClicks,
+    referralLinkClicks,
     totalSessions,
     totalTimeMs,
 }: {
@@ -207,6 +211,8 @@ function MemberTableRow({
     lastActiveAt: string | null;
     sessionStartAt: string | null;
     pdpInterests: string[];
+    shareEarnClicks: number;
+    referralLinkClicks: number;
     totalSessions: number;
     totalTimeMs: number;
 }) {
@@ -251,6 +257,14 @@ function MemberTableRow({
                 ) : (
                     <span className="text-[10px] text-slate-300">Organic</span>
                 )}
+            </td>
+            {/* Share & Earn Clicks */}
+            <td className="px-3 py-3 text-xs font-black text-slate-700">
+                {shareEarnClicks > 0 ? shareEarnClicks : <span className="text-slate-300">—</span>}
+            </td>
+            {/* Referral Link Clicks */}
+            <td className="px-3 py-3 text-xs font-black text-slate-700">
+                {referralLinkClicks > 0 ? referralLinkClicks : <span className="text-slate-300">—</span>}
             </td>
             {/* Date Joined */}
             <td className="px-3 py-3 text-[10px] font-bold text-slate-500">
@@ -482,6 +496,8 @@ export default function AumsMembersPage() {
         { label: 'Member', key: 'name' },
         { label: 'Location' },
         { label: 'Referred By' },
+        { label: 'S&E Clicks' },
+        { label: 'Ref Link Clicks' },
         { label: 'Date Joined', key: 'joined' },
         { label: 'Last Active', key: 'last_active' },
         { label: 'Product Interest' },
@@ -715,6 +731,8 @@ export default function AumsMembersPage() {
                                             taluka={m.taluka}
                                             state={m.state}
                                             referralCode={null}
+                                            shareEarnClicks={0}
+                                            referralLinkClicks={0}
                                             lastActiveAt={m.updated_at}
                                             sessionStartAt={m.session_start_at}
                                             pdpInterests={pdpInterests}
@@ -741,6 +759,8 @@ export default function AumsMembersPage() {
                                             taluka={m.taluka}
                                             state={m.state}
                                             referralCode={m.referral_code}
+                                            shareEarnClicks={m.share_earn_clicks ?? 0}
+                                            referralLinkClicks={m.referral_link_clicks ?? 0}
                                             lastActiveAt={m.last_active_at ?? pres?.updated_at ?? null}
                                             sessionStartAt={null}
                                             pdpInterests={m.pdp_interests ?? []}
@@ -754,7 +774,7 @@ export default function AumsMembersPage() {
                             {filter !== 'all' && activeRows.length === 0 && !isLoading && (
                                 <tr>
                                     <td
-                                        colSpan={9}
+                                        colSpan={11}
                                         className="px-5 py-16 text-center text-xs font-black text-slate-400 uppercase tracking-widest"
                                     >
                                         {filter === 'hot'
@@ -768,7 +788,7 @@ export default function AumsMembersPage() {
                             {filter === 'all' && sortedMembers.length === 0 && !isLoading && (
                                 <tr>
                                     <td
-                                        colSpan={9}
+                                        colSpan={11}
                                         className="px-5 py-16 text-center text-xs font-black text-slate-400 uppercase tracking-widest"
                                     >
                                         No members found.
@@ -777,7 +797,7 @@ export default function AumsMembersPage() {
                             )}
                             {isLoading && filter === 'all' && (
                                 <tr>
-                                    <td colSpan={9} className="px-5 py-12 text-center">
+                                    <td colSpan={11} className="px-5 py-12 text-center">
                                         <div className="flex items-center justify-center gap-2 text-xs text-slate-400 font-bold">
                                             <span className="w-4 h-4 border-2 border-slate-300 border-t-indigo-400 rounded-full animate-spin" />
                                             Loading members…

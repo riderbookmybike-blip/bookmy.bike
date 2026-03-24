@@ -48,6 +48,8 @@ type GetAllPlatformMembersResult = {
         total_time_ms: number;
         last_active_at: string | null;
         pdp_interests: string[]; // ['Honda Activa 6g', 'TVS Ntorq']
+        share_earn_clicks: number;
+        referral_link_clicks: number;
     }>;
     metadata: {
         total: number;
@@ -77,7 +79,7 @@ export async function getAllPlatformMembers(
     const to = from + safePageSize - 1;
 
     const SELECT_COLS =
-        'id, display_id, full_name, primary_phone, created_at, district, taluka, state, referral_code, last_visit_at';
+        'id, display_id, full_name, phone, primary_phone, whatsapp, created_at, district, taluka, state, referral_code, last_visit_at';
 
     let query = adminClient
         .from('id_members')
@@ -111,7 +113,14 @@ export async function getAllPlatformMembers(
     // Batch-fetch analytics for this page of members
     let analyticsMap = new Map<
         string,
-        { total_sessions: number; total_time_ms: number; last_active_at: string | null; pdp_interests: string[] }
+        {
+            total_sessions: number;
+            total_time_ms: number;
+            last_active_at: string | null;
+            pdp_interests: string[];
+            share_earn_clicks: number;
+            referral_link_clicks: number;
+        }
     >();
     if (rows.length > 0) {
         const ids = rows.map((r: any) => r.id as string);
@@ -123,6 +132,8 @@ export async function getAllPlatformMembers(
                 total_time_ms: Number(a.total_time_ms ?? 0),
                 last_active_at: a.last_active_at ?? null,
                 pdp_interests: Array.isArray(a.pdp_interests) ? a.pdp_interests : [],
+                share_earn_clicks: Number(a.share_earn_clicks ?? 0),
+                referral_link_clicks: Number(a.referral_link_clicks ?? 0),
             });
         }
     }
@@ -135,12 +146,14 @@ export async function getAllPlatformMembers(
                 total_time_ms: 0,
                 last_active_at: null,
                 pdp_interests: [],
+                share_earn_clicks: 0,
+                referral_link_clicks: 0,
             };
             return {
                 id: r.id,
                 display_id: r.display_id ?? null,
                 full_name: r.full_name ?? null,
-                primary_phone: r.primary_phone ?? null,
+                primary_phone: r.primary_phone ?? r.phone ?? r.whatsapp ?? null,
                 created_at: r.created_at ?? null,
                 district: r.district ?? null,
                 taluka: r.taluka ?? null,
@@ -150,6 +163,8 @@ export async function getAllPlatformMembers(
                 total_time_ms: a.total_time_ms,
                 last_active_at: a.last_active_at ?? r.last_visit_at ?? null,
                 pdp_interests: a.pdp_interests,
+                share_earn_clicks: a.share_earn_clicks,
+                referral_link_clicks: a.referral_link_clicks,
             };
         }),
         metadata: {
@@ -269,7 +284,9 @@ export async function getLiveMembersWithDetails(): Promise<LiveMemberRow[]> {
             ? await Promise.all([
                   adminClient
                       .from('id_members')
-                      .select('id, full_name, display_id, primary_phone, created_at, district, taluka, state')
+                      .select(
+                          'id, full_name, display_id, phone, primary_phone, whatsapp, created_at, district, taluka, state'
+                      )
                       .in('id', memberIds),
                   adminClient
                       .from('id_member_events')
@@ -318,7 +335,7 @@ export async function getLiveMembersWithDetails(): Promise<LiveMemberRow[]> {
             session_id: p.session_id ?? null,
             full_name: m.full_name ?? null,
             display_id: m.display_id ?? null,
-            primary_phone: m.primary_phone ?? null,
+            primary_phone: m.primary_phone ?? m.phone ?? m.whatsapp ?? null,
             created_at: m.created_at ?? null,
             district: m.district ?? null,
             taluka: m.taluka ?? null,

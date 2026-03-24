@@ -52,6 +52,7 @@ import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { uploadMemberImage } from '@/actions/members';
 import { buildReferralUrl } from '@/lib/constants/referral';
 import { INDIAN_MOBILE_PATTERN } from '@/lib/utils/phoneUtils';
+import { emitMemberTrackingEvent } from '@/lib/tracking/emitMemberTrackingEvent';
 
 const ADMIN_ROLES = new Set(['OWNER', 'ADMIN', 'SUPER_ADMIN', 'DEALERSHIP_ADMIN', 'MARKETPLACE_ADMIN']);
 
@@ -104,6 +105,7 @@ export function ProfileDropdown({
     const [user, setUser] = useState<User | null>(null);
     const [memberProfile, setMemberProfile] = useState<MemberIdentityProfile | null>(null);
     const [memberships, setProfileMemberships] = useState<ProfileMembership[]>([]);
+    const [isMembershipsLoaded, setIsMembershipsLoaded] = useState(false);
     const [internalOpen, setInternalOpen] = useState(false);
     const [bCoins, setBCoins] = useState<number | null>(null);
     const [memberCode, setMemberCode] = useState<string>('');
@@ -145,6 +147,17 @@ export function ProfileDropdown({
 
     // O'Circle vs Business mode toggle: default to The Crew when toggle is available.
     const [businessMode, setBusinessMode] = useState(true);
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const stored = localStorage.getItem('bmb_sidebar_mode');
+            if (stored === 'ocircle') {
+                setBusinessMode(false);
+            } else {
+                setBusinessMode(true);
+            }
+        }
+    }, []);
     const toggleMode = () => {
         setBusinessMode(prev => {
             const next = !prev;
@@ -346,6 +359,12 @@ ${referralUrl}`;
     const handleCopyReferralUrl = async () => {
         if (!referralUrl) return;
         try {
+            emitMemberTrackingEvent('REFERRAL_SHARED', {
+                channel: 'copy_link',
+                target_url: referralUrl,
+                referral_code: referralCode,
+                surface: 'profile_dropdown',
+            });
             await navigator.clipboard.writeText(referralUrl);
             setReferralCopied(true);
             setTimeout(() => setReferralCopied(false), 1600);
@@ -800,11 +819,12 @@ ${referralUrl}`;
         };
 
         if (authUser?.id) {
-            loadProfileMemberships(authUser.id);
+            loadProfileMemberships(authUser.id).finally(() => setIsMembershipsLoaded(true));
             return;
         }
 
         setProfileMemberships([]);
+        setIsMembershipsLoaded(true);
     }, [authUser?.id]);
 
     useEffect(() => {
@@ -1163,6 +1183,7 @@ ${referralUrl}`;
         ? `${workspaceBasePath.replace('/dashboard', '')}/leads?action=create`
         : '/leads?action=create';
     useEffect(() => {
+        if (!isMembershipsLoaded) return;
         // If user has no business workspaces, force O'Circle mode to avoid empty middle panel.
         if (!hasWorkspaceAccess && businessMode) {
             setBusinessMode(false);
@@ -1170,7 +1191,7 @@ ${referralUrl}`;
                 localStorage.setItem('bmb_sidebar_mode', 'ocircle');
             }
         }
-    }, [hasWorkspaceAccess, businessMode]);
+    }, [hasWorkspaceAccess, businessMode, isMembershipsLoaded]);
 
     const accountMenuItems = useMemo(() => {
         if (!user) return [];
@@ -1515,6 +1536,14 @@ ${referralUrl}`;
                                                             <a
                                                                 key={item.key}
                                                                 href={item.href}
+                                                                onClick={() => {
+                                                                    emitMemberTrackingEvent('REFERRAL_SHARED', {
+                                                                        channel: item.key,
+                                                                        target_url: item.href,
+                                                                        referral_code: referralCode,
+                                                                        surface: 'profile_dropdown',
+                                                                    });
+                                                                }}
                                                                 target="_blank"
                                                                 rel="noopener noreferrer"
                                                                 title={item.label}
