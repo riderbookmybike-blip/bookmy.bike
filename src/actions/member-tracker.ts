@@ -2,8 +2,44 @@
 
 import { adminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
+import type { MemberEventType } from '@/lib/constants/member-tracking';
 
-export type MemberEventType = 'SESSION_START' | 'SESSION_END' | 'PAGE_VIEW' | 'HEARTBEAT';
+const PRESENCE_EVENTS = new Set<MemberEventType>([
+    'SESSION_START',
+    'PAGE_VIEW',
+    'HEARTBEAT',
+    'CARD_CLICK',
+    'ACTION_CLICK',
+    'CATALOG_ACTIVITY',
+    'PDP_ACTIVITY',
+    'BLOG_ACTIVITY',
+    'OCIRCLE_ACTIVITY',
+    'EARN_ACTIVITY',
+]);
+
+function sanitisePayload(payload: Record<string, unknown>): Record<string, unknown> {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(payload || {})) {
+        if (v === undefined) continue;
+        if (typeof v === 'string') {
+            out[k] = v.slice(0, 500);
+            continue;
+        }
+        if (typeof v === 'number' || typeof v === 'boolean' || v === null) {
+            out[k] = v;
+            continue;
+        }
+        if (Array.isArray(v)) {
+            out[k] = v.slice(0, 20);
+            continue;
+        }
+        if (typeof v === 'object') {
+            out[k] = JSON.parse(JSON.stringify(v));
+            continue;
+        }
+    }
+    return out;
+}
 
 /**
  * Auth-hardened tracker: ignores the client-passed memberId and instead
@@ -33,11 +69,13 @@ export async function trackMemberEvent(
             );
         }
 
+        const cleanPayload = sanitisePayload(payload);
+
         await adminClient.from('id_member_events').insert({
             member_id: user.id,
             tenant_id: null,
             event_type: eventType,
-            payload: payload as any,
+            payload: cleanPayload as any,
             created_by: null,
         });
 
@@ -46,12 +84,12 @@ export async function trackMemberEvent(
         const presenceClient = adminClient as any;
         if (eventType === 'SESSION_END') {
             await presenceClient.from('id_member_presence').delete().eq('member_id', user.id);
-        } else {
+        } else if (PRESENCE_EVENTS.has(eventType)) {
             await presenceClient.rpc('upsert_member_presence', {
                 p_member_id: user.id,
-                p_current_url: (payload.url as string) ?? null,
-                p_device: (payload.device as string) ?? null,
-                p_session_id: (payload.session_id as string) ?? null,
+                p_current_url: (cleanPayload.url as string) ?? null,
+                p_device: (cleanPayload.device as string) ?? null,
+                p_session_id: (cleanPayload.session_id as string) ?? null,
                 p_event_type: eventType,
             });
         }
@@ -63,7 +101,21 @@ export async function trackMemberEvent(
 // ─── Anonymous tracking ───────────────────────────────────────────────────────
 
 const ANON_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const ANON_ALLOWED_EVENTS = new Set<MemberEventType>(['SESSION_START', 'SESSION_END', 'PAGE_VIEW', 'HEARTBEAT']);
+const ANON_ALLOWED_EVENTS = new Set<MemberEventType>([
+    'SESSION_START',
+    'SESSION_END',
+    'PAGE_VIEW',
+    'HEARTBEAT',
+    'CARD_CLICK',
+    'ACTION_CLICK',
+    'CATALOG_ACTIVITY',
+    'PDP_ACTIVITY',
+    'BLOG_ACTIVITY',
+    'OCIRCLE_ACTIVITY',
+    'EARN_ACTIVITY',
+    'REFERRAL_CAPTURED',
+    'REFERRAL_SHARED',
+]);
 
 function sanitiseUrl(raw: unknown): string | null {
     if (typeof raw !== 'string') return null;
@@ -87,10 +139,10 @@ export async function trackAnonEvent(
         if (!ANON_UUID_RE.test(anonSessionId)) return;
         if (!ANON_ALLOWED_EVENTS.has(eventType)) return;
 
-        const cleanPayload = {
+        const cleanPayload = sanitisePayload({
             ...payload,
             url: sanitiseUrl(payload.url),
-        };
+        });
 
         await adminClient.from('id_member_events').insert({
             member_id: null,
@@ -105,7 +157,7 @@ export async function trackAnonEvent(
         const pc = adminClient as any;
         if (eventType === 'SESSION_END') {
             await pc.from('id_anon_presence').delete().eq('anon_session_id', anonSessionId);
-        } else {
+        } else if (PRESENCE_EVENTS.has(eventType)) {
             await pc.rpc('upsert_anon_presence', {
                 p_anon_session_id: anonSessionId,
                 p_current_url: sanitiseUrl(payload.url),
@@ -189,5 +241,51 @@ export async function getMemberTimeline(memberId: string, limit = 100) {
         return data ?? [];
     } catch {
         return [];
+    }
+}
+
+// ── Location tracking ─────────────────────────────────────────────────────────
+
+export type GeoPayload = {
+    latitude: number;
+    longitude: number;
+    state: string | null;
+    district: string | null;
+    taluka: string | null;
+    area: string | null; // locality / village / suburb
+    pincode: string | null;
+};
+
+/**
+ * Saves reverse-geocoded location to the authenticated member's id_members row.
+ * All fields mapped from MEMBER_LOCATION_FIELDS SOT (src/lib/constants/member-fields.ts).
+ * Silently drops if user is unauthenticated.
+ */
+export async function updateMemberLocation(geo: GeoPayload): Promise<{ ok: boolean }> {
+    try {
+        const supabase = await createClient();
+        const {
+            data: { user },
+            error: authError,
+        } = await supabase.auth.getUser();
+        if (authError || !user?.id) return { ok: false };
+
+        // Column names sourced from MEMBER_LOCATION_FIELDS SOT
+        const update: Record<string, unknown> = {
+            latitude: geo.latitude,
+            longitude: geo.longitude,
+            ...(geo.state && { state: geo.state }),
+            ...(geo.district && { district: geo.district }),
+            ...(geo.taluka && { taluka: geo.taluka }),
+            ...(geo.area && { address: geo.area }), // MEMBER_LOCATION_FIELDS.AREA → 'address'
+            ...(geo.pincode && { pincode: geo.pincode }),
+            updated_at: new Date().toISOString(),
+        };
+
+        const { error } = await adminClient.from('id_members').update(update).eq('id', user.id);
+
+        return { ok: !error };
+    } catch {
+        return { ok: false };
     }
 }

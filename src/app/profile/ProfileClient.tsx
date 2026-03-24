@@ -49,6 +49,7 @@ const LoginSidebar = dynamic(() => import('@/components/auth/LoginSidebar'), { s
 import { getDefaultAvatar } from '@/lib/avatars';
 import { formatMembershipCardCode } from '@/lib/oclub/membershipCardIdentity';
 import { buildReferralUrl } from '@/lib/constants/referral';
+import { emitMemberTrackingEvent } from '@/lib/tracking/emitMemberTrackingEvent';
 
 interface ProfileClientProps {
     user: any;
@@ -205,6 +206,11 @@ export default function ProfileClient({
 
         if (navigator.share && navigator.canShare(shareData)) {
             try {
+                emitMemberTrackingEvent('REFERRAL_SHARED', {
+                    channel: 'native_share',
+                    referral_code: membershipId,
+                    surface: 'profile',
+                });
                 await navigator.share(shareData);
             } catch (err) {
                 console.error('Error sharing:', err);
@@ -213,6 +219,11 @@ export default function ProfileClient({
             // Fallback: Copy link and message to clipboard
             const message = `${shareData.text}\nCheck it out here: ${shareUrl}`;
             navigator.clipboard.writeText(message);
+            emitMemberTrackingEvent('REFERRAL_SHARED', {
+                channel: 'clipboard',
+                referral_code: membershipId,
+                surface: 'profile',
+            });
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
             alert('Referral message copied to clipboard!');
@@ -229,14 +240,29 @@ export default function ProfileClient({
 
         switch (platform) {
             case 'whatsapp':
+                emitMemberTrackingEvent('REFERRAL_SHARED', {
+                    channel: 'whatsapp',
+                    referral_code: membershipId,
+                    surface: 'profile',
+                });
                 window.open(`https://wa.me/?text=${encodedText}`, '_blank');
                 break;
             case 'facebook':
+                emitMemberTrackingEvent('REFERRAL_SHARED', {
+                    channel: 'facebook',
+                    referral_code: membershipId,
+                    surface: 'profile',
+                });
                 window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`, '_blank');
                 break;
             case 'instagram':
                 // Instagram doesn't have a direct share URL, so we copy and alert
                 navigator.clipboard.writeText(fullMessage);
+                emitMemberTrackingEvent('REFERRAL_SHARED', {
+                    channel: 'instagram_copy',
+                    referral_code: membershipId,
+                    surface: 'profile',
+                });
                 setCopied(true);
                 setTimeout(() => setCopied(false), 2000);
                 alert('Share message copied! Open Instagram to paste and share with friends.');

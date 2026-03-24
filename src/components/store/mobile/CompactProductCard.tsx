@@ -14,6 +14,8 @@ import { getEmiFactor } from '@/lib/constants/pricingConstants';
 import { useAnalytics } from '@/components/analytics/AnalyticsProvider';
 import { slugify } from '@/utils/slugs';
 import { useDiscovery } from '@/contexts/DiscoveryContext';
+import { trackMemberEvent, trackAnonEvent } from '@/actions/member-tracker';
+import { ANON_SESSION_KEY } from '@/lib/constants/storage';
 
 interface CompactProductCardProps {
     v: ProductVariant;
@@ -164,6 +166,19 @@ export function CompactProductCard({
             model_slug: slugify(v.model || ''),
             variant_slug: slugify(v.variant || ''),
             source: 'STORE_CATALOG',
+        });
+        // Member-level card click — saved to id_member_events for analytics
+        const cardPayload = {
+            make: v.make ?? null,
+            model: v.model ?? null,
+            variant: v.variant ?? null,
+            sku_id: selectedSkuId ?? v.availableColors?.[0]?.id ?? null,
+            url: window.location.pathname,
+        };
+        const storedAnonId = typeof window !== 'undefined' ? localStorage.getItem(ANON_SESSION_KEY) : null;
+        // Auth check via stored session — fire-and-forget, server action is auth-hardened
+        trackMemberEvent('', 'CARD_CLICK', cardPayload).catch(() => {
+            if (storedAnonId) trackAnonEvent(storedAnonId, 'CARD_CLICK', cardPayload);
         });
     };
 

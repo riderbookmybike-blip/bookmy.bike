@@ -1011,6 +1011,24 @@ export const ProductCard = ({
                                                 variant_slug: slugify(v.variant || ''),
                                                 source: 'STORE_CATALOG',
                                             });
+                                            // Member-level CARD_CLICK — fire-and-forget
+                                            import('@/actions/member-tracker').then(
+                                                ({ trackMemberEvent, trackAnonEvent }) => {
+                                                    import('@/lib/constants/storage').then(({ ANON_SESSION_KEY }) => {
+                                                        const payload = {
+                                                            make: v.make ?? null,
+                                                            model: v.model ?? null,
+                                                            variant: v.variant ?? null,
+                                                            sku_id: selectedSkuId ?? v.availableColors?.[0]?.id ?? null,
+                                                            url: window.location.pathname,
+                                                        };
+                                                        const anonId = localStorage.getItem(ANON_SESSION_KEY);
+                                                        trackMemberEvent('', 'CARD_CLICK', payload).catch(() => {
+                                                            if (anonId) trackAnonEvent(anonId, 'CARD_CLICK', payload);
+                                                        });
+                                                    });
+                                                }
+                                            );
                                         }}
                                         className="relative overflow-hidden px-10 py-4 bg-[#F4B000] hover:bg-[#FFD700] text-black rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-[0_0_20px_rgba(244,176,0,0.3)] hover:shadow-[0_0_30px_rgba(244,176,0,0.5)] hover:-translate-y-1 transition-all"
                                     >

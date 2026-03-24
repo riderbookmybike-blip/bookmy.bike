@@ -37,6 +37,17 @@ type GetAllPlatformMembersResult = {
         full_name: string | null;
         primary_phone: string | null;
         created_at: string | null;
+        // Location
+        district: string | null;
+        taluka: string | null;
+        state: string | null;
+        // Referral
+        referral_code: string | null;
+        // Analytics (from id_member_events via RPC)
+        total_sessions: number;
+        total_time_ms: number;
+        last_active_at: string | null;
+        pdp_interests: string[]; // ['Honda Activa 6g', 'TVS Ntorq']
     }>;
     metadata: {
         total: number;
@@ -54,7 +65,8 @@ function normalizeSearchTerm(raw?: string) {
 export async function getAllPlatformMembers(
     search?: string,
     page: number = 1,
-    pageSize: number = 50
+    pageSize: number = 50,
+    stateFilter?: string
 ): Promise<GetAllPlatformMembersResult> {
     await assertAumsAdminAccess();
     const supabase = await createClient();
@@ -64,9 +76,12 @@ export async function getAllPlatformMembers(
     const from = (safePage - 1) * safePageSize;
     const to = from + safePageSize - 1;
 
+    const SELECT_COLS =
+        'id, display_id, full_name, primary_phone, created_at, district, taluka, state, referral_code, last_visit_at';
+
     let query = adminClient
         .from('id_members')
-        .select('id, display_id, full_name, primary_phone, created_at', { count: 'exact' })
+        .select(SELECT_COLS, { count: 'exact' })
         .order('created_at', { ascending: false })
         .range(from, to);
 
@@ -74,13 +89,15 @@ export async function getAllPlatformMembers(
     if (term) {
         query = query.or(`full_name.ilike.%${term}%,primary_phone.ilike.%${term}%,display_id.ilike.%${term}%`);
     }
+    if (stateFilter) {
+        query = query.ilike('state', stateFilter);
+    }
 
     let { data, error, count } = await query;
     if (error) {
-        // Fallback to request-scoped client if service-role path fails in a given env.
         const fallback = await supabase
             .from('id_members')
-            .select('id, display_id, full_name, primary_phone, created_at', { count: 'exact' })
+            .select(SELECT_COLS, { count: 'exact' })
             .order('created_at', { ascending: false })
             .range(from, to);
         data = fallback.data;
@@ -89,9 +106,52 @@ export async function getAllPlatformMembers(
     }
     if (error) throw error;
 
+    const rows = data || [];
+
+    // Batch-fetch analytics for this page of members
+    let analyticsMap = new Map<
+        string,
+        { total_sessions: number; total_time_ms: number; last_active_at: string | null; pdp_interests: string[] }
+    >();
+    if (rows.length > 0) {
+        const ids = rows.map((r: any) => r.id as string);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: analytics } = await (adminClient as any).rpc('get_member_analytics_batch', { p_member_ids: ids });
+        for (const a of (analytics || []) as any[]) {
+            analyticsMap.set(a.member_id, {
+                total_sessions: Number(a.total_sessions ?? 0),
+                total_time_ms: Number(a.total_time_ms ?? 0),
+                last_active_at: a.last_active_at ?? null,
+                pdp_interests: Array.isArray(a.pdp_interests) ? a.pdp_interests : [],
+            });
+        }
+    }
+
     const total = count || 0;
     return {
-        data: (data || []) as GetAllPlatformMembersResult['data'],
+        data: rows.map((r: any) => {
+            const a = analyticsMap.get(r.id) ?? {
+                total_sessions: 0,
+                total_time_ms: 0,
+                last_active_at: null,
+                pdp_interests: [],
+            };
+            return {
+                id: r.id,
+                display_id: r.display_id ?? null,
+                full_name: r.full_name ?? null,
+                primary_phone: r.primary_phone ?? null,
+                created_at: r.created_at ?? null,
+                district: r.district ?? null,
+                taluka: r.taluka ?? null,
+                state: r.state ?? null,
+                referral_code: r.referral_code ?? null,
+                total_sessions: a.total_sessions,
+                total_time_ms: a.total_time_ms,
+                last_active_at: a.last_active_at ?? r.last_visit_at ?? null,
+                pdp_interests: a.pdp_interests,
+            };
+        }),
         metadata: {
             total,
             page: safePage,
@@ -156,7 +216,7 @@ export async function getPresenceForPage(memberIds: string[]): Promise<PresenceR
 }
 
 export type LiveMemberRow = {
-    member_id: string; // real UUID for members; anon_session_id for guests
+    member_id: string;
     current_url: string | null;
     device: string | null;
     event_type: string | null;
@@ -165,11 +225,15 @@ export type LiveMemberRow = {
     full_name: string | null;
     display_id: string | null;
     primary_phone: string | null;
+    created_at: string | null; // member join date
+    district: string | null;
+    taluka: string | null;
+    state: string | null;
     session_start_at: string | null;
     first_visit_at: string | null;
     last_visit_at: string | null;
     total_time_ms: number;
-    is_anon: boolean; // true = anonymous visitor, false = authenticated member
+    is_anon: boolean;
 };
 
 /** Returns all active members (last 60 min) with identity + session + lifetime stats */
@@ -203,7 +267,10 @@ export async function getLiveMembersWithDetails(): Promise<LiveMemberRow[]> {
     const [membersRes, sessionStartsRes, lifetimeRes] =
         memberIds.length > 0
             ? await Promise.all([
-                  adminClient.from('id_members').select('id, full_name, display_id, primary_phone').in('id', memberIds),
+                  adminClient
+                      .from('id_members')
+                      .select('id, full_name, display_id, primary_phone, created_at, district, taluka, state')
+                      .in('id', memberIds),
                   adminClient
                       .from('id_member_events')
                       .select('member_id, created_at')
@@ -252,6 +319,10 @@ export async function getLiveMembersWithDetails(): Promise<LiveMemberRow[]> {
             full_name: m.full_name ?? null,
             display_id: m.display_id ?? null,
             primary_phone: m.primary_phone ?? null,
+            created_at: m.created_at ?? null,
+            district: m.district ?? null,
+            taluka: m.taluka ?? null,
+            state: m.state ?? null,
             session_start_at: sessionStartMap.get(p.member_id) ?? null,
             first_visit_at: st?.first ?? null,
             last_visit_at: st?.last ?? null,
@@ -261,7 +332,7 @@ export async function getLiveMembersWithDetails(): Promise<LiveMemberRow[]> {
     });
 
     const guestRows: LiveMemberRow[] = (anonRows || []).map((a: any) => ({
-        member_id: a.anon_session_id, // use anon_session_id as the display key
+        member_id: a.anon_session_id,
         current_url: a.current_url ?? null,
         device: a.device ?? null,
         event_type: a.event_type ?? null,
@@ -270,6 +341,10 @@ export async function getLiveMembersWithDetails(): Promise<LiveMemberRow[]> {
         full_name: null,
         display_id: null,
         primary_phone: null,
+        created_at: null,
+        district: null,
+        taluka: null,
+        state: null,
         session_start_at: null,
         first_visit_at: null,
         last_visit_at: null,

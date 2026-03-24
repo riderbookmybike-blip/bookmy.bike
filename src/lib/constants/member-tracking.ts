@@ -1,0 +1,19 @@
+export const MEMBER_EVENT_TYPES = [
+    'SESSION_START',
+    'SESSION_END',
+    'PAGE_VIEW',
+    'HEARTBEAT',
+    'CARD_CLICK',
+    'ACTION_CLICK',
+    'CATALOG_ACTIVITY',
+    'PDP_ACTIVITY',
+    'BLOG_ACTIVITY',
+    'OCIRCLE_ACTIVITY',
+    'EARN_ACTIVITY',
+    'REFERRAL_CAPTURED',
+    'REFERRAL_ATTRIBUTED_SIGNUP',
+    'REFERRAL_SHARED',
+    'AUTH_SIGNED_IN',
+] as const;
+
+export type MemberEventType = (typeof MEMBER_EVENT_TYPES)[number];

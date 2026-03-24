@@ -34,6 +34,7 @@ interface StoreLayoutClientProps {
 }
 
 import { REFERRAL_STORAGE_KEY, extractReferralFromParams } from '@/lib/constants/referral';
+import { emitMemberTrackingEvent } from '@/lib/tracking/emitMemberTrackingEvent';
 
 const readLatLng = (value: any): { lat: number | null; lng: number | null } => {
     const latRaw = value?.lat ?? value?.latitude;
@@ -205,6 +206,10 @@ export default function StoreLayoutClient({ children }: StoreLayoutClientProps) 
             const referral = extractReferralFromParams(searchParams);
             if (referral) {
                 localStorage.setItem(REFERRAL_STORAGE_KEY, referral);
+                emitMemberTrackingEvent('REFERRAL_CAPTURED', {
+                    referral_code: referral,
+                    source_path: window.location.pathname,
+                });
             }
         } catch {
             // Ignore storage failures (private mode policies, etc.)
