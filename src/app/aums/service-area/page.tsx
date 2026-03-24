@@ -1,14 +1,10 @@
-import dynamic from 'next/dynamic';
 import type { Metadata } from 'next';
-
-const ServiceAreaPage = dynamic(() => import('@/app/app/[slug]/superadmin/service-area/page'), {
-    ssr: false,
-});
+import ClientServiceArea from './ClientServiceArea';
 
 export const metadata: Metadata = {
     title: 'Service Areas — AUMS',
 };
 
 export default function AumsServiceAreaRoute() {
-    return <ServiceAreaPage />;
+    return <ClientServiceArea />;
 }
