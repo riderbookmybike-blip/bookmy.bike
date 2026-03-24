@@ -57,6 +57,7 @@ export async function getAllPlatformMembers(
     pageSize: number = 50
 ): Promise<GetAllPlatformMembersResult> {
     await assertAumsAdminAccess();
+    const supabase = await createClient();
 
     const safePage = Number.isFinite(page) ? Math.max(1, Math.floor(page)) : 1;
     const safePageSize = Number.isFinite(pageSize) ? Math.min(100, Math.max(1, Math.floor(pageSize))) : 50;
@@ -74,7 +75,18 @@ export async function getAllPlatformMembers(
         query = query.or(`full_name.ilike.%${term}%,primary_phone.ilike.%${term}%,display_id.ilike.%${term}%`);
     }
 
-    const { data, error, count } = await query;
+    let { data, error, count } = await query;
+    if (error) {
+        // Fallback to request-scoped client if service-role path fails in a given env.
+        const fallback = await supabase
+            .from('id_members')
+            .select('id, display_id, full_name, primary_phone, created_at', { count: 'exact' })
+            .order('created_at', { ascending: false })
+            .range(from, to);
+        data = fallback.data;
+        error = fallback.error;
+        count = fallback.count;
+    }
     if (error) throw error;
 
     const total = count || 0;
@@ -91,8 +103,14 @@ export async function getAllPlatformMembers(
 
 export async function getPlatformPresenceSummary() {
     await assertAumsAdminAccess();
+    const supabase = await createClient();
 
-    const { data, error } = await (adminClient as any).rpc('aums_presence_summary');
+    let { data, error } = await (adminClient as any).rpc('aums_presence_summary');
+    if (error) {
+        const fallback = await (supabase as any).rpc('aums_presence_summary');
+        data = fallback.data;
+        error = fallback.error;
+    }
     if (error) throw error;
 
     const row = Array.isArray(data) ? (data[0] as any) : null;
@@ -102,29 +120,36 @@ export async function getPlatformPresenceSummary() {
     };
 }
 
-type PresenceRow = {
+export interface PresenceRow {
     member_id: string;
     current_url: string | null;
     device: string | null;
     session_id: string | null;
     event_type: string | null;
     updated_at: string;
-};
-
-export type { PresenceRow };
+}
 
 export async function getPresenceForPage(memberIds: string[]): Promise<PresenceRow[]> {
     await assertAumsAdminAccess();
+    const supabase = await createClient();
 
     const ids = Array.from(new Set((memberIds || []).filter(Boolean)));
     if (ids.length === 0) return [];
 
     // Query id_member_presence directly — consistent with realtime + 10-min UI window
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (adminClient as any)
+    let { data, error } = await (adminClient as any)
         .from('id_member_presence')
         .select('member_id, current_url, device, session_id, event_type, updated_at')
         .in('member_id', ids);
+    if (error) {
+        const fallback = await (supabase as any)
+            .from('id_member_presence')
+            .select('member_id, current_url, device, session_id, event_type, updated_at')
+            .in('member_id', ids);
+        data = fallback.data;
+        error = fallback.error;
+    }
 
     if (error) throw error;
     return (data || []) as PresenceRow[];

@@ -102,7 +102,10 @@ export default function AumsMembersPage() {
             .catch(err => {
                 if (cancelled) return;
                 console.error('[AumsMembersPage] loadMembers failed:', err);
-                toast.error('Failed to load platform members');
+                toast.error(`Failed to load platform members: ${err?.message || 'Unknown error'}`);
+                setMembers([]);
+                setTotalMembers(0);
+                setTotalPages(1);
             })
             .finally(() => {
                 if (!cancelled) setIsLoading(false);
