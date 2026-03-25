@@ -42,6 +42,11 @@ function sanitisePayload(payload: Record<string, unknown>): Record<string, unkno
 }
 
 function computeEventTemperature(eventType: string, payload: Record<string, unknown>): string | null {
+    // ── Surface activity events (fired by MemberTracker.trackSurfaceActivity) ──
+    if (eventType === 'PDP_ACTIVITY') return 'HOT';
+    if (eventType === 'CATALOG_ACTIVITY') return 'COLD';
+
+    // ── PAGE_VIEW fallback — belt-and-suspenders for URL-based detection ──────
     if (eventType === 'PAGE_VIEW') {
         const url = String(payload.url || '');
         if (!url) return null;

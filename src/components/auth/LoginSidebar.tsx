@@ -610,12 +610,12 @@ export default function LoginSidebar({
                     setIsOtpVerifiedForSignup(true);
                     setOtp('');
                     loginTriggeredRef.current = false;
-                    if (hasReferralFromLink) {
-                        await completeLogin(null, null);
-                        return;
-                    }
                     setStep('SIGNUP');
-                    setLoginError('OTP verified. Enter referral code to continue signup.');
+                    setLoginError(
+                        hasReferralFromLink
+                            ? 'OTP verified. Complete your profile to continue.'
+                            : 'OTP verified. Enter referral code to continue signup.'
+                    );
                     await capturePendingMembership('OTP_VERIFIED_WAITING_REFERRAL');
                     return;
                 }
@@ -674,13 +674,17 @@ export default function LoginSidebar({
         const phoneVal = !isEmail ? identifier.replace(/\D/g, '') : '';
 
         if (isNewUser) {
+            const resolvedFullName = fullName.trim();
+            if (!resolvedFullName) {
+                throw new Error('Full name is required to complete signup');
+            }
             const signupRes = await fetch('/api/auth/signup', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     phone: phoneVal,
                     email: isEmail ? identifier : '',
-                    displayName: fullName.trim() || 'Rider',
+                    displayName: resolvedFullName,
                     referralCode: getEffectiveReferralCode(),
                     pincode: getResolvedSignupLocation().pincode,
                     state: getResolvedSignupLocation().state,
@@ -698,7 +702,8 @@ export default function LoginSidebar({
                 if (
                     signupData.code === 'INVALID_REFERRAL_CODE' ||
                     signupData.code === 'MISSING_REFERRAL_CODE' ||
-                    signupData.code === 'INVALID_REFERRAL_FORMAT'
+                    signupData.code === 'INVALID_REFERRAL_FORMAT' ||
+                    signupData.code === 'MISSING_COORDINATES'
                 ) {
                     await capturePendingMembership(`SIGNUP_BLOCKED_${signupData.code}`);
                 }
@@ -772,7 +777,7 @@ export default function LoginSidebar({
         const primaryMembership = memberships && memberships.length > 0 ? memberships[0] : null;
         const finalRole = detectedRole || primaryMembership?.role || 'customer';
         // G2 + G4 final: id_members is SOT — metadata fallback removed (0 active users affected, confirmed)
-        const displayName = idMembersName || user?.email?.split('@')[0] || 'Rider';
+        const displayName = idMembersName || fullName.trim() || user?.user_metadata?.full_name || 'Rider';
         localStorage.setItem('user_role', finalRole);
         localStorage.setItem('active_role', finalRole);
         localStorage.setItem('base_role', 'member');

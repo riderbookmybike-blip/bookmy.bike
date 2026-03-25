@@ -39,4 +39,4 @@ export function getHubLocation() {
 
 export const HUB_LOCATION = typeof window !== 'undefined' ? getHubLocation() : DEFAULT_HUB;
 
-export const MAX_SERVICEABLE_DISTANCE_KM = 150;
+export const MAX_SERVICEABLE_DISTANCE_KM = 200;

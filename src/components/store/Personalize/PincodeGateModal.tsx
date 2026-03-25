@@ -21,6 +21,7 @@ import { updateSelfMemberLocation } from '@/actions/members';
 import { createClient } from '@/lib/supabase/client';
 import { useAnalytics } from '@/components/analytics/AnalyticsProvider';
 import type { PincodeSourceConfidence } from './PincodeGateChip';
+import { calculateDistance, HUB_LOCATION, MAX_SERVICEABLE_DISTANCE_KM } from '@/utils/geoUtils';
 
 interface PincodeGateModalProps {
     isOpen: boolean;
@@ -38,6 +39,34 @@ type ModalState =
     | 'GPS_LOADING'; // GPS resolving after user click
 
 const getCurrentMonthName = () => new Date().toLocaleString('en-IN', { month: 'long' });
+const GPS_RESOLVE_TIMEOUT_MS = 12000;
+
+const withTimeout = async <T,>(promise: PromiseLike<T>, timeoutMs: number): Promise<T> => {
+    return await Promise.race<T>([
+        promise,
+        new Promise<T>((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), timeoutMs)),
+    ]);
+};
+
+const normalizeStateCode = (value?: string | null) => {
+    const upper = String(value || '')
+        .trim()
+        .toUpperCase();
+    if (!upper) return '';
+    if (/^[A-Z]{2}$/.test(upper)) return upper;
+    const map: Record<string, string> = {
+        MAHARASHTRA: 'MH',
+        KARNATAKA: 'KA',
+        GUJARAT: 'GJ',
+        RAJASTHAN: 'RJ',
+        DELHI: 'DL',
+        KERALA: 'KL',
+        GOA: 'GA',
+        PUNJAB: 'PB',
+        HARYANA: 'HR',
+    };
+    return map[upper] || upper.slice(0, 2);
+};
 
 export function PincodeGateModal({ isOpen, onResolved }: PincodeGateModalProps) {
     const { trackEvent } = useAnalytics();
@@ -57,6 +86,16 @@ export function PincodeGateModal({ isOpen, onResolved }: PincodeGateModalProps) 
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isOpen]);
+
+    // Watchdog: avoid indefinite spinner on AUTO_GPS when browser/RPC hangs.
+    useEffect(() => {
+        if (!isOpen || modalState !== 'AUTO_GPS') return;
+        const timer = setTimeout(() => {
+            setErrorMsg('GPS is taking too long. Enter pincode manually.');
+            setModalState('MANUAL');
+        }, GPS_RESOLVE_TIMEOUT_MS);
+        return () => clearTimeout(timer);
+    }, [isOpen, modalState]);
 
     // Prevent body scroll
     useEffect(() => {
@@ -92,10 +131,16 @@ export function PincodeGateModal({ isOpen, onResolved }: PincodeGateModalProps) 
             async position => {
                 try {
                     const supabase = createClient();
-                    const { data: nearestData } = await supabase.rpc('get_nearest_pincode', {
-                        p_lat: position.coords.latitude,
-                        p_lon: position.coords.longitude,
-                    });
+                    const rpcResult = (await withTimeout(
+                        Promise.resolve(
+                            supabase.rpc('get_nearest_pincode', {
+                                p_lat: position.coords.latitude,
+                                p_lon: position.coords.longitude,
+                            })
+                        ),
+                        GPS_RESOLVE_TIMEOUT_MS
+                    )) as { data: any[] | null };
+                    const nearestData = rpcResult.data;
 
                     if (!nearestData || nearestData.length === 0) {
                         setModalState('MANUAL');
@@ -112,12 +157,18 @@ export function PincodeGateModal({ isOpen, onResolved }: PincodeGateModalProps) 
                         is_serviceable?: boolean;
                     };
 
-                    // Check serviceability
-                    const isServiceable =
-                        nearest.is_serviceable !== false &&
-                        String(nearest.state || '')
-                            .toLowerCase()
-                            .includes('maharashtra');
+                    // Coordinates + radius serviceability (200km from service hub, state-locked to MH)
+                    const stateCode = normalizeStateCode(nearest.rto_code?.substring(0, 2) || nearest.state);
+                    const geoDistance = calculateDistance(
+                        position.coords.latitude,
+                        position.coords.longitude,
+                        HUB_LOCATION.lat,
+                        HUB_LOCATION.lng
+                    );
+                    const distanceKm = Number.isFinite(Number(nearest.distance_km))
+                        ? Number(nearest.distance_km)
+                        : geoDistance;
+                    const isServiceable = stateCode === 'MH' && distanceKm <= MAX_SERVICEABLE_DISTANCE_KM;
 
                     if (!isServiceable) {
                         // Show "we don't serve your location" with manual override
@@ -179,7 +230,7 @@ export function PincodeGateModal({ isOpen, onResolved }: PincodeGateModalProps) 
     ) => {
         const payload = {
             pincode: resolved.pincode,
-            district: resolved.district || null,
+            district: resolved.district || resolved.taluka || null,
             taluka: resolved.taluka || null,
             state: resolved.state || null,
             stateCode: resolved.stateCode || null,
@@ -240,6 +291,29 @@ export function PincodeGateModal({ isOpen, onResolved }: PincodeGateModalProps) 
                 setModalState(detectedLocation ? 'NOT_SERVICEABLE' : 'MANUAL');
                 return;
             }
+
+            // Hard serviceability block: only allow Maharashtra
+            const stateCode = normalizeStateCode(resolved.state);
+            const hasCoords = Number.isFinite(Number(resolved.lat)) && Number.isFinite(Number(resolved.lng));
+            const distanceKm = hasCoords
+                ? calculateDistance(Number(resolved.lat), Number(resolved.lng), HUB_LOCATION.lat, HUB_LOCATION.lng)
+                : null;
+            const isServiceable =
+                stateCode === 'MH' && (distanceKm == null || distanceKm <= MAX_SERVICEABLE_DISTANCE_KM);
+
+            if (!isServiceable) {
+                const locationLabel = [resolved.district, resolved.state].filter(Boolean).join(', ');
+                setDetectedLocation(locationLabel || 'this location');
+                setErrorMsg('');
+                setModalState('NOT_SERVICEABLE');
+                trackEvent('INTENT_SIGNAL', 'manual_not_serviceable', {
+                    pincode: clean,
+                    state: resolved.state,
+                    source: 'PincodeGateModal',
+                });
+                return;
+            }
+
             await persistAndFire(
                 {
                     pincode: resolved.pincode || clean,
@@ -276,10 +350,16 @@ export function PincodeGateModal({ isOpen, onResolved }: PincodeGateModalProps) 
             async position => {
                 try {
                     const supabase = createClient();
-                    const { data: nearestData } = await supabase.rpc('get_nearest_pincode', {
-                        p_lat: position.coords.latitude,
-                        p_lon: position.coords.longitude,
-                    });
+                    const rpcResult = (await withTimeout(
+                        Promise.resolve(
+                            supabase.rpc('get_nearest_pincode', {
+                                p_lat: position.coords.latitude,
+                                p_lon: position.coords.longitude,
+                            })
+                        ),
+                        GPS_RESOLVE_TIMEOUT_MS
+                    )) as { data: any[] | null };
+                    const nearestData = rpcResult.data;
 
                     if (!nearestData || nearestData.length === 0) {
                         setErrorMsg('Could not detect location. Enter pincode manually.');
@@ -297,11 +377,17 @@ export function PincodeGateModal({ isOpen, onResolved }: PincodeGateModalProps) 
                         is_serviceable?: boolean;
                     };
 
-                    const isServiceable =
-                        nearest.is_serviceable !== false &&
-                        String(nearest.state || '')
-                            .toLowerCase()
-                            .includes('maharashtra');
+                    const stateCode = normalizeStateCode(nearest.rto_code?.substring(0, 2) || nearest.state);
+                    const geoDistance = calculateDistance(
+                        position.coords.latitude,
+                        position.coords.longitude,
+                        HUB_LOCATION.lat,
+                        HUB_LOCATION.lng
+                    );
+                    const distanceKm = Number.isFinite(Number(nearest.distance_km))
+                        ? Number(nearest.distance_km)
+                        : geoDistance;
+                    const isServiceable = stateCode === 'MH' && distanceKm <= MAX_SERVICEABLE_DISTANCE_KM;
 
                     if (!isServiceable) {
                         const locationLabel = [nearest.district, nearest.state].filter(Boolean).join(', ');
@@ -394,7 +480,7 @@ export function PincodeGateModal({ isOpen, onResolved }: PincodeGateModalProps) 
                         <div className="flex items-center gap-2 mb-2">
                             <CheckCircle2 className="text-emerald-500 shrink-0" size={16} />
                             <span className="text-[11px] font-black uppercase tracking-widest text-emerald-700">
-                                Currently serving Maharashtra
+                                Currently serving within {MAX_SERVICEABLE_DISTANCE_KM} km of Mumbai
                             </span>
                         </div>
                         <div className="flex flex-wrap gap-1.5 mt-1">
@@ -493,7 +579,8 @@ export function PincodeGateModal({ isOpen, onResolved }: PincodeGateModalProps) 
                 <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2 mb-5">
                     <CheckCircle2 className="text-emerald-500 shrink-0" size={14} />
                     <span className="text-[11px] font-bold text-emerald-700">
-                        Serving Maharashtra — {SERVED_CITIES.slice(0, 4).join(', ')} &amp; more
+                        Serving within {MAX_SERVICEABLE_DISTANCE_KM} km of Mumbai —{' '}
+                        {SERVED_CITIES.slice(0, 4).join(', ')} &amp; more
                     </span>
                 </div>
 

@@ -107,4 +107,39 @@ describe('Member Tracker - Temperature Escalation', () => {
             })
         );
     });
+
+    it('should escalate to HOT directly on PDP_ACTIVITY event (core bug fix)', async () => {
+        // PDP_ACTIVITY is the event fired by MemberTracker.trackSurfaceActivity()
+        // when a user navigates to /store/honda/activa-6g — NOT PAGE_VIEW.
+        // This test validates the critical fix: PDP_ACTIVITY must trigger HOT escalation.
+        await trackMemberEvent('test-member-uuid', 'PDP_ACTIVITY', {
+            url: '/store/honda/activa-6g',
+            surface: 'pdp',
+            session_id: 'test-session-id',
+        });
+
+        expect(adminClient.rpc).toHaveBeenCalledWith(
+            'escalate_visitor_temperature',
+            expect.objectContaining({
+                p_member_id: 'test-member-uuid',
+                p_temp: 'HOT',
+            })
+        );
+    });
+
+    it('should escalate to COLD on CATALOG_ACTIVITY event', async () => {
+        await trackMemberEvent('test-member-uuid', 'CATALOG_ACTIVITY', {
+            url: '/store/catalog',
+            surface: 'catalog',
+            session_id: 'test-session-id',
+        });
+
+        expect(adminClient.rpc).toHaveBeenCalledWith(
+            'escalate_visitor_temperature',
+            expect.objectContaining({
+                p_member_id: 'test-member-uuid',
+                p_temp: 'COLD',
+            })
+        );
+    });
 });

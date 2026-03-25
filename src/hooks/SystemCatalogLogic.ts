@@ -47,12 +47,12 @@ export function useSystemCatalogLogic(
 
     const resolveLocationFromCache = () => {
         if (typeof window === 'undefined') {
-            return { stateCode: null, district: null };
+            return { stateCode: null, district: null, pincode: null };
         }
 
         const cached = localStorage.getItem('bmb_user_pincode');
         if (!cached) {
-            return { stateCode: null, district: null };
+            return { stateCode: null, district: null, pincode: null };
         }
 
         try {
@@ -81,9 +81,10 @@ export function useSystemCatalogLogic(
             return {
                 stateCode: code || null,
                 district: data.district || null,
+                pincode: typeof (data as any).pincode === 'string' ? (data as any).pincode : null,
             };
         } catch {
-            return { stateCode: null, district: null };
+            return { stateCode: null, district: null, pincode: null };
         }
     };
 
@@ -118,8 +119,11 @@ export function useSystemCatalogLogic(
                 const cachedLocation = resolveLocationFromCache();
                 const district = cachedLocation.district;
                 const state = cachedLocation.stateCode;
+                const pincode = cachedLocation.pincode;
 
-                if (!district && !leadId && !allowStateOnly) {
+                // Mandatory location gate: unlock when we have either district or pincode.
+                // District can be absent in some GPS payloads even when pincode is valid.
+                if (!district && !pincode && !leadId && !allowStateOnly) {
                     setNeedsLocation(true);
                     setItems([]);
                     return;
@@ -198,7 +202,7 @@ export function useSystemCatalogLogic(
         // sufficient for first paint. Defer the background refresh so it doesn't
         // compete with LCP rendering.
         const cachedLocation = resolveLocationFromCache();
-        const hasUserContext = leadId || cachedLocation.district;
+        const hasUserContext = leadId || cachedLocation.district || cachedLocation.pincode;
         const hasSsrCover = ssrItems.length > 0 && !hasUserContext;
 
         let timerId: ReturnType<typeof setTimeout> | undefined;

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
 import {
     Activity,
@@ -36,6 +37,9 @@ type MemberRow = {
     taluka: string | null;
     state: string | null;
     referral_code: string | null;
+    referrer_name: string | null;
+    referrer_display_id: string | null;
+    referrer_member_id: string | null;
     total_sessions: number;
     total_time_ms: number;
     last_active_at: string | null;
@@ -47,6 +51,7 @@ type MemberRow = {
     last_pdp_at?: string | null;
     last_catalog_at?: string | null;
     last_landing_at?: string | null;
+    oclub_balance?: number;
 };
 
 type PresenceMapRow = PresenceRow;
@@ -188,7 +193,9 @@ function MemberTableRow({
     district,
     taluka,
     state,
-    referralCode,
+    referrerName,
+    referrerDisplayId,
+    referrerMemberId,
     currentTemp,
     maxTemp,
     lastActiveAt,
@@ -198,6 +205,8 @@ function MemberTableRow({
     referralLinkClicks,
     totalSessions,
     totalTimeMs,
+    oclubBalance,
+    onNavigate,
 }: {
     id: string;
     displayId: string | null;
@@ -209,7 +218,9 @@ function MemberTableRow({
     district: string | null;
     taluka: string | null;
     state: string | null;
-    referralCode: string | null;
+    referrerName: string | null;
+    referrerDisplayId: string | null;
+    referrerMemberId: string | null;
     currentTemp?: string | null;
     maxTemp?: string | null;
     lastActiveAt: string | null;
@@ -219,15 +230,39 @@ function MemberTableRow({
     referralLinkClicks: number;
     totalSessions: number;
     totalTimeMs: number;
+    oclubBalance: number;
+    onNavigate: (memberId: string) => void;
 }) {
     const city = taluka || district;
     const safeState = validateState(city, state);
     const locationLabel = [city, safeState].filter(Boolean).join(', ') || null;
-    const currentLabel = currentTemp ? currentTemp.toUpperCase() : isLiveVal ? 'LIVE-LANDING' : null;
+
+    // HOT = on PDP right now (live)
+    // WARM = was on PDP before but not currently live on it
+    // COLD = browsed catalog/landing only
+    // LIVE-LANDING = on site now but never hit PDP
+    const effectiveTemp = currentTemp ? currentTemp.toUpperCase() : null;
+    const isOnPdpNow = isLiveVal && effectiveTemp === 'HOT';
+    const currentLabel = isOnPdpNow
+        ? 'HOT'
+        : effectiveTemp === 'HOT' && !isLiveVal
+          ? 'WARM' // was hot (PDP) but left the site
+          : effectiveTemp === 'WARM'
+            ? 'WARM'
+            : effectiveTemp === 'COLD'
+              ? 'COLD'
+              : isLiveVal
+                ? 'LIVE'
+                : null;
     const maxLabel = maxTemp ? maxTemp.toUpperCase() : null;
 
     return (
-        <tr className="border-b border-slate-100 last:border-0 hover:bg-slate-50/60 transition-colors">
+        <tr
+            onClick={() => !isAnon && onNavigate(id)}
+            className={`border-b border-slate-100 last:border-0 hover:bg-slate-50/60 transition-colors ${
+                !isAnon ? 'cursor-pointer' : ''
+            }`}
+        >
             {/* Status dot */}
             <td className="pl-5 pr-2 py-3 w-7">
                 <span
@@ -270,10 +305,21 @@ function MemberTableRow({
             </td>
             {/* Referred By */}
             <td className="px-3 py-3">
-                {referralCode ? (
-                    <span className="text-[9px] font-black text-indigo-500 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-full">
-                        {referralCode}
-                    </span>
+                {referrerName ? (
+                    <button
+                        onClick={e => {
+                            e.stopPropagation();
+                            if (referrerMemberId) onNavigate(referrerMemberId);
+                        }}
+                        className="text-left group"
+                    >
+                        <div className="text-[10px] font-black text-indigo-600 group-hover:text-indigo-800 transition-colors leading-tight">
+                            {referrerName}
+                        </div>
+                        {referrerDisplayId && (
+                            <div className="text-[9px] font-bold text-indigo-400 mt-0.5">{referrerDisplayId}</div>
+                        )}
+                    </button>
                 ) : (
                     <span className="text-[10px] text-slate-300">Organic</span>
                 )}
@@ -331,6 +377,16 @@ function MemberTableRow({
             <td className="px-3 py-3 text-[10px] font-bold text-slate-500">
                 {totalTimeMs > 0 ? fmtTime(totalTimeMs) : <span className="text-slate-300">—</span>}
             </td>
+            {/* O' Circle Balance */}
+            <td className="px-3 py-3">
+                {oclubBalance > 0 ? (
+                    <span className="text-[10px] font-black text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-full">
+                        🪙 {oclubBalance}
+                    </span>
+                ) : (
+                    <span className="text-slate-300 text-[10px]">—</span>
+                )}
+            </td>
         </tr>
     );
 }
@@ -346,6 +402,14 @@ const FILTER_OPTIONS: { key: Filter; emoji: string; label: string }[] = [
 
 export default function AumsMembersPage() {
     const { device: _device } = useBreakpoint();
+    const router = useRouter();
+
+    const onNavigate = useCallback(
+        (memberId: string) => {
+            router.push(`/aums/members/${memberId}`);
+        },
+        [router]
+    );
     const [members, setMembers] = useState<MemberRow[]>([]);
     const [page, setPage] = useState(1);
     const [totalMembers, setTotalMembers] = useState(0);
@@ -501,6 +565,7 @@ export default function AumsMembersPage() {
         { label: 'Product Interest' },
         { label: 'Visits', key: 'visits' },
         { label: 'Time Spent', key: 'time' },
+        { label: "O' Circle" },
     ];
 
     function handleColSort(key: SortKey) {
@@ -723,7 +788,9 @@ export default function AumsMembersPage() {
                                         district={m.district}
                                         taluka={m.taluka}
                                         state={m.state}
-                                        referralCode={m.referral_code}
+                                        referrerName={m.referrer_name ?? null}
+                                        referrerDisplayId={m.referrer_display_id ?? null}
+                                        referrerMemberId={m.referrer_member_id ?? null}
                                         currentTemp={m.current_temperature ?? null}
                                         maxTemp={m.max_temperature ?? null}
                                         shareEarnClicks={m.share_earn_clicks ?? 0}
@@ -733,6 +800,8 @@ export default function AumsMembersPage() {
                                         pdpInterests={m.pdp_interests ?? []}
                                         totalSessions={m.total_sessions ?? 0}
                                         totalTimeMs={m.total_time_ms ?? 0}
+                                        oclubBalance={m.oclub_balance ?? 0}
+                                        onNavigate={onNavigate}
                                     />
                                 );
                             })}
@@ -741,7 +810,7 @@ export default function AumsMembersPage() {
                             {sortedMembers.length === 0 && !isLoading && (
                                 <tr>
                                     <td
-                                        colSpan={11}
+                                        colSpan={12}
                                         className="px-5 py-16 text-center text-xs font-black text-slate-400 uppercase tracking-widest"
                                     >
                                         {filter === 'hot'
@@ -756,7 +825,7 @@ export default function AumsMembersPage() {
                             )}
                             {isLoading && (
                                 <tr>
-                                    <td colSpan={11} className="px-5 py-12 text-center">
+                                    <td colSpan={12} className="px-5 py-12 text-center">
                                         <div className="flex items-center justify-center gap-2 text-xs text-slate-400 font-bold">
                                             <span className="w-4 h-4 border-2 border-slate-300 border-t-indigo-400 rounded-full animate-spin" />
                                             Loading members…

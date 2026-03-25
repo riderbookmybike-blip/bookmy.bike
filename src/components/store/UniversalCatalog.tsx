@@ -1086,7 +1086,7 @@ export const UniversalCatalog = ({
     ]);
 
     // Location gate: catalog stays in DOM for SEO, but overlaid with modal when location missing
-    const showLocationGate = needsLocation;
+    const showLocationGate = needsLocation || serviceability.status === 'unserviceable';
 
     if (showLocationGate) {
         return (
@@ -1116,103 +1116,6 @@ export const UniversalCatalog = ({
                     : undefined
             }
         >
-            {/* Non-Served State Modal — dismissable, user can still browse */}
-            {showNotServingModal && (
-                <div className="fixed inset-0 z-[199] flex items-center justify-center">
-                    <div
-                        className="absolute inset-0 bg-black/30 backdrop-blur-sm"
-                        onClick={() => setShowNotServingModal(false)}
-                    />
-                    <div className="relative z-10 w-full max-w-sm mx-4 rounded-3xl border border-slate-100 bg-white shadow-2xl overflow-hidden">
-                        {/* Header */}
-                        <div className="bg-slate-900 px-6 pt-7 pb-6 text-center relative">
-                            <button
-                                onClick={() => setShowNotServingModal(false)}
-                                className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full text-slate-400 hover:text-white hover:bg-white/10 transition-all"
-                                aria-label="Close"
-                            >
-                                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                                    <path
-                                        d="M1 1l12 12M13 1L1 13"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                        strokeLinecap="round"
-                                    />
-                                </svg>
-                            </button>
-                            <div className="mx-auto w-12 h-12 rounded-2xl bg-amber-400/15 border border-amber-400/30 flex items-center justify-center mb-3">
-                                <MapPin size={22} className="text-amber-400" />
-                            </div>
-                            <h2 className="text-base font-black uppercase tracking-widest text-white">
-                                {serviceability.location
-                                    ? `${serviceability.location} — Not Served`
-                                    : 'Area Not Serviceable'}
-                            </h2>
-                            <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
-                                We currently serve Maharashtra within 150 km of Mumbai. Switch to a serviceable location
-                                below.
-                            </p>
-                        </div>
-
-                        {/* Serviceable Areas */}
-                        <div className="px-5 py-4">
-                            <p className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-400 mb-3">
-                                📍 Select a serviceable area
-                            </p>
-                            <div className="grid grid-cols-2 gap-2">
-                                {[
-                                    { city: 'Mumbai', state: 'Maharashtra', pincode: '400001' },
-                                    { city: 'Thane', state: 'Maharashtra', pincode: '400601' },
-                                    { city: 'Pune', state: 'Maharashtra', pincode: '411001' },
-                                    { city: 'Navi Mumbai', state: 'Maharashtra', pincode: '400703' },
-                                    { city: 'Palghar', state: 'Maharashtra', pincode: '401404' },
-                                    { city: 'Raigad', state: 'Maharashtra', pincode: '402201' },
-                                    { city: 'Nashik', state: 'Maharashtra', pincode: '422001' },
-                                    { city: 'Lonavala', state: 'Maharashtra', pincode: '410401' },
-                                ].map(area => (
-                                    <button
-                                        key={area.city}
-                                        onClick={() => {
-                                            setShowNotServingModal(false);
-                                            setLocationPickerInitialPin(area.pincode);
-                                            setIsLocationPickerOpen(true);
-                                        }}
-                                        className="flex items-center gap-2 px-3 py-2.5 rounded-2xl border border-slate-100 bg-slate-50 hover:bg-[#FFF8E7] hover:border-amber-300 transition-all text-left group"
-                                    >
-                                        <span className="text-base leading-none">📍</span>
-                                        <div className="min-w-0">
-                                            <p className="text-[11px] font-black text-slate-800 group-hover:text-amber-700 truncate">
-                                                {area.city}
-                                            </p>
-                                            <p className="text-[9px] text-slate-400 truncate">{area.state}</p>
-                                        </div>
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Footer actions */}
-                        <div className="px-5 pb-6 space-y-2">
-                            <button
-                                onClick={() => {
-                                    setShowNotServingModal(false);
-                                    setLocationPickerInitialPin(serviceability.pincode || '');
-                                    setIsLocationPickerOpen(true);
-                                }}
-                                className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-900 px-6 py-3.5 text-[11px] font-black text-white uppercase tracking-widest hover:bg-slate-700 transition-all"
-                            >
-                                <MapPin size={13} /> Enter Your Pincode
-                            </button>
-                            <button
-                                onClick={() => setShowNotServingModal(false)}
-                                className="w-full py-2.5 text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors"
-                            >
-                                Continue Browsing
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
             <div className={`flex-1 store-page-shell ${isTv ? 'px-12' : ''}`}>
                 <DiscoveryBar
                     className={

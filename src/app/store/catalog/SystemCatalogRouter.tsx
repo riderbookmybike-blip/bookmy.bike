@@ -42,8 +42,12 @@ function selectLowestVariantPerModel(items: ProductVariant[]): ProductVariant[] 
 function SmartCatalogRouter({ initialItems, basePath = '/store' }: SystemCatalogRouterProps) {
     const searchParams = useSearchParams();
     const leadId = searchParams.get('leadId');
-    const { items: clientItems, isLoading: isClientLoading } = useSystemCatalogLogic(leadId || undefined, {
-        allowStateOnly: true,
+    const {
+        items: clientItems,
+        isLoading: isClientLoading,
+        needsLocation,
+    } = useSystemCatalogLogic(leadId || undefined, {
+        allowStateOnly: false,
         ssrItems: initialItems,
     });
     // clientItems is pre-seeded with initialItems; once hook resolves, it has
@@ -63,6 +67,7 @@ function SmartCatalogRouter({ initialItems, basePath = '/store' }: SystemCatalog
             items={currentItems}
             isLoading={loading}
             mode="smart"
+            needsLocation={needsLocation}
         />
     );
 }
@@ -74,7 +79,7 @@ function DefaultCatalogRouter({ initialItems, basePath = '/store' }: SystemCatal
         items: clientItems,
         isLoading: isClientLoading,
         needsLocation,
-    } = useSystemCatalogLogic(leadId || undefined, { allowStateOnly: true, ssrItems: initialItems });
+    } = useSystemCatalogLogic(leadId || undefined, { allowStateOnly: false, ssrItems: initialItems });
     const currentItems = useMemo(
         () => selectLowestVariantPerModel(clientItems.length > 0 ? clientItems : initialItems),
         [clientItems, initialItems]

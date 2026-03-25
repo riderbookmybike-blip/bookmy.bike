@@ -4,6 +4,21 @@ import { adminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 
 const AUMS_ALLOWED_ROLES = new Set(['SUPER_ADMIN', 'OWNER', 'ADMIN']);
+const DB_QUERY_TIMEOUT_MS = 12_000;
+
+async function withTimeout<T>(promise: PromiseLike<T> | T, timeoutMs: number, label: string): Promise<T> {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    try {
+        return await Promise.race<T>([
+            Promise.resolve(promise),
+            new Promise<T>((_, reject) => {
+                timer = setTimeout(() => reject(new Error(`${label} timed out`)), timeoutMs);
+            }),
+        ]);
+    } finally {
+        if (timer) clearTimeout(timer);
+    }
+}
 
 async function assertAumsAdminAccess() {
     const supabase = await createClient();
@@ -43,6 +58,9 @@ type GetAllPlatformMembersResult = {
         state: string | null;
         // Referral
         referral_code: string | null;
+        referrer_name: string | null;
+        referrer_display_id: string | null;
+        referrer_member_id: string | null;
         // Analytics (from id_member_events via RPC)
         total_sessions: number;
         total_time_ms: number;
@@ -55,6 +73,8 @@ type GetAllPlatformMembersResult = {
         last_pdp_at: string | null;
         last_catalog_at: string | null;
         last_landing_at: string | null;
+        // O' Circle
+        oclub_balance: number;
     }>;
     metadata: {
         total: number;
@@ -74,7 +94,8 @@ export async function getAllPlatformMembers(
     page: number = 1,
     pageSize: number = 50,
     stateFilter?: string,
-    temperatureFilter?: string
+    temperatureFilter?: string,
+    prioritizeRecent: boolean = true
 ): Promise<GetAllPlatformMembersResult> {
     await assertAumsAdminAccess();
     const supabase = await createClient();
@@ -85,13 +106,17 @@ export async function getAllPlatformMembers(
     const to = from + safePageSize - 1;
 
     const SELECT_COLS =
-        'id, display_id, full_name, phone, primary_phone, whatsapp, created_at, district, taluka, state, referral_code, last_visit_at, visitor_temperature, current_temperature, max_temperature, last_pdp_at, last_catalog_at, last_landing_at';
+        'id, display_id, full_name, phone, primary_phone, whatsapp, created_at, district, taluka, state, referral_code, last_visit_at, visitor_temperature, current_temperature, max_temperature, last_pdp_at, last_catalog_at, last_landing_at, preferences';
 
-    let query = adminClient
-        .from('id_members')
-        .select(SELECT_COLS, { count: 'exact' })
-        .order('created_at', { ascending: false })
-        .range(from, to);
+    let query = adminClient.from('id_members').select(SELECT_COLS, { count: 'planned' }).range(from, to);
+
+    if (prioritizeRecent) {
+        query = query
+            .order('last_visit_at', { ascending: false, nullsFirst: false })
+            .order('created_at', { ascending: false });
+    } else {
+        query = query.order('created_at', { ascending: false });
+    }
 
     const term = normalizeSearchTerm(search);
     if (term) {
@@ -104,13 +129,18 @@ export async function getAllPlatformMembers(
         query = query.eq('current_temperature', temperatureFilter.toUpperCase());
     }
 
-    let { data, error, count } = await query;
+    const adminResult = await withTimeout<any>(query, DB_QUERY_TIMEOUT_MS, 'getAllPlatformMembers admin query');
+    let { data, error, count } = adminResult;
     if (error) {
-        let fallbackQuery = supabase
-            .from('id_members')
-            .select(SELECT_COLS, { count: 'exact' })
-            .order('created_at', { ascending: false })
-            .range(from, to);
+        let fallbackQuery = supabase.from('id_members').select(SELECT_COLS, { count: 'planned' }).range(from, to);
+
+        if (prioritizeRecent) {
+            fallbackQuery = fallbackQuery
+                .order('last_visit_at', { ascending: false, nullsFirst: false })
+                .order('created_at', { ascending: false });
+        } else {
+            fallbackQuery = fallbackQuery.order('created_at', { ascending: false });
+        }
 
         if (term) {
             fallbackQuery = fallbackQuery.or(
@@ -124,7 +154,11 @@ export async function getAllPlatformMembers(
             fallbackQuery = fallbackQuery.eq('current_temperature', temperatureFilter.toUpperCase());
         }
 
-        const fallback = await fallbackQuery;
+        const fallback = await withTimeout<any>(
+            fallbackQuery,
+            DB_QUERY_TIMEOUT_MS,
+            'getAllPlatformMembers fallback query'
+        );
         data = fallback.data;
         error = fallback.error;
         count = fallback.count;
@@ -145,19 +179,48 @@ export async function getAllPlatformMembers(
             referral_link_clicks: number;
         }
     >();
+    // Batch oclub wallet balances
+    let oclubMap = new Map<string, number>();
     if (rows.length > 0) {
         const ids = rows.map((r: any) => r.id as string);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: analytics } = await (adminClient as any).rpc('get_member_analytics_batch', { p_member_ids: ids });
-        for (const a of (analytics || []) as any[]) {
-            analyticsMap.set(a.member_id, {
-                total_sessions: Number(a.total_sessions ?? 0),
-                total_time_ms: Number(a.total_time_ms ?? 0),
-                last_active_at: a.last_active_at ?? null,
-                pdp_interests: Array.isArray(a.pdp_interests) ? a.pdp_interests : [],
-                share_earn_clicks: Number(a.share_earn_clicks ?? 0),
-                referral_link_clicks: Number(a.referral_link_clicks ?? 0),
-            });
+        try {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const [analyticsResult, oclubResult] = await Promise.allSettled([
+                withTimeout<any>(
+                    (adminClient as any).rpc('get_member_analytics_batch', { p_member_ids: ids }),
+                    DB_QUERY_TIMEOUT_MS,
+                    'get_member_analytics_batch'
+                ),
+                withTimeout<any>(
+                    (adminClient as any)
+                        .from('oclub_wallets')
+                        .select('member_id, available_system, available_referral')
+                        .in('member_id', ids),
+                    DB_QUERY_TIMEOUT_MS,
+                    'oclub_wallets_batch'
+                ),
+            ]);
+
+            if (analyticsResult.status === 'fulfilled') {
+                for (const a of (analyticsResult.value?.data || []) as any[]) {
+                    analyticsMap.set(a.member_id, {
+                        total_sessions: Number(a.total_sessions ?? 0),
+                        total_time_ms: Number(a.total_time_ms ?? 0),
+                        last_active_at: a.last_active_at ?? null,
+                        pdp_interests: Array.isArray(a.pdp_interests) ? a.pdp_interests : [],
+                        share_earn_clicks: Number(a.share_earn_clicks ?? 0),
+                        referral_link_clicks: Number(a.referral_link_clicks ?? 0),
+                    });
+                }
+            }
+
+            if (oclubResult.status === 'fulfilled') {
+                for (const w of (oclubResult.value?.data || []) as any[]) {
+                    oclubMap.set(w.member_id, Number(w.available_system ?? 0) + Number(w.available_referral ?? 0));
+                }
+            }
+        } catch {
+            // Keep page responsive even if analytics RPC is slow.
         }
     }
 
@@ -172,6 +235,7 @@ export async function getAllPlatformMembers(
                 share_earn_clicks: 0,
                 referral_link_clicks: 0,
             };
+            const prefs = r.preferences ?? {};
             return {
                 id: r.id,
                 display_id: r.display_id ?? null,
@@ -182,6 +246,9 @@ export async function getAllPlatformMembers(
                 taluka: r.taluka ?? null,
                 state: r.state ?? null,
                 referral_code: r.referral_code ?? null,
+                referrer_name: prefs.signup_referrer_name ?? null,
+                referrer_display_id: prefs.signup_referrer_display_id ?? null,
+                referrer_member_id: prefs.signup_referrer_member_id ?? null,
                 total_sessions: a.total_sessions,
                 total_time_ms: a.total_time_ms,
                 last_active_at: a.last_active_at ?? r.last_visit_at ?? null,
@@ -194,6 +261,7 @@ export async function getAllPlatformMembers(
                 last_pdp_at: r.last_pdp_at ?? null,
                 last_catalog_at: r.last_catalog_at ?? null,
                 last_landing_at: r.last_landing_at ?? null,
+                oclub_balance: oclubMap.get(r.id) ?? 0,
             };
         }),
         metadata: {
@@ -325,7 +393,11 @@ export async function getLiveMembersWithDetails(): Promise<LiveMemberRow[]> {
 
     if (presErr) throw presErr;
 
-    const memberIds = (presenceRows || []).map((r: any) => r.member_id as string);
+    const MAX_LIVE_ROWS = 500;
+    const boundedPresenceRows = (presenceRows || []).slice(0, MAX_LIVE_ROWS);
+    const memberIds: string[] = Array.from(
+        new Set(boundedPresenceRows.map((r: any) => String(r?.member_id || '')).filter(Boolean))
+    );
 
     const [membersRes, sessionStartsRes, lifetimeRes] =
         memberIds.length > 0
@@ -371,7 +443,7 @@ export async function getLiveMembersWithDetails(): Promise<LiveMemberRow[]> {
         statsMap.set(id, s);
     }
 
-    const memberRows: LiveMemberRow[] = (presenceRows || []).map((p: any) => {
+    const memberRows: LiveMemberRow[] = boundedPresenceRows.map((p: any) => {
         const m = (memberMap.get(p.member_id) || {}) as any;
         const st = statsMap.get(p.member_id);
         return {

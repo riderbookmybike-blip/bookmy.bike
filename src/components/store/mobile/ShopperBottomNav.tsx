@@ -111,9 +111,23 @@ export function ShopperBottomNav() {
     // Subscribes to pdpCommercialReady dispatched by ProductClient on every
     // pdpGateState change. Uses stable handler stored in ref for strict cleanup.
     const [isCommercialReady, setIsCommercialReady] = useState(false);
+    // isPdpLoading = authenticated but still resolving serviceability — show searching CTA
+    const [isPdpLoading, setIsPdpLoading] = useState(true);
+    // isPdpAuthenticated = user is confirmed logged in (may still be loading)
+    const [isPdpAuthenticated, setIsPdpAuthenticated] = useState(false);
     useEffect(() => {
         const handler = (e: Event) => {
-            setIsCommercialReady((e as CustomEvent<{ ready: boolean }>).detail?.ready ?? false);
+            const detail = (e as CustomEvent<{ ready: boolean; isLoading?: boolean; isAuthenticated?: boolean }>)
+                .detail;
+            setIsCommercialReady(detail?.ready ?? false);
+            // If not ready but authenticated → loading (resolving serviceability)
+            if (detail?.ready) {
+                setIsPdpLoading(false);
+                setIsPdpAuthenticated(detail?.isAuthenticated ?? false);
+            } else {
+                setIsPdpLoading(detail?.isLoading ?? false);
+                setIsPdpAuthenticated(detail?.isAuthenticated ?? false);
+            }
         };
         window.addEventListener('pdpCommercialReady', handler);
         return () => window.removeEventListener('pdpCommercialReady', handler);
@@ -131,16 +145,6 @@ export function ShopperBottomNav() {
         };
         window.addEventListener('catalogServiceabilityChanged', handler);
         return () => window.removeEventListener('catalogServiceabilityChanged', handler);
-    }, []);
-
-    // ── Consent gate visibility — hides bottom nav when full-screen gate is up ─
-    const [isConsentGateVisible, setIsConsentGateVisible] = useState(false);
-    useEffect(() => {
-        const handler = (e: Event) => {
-            setIsConsentGateVisible((e as CustomEvent<{ visible: boolean }>).detail?.visible ?? false);
-        };
-        window.addEventListener('pdpConsentGateVisible', handler);
-        return () => window.removeEventListener('pdpConsentGateVisible', handler);
     }, []);
 
     // ── PDP stage (session-only, resets on leaving PDP) ───────────────────────
@@ -241,19 +245,33 @@ export function ShopperBottomNav() {
         }
 
         if (isPdpPage) {
-            // Phase 4: gate override — show login CTA when commercial not yet unlocked
-            if (pdpStage === 0 && !isCommercialReady) {
+            // Loading state: still resolving serviceability
+            if (isPdpLoading && !isCommercialReady) {
                 return {
-                    label: 'Login to View Offers',
+                    label: 'Searching best deals for you',
+                    subLabel: 'finding the best offer near you…',
+                    icon: Bike,
+                    bg: 'bg-[#1a1a2e]',
+                    shadow: 'shadow-[0_6px_28px_rgba(0,0,0,0.35)]',
+                    textColor: 'text-white',
+                    shimmer: true,
+                    onClick: () => {},
+                };
+            }
+            // Guest CTA: PDP is open but login gives ₹1,000 bonus
+            if (pdpStage === 0 && !isPdpAuthenticated) {
+                return {
+                    label: 'Claim ₹1,000 Instant Discount',
+                    subLabel: 'sign up free · applied at checkout',
                     icon: LogIn,
-                    bg: 'bg-[#F4B000]',
-                    shadow: 'shadow-[0_6px_28px_rgba(244,176,0,0.45)]',
+                    bg: 'bg-gradient-to-r from-[#F4B000] to-[#FF6B00]',
+                    shadow: 'shadow-[0_6px_28px_rgba(244,107,0,0.5)]',
                     textColor: 'text-[#0b0d10]',
                     shimmer: true,
                     onClick: () =>
                         window.dispatchEvent(
                             new CustomEvent('pdpConsentLoginRequested', {
-                                detail: { source: 'bottom_nav', stage: 0 },
+                                detail: { source: 'bottom_nav_discount', stage: 0 },
                             })
                         ),
                 };
@@ -340,6 +358,8 @@ export function ShopperBottomNav() {
         pdpStage,
         pricingMode,
         isCommercialReady,
+        isPdpLoading,
+        isPdpAuthenticated,
         catalogServiceability.status,
         catalogServiceability.location,
     ]);
@@ -364,8 +384,6 @@ export function ShopperBottomNav() {
     };
 
     if (!ctaConfig) return null;
-    // Hide bottom nav entirely when full-screen consent gate is active
-    if (isConsentGateVisible) return null;
 
     const Icon = ctaConfig.icon;
 
@@ -483,7 +501,7 @@ export function ShopperBottomNav() {
                 <div className="h-[60px] flex items-center">
                     <AnimatePresence mode="wait">
                         <motion.button
-                            key={`${isHomePage}-${isPdpPage}-${isCatalogPage}-${pdpStage}-${pricingMode}-${catalogServiceability.status}-${catalogServiceability.location ?? ''}`}
+                            key={`${isHomePage}-${isPdpPage}-${isCatalogPage}-${pdpStage}-${isPdpLoading}-${isPdpAuthenticated}-${pricingMode}-${catalogServiceability.status}-${catalogServiceability.location ?? ''}`}
                             onClick={handleCtaClick}
                             initial={{ opacity: 0, y: 8, scale: 0.97 }}
                             animate={{ opacity: 1, y: 0, scale: 1 }}

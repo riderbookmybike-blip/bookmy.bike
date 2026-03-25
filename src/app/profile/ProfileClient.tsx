@@ -180,8 +180,18 @@ export default function ProfileClient({
         setLocalMember((prev: any) => ({ ...prev, [field]: value }));
     };
 
+    const authEmail = String(user?.email || '')
+        .trim()
+        .toLowerCase();
+    const isSyntheticAuthEmail = authEmail.endsWith('@bookmy.bike');
+    const visibleEmail = localMember.primary_email || (isSyntheticAuthEmail ? '' : user?.email || '');
+
     // G2: id_members is SOT — member prop comes from server-side getSelfMemberProfile()
-    const displayName = member?.full_name || user?.email?.split('@')[0] || 'User';
+    const displayName =
+        localMember.full_name ||
+        user?.user_metadata?.full_name ||
+        (isSyntheticAuthEmail ? '' : user?.email?.split('@')[0]) ||
+        'User';
     const initials = displayName
         .split(' ')
         .map((n: string) => n[0])
@@ -337,7 +347,7 @@ export default function ProfileClient({
                                 <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4 mt-4">
                                     <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-[10px] font-black uppercase text-slate-500 tracking-wider">
                                         <Mail size={12} className="text-indigo-500" />
-                                        {user?.email}
+                                        {visibleEmail || 'PHONE VERIFIED ACCOUNT'}
                                     </div>
                                     <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-[10px] font-black uppercase text-slate-500 tracking-wider">
                                         <Shield size={12} className="text-emerald-500" />
@@ -584,7 +594,7 @@ export default function ProfileClient({
                                     </div>
                                     <div className="bg-slate-50 border border-slate-200 rounded-2xl px-6 py-4 text-sm font-bold text-slate-700">
                                         {(() => {
-                                            const phone = user?.phone || member?.primary_phone || '';
+                                            const phone = user?.phone || member?.primary_phone || member?.phone || '';
                                             // Extract only last 10 digits (remove +91, 91, etc.)
                                             const digits = phone.replace(/\D/g, '');
                                             return digits.length >= 10 ? digits.slice(-10) : phone || 'NOT SET';

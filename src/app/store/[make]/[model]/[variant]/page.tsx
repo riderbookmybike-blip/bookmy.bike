@@ -291,20 +291,16 @@ export default async function Page({ params, searchParams }: Props) {
     const resolvedParams = await params;
     const resolvedSearchParams = await searchParams;
 
-    // Auth resolution — always needed: isAuthenticated is passed to ProductClient
-    // to initialise pdpGateState (CONSENT | RESOLVING | READY).
-    // Phase 2: no page-level redirect; PdpConsentGate modal handles unauthenticated UX.
-
+    // Auth resolution — always needed to track guest vs authenticated state,
+    // though auth is no longer used as a gate condition for PDP access.
     const authClient = await createClient();
     const {
         data: { user },
     } = await authClient.auth.getUser();
     const isAuthenticated = !!user;
 
-    // Phase 2 (Warm Consent): PDP is no longer redirected at page level.
-    // Unauthenticated users reach ProductClient → PdpConsentGate modal.
     // Server actions (createLeadAction, createQuoteAction) still hard-check auth.
-    // isAuthenticated is passed to ProductClient so pdpGateState initialises correctly.
+    // isAuthenticated is passed to ProductClient so it can maintain guest vs member state.
 
     const supabase = adminClient;
     const cookieStore = await cookies(); // Access cookies

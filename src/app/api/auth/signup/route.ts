@@ -22,6 +22,7 @@ export async function POST(req: NextRequest) {
             longitude,
         } = await req.json();
         const cleanPhone = toAppStorageFormat(phone || '');
+        const normalizedDisplayName = String(displayName || '').trim();
         const adminAny = adminClient as any;
         const capturePendingMembership = async (reason: string, referralCodeAttempt?: string) => {
             try {
@@ -83,6 +84,18 @@ export async function POST(req: NextRequest) {
             );
         }
 
+        if (!normalizedDisplayName) {
+            await capturePendingMembership('SIGNUP_BLOCKED_MISSING_NAME');
+            return NextResponse.json(
+                {
+                    success: false,
+                    message: 'Full name is required',
+                    code: 'MISSING_DISPLAY_NAME',
+                },
+                { status: 400 }
+            );
+        }
+
         // Canonical normalization: strip all non-alphanumeric chars, uppercase.
         // This makes raw codes (8UHQ3KFZ4), hyphenated (8UH-Q3K-FZ4), and
         // any other formatting variants all resolve to the same canonical form.
@@ -130,13 +143,13 @@ export async function POST(req: NextRequest) {
         let resolvedDistrict = district || null;
         let resolvedTaluka = taluka || null;
 
-        // Early specific guard: pincode provided but malformed (not exactly 6 digits)
+        // Early specific guard: pincode missing or malformed
         const pincodeStr = String(pincode || '').trim();
-        if (pincodeStr && !/^\d{6}$/.test(pincodeStr)) {
+        if (!/^\d{6}$/.test(pincodeStr)) {
             return NextResponse.json(
                 {
                     success: false,
-                    message: 'Pincode must be exactly 6 digits.',
+                    message: 'Pincode is required and must be exactly 6 digits.',
                     code: 'INVALID_PINCODE_FORMAT',
                 },
                 { status: 400 }
@@ -163,8 +176,19 @@ export async function POST(req: NextRequest) {
             }
         }
         const hasCoords = Number.isFinite(Number(lat)) && Number.isFinite(Number(lng));
+        if (!hasCoords) {
+            await capturePendingMembership('SIGNUP_BLOCKED_MISSING_COORDINATES', canonicalReferralCode);
+            return NextResponse.json(
+                {
+                    success: false,
+                    message: 'GPS coordinates are required to complete signup.',
+                    code: 'MISSING_COORDINATES',
+                },
+                { status: 400 }
+            );
+        }
 
-        const resolvedDisplayName = String(displayName || '').trim() || `Rider ${cleanPhone.slice(-4)}`;
+        const resolvedDisplayName = normalizedDisplayName;
         const referrerRole = String(referrer.role || '')
             .trim()
             .toUpperCase();

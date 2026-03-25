@@ -903,6 +903,8 @@ export async function getDealerDelta({
 export async function getCatalogSnapshot(stateCode: string = 'MH'): Promise<CatalogSnapshotRow[]> {
     const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
     const maxAttempts = 3;
+    const SKU_PAGE_SIZE = 250;
+    const PRICING_CONCURRENCY = 3;
     const isTransientFetchIssue = (input: unknown) => {
         const msg = String((input as any)?.message || input || '')
             .toLowerCase()
@@ -911,11 +913,51 @@ export async function getCatalogSnapshot(stateCode: string = 'MH'): Promise<Cata
             msg.includes('fetch failed') ||
             msg.includes('failed to fetch') ||
             msg.includes('signal is aborted') ||
-            msg.includes('aborterror')
+            msg.includes('aborterror') ||
+            msg.includes('statement timeout')
         );
     };
+    const sortSkusByPosition = (rows: any[]): any[] => {
+        return (rows || []).sort((a: any, b: any) => {
+            const pa = Number(a?.position);
+            const pb = Number(b?.position);
+            const aHasPos = Number.isFinite(pa);
+            const bHasPos = Number.isFinite(pb);
+            if (aHasPos && bHasPos && pa !== pb) return pa - pb;
+            if (aHasPos && !bHasPos) return -1;
+            if (!aHasPos && bHasPos) return 1;
+            return String(a?.id || '').localeCompare(String(b?.id || ''));
+        });
+    };
     const fetchActiveCatalogSkus = async (client: any) => {
-        return client.from('cat_skus').select(CATALOG_SKU_SELECT).eq('status', 'ACTIVE').order('position');
+        const out: any[] = [];
+        let lastId = '';
+
+        // Keyset pagination avoids expensive large scans/sorts that can trigger statement timeout.
+        while (true) {
+            let query = client
+                .from('cat_skus')
+                .select(CATALOG_SKU_SELECT)
+                .eq('status', 'ACTIVE')
+                .order('id', { ascending: true })
+                .limit(SKU_PAGE_SIZE);
+
+            if (lastId) {
+                query = query.gt('id', lastId);
+            }
+
+            const { data, error } = await query;
+            if (error) return { data: null, error };
+
+            const page = data || [];
+            if (page.length === 0) break;
+
+            out.push(...page);
+            lastId = String(page[page.length - 1]?.id || '');
+            if (!lastId || page.length < SKU_PAGE_SIZE) break;
+        }
+
+        return { data: sortSkusByPosition(out), error: null };
     };
     // Chunk SKU IDs to avoid PostgREST URL length limit (~8KB).
     // Passing 300+ UUIDs in a single IN clause generates a >8KB URL that silently returns 0 rows.
@@ -926,20 +968,30 @@ export async function getCatalogSnapshot(stateCode: string = 'MH'): Promise<Cata
         for (let i = 0; i < skuIds.length; i += PRICING_CHUNK_SIZE) {
             chunks.push(skuIds.slice(i, i + PRICING_CHUNK_SIZE));
         }
-        const results = await Promise.all(
-            chunks.map(chunk =>
-                client
-                    .from('cat_price_state_mh')
-                    .select(
-                        'sku_id, ex_showroom, on_road_price, rto_total_state, ins_total:ins_gross_premium, publish_stage, is_popular'
-                    )
-                    .in('sku_id', chunk)
-                    .eq('state_code', stateCode)
-                    .in('publish_stage', ['LIVE', 'PUBLISHED'])
-            )
-        );
-        const firstError = results.find(r => r.error)?.error || null;
-        const mergedData = results.flatMap(r => r.data || []);
+        const mergedData: any[] = [];
+        let firstError: any = null;
+
+        for (let i = 0; i < chunks.length; i += PRICING_CONCURRENCY) {
+            const batch = chunks.slice(i, i + PRICING_CONCURRENCY);
+            const results = await Promise.all(
+                batch.map(chunk =>
+                    client
+                        .from('cat_price_state_mh')
+                        .select(CATALOG_PRICE_SELECT)
+                        .in('sku_id', chunk)
+                        .eq('state_code', stateCode)
+                        .in('publish_stage', ['LIVE', 'PUBLISHED'])
+                )
+            );
+
+            for (const result of results) {
+                if (result.error && !firstError) firstError = result.error;
+                if (result.data && result.data.length > 0) mergedData.push(...result.data);
+            }
+
+            if (firstError) break;
+        }
+
         return { data: mergedData, error: firstError };
     };
 
@@ -949,11 +1001,7 @@ export async function getCatalogSnapshot(stateCode: string = 'MH'): Promise<Cata
 
         for (let attempt = 1; attempt <= maxAttempts; attempt++) {
             try {
-                const { data, error } = await (adminClient as any)
-                    .from('cat_skus')
-                    .select(CATALOG_SKU_SELECT)
-                    .eq('status', 'ACTIVE')
-                    .order('position');
+                const { data, error } = await fetchActiveCatalogSkus(adminClient as any);
 
                 if (!error) {
                     skus = data || [];

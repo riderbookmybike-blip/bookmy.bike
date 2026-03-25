@@ -22,21 +22,7 @@
 import React, { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
-import {
-    ArrowRight,
-    Wallet,
-    Package,
-    Shield,
-    Zap,
-    MessageCircle,
-    X,
-    Send,
-    Edit2,
-    Share2,
-    Download,
-    Lock,
-    CircleHelp,
-} from 'lucide-react';
+import { ArrowRight, Wallet, Package, Shield, Zap, X, Send, Edit2, Lock, CircleHelp } from 'lucide-react';
 import { Logo } from '@/components/brand/Logo';
 import { OCircleLogo } from '@/components/common/OCircleLogo';
 import { coinsNeededForPrice } from '@/lib/oclub/coin';
@@ -273,9 +259,6 @@ interface DesktopActionClusterProps {
     isLoggedIn: boolean;
     quoteActionsEnabled: boolean;
     primaryAction: () => void;
-    handleShareQuote?: () => void;
-    handleDownloadQuote?: () => void;
-    handleReachUsQuote?: () => void;
 }
 
 function compactInr(value: number, sign: '+' | '-' | '' = '') {
@@ -495,77 +478,13 @@ function DesktopActionCluster({
     isLoggedIn,
     quoteActionsEnabled,
     primaryAction,
-    handleShareQuote,
-    handleDownloadQuote,
-    handleReachUsQuote,
 }: DesktopActionClusterProps) {
-    const lockButtonClasses = !isLoggedIn ? 'border-amber-200 bg-amber-50 text-amber-600' : '';
     const quoteActionsDisabledClasses = !quoteActionsEnabled
         ? 'opacity-45 cursor-not-allowed hover:!bg-white hover:!text-slate-500 hover:scale-100 hover:shadow-sm'
         : '';
 
     return (
         <div className="h-full flex items-center justify-end w-full gap-2">
-            {/* Download Quote Button */}
-            <motion.button
-                onClick={
-                    quoteActionsEnabled ? handleDownloadQuote || (() => console.log('Download clicked')) : undefined
-                }
-                disabled={!quoteActionsEnabled}
-                whileHover={{ scale: 1.05, backgroundColor: '#f1f5f9' }}
-                whileTap={{ scale: 0.95 }}
-                className={`relative w-[50px] lg:w-[60px] h-full rounded-[18px] bg-white border border-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-900 transition-colors shrink-0 shadow-sm ${lockButtonClasses} ${quoteActionsDisabledClasses}`}
-                title={
-                    !quoteActionsEnabled
-                        ? 'Save quote first'
-                        : isLoggedIn
-                          ? 'Download Quote'
-                          : 'Login required to download quote'
-                }
-            >
-                <Download size={18} strokeWidth={2.5} />
-                {!isLoggedIn && (
-                    <span className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-amber-400 flex items-center justify-center shadow-md">
-                        <Lock size={10} className="text-slate-900" strokeWidth={2.5} />
-                    </span>
-                )}
-            </motion.button>
-
-            {/* Share Quote Button */}
-            <motion.button
-                onClick={quoteActionsEnabled ? handleShareQuote : undefined}
-                disabled={!quoteActionsEnabled}
-                whileHover={{ scale: 1.05, backgroundColor: '#f1f5f9' }}
-                whileTap={{ scale: 0.95 }}
-                className={`relative w-[50px] lg:w-[60px] h-full rounded-[18px] bg-white border border-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-900 transition-colors shrink-0 shadow-sm ${lockButtonClasses} ${quoteActionsDisabledClasses}`}
-                title={
-                    !quoteActionsEnabled
-                        ? 'Save quote first'
-                        : isLoggedIn
-                          ? 'Share Quote'
-                          : 'Login required to share quote'
-                }
-            >
-                <Share2 size={18} strokeWidth={2.5} />
-                {!isLoggedIn && (
-                    <span className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-amber-400 flex items-center justify-center shadow-md">
-                        <Lock size={10} className="text-slate-900" strokeWidth={2.5} />
-                    </span>
-                )}
-            </motion.button>
-
-            {/* Reach Us (WhatsApp) Button */}
-            <motion.button
-                onClick={quoteActionsEnabled ? handleReachUsQuote : undefined}
-                disabled={!quoteActionsEnabled}
-                whileHover={{ scale: 1.05, backgroundColor: '#f1f5f9' }}
-                whileTap={{ scale: 0.95 }}
-                className={`relative w-[50px] lg:w-[60px] h-full rounded-[18px] bg-white border border-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-900 transition-colors shrink-0 shadow-sm ${quoteActionsDisabledClasses}`}
-                title={quoteActionsEnabled ? 'Reach Us on WhatsApp' : 'Save quote first'}
-            >
-                <MessageCircle size={18} strokeWidth={2.5} />
-            </motion.button>
-
             {/* Main Action Button (Save) */}
             <motion.button
                 onClick={primaryAction}
@@ -658,7 +577,6 @@ export function PdpCommandBar({
     handleShareQuote,
     handleSaveQuote,
     handleDownloadQuote,
-    handleReachUsQuote,
     serviceability,
     isGated,
     accessoriesCount = 0,
@@ -754,8 +672,6 @@ export function PdpCommandBar({
     };
 
     const authAwareShare = () => runWithAuthGate(handleShareQuote);
-    const authAwareDownload = () => runWithAuthGate(handleDownloadQuote || (() => console.log('Download clicked')));
-    const authAwareReachUs = () => runWithAuthGate(handleReachUsQuote);
     const authAwarePrimaryAction = () => runWithAuthGate(primaryAction);
 
     return (
@@ -829,7 +745,7 @@ export function PdpCommandBar({
                                     </div>
                                 </div>
 
-                                {/* Card 4: CTA Cluster (Download, Share, Save) */}
+                                {/* Card 4: CTA Cluster (Save) */}
                                 <div className="shrink-0 w-auto min-w-[260px] lg:min-w-[360px] max-w-[460px] lg:flex-[1.2] h-[72px] lg:h-[80px] flex-none">
                                     <DesktopActionCluster
                                         primaryLabel={primaryLabel}
@@ -837,9 +753,6 @@ export function PdpCommandBar({
                                         isLoggedIn={isLoggedIn}
                                         quoteActionsEnabled={quoteActionsEnabled}
                                         primaryAction={authAwarePrimaryAction}
-                                        handleShareQuote={authAwareShare}
-                                        handleDownloadQuote={authAwareDownload}
-                                        handleReachUsQuote={authAwareReachUs}
                                     />
                                 </div>
                             </div>
