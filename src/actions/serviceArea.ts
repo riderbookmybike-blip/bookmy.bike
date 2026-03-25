@@ -3,9 +3,33 @@
 import { createClient } from '@/lib/supabase/server';
 import { formatLocationName, mergeAreas, normalizeLocationKey } from '@/lib/location/locationNormalizer';
 import { getErrorMessage } from '@/lib/utils/errorMessage';
+import { calculateDistance, HUB_LOCATION, MAX_SERVICEABLE_DISTANCE_KM } from '@/utils/geoUtils';
 
-// Hardcoded Serviceable Districts for now
-const SERVICEABLE_DISTRICTS = ['MUMBAI', 'MUMBAI SUBURBAN', 'THANE', 'PALGHAR', 'RAIGAD', 'PUNE', 'NASHIK'];
+const normalizeStateCode = (state?: string | null, rtoCode?: string | null) => {
+    const rtoPrefix = String(rtoCode || '')
+        .trim()
+        .toUpperCase()
+        .slice(0, 2);
+    if (/^[A-Z]{2}$/.test(rtoPrefix)) return rtoPrefix;
+
+    const upper = String(state || '')
+        .trim()
+        .toUpperCase();
+    if (!upper) return '';
+    if (/^[A-Z]{2}$/.test(upper)) return upper;
+    const map: Record<string, string> = {
+        MAHARASHTRA: 'MH',
+        KARNATAKA: 'KA',
+        GUJARAT: 'GJ',
+        RAJASTHAN: 'RJ',
+        DELHI: 'DL',
+        KERALA: 'KL',
+        GOA: 'GA',
+        PUNJAB: 'PB',
+        HARYANA: 'HR',
+    };
+    return map[upper] || upper.slice(0, 2);
+};
 
 export async function checkServiceability(pincode: string) {
     if (!pincode || pincode.length !== 6) {
@@ -18,12 +42,12 @@ export async function checkServiceability(pincode: string) {
         // Query the correct table 'loc_pincodes'
         let { data, error } = await supabase
             .from('loc_pincodes')
-            .select('status, taluka, area, district, state, rto_code')
+            .select('status, taluka, area, district, state, rto_code, latitude, longitude')
             .eq('pincode', pincode)
             .maybeSingle();
 
         // 1. If not found or missing critical data, try Google Maps
-        if (error || !data || !data.taluka || !data.district) {
+        if (error || !data || !data.taluka || !data.district || !data.latitude || !data.longitude) {
             // console.log(`[GEO] Local resolution failed for ${pincode}, trying Google Maps...`);
             const googleData = await fetchFromGoogleMaps(pincode);
             if (googleData) {
@@ -45,6 +69,8 @@ export async function checkServiceability(pincode: string) {
                     district: googleData.district || data?.district,
                     state: googleData.state || data?.state,
                     area: googleData.area || data?.area,
+                    latitude: googleData.latitude ?? (data as any)?.latitude ?? null,
+                    longitude: googleData.longitude ?? (data as any)?.longitude ?? null,
                     rto_code: data?.rto_code || null,
                 };
             }
@@ -58,21 +84,23 @@ export async function checkServiceability(pincode: string) {
             };
         }
 
-        // 2. Check strict Status (Deliverable/Not Deliverable)
-        let isServiceable = data.status === 'Deliverable';
+        // 2. SOT: state + radius from Mumbai hub
+        const stateCode = normalizeStateCode(data.state, data.rto_code);
+        const lat = Number((data as any).latitude);
+        const lng = Number((data as any).longitude);
+        const hasCoords = Number.isFinite(lat) && Number.isFinite(lng);
+        const distanceKm = hasCoords ? calculateDistance(lat, lng, HUB_LOCATION.lat, HUB_LOCATION.lng) : null;
 
-        // 3. Override: if District is in whitelist, force TRUE
-        const districtUpper = data.district?.toUpperCase();
-        if (districtUpper && SERVICEABLE_DISTRICTS.includes(districtUpper)) {
-            isServiceable = true;
+        // Coordinate-first logic:
+        // - non-MH => unserviceable
+        // - MH + coords => within 200km
+        // - MH + no coords => fallback to status only
+        let isServiceable = stateCode === 'MH';
+        if (isServiceable && distanceKm != null) {
+            isServiceable = distanceKm <= MAX_SERVICEABLE_DISTANCE_KM;
+        } else if (isServiceable && !hasCoords) {
+            isServiceable = data.status === 'Deliverable';
         }
-
-        // 4. Fallback: if Taluka is Mumbai (covers edge cases)
-        if (data.taluka?.toUpperCase().includes('MUMBAI')) {
-            isServiceable = true;
-        }
-
-        const stateCode = data.rto_code ? data.rto_code.substring(0, 2).toUpperCase() : '';
 
         return {
             isServiceable,
@@ -83,6 +111,7 @@ export async function checkServiceability(pincode: string) {
             area: data.area,
             state: data.state,
             stateCode,
+            distanceKm,
         };
     } catch (err) {
         console.error('Serviceability Check Failed:', err);
