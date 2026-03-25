@@ -29,11 +29,14 @@ export interface SalesOrder {
     id: string;
     displayId: string;
     customerName: string;
+    customerPhone: string;
+    customerLocation: string;
     productName: string;
     price: number;
     status: string;
     currentStage?: string | null;
     date: string;
+    createdAt: string;
     vehicleBrand: string;
     vehicleModel: string;
     vehicleVariant: string;
@@ -49,7 +52,7 @@ export default function SalesOrdersPage({
     initialOrderId?: string;
     initialDetailTab?: BookingDetailTab;
 }) {
-    const { tenantId } = useTenant();
+    const { tenantId, tenantType } = useTenant();
     const router = useRouter();
     const params = useParams();
     const searchParams = useSearchParams();
@@ -66,20 +69,23 @@ export default function SalesOrdersPage({
     const fetchOrders = useCallback(async () => {
         setIsLoading(true);
         try {
-            const data = await getBookings(tenantId);
+            const data = await getBookings(tenantType === 'AUMS' ? undefined : tenantId);
             const mapped = (data || []).map((b: any) => ({
                 id: b.id,
                 displayId: b.displayId || b.display_id || formatDisplayId(b.id),
                 customerName: b.customer || b.customer_name || 'N/A',
-                productName: [b.brand, b.model, b.variant].filter(Boolean).join(' '),
+                customerPhone: b.customerPhone || 'N/A',
+                customerLocation: b.customerLocation || 'Location N/A',
+                productName: [b.vehicleBrand, b.vehicleModel, b.vehicleVariant].filter(Boolean).join(' '),
                 price: Number(b.price || 0),
                 status: b.status || 'BOOKED',
                 currentStage: b.currentStage || b.current_stage || null,
                 date: b.date || (b.created_at ? String(b.created_at).split('T')[0] : ''),
-                vehicleBrand: b.brand || '',
-                vehicleModel: b.model || '',
-                vehicleVariant: b.variant || '',
-                vehicleColor: b.color || '',
+                createdAt: b.createdAt || b.created_at || '',
+                vehicleBrand: b.vehicleBrand || '',
+                vehicleModel: b.vehicleModel || '',
+                vehicleVariant: b.vehicleVariant || '',
+                vehicleColor: b.vehicleColor || '',
             }));
             setOrders(mapped);
         } catch (error) {
@@ -96,11 +102,21 @@ export default function SalesOrdersPage({
 
     useEffect(() => {
         const supabase = createClient();
+        let channelFilter = undefined;
+        if (tenantType !== 'AUMS' && tenantId) {
+            channelFilter = `tenant_id=eq.${tenantId}`;
+        }
+
         const channel = supabase
             .channel('sales-orders-live')
             .on(
                 'postgres_changes',
-                { event: '*', schema: 'public', table: 'crm_bookings', filter: `tenant_id=eq.${tenantId}` },
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'crm_bookings',
+                    ...(channelFilter ? { filter: channelFilter } : {}),
+                },
                 () => {
                     fetchOrders();
                 }
@@ -214,27 +230,43 @@ export default function SalesOrdersPage({
                                     className="group bg-white border border-slate-200 rounded-xl p-5 cursor-pointer transition-all hover:shadow-lg hover:border-indigo-500/30 shadow-sm"
                                 >
                                     <div className="flex justify-between items-start mb-4">
-                                        <div className="text-[10px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-2.5 py-1 rounded-md border border-indigo-100">
-                                            {formatDisplayId(order.displayId)}
+                                        <div className="flex flex-col gap-1">
+                                            <div className="text-[10px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-2.5 py-1 rounded-md border border-indigo-100 self-start">
+                                                {formatDisplayId(order.displayId)}
+                                            </div>
+                                            <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                                                {order.createdAt
+                                                    ? new Date(order.createdAt).toLocaleString('en-IN', {
+                                                          month: 'short',
+                                                          day: 'numeric',
+                                                          hour: 'numeric',
+                                                          minute: '2-digit',
+                                                          hour12: true,
+                                                      })
+                                                    : order.date}
+                                            </div>
                                         </div>
                                         <div className="text-slate-900 font-black text-sm tabular-nums">
                                             ₹{order.price.toLocaleString()}
                                         </div>
                                     </div>
-                                    <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight mb-1 truncate">
+                                    <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight mb-0.5 truncate">
                                         {order.customerName}
                                     </h3>
-                                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate mb-6">
+                                    <div className="text-[10px] font-bold text-slate-500 tracking-widest mb-3 truncate">
+                                        {order.customerPhone} &bull; {order.customerLocation}
+                                    </div>
+                                    <div className="text-[10px] font-bold text-slate-900 uppercase tracking-widest truncate mb-0.5">
                                         {[order.vehicleBrand, order.vehicleModel, order.vehicleVariant]
                                             .filter(Boolean)
                                             .join(' ')}
                                     </div>
+                                    <div className="text-[9px] font-semibold text-slate-400 uppercase truncate mb-4">
+                                        {order.vehicleColor || 'N/A Color'}
+                                    </div>
                                     <div className="flex items-center justify-between pt-4 border-t border-slate-100">
-                                        <div className="px-2 py-0.5 rounded bg-slate-50 text-[9px] font-black uppercase text-slate-400 border border-slate-100">
+                                        <div className="px-2 py-0.5 rounded bg-slate-50 text-[9px] font-black uppercase tracking-wider text-slate-400 border border-slate-100">
                                             {order.status}
-                                        </div>
-                                        <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-                                            {order.date}
                                         </div>
                                     </div>
                                 </div>
@@ -246,13 +278,13 @@ export default function SalesOrdersPage({
                                 <thead>
                                     <tr className="bg-slate-50/50 border-b border-slate-200">
                                         <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
-                                            Order ID
+                                            Client Node
                                         </th>
                                         <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
-                                            Entity Node
+                                            Configuration
                                         </th>
                                         <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
-                                            Inventory Specs
+                                            Origin & Time
                                         </th>
                                         <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 text-right">
                                             Valuation
@@ -269,26 +301,58 @@ export default function SalesOrdersPage({
                                             onClick={() => handleOpenOrder(order.id)}
                                             className="group hover:bg-slate-50 transition-colors cursor-pointer border-b border-slate-100 last:border-0"
                                         >
-                                            <td className="px-6 py-4 text-[10px] font-black text-indigo-600 uppercase tracking-widest">
-                                                {formatDisplayId(order.displayId)}
-                                            </td>
                                             <td className="px-6 py-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400">
+                                                <div className="flex items-start gap-3">
+                                                    <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 overflow-hidden border border-slate-200 shrink-0">
                                                         <User size={14} />
                                                     </div>
-                                                    <div className="text-xs font-black text-slate-900 uppercase tracking-tight">
-                                                        {order.customerName}
+                                                    <div className="flex flex-col gap-0.5">
+                                                        <div className="text-xs font-black text-slate-900 uppercase tracking-tight">
+                                                            {order.customerName}
+                                                        </div>
+                                                        <div className="text-[10px] font-bold text-slate-500 tracking-widest">
+                                                            {order.customerPhone}
+                                                        </div>
+                                                        <div className="text-[9px] font-black text-indigo-500 uppercase tracking-widest mt-0.5">
+                                                            {formatDisplayId(order.displayId)}
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                                                {[order.vehicleBrand, order.vehicleModel, order.vehicleVariant]
-                                                    .filter(Boolean)
-                                                    .join(' ')}
+                                            <td className="px-6 py-4">
+                                                <div className="flex flex-col gap-0.5">
+                                                    <div className="text-[10px] font-bold text-slate-900 uppercase tracking-widest truncate max-w-[200px]">
+                                                        {[order.vehicleBrand, order.vehicleModel, order.vehicleVariant]
+                                                            .filter(Boolean)
+                                                            .join(' ')}
+                                                    </div>
+                                                    <div className="text-[9px] font-semibold text-slate-500 uppercase truncate max-w-[200px]">
+                                                        {order.vehicleColor || 'N/A Color'}
+                                                    </div>
+                                                </div>
                                             </td>
-                                            <td className="px-6 py-4 text-right text-xs font-black text-slate-900 tabular-nums">
-                                                ₹{order.price.toLocaleString()}
+                                            <td className="px-6 py-4">
+                                                <div className="flex flex-col gap-0.5">
+                                                    <div className="text-[10px] font-bold text-slate-900 tracking-widest truncate max-w-[150px]">
+                                                        {order.customerLocation}
+                                                    </div>
+                                                    <div className="text-[9px] font-semibold text-slate-500 uppercase tracking-widest">
+                                                        {order.createdAt
+                                                            ? new Date(order.createdAt).toLocaleString('en-IN', {
+                                                                  month: 'short',
+                                                                  day: 'numeric',
+                                                                  hour: 'numeric',
+                                                                  minute: '2-digit',
+                                                                  hour12: true,
+                                                              })
+                                                            : order.date}
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 text-right">
+                                                <div className="text-xs font-black text-slate-900 tabular-nums">
+                                                    ₹{order.price.toLocaleString()}
+                                                </div>
                                             </td>
                                             <td className="px-6 py-4 text-center">
                                                 <div className="px-2.5 py-1 rounded inline-block text-[9px] font-black uppercase tracking-wider bg-slate-50 text-slate-400 border border-slate-100">

@@ -58,13 +58,18 @@ type PresenceMapRow = PresenceRow;
 type Filter = 'all' | 'live' | 'hot' | 'warm' | 'cold';
 type SortKey = 'temperature' | 'name' | 'joined' | 'last_active' | 'visits' | 'time';
 
-function tempRank(currentTemp: string | null | undefined, isLiveLanding: boolean): number {
-    const t = String(currentTemp || '').toUpperCase();
-    if (t === 'HOT') return 4;
-    if (t === 'WARM') return 3;
-    if (t === 'COLD') return 2;
-    if (isLiveLanding) return 1;
-    return 0;
+function tempRank(
+    currentTemp: string | null | undefined,
+    hasSavedQuote: boolean,
+    isLive: boolean,
+    lastPdpAt: string | null,
+    lastCatalogAt: string | null
+): number {
+    if (hasSavedQuote || (String(currentTemp || '').toUpperCase() === 'HOT' && isLive)) return 5; // HOT
+    if (lastPdpAt) return 4; // WARM
+    if (lastCatalogAt) return 3; // COLD
+    if (isLive) return 2; // LIVE
+    return 1; // None
 }
 
 function tempTone(temp: string): string {
@@ -72,7 +77,7 @@ function tempTone(temp: string): string {
     if (temp === 'WARM') return 'text-amber-700 bg-amber-50 border-amber-200';
     if (temp === 'COLD') return 'text-sky-700 bg-sky-50 border-sky-200';
     if (temp === 'LIVE') return 'text-emerald-700 bg-emerald-50 border-emerald-200';
-    return 'text-emerald-700 bg-emerald-50 border-emerald-200';
+    return 'text-slate-500 bg-slate-50 border-slate-200';
 }
 
 // Common Indian states for filter dropdown
@@ -242,22 +247,21 @@ function MemberTableRow({
     const safeState = validateState(city, state);
     const locationLabel = [city, safeState].filter(Boolean).join(', ') || null;
 
-    // HOT = has saved quote OR current DB temperature is HOT
-    // WARM = current DB temperature is WARM
-    // COLD = current DB temperature is COLD
-    // LIVE = on site now but has no temperature tag
+    // 1. HOT: Has saved a quote OR is currently live on a PDP
+    // 2. WARM: Has visited a PDP in the past
+    // 3. COLD: Has visited the Catalog uniformly
+    // 4. LIVE: Is actively on the platform right now, but hasn't reached Catalog or PDP
     const effectiveTemp = currentTemp ? currentTemp.toUpperCase() : null;
-    const currentLabel = hasSavedQuote
-        ? 'HOT'
-        : effectiveTemp === 'HOT'
-          ? 'HOT'
-          : effectiveTemp === 'WARM'
-            ? 'WARM'
-            : effectiveTemp === 'COLD'
-              ? 'COLD'
-              : isLiveVal
-                ? 'LIVE'
-                : null;
+    const currentLabel =
+        hasSavedQuote || (effectiveTemp === 'HOT' && isLiveVal)
+            ? 'HOT'
+            : lastPdpAt
+              ? 'WARM'
+              : lastCatalogAt
+                ? 'COLD'
+                : isLiveVal
+                  ? 'LIVE'
+                  : null;
 
     return (
         <tr
@@ -408,7 +412,7 @@ export default function AumsMembersPage() {
 
     const onNavigate = useCallback(
         (memberId: string) => {
-            router.push(`/aums/members/${memberId}`);
+            router.push(`/app/aums/members/${memberId}`);
         },
         [router]
     );
@@ -524,10 +528,21 @@ export default function AumsMembersPage() {
         const dir = sortDir === 'asc' ? 1 : -1;
         return [...filteredMembers].sort((a, b) => {
             if (sort === 'temperature') {
-                const aLiveLanding = liveIds.has(a.id) && !a.current_temperature;
-                const bLiveLanding = liveIds.has(b.id) && !b.current_temperature;
                 const diff =
-                    tempRank(b.current_temperature, bLiveLanding) - tempRank(a.current_temperature, aLiveLanding);
+                    tempRank(
+                        b.current_temperature,
+                        b.has_saved_quote ?? false,
+                        liveIds.has(b.id),
+                        b.last_pdp_at ?? null,
+                        b.last_catalog_at ?? null
+                    ) -
+                    tempRank(
+                        a.current_temperature,
+                        a.has_saved_quote ?? false,
+                        liveIds.has(a.id),
+                        a.last_pdp_at ?? null,
+                        a.last_catalog_at ?? null
+                    );
                 return sortDir === 'asc' ? -diff : diff;
             }
             if (sort === 'name') return dir * (a.full_name || '').localeCompare(b.full_name || '');

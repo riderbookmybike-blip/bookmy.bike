@@ -127,19 +127,36 @@ export async function getAllPlatformMembers(
     }
     if (temperatureFilter && temperatureFilter !== 'all') {
         const t = temperatureFilter.toLowerCase();
+
+        const tenMinsAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+        const { data: presenceRows } = await (adminClient as any)
+            .from('id_member_presence')
+            .select('member_id')
+            .gte('updated_at', tenMinsAgo);
+        const liveIds = (presenceRows || []).map((r: any) => r.member_id).filter(Boolean);
+        const liveList = liveIds.length > 0 ? liveIds.join(',') : '';
+
         if (t === 'hot') {
-            query = query.or('current_temperature.eq.HOT,quotes_count.gt.0');
+            if (liveList) {
+                query = query.or(`quotes_count.gt.0,and(current_temperature.eq.HOT,id.in.(${liveList}))`);
+            } else {
+                query = query.gt('quotes_count', 0);
+            }
         } else if (t === 'warm') {
-            query = query.eq('current_temperature', 'WARM').eq('quotes_count', 0);
+            if (liveList) {
+                // WARM: No quotes AND (current_temperature is WARM OR (current_temperature is HOT but NOT live))
+                // Note: PostgREST `not.in` string parsing is tricky in OR statements, but we can rewrite as:
+                // last_pdp_at is not null, AND NOT hot.
+                // Since current_temperature represents highest lifetime intent, if it's HOT/WARM they have last_pdp_at.
+                query = query
+                    .eq('quotes_count', 0)
+                    .or(`current_temperature.eq.WARM,and(current_temperature.eq.HOT,not.id.in.(${liveList}))`);
+            } else {
+                query = query.eq('quotes_count', 0).in('current_temperature', ['HOT', 'WARM']);
+            }
         } else if (t === 'cold') {
             query = query.eq('current_temperature', 'COLD').eq('quotes_count', 0);
         } else if (t === 'live') {
-            const tenMinsAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
-            const { data: presenceRows } = await adminClient
-                .from('id_member_presence')
-                .select('member_id')
-                .gte('updated_at', tenMinsAgo);
-            const liveIds = (presenceRows || []).map((r: any) => r.member_id).filter(Boolean);
             if (liveIds.length > 0) {
                 query = query.in('id', liveIds);
             } else {
@@ -171,19 +188,34 @@ export async function getAllPlatformMembers(
         }
         if (temperatureFilter && temperatureFilter !== 'all') {
             const t = temperatureFilter.toLowerCase();
+
+            const tenMinsAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+            const { data: presenceRows } = await (adminClient as any)
+                .from('id_member_presence')
+                .select('member_id')
+                .gte('updated_at', tenMinsAgo);
+            const liveIds = (presenceRows || []).map((r: any) => r.member_id).filter(Boolean);
+            const liveList = liveIds.length > 0 ? liveIds.join(',') : '';
+
             if (t === 'hot') {
-                fallbackQuery = fallbackQuery.or('current_temperature.eq.HOT,quotes_count.gt.0');
+                if (liveList) {
+                    fallbackQuery = fallbackQuery.or(
+                        `quotes_count.gt.0,and(current_temperature.eq.HOT,id.in.(${liveList}))`
+                    );
+                } else {
+                    fallbackQuery = fallbackQuery.gt('quotes_count', 0);
+                }
             } else if (t === 'warm') {
-                fallbackQuery = fallbackQuery.eq('current_temperature', 'WARM').eq('quotes_count', 0);
+                if (liveList) {
+                    fallbackQuery = fallbackQuery
+                        .eq('quotes_count', 0)
+                        .or(`current_temperature.eq.WARM,and(current_temperature.eq.HOT,not.id.in.(${liveList}))`);
+                } else {
+                    fallbackQuery = fallbackQuery.eq('quotes_count', 0).in('current_temperature', ['HOT', 'WARM']);
+                }
             } else if (t === 'cold') {
                 fallbackQuery = fallbackQuery.eq('current_temperature', 'COLD').eq('quotes_count', 0);
             } else if (t === 'live') {
-                const tenMinsAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
-                const { data: presenceRows } = await adminClient
-                    .from('id_member_presence')
-                    .select('member_id')
-                    .gte('updated_at', tenMinsAgo);
-                const liveIds = (presenceRows || []).map((r: any) => r.member_id).filter(Boolean);
                 if (liveIds.length > 0) {
                     fallbackQuery = fallbackQuery.in('id', liveIds);
                 } else {

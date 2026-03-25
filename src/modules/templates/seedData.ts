@@ -128,7 +128,7 @@ export const TEMPLATES: TemplateSeed[] = [
                         id: 'admin-templates',
                         title: 'Template Studio',
                         icon: 'LayoutDashboard',
-                        href: '/aums/dashboard/admin/templates',
+                        href: '/app/aums/dashboard/admin/templates',
                     },
                 ],
             },

@@ -74,7 +74,7 @@ export function CampaignsListClient({ campaigns }: Props) {
                 batch_size: batchSize,
                 batch_delay_min: batchDelay,
             });
-            if (res.success && res.id) router.push(`/aums/campaigns/${res.id}`);
+            if (res.success && res.id) router.push(`/app/aums/campaigns/${res.id}`);
             else setFormError(res.error ?? 'Failed to create campaign');
         });
     };

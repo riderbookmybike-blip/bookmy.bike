@@ -22,10 +22,13 @@ export interface ReceiptRow {
     status: string;
     date: string;
     memberName?: string;
+    customerPhone?: string;
+    customerLocation?: string;
+    createdAt?: string;
 }
 
 export default function ReceiptsPage({ initialReceiptId }: { initialReceiptId?: string }) {
-    const { tenantId } = useTenant();
+    const { tenantId, tenantType } = useTenant();
     const router = useRouter();
     const params = useParams();
     const { device } = useBreakpoint();
@@ -38,19 +41,42 @@ export default function ReceiptsPage({ initialReceiptId }: { initialReceiptId?: 
     const [view, setView] = useState<'grid' | 'list'>('list');
 
     const fetchReceipts = useCallback(async () => {
-        if (!tenantId) return;
+        if (!tenantId && tenantType !== 'AUMS') return;
         setIsLoading(true);
         try {
-            const data = await getReceiptsForTenant(tenantId);
-            const mapped = (data || []).map((r: any) => ({
-                id: r.id,
-                displayId: r.display_id || formatDisplayId(r.id),
-                amount: Number(r.amount || 0),
-                method: r.method || '—',
-                status: r.status || 'PENDING',
-                date: r.created_at ? String(r.created_at).split('T')[0] : '',
-                memberName: r.member_name || r.customer_name || '',
-            }));
+            const data = await getReceiptsForTenant(tenantType === 'AUMS' ? undefined : tenantId);
+            const mapped = (data || []).map((r: any) => {
+                let customerPhone = '';
+                let customerLocation = '';
+                let memberName = r.member_name || r.customer_name || '';
+
+                if (r.booking?.customer_metadata) {
+                    const meta = r.booking.customer_metadata;
+                    customerPhone = meta.phone || customerPhone;
+                    customerLocation = meta.address?.district || meta.address?.city || customerLocation;
+                    memberName = meta.name || memberName;
+                }
+
+                if (r.quote?.customer_details) {
+                    const details = r.quote.customer_details;
+                    customerPhone = details.phone || customerPhone;
+                    customerLocation = details.address?.district || details.address?.city || customerLocation;
+                    memberName = details.name || memberName;
+                }
+
+                return {
+                    id: r.id,
+                    displayId: r.display_id || formatDisplayId(r.id),
+                    amount: Number(r.amount || 0),
+                    method: r.method || '—',
+                    status: r.status || 'PENDING',
+                    date: r.created_at ? String(r.created_at).split('T')[0] : '',
+                    memberName,
+                    customerPhone,
+                    customerLocation,
+                    createdAt: r.created_at,
+                };
+            });
             setReceipts(mapped);
         } catch (error) {
             console.error('Failed to fetch receipts:', error);
@@ -66,11 +92,21 @@ export default function ReceiptsPage({ initialReceiptId }: { initialReceiptId?: 
 
     useEffect(() => {
         const supabase = createClient();
+        let channelFilter = undefined;
+        if (tenantType !== 'AUMS' && tenantId) {
+            channelFilter = `tenant_id=eq.${tenantId}`;
+        }
+
         const channel = supabase
             .channel('receipts-live')
             .on(
                 'postgres_changes',
-                { event: '*', schema: 'public', table: 'crm_payments', filter: `tenant_id=eq.${tenantId}` },
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'crm_payments',
+                    ...(channelFilter ? { filter: channelFilter } : {}),
+                },
                 () => fetchReceipts()
             )
             .subscribe();
@@ -90,7 +126,8 @@ export default function ReceiptsPage({ initialReceiptId }: { initialReceiptId?: 
                 r =>
                     formatDisplayId(r.displayId).toLowerCase().includes(searchQuery.toLowerCase()) ||
                     r.method.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    (r.memberName || '').toLowerCase().includes(searchQuery.toLowerCase())
+                    (r.memberName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    (r.customerPhone || '').toLowerCase().includes(searchQuery.toLowerCase())
             ),
         [receipts, searchQuery]
     );
@@ -148,26 +185,48 @@ export default function ReceiptsPage({ initialReceiptId }: { initialReceiptId?: 
                                     className="group bg-white border border-slate-200 rounded-xl p-5 cursor-pointer transition-all hover:shadow-lg hover:border-indigo-500/30 shadow-sm"
                                 >
                                     <div className="flex justify-between items-start mb-4">
-                                        <div className="text-[10px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-2.5 py-1 rounded-md border border-indigo-100">
-                                            {formatDisplayId(receipt.displayId)}
+                                        <div className="flex flex-col gap-1">
+                                            <div className="text-[10px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-2.5 py-1 rounded-md border border-indigo-100 self-start">
+                                                {formatDisplayId(receipt.displayId)}
+                                            </div>
+                                            <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                                                {receipt.createdAt
+                                                    ? new Date(receipt.createdAt).toLocaleString('en-IN', {
+                                                          month: 'short',
+                                                          day: 'numeric',
+                                                          hour: 'numeric',
+                                                          minute: '2-digit',
+                                                          hour12: true,
+                                                      })
+                                                    : receipt.date}
+                                            </div>
                                         </div>
-                                        <div className="text-slate-900 font-black text-sm tabular-nums">
-                                            ₹{receipt.amount.toLocaleString()}
+                                        <div className="flex flex-col items-end">
+                                            <span className="text-[9px] font-black text-indigo-500 uppercase tracking-tighter">
+                                                Valuation
+                                            </span>
+                                            <span className="text-sm font-black text-slate-900 tabular-nums">
+                                                ₹{receipt.amount.toLocaleString()}
+                                            </span>
                                         </div>
                                     </div>
-                                    <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight mb-1 truncate">
-                                        {receipt.memberName || receipt.method}
+                                    <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight mb-0.5 truncate">
+                                        {receipt.memberName || 'Payer Unknown'}
                                     </h3>
-                                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">
-                                        {receipt.date}
+                                    <div className="text-[10px] font-bold text-slate-500 tracking-widest mb-3 truncate">
+                                        {receipt.customerPhone || 'Phone N/A'} &bull;{' '}
+                                        {receipt.customerLocation || 'Location N/A'}
                                     </div>
-                                    <div className="flex items-center justify-between pt-4 border-t border-slate-100 mt-4">
+                                    <div className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest truncate mb-4">
+                                        Method: {receipt.method}
+                                    </div>
+                                    <div className="flex items-center justify-between pt-4 border-t border-slate-100">
                                         <div className="px-2 py-0.5 rounded bg-slate-50 text-[9px] font-black uppercase text-slate-400 border border-slate-100">
                                             {receipt.status}
                                         </div>
-                                        <div className="text-[9px] font-black text-indigo-600 uppercase tracking-widest">
-                                            {receipt.method}
-                                        </div>
+                                        <div
+                                            className={`w-1.5 h-1.5 rounded-full ${receipt.status.toLowerCase() === 'captured' || receipt.status.toLowerCase() === 'success' ? 'bg-emerald-400' : 'bg-amber-400'}`}
+                                        />
                                     </div>
                                 </div>
                             ))}
@@ -178,13 +237,13 @@ export default function ReceiptsPage({ initialReceiptId }: { initialReceiptId?: 
                                 <thead>
                                     <tr className="bg-slate-50/50 border-b border-slate-200">
                                         <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
-                                            Node ID
+                                            Client Node
                                         </th>
                                         <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
-                                            Identity
+                                            Transaction Mode
                                         </th>
                                         <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
-                                            Mode
+                                            Origin & Time
                                         </th>
                                         <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 text-right">
                                             Valuation
@@ -201,28 +260,60 @@ export default function ReceiptsPage({ initialReceiptId }: { initialReceiptId?: 
                                             onClick={() => handleOpenReceipt(receipt.id)}
                                             className="group hover:bg-slate-50 transition-colors cursor-pointer border-b border-slate-100 last:border-0"
                                         >
-                                            <td className="px-6 py-4 text-[10px] font-black text-indigo-600 uppercase tracking-widest">
-                                                {formatDisplayId(receipt.displayId)}
-                                            </td>
                                             <td className="px-6 py-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400">
+                                                <div className="flex items-start gap-3">
+                                                    <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 overflow-hidden border border-slate-200 shrink-0">
                                                         <User size={14} />
                                                     </div>
-                                                    <div className="text-xs font-black text-slate-900 uppercase tracking-tight">
-                                                        {receipt.memberName || 'N/A'}
+                                                    <div className="flex flex-col gap-0.5">
+                                                        <div className="text-xs font-black text-slate-900 uppercase tracking-tight">
+                                                            {receipt.memberName || 'Payer Unknown'}
+                                                        </div>
+                                                        <div className="text-[10px] font-bold text-slate-500 tracking-widest">
+                                                            {receipt.customerPhone || 'Phone N/A'}
+                                                        </div>
+                                                        <div className="text-[9px] font-black text-indigo-500 uppercase tracking-widest mt-0.5">
+                                                            {formatDisplayId(receipt.displayId)}
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                                                {receipt.method}
+                                            <td className="px-6 py-4">
+                                                <div className="flex flex-col gap-0.5">
+                                                    <div className="text-[10px] font-bold text-slate-900 uppercase tracking-widest truncate max-w-[200px]">
+                                                        {receipt.method}
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="flex flex-col gap-0.5">
+                                                    <div className="text-[10px] font-bold text-slate-900 tracking-widest truncate max-w-[150px]">
+                                                        {receipt.customerLocation || 'Location N/A'}
+                                                    </div>
+                                                    <div className="text-[9px] font-semibold text-slate-500 uppercase tracking-widest">
+                                                        {receipt.createdAt
+                                                            ? new Date(receipt.createdAt).toLocaleString('en-IN', {
+                                                                  month: 'short',
+                                                                  day: 'numeric',
+                                                                  hour: 'numeric',
+                                                                  minute: '2-digit',
+                                                                  hour12: true,
+                                                              })
+                                                            : receipt.date}
+                                                    </div>
+                                                </div>
                                             </td>
                                             <td className="px-6 py-4 text-right text-xs font-black text-slate-900 tabular-nums">
                                                 ₹{receipt.amount.toLocaleString()}
                                             </td>
                                             <td className="px-6 py-4 text-center">
-                                                <div className="px-2.5 py-1 rounded inline-block text-[9px] font-black uppercase tracking-wider bg-slate-50 text-slate-400 border border-slate-100">
-                                                    {receipt.status}
+                                                <div className="flex flex-col items-center gap-2">
+                                                    <div className="px-2.5 py-1 rounded inline-block text-[9px] font-black uppercase tracking-wider bg-slate-50 text-slate-400 border border-slate-100">
+                                                        {receipt.status}
+                                                    </div>
+                                                    <div
+                                                        className={`w-1.5 h-1.5 rounded-full ${receipt.status.toLowerCase() === 'captured' || receipt.status.toLowerCase() === 'success' ? 'bg-emerald-400' : 'bg-amber-400'}`}
+                                                    />
                                                 </div>
                                             </td>
                                         </tr>
@@ -289,11 +380,14 @@ export default function ReceiptsPage({ initialReceiptId }: { initialReceiptId?: 
                                         />
                                     </div>
                                     <div className="text-[11px] font-black text-slate-900 uppercase tracking-tight mb-1 truncate">
-                                        {receipt.memberName || 'N/A'}
+                                        {receipt.memberName || 'Payer Unknown'}
+                                    </div>
+                                    <div className="text-[9px] font-bold text-slate-500 mb-1.5 truncate">
+                                        {receipt.customerPhone || 'Phone N/A'}
                                     </div>
                                     <div className="flex items-center justify-between text-[8px] font-bold text-slate-400 uppercase tracking-widest">
-                                        <span>{receipt.method}</span>
-                                        <span className="text-slate-900 font-black tabular-nums">
+                                        <span className="truncate max-w-[120px]">{receipt.method}</span>
+                                        <span className="text-indigo-500 font-black tabular-nums">
                                             ₹{(receipt.amount / 1000).toFixed(1)}k
                                         </span>
                                     </div>

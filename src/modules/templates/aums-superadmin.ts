@@ -34,7 +34,7 @@ export const AUMS_SUPERADMIN_SIDEBAR: SidebarConfig = {
             title: 'Sales & CRM',
             order: 4,
             items: [
-                { id: 'members-main', href: '/aums/members' },
+                { id: 'members-main', href: '/app/aums/members' },
                 { id: 'leads-main', href: '/app/aums/leads' },
                 { id: 'customers-main', href: '/app/aums/customers' },
                 { id: 'quotes-main', href: '/app/aums/quotes' },

@@ -213,11 +213,11 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
     const hasNext = totalPages > 0 && page < totalPages;
 
     const fetchLeadIndex = useCallback(async () => {
-        if (!tenantId) return;
+        if (!tenantId && tenantType !== 'AUMS') return;
         setIsLoading(true);
         try {
             const result = await getLeadIndexAction({
-                tenantId,
+                tenantId: tenantType === 'AUMS' ? undefined : tenantId,
                 page,
                 pageSize,
                 filters: {
@@ -472,8 +472,21 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
                                         className="group bg-white border border-slate-200 rounded-xl p-5 cursor-pointer transition-all hover:shadow-lg hover:border-indigo-500/30 shadow-sm"
                                     >
                                         <div className="flex justify-between items-start mb-4">
-                                            <div className="text-[10px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-2.5 py-1 rounded-md border border-indigo-100">
-                                                {formatDisplayId(lead.displayId)}
+                                            <div className="flex flex-col gap-1">
+                                                <div className="text-[10px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-2.5 py-1 rounded-md border border-indigo-100 self-start">
+                                                    {formatDisplayId(lead.displayId)}
+                                                </div>
+                                                <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                                                    {lead.created_at
+                                                        ? new Date(lead.created_at).toLocaleString('en-IN', {
+                                                              month: 'short',
+                                                              day: 'numeric',
+                                                              hour: 'numeric',
+                                                              minute: '2-digit',
+                                                              hour12: true,
+                                                          })
+                                                        : 'Date N/A'}
+                                                </div>
                                             </div>
                                             <div className="flex flex-col items-end">
                                                 <span className="text-[9px] font-black text-rose-500 uppercase tracking-tighter">
@@ -484,20 +497,21 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
                                                 </span>
                                             </div>
                                         </div>
-                                        <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight mb-1 truncate">
+                                        <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight mb-0.5 truncate">
                                             {lead.customerName}
                                         </h3>
-                                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate mb-6">
-                                            {lead.phone}
+                                        <div className="text-[10px] font-bold text-slate-500 tracking-widest mb-3 truncate">
+                                            {lead.phone} &bull; {lead.district || lead.area || 'Location N/A'}
+                                        </div>
+                                        <div className="text-[10px] font-bold text-slate-900 uppercase tracking-widest truncate mb-0.5">
+                                            {lead.interestModel || 'Model Undefined'}
+                                        </div>
+                                        <div className="text-[9px] font-semibold text-slate-400 uppercase truncate mb-4">
+                                            Source: {lead.source.replace(/_/g, ' ')}
                                         </div>
                                         <div className="flex items-center justify-between pt-4 border-t border-slate-100">
-                                            <div className="flex flex-col">
-                                                <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest">
-                                                    Region
-                                                </span>
-                                                <span className="text-[10px] font-bold text-slate-600">
-                                                    {lead.district || 'Unset'}
-                                                </span>
+                                            <div className="px-2 py-0.5 rounded bg-slate-50 text-[9px] font-black uppercase tracking-wider text-slate-400 border border-slate-100">
+                                                {lead.status.replace(/_/g, ' ')}
                                             </div>
                                             <div
                                                 className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest border ${getSlaBadgeClass(lead.slaBucket)}`}
@@ -514,19 +528,19 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
                                     <thead>
                                         <tr className="bg-slate-50/50 border-b border-slate-200">
                                             <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
-                                                Node ID
+                                                Client Node
                                             </th>
                                             <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
-                                                Lead Entity
+                                                Configuration
                                             </th>
                                             <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
-                                                Communication
+                                                Origin & Time
                                             </th>
                                             <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
                                                 Score
                                             </th>
                                             <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 text-center">
-                                                Protocol
+                                                Status & SLA
                                             </th>
                                         </tr>
                                     </thead>
@@ -537,40 +551,80 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
                                                 onClick={() => handleOpenLead(lead.id)}
                                                 className="group hover:bg-slate-50 transition-colors cursor-pointer border-b border-slate-100 last:border-0"
                                             >
-                                                <td className="px-6 py-4 text-[10px] font-black text-indigo-600 uppercase tracking-widest">
-                                                    {formatDisplayId(lead.displayId)}
-                                                </td>
                                                 <td className="px-6 py-4">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400">
+                                                    <div className="flex items-start gap-3">
+                                                        <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 overflow-hidden border border-slate-200 shrink-0">
                                                             <User size={14} />
                                                         </div>
-                                                        <div className="text-xs font-black text-slate-900 uppercase tracking-tight">
-                                                            {lead.customerName}
+                                                        <div className="flex flex-col gap-0.5">
+                                                            <div className="text-xs font-black text-slate-900 uppercase tracking-tight">
+                                                                {lead.customerName}
+                                                            </div>
+                                                            <div className="text-[10px] font-bold text-slate-500 tracking-widest">
+                                                                {lead.phone}
+                                                            </div>
+                                                            <div className="text-[9px] font-black text-indigo-500 uppercase tracking-widest mt-0.5">
+                                                                {formatDisplayId(lead.displayId)}
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </td>
-                                                <td className="px-6 py-4 text-xs font-bold text-slate-500">
-                                                    {lead.phone}
+                                                <td className="px-6 py-4">
+                                                    <div className="flex flex-col gap-0.5">
+                                                        <div className="text-[10px] font-bold text-slate-900 uppercase tracking-widest truncate max-w-[200px]">
+                                                            {lead.interestModel || 'Model Undefined'}
+                                                        </div>
+                                                        <div className="text-[9px] font-semibold text-slate-500 uppercase truncate max-w-[200px]">
+                                                            Src: {lead.source.replace(/_/g, ' ')}
+                                                        </div>
+                                                    </div>
                                                 </td>
                                                 <td className="px-6 py-4">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-12 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                                    <div className="flex flex-col gap-0.5">
+                                                        <div className="text-[10px] font-bold text-slate-900 tracking-widest truncate max-w-[150px]">
+                                                            {lead.district || lead.area || lead.state || 'Location N/A'}
+                                                        </div>
+                                                        <div className="text-[9px] font-semibold text-slate-500 uppercase tracking-widest">
+                                                            {lead.created_at
+                                                                ? new Date(lead.created_at).toLocaleString('en-IN', {
+                                                                      month: 'short',
+                                                                      day: 'numeric',
+                                                                      hour: 'numeric',
+                                                                      minute: '2-digit',
+                                                                      hour12: true,
+                                                                  })
+                                                                : 'Date N/A'}
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex flex-col gap-1.5 w-full max-w-[100px]">
+                                                        <div className="flex items-center justify-between">
+                                                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                                                Intent
+                                                            </span>
+                                                            <span className="text-[10px] font-black text-slate-900">
+                                                                {lead.intentScore}%
+                                                            </span>
+                                                        </div>
+                                                        <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden w-full">
                                                             <div
                                                                 className="h-full bg-indigo-500 rounded-full"
                                                                 style={{ width: `${lead.intentScore}%` }}
                                                             />
                                                         </div>
-                                                        <span className="text-[10px] font-black text-slate-900">
-                                                            {lead.intentScore}%
-                                                        </span>
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-4 text-center">
-                                                    <div
-                                                        className={`px-2.5 py-1 rounded inline-block text-[9px] font-black uppercase tracking-widest border ${getSlaBadgeClass(lead.slaBucket)}`}
-                                                    >
-                                                        {getSlaLabel(lead.slaBucket)}
+                                                    <div className="flex flex-col items-center gap-2">
+                                                        <div className="px-2.5 py-1 rounded inline-block text-[9px] font-black uppercase tracking-wider bg-slate-50 text-slate-400 border border-slate-100">
+                                                            {lead.status.replace(/_/g, ' ')}
+                                                        </div>
+                                                        <div
+                                                            className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest border ${getSlaBadgeClass(lead.slaBucket)}`}
+                                                        >
+                                                            {getSlaLabel(lead.slaBucket)}
+                                                        </div>
                                                     </div>
                                                 </td>
                                             </tr>
@@ -664,9 +718,14 @@ export default function LeadsPage({ initialLeadId }: { initialLeadId?: string })
                                     <div className="text-[11px] font-black text-slate-900 uppercase tracking-tight mb-1 truncate">
                                         {lead.customerName}
                                     </div>
+                                    <div className="text-[9px] font-bold text-slate-500 mb-1.5 truncate">
+                                        {lead.phone}
+                                    </div>
                                     <div className="flex items-center justify-between text-[8px] font-bold text-slate-400 uppercase tracking-widest">
-                                        <span>{lead.phone}</span>
-                                        <span className="text-indigo-600 font-black">{lead.intentScore}%</span>
+                                        <span className="truncate max-w-[120px]">
+                                            {lead.interestModel || 'No Model'}
+                                        </span>
+                                        <span className="text-indigo-500 font-black">{lead.intentScore}% Intent</span>
                                     </div>
                                 </button>
                             );

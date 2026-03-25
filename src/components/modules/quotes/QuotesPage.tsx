@@ -30,16 +30,56 @@ export interface Quote {
     id: string;
     displayId: string;
     customerName: string;
+    customerPhone: string;
+    customerLocation: string;
     productName: string;
     productSku: string;
     price: number;
     status: string;
     date: string;
+    createdAt: string;
     vehicleBrand: string;
     vehicleModel: string;
     vehicleVariant: string;
     vehicleColor: string;
+    deliveryTimeline?: number | null;
+    avatarUrl?: string | null;
+    dealership?: string;
+    financeMode?: string;
+    validUntil?: string | null;
 }
+
+const getInitials = (name: string) => {
+    if (!name || name === 'N/A') return '?';
+    const parts = name
+        .trim()
+        .split(' ')
+        .filter(p => p.length > 0);
+    if (parts.length === 0) return '?';
+    if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+    return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+};
+
+const getAvatarColor = (name: string) => {
+    const sum = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const colors = [
+        'bg-rose-100 text-rose-600 border-rose-200',
+        'bg-pink-100 text-pink-600 border-pink-200',
+        'bg-fuchsia-100 text-fuchsia-600 border-fuchsia-200',
+        'bg-purple-100 text-purple-600 border-purple-200',
+        'bg-violet-100 text-violet-600 border-violet-200',
+        'bg-indigo-100 text-indigo-600 border-indigo-200',
+        'bg-blue-100 text-blue-600 border-blue-200',
+        'bg-sky-100 text-sky-600 border-sky-200',
+        'bg-cyan-100 text-cyan-600 border-cyan-200',
+        'bg-teal-100 text-teal-600 border-teal-200',
+        'bg-emerald-100 text-emerald-600 border-emerald-200',
+        'bg-green-100 text-green-600 border-green-200',
+        'bg-amber-100 text-amber-600 border-amber-200',
+        'bg-orange-100 text-orange-600 border-orange-200',
+    ];
+    return colors[sum % colors.length];
+};
 
 export default function QuotesPage({ initialQuoteId }: { initialQuoteId?: string }) {
     const { tenantId, memberships, tenantType, tenantSlug } = useTenant();
@@ -101,7 +141,7 @@ export default function QuotesPage({ initialQuoteId }: { initialQuoteId?: string
     const fetchQuotes = useCallback(async () => {
         setIsLoading(true);
         try {
-            const data = await getQuotes(tenantId);
+            const data = await getQuotes(tenantType === 'AUMS' ? undefined : tenantId);
             setQuotes(data || []);
         } catch (error) {
             console.error('Failed to fetch quotes:', error);
@@ -117,6 +157,11 @@ export default function QuotesPage({ initialQuoteId }: { initialQuoteId?: string
 
     useEffect(() => {
         const supabase = createClient();
+        let channelFilter = undefined;
+        if (tenantType !== 'AUMS' && tenantId) {
+            channelFilter = `tenant_id=eq.${tenantId}`;
+        }
+
         const channel = supabase
             .channel('quotes-live')
             .on(
@@ -125,7 +170,7 @@ export default function QuotesPage({ initialQuoteId }: { initialQuoteId?: string
                     event: '*',
                     schema: 'public',
                     table: 'crm_quotes',
-                    filter: `tenant_id=eq.${tenantId}`,
+                    ...(channelFilter ? { filter: channelFilter } : {}),
                 },
                 _payload => {
                     fetchQuotes();
@@ -276,22 +321,63 @@ export default function QuotesPage({ initialQuoteId }: { initialQuoteId?: string
                                     className="group relative bg-white border border-slate-200 rounded-xl p-5 cursor-pointer transition-all hover:shadow-lg hover:border-indigo-500/30 shadow-sm"
                                 >
                                     <div className="flex justify-between items-start mb-4">
-                                        <div className="text-[10px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-2.5 py-1 rounded-md border border-indigo-100">
-                                            {formatDisplayId(quote.displayId)}
+                                        <div className="flex flex-col gap-1">
+                                            <div className="text-[10px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-2.5 py-1 rounded-md border border-indigo-100 self-start">
+                                                {formatDisplayId(quote.displayId)}
+                                            </div>
+                                            <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                                                {quote.createdAt
+                                                    ? new Date(quote.createdAt).toLocaleString('en-IN', {
+                                                          month: 'short',
+                                                          day: 'numeric',
+                                                          hour: 'numeric',
+                                                          minute: '2-digit',
+                                                          hour12: true,
+                                                      })
+                                                    : quote.date}
+                                                {` • TAT: ${quote.deliveryTimeline || 'PENDING'} ${quote.deliveryTimeline ? 'DAYS' : ''}`.trim()}
+                                            </div>
+                                            <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
+                                                {quote.dealership} &bull; {quote.financeMode}
+                                            </div>
                                         </div>
                                         <div className="text-slate-900 font-black text-sm tabular-nums">
                                             ₹{quote.price.toLocaleString()}
                                         </div>
                                     </div>
 
-                                    <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight mb-1 truncate">
-                                        {quote.customerName}
-                                    </h3>
+                                    <div className="flex items-center gap-2 mb-0.5">
+                                        <div
+                                            className={`w-5 h-5 rounded-full flex items-center justify-center overflow-hidden border shrink-0 shadow-sm ${quote.avatarUrl ? 'bg-slate-100 border-slate-200' : getAvatarColor(quote.customerName)}`}
+                                        >
+                                            {quote.avatarUrl ? (
+                                                <img
+                                                    src={quote.avatarUrl}
+                                                    alt={quote.customerName}
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            ) : (
+                                                <span className="text-[8px] font-black tracking-widest">
+                                                    {getInitials(quote.customerName)}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight truncate">
+                                            {quote.customerName}
+                                        </h3>
+                                    </div>
 
-                                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate mb-6">
+                                    <div className="text-[10px] font-bold text-slate-500 tracking-widest mb-3 truncate">
+                                        {quote.customerPhone} &bull; {quote.customerLocation}
+                                    </div>
+
+                                    <div className="text-[10px] font-bold text-slate-900 uppercase tracking-widest truncate mb-0.5">
                                         {[quote.vehicleBrand, quote.vehicleModel, quote.vehicleVariant]
                                             .filter(Boolean)
                                             .join(' ')}
+                                    </div>
+                                    <div className="text-[9px] font-semibold text-slate-400 uppercase truncate mb-4">
+                                        {quote.vehicleColor || 'N/A Color'}
                                     </div>
 
                                     <div className="flex items-center justify-between pt-4 border-t border-slate-100">
@@ -304,9 +390,6 @@ export default function QuotesPage({ initialQuoteId }: { initialQuoteId?: string
                                         >
                                             {quote.status}
                                         </div>
-                                        <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-                                            {quote.date}
-                                        </div>
                                     </div>
                                 </div>
                             ))}
@@ -317,13 +400,19 @@ export default function QuotesPage({ initialQuoteId }: { initialQuoteId?: string
                                 <thead>
                                     <tr className="bg-slate-50/50 border-b border-slate-200">
                                         <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
-                                            ID
-                                        </th>
-                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
                                             Client Node
                                         </th>
                                         <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
                                             Configuration
+                                        </th>
+                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                                            Finance
+                                        </th>
+                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                                            Dealership
+                                        </th>
+                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                                            Origin & Time
                                         </th>
                                         <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 text-right">
                                             Valuation
@@ -341,25 +430,83 @@ export default function QuotesPage({ initialQuoteId }: { initialQuoteId?: string
                                             className="group hover:bg-slate-50 transition-colors cursor-pointer border-b border-slate-100 last:border-0"
                                         >
                                             <td className="px-6 py-4">
-                                                <div className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">
-                                                    {formatDisplayId(quote.displayId)}
+                                                <div className="flex items-start gap-3">
+                                                    <div
+                                                        className={`w-8 h-8 rounded-full flex items-center justify-center overflow-hidden border shrink-0 shadow-sm ${quote.avatarUrl ? 'bg-slate-100 border-slate-200' : getAvatarColor(quote.customerName)}`}
+                                                    >
+                                                        {quote.avatarUrl ? (
+                                                            <img
+                                                                src={quote.avatarUrl}
+                                                                alt={quote.customerName}
+                                                                className="w-full h-full object-cover"
+                                                            />
+                                                        ) : (
+                                                            <span className="text-[10px] font-black tracking-widest">
+                                                                {getInitials(quote.customerName)}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex flex-col gap-0.5">
+                                                        <div className="text-xs font-black text-slate-900 uppercase tracking-tight">
+                                                            {quote.customerName}
+                                                        </div>
+                                                        <div className="text-[10px] font-bold text-slate-500 tracking-widest">
+                                                            {quote.customerPhone}
+                                                        </div>
+                                                        <div className="text-[9px] font-black text-indigo-500 uppercase tracking-widest mt-0.5">
+                                                            {formatDisplayId(quote.displayId)}
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 overflow-hidden border border-slate-200">
-                                                        <User size={14} />
+                                                <div className="flex flex-col gap-0.5">
+                                                    <div className="text-[10px] font-bold text-slate-900 uppercase tracking-widest truncate max-w-[200px]">
+                                                        {[quote.vehicleBrand, quote.vehicleModel, quote.vehicleVariant]
+                                                            .filter(Boolean)
+                                                            .join(' ')}
                                                     </div>
-                                                    <div className="text-xs font-black text-slate-900 uppercase tracking-tight">
-                                                        {quote.customerName}
+                                                    <div className="text-[9px] font-semibold text-slate-500 uppercase truncate max-w-[200px]">
+                                                        {quote.vehicleColor || 'N/A Color'}
                                                     </div>
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                                                    {[quote.vehicleBrand, quote.vehicleModel, quote.vehicleVariant]
-                                                        .filter(Boolean)
-                                                        .join(' ')}
+                                                <div className="flex flex-col gap-0.5">
+                                                    <div className="text-[10px] font-black text-slate-900 tracking-widest uppercase mb-0.5">
+                                                        {quote.financeMode}
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="flex flex-col gap-0.5">
+                                                    <div className="text-[10px] font-black text-slate-900 tracking-widest uppercase truncate max-w-[150px]">
+                                                        {quote.dealership}
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="flex flex-col gap-0.5">
+                                                    <div className="text-[10px] font-bold text-slate-900 tracking-widest truncate max-w-[150px]">
+                                                        {quote.customerLocation}
+                                                    </div>
+                                                    <div className="text-[9px] font-semibold text-slate-500 uppercase tracking-widest">
+                                                        {quote.createdAt
+                                                            ? new Date(quote.createdAt).toLocaleString('en-IN', {
+                                                                  month: 'short',
+                                                                  day: 'numeric',
+                                                                  hour: 'numeric',
+                                                                  minute: '2-digit',
+                                                                  hour12: true,
+                                                              })
+                                                            : quote.date}
+                                                    </div>
+                                                    <div className="text-[8px] font-black text-indigo-500 uppercase tracking-widest mt-0.5">
+                                                        Est. Delivery:{' '}
+                                                        {quote.deliveryTimeline
+                                                            ? `${quote.deliveryTimeline} Days`
+                                                            : 'Pending'}
+                                                    </div>
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 text-right">

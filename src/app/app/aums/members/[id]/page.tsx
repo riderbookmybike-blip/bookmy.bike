@@ -63,8 +63,13 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export default async function AumsMemberDetailPage({ params }: { params: { id: string } }) {
-    const profile = await getMemberFullProfile(params.id);
+interface Props {
+    params: Promise<{ id: string }>;
+}
+
+export default async function AumsMemberDetailPage({ params }: Props) {
+    const { id } = await params;
+    const profile = await getMemberFullProfile(id);
     if (!profile) notFound();
 
     const { member, wallet, referredMembers } = profile;
@@ -79,7 +84,7 @@ export default async function AumsMemberDetailPage({ params }: { params: { id: s
             {/* Header */}
             <div className="flex items-center gap-3">
                 <Link
-                    href="/aums/members"
+                    href="/app/aums/members"
                     className="text-[9px] font-black text-slate-400 uppercase tracking-widest hover:text-indigo-600 transition-colors flex items-center gap-1"
                 >
                     ← Members

@@ -3674,11 +3674,11 @@ export async function backfillLeadLocationsAction() {
 // --- QUOTES ---
 
 export async function getQuotes(tenantId?: string) {
-    const supabase = await createClient();
-    let query = supabase
+    let query = adminClient
         .from('crm_quotes')
-        .select('*')
+        .select('*, tenant:id_tenants!fk_quotes_tenant_protect(name)')
         .eq('is_deleted', false)
+        .neq('status', 'SUPERSEDED')
         .order('created_at', { ascending: false });
 
     if (tenantId) {
@@ -3691,30 +3691,69 @@ export async function getQuotes(tenantId?: string) {
         return [];
     }
 
-    // Resolve customer names via adminClient (bypasses crm_leads RLS)
+    // Resolve customer details via adminClient (bypasses crm_leads RLS)
     const leadIds = [...new Set(data.map((q: any) => q.lead_id).filter(Boolean))];
-    let leadNameMap: Record<string, string> = {};
+    let leadMap: Record<string, any> = {};
     if (leadIds.length > 0) {
-        const { data: leads } = await adminClient.from('crm_leads').select('id, customer_name').in('id', leadIds);
+        const { data: leads } = await adminClient
+            .from('crm_leads')
+            .select(
+                'id, customer_name, customer_phone, customer_pincode, customer_taluka, utm_data, member:id_members!fk_leads_customer_protect(avatar_url)'
+            )
+            .in('id', leadIds);
         if (leads) {
-            leadNameMap = Object.fromEntries(leads.map((l: any) => [l.id, l.customer_name]));
+            leadMap = Object.fromEntries(leads.map((l: any) => [l.id, l]));
         }
     }
 
-    return data.map((q: any) => ({
-        id: q.id,
-        displayId: q.display_id || `QT-${q.id.slice(0, 4).toUpperCase()}`,
-        customerName: leadNameMap[q.lead_id] || 'N/A',
-        productName: q.snap_variant || 'Custom Quote',
-        productSku: q.variant_id || 'N/A',
-        price: q.on_road_price || 0,
-        status: q.status,
-        date: q.created_at ? q.created_at.split('T')[0] : '',
-        vehicleBrand: q.snap_brand || '',
-        vehicleModel: q.snap_model || '',
-        vehicleVariant: q.snap_variant || '',
-        vehicleColor: q.snap_color || '',
-    }));
+    return data.map((q: any) => {
+        const lead = leadMap[q.lead_id] || {};
+
+        let customerLocation = '';
+        const utmData = typeof lead.utm_data === 'object' && lead.utm_data !== null ? lead.utm_data : {};
+        const locationProfile = (utmData as any).location_profile || {};
+
+        const district = locationProfile.district || lead.customer_taluka || '';
+        const pincode = locationProfile.pincode || lead.customer_pincode || '';
+
+        if (district && pincode) customerLocation = `${district} (${pincode})`;
+        else if (district) customerLocation = district;
+        else if (pincode) customerLocation = `Pincode: ${pincode}`;
+        else customerLocation = 'Location N/A';
+
+        const commercialsStr = q.commercials || '{}';
+        let commercials: any = {};
+        try {
+            commercials = typeof commercialsStr === 'string' ? JSON.parse(commercialsStr) : commercialsStr;
+        } catch (e) {
+            // Safe fallback
+        }
+
+        return {
+            id: q.id,
+            displayId: q.display_id || `QT-${q.id.slice(0, 4).toUpperCase()}`,
+            customerName: lead.customer_name || 'N/A',
+            customerPhone: lead.customer_phone || 'N/A',
+            customerLocation,
+            avatarUrl: lead.member?.avatar_url || null,
+            dealership: q.tenant?.name || 'Unknown Hub',
+            financeMode: commercials?.finance?.mode || q.finance_mode || 'N/A',
+            validUntil: q.valid_until || null,
+            productName: q.snap_variant || 'Custom Quote',
+            productSku: q.variant_id || 'N/A',
+            price: q.on_road_price || 0,
+            status: q.status,
+            date: q.created_at ? q.created_at.split('T')[0] : '',
+            createdAt: q.created_at || '',
+            vehicleBrand: q.snap_brand || '',
+            vehicleModel: q.snap_model || '',
+            vehicleVariant: q.snap_variant || '',
+            vehicleColor: q.snap_color || '',
+            deliveryTimeline: commercials?.delivery?.delivery_tat_days
+                ? Number(commercials.delivery.delivery_tat_days)
+                : null,
+        };
+    });
 }
 
 export async function getQuotesForLead(leadId: string) {
@@ -4249,8 +4288,7 @@ export async function cancelQuoteAction(id: string): Promise<{ success: boolean;
 // --- BOOKINGS & SALES ORDERS ---
 
 export async function getBookings(tenantId?: string) {
-    const supabase = await createClient();
-    let query = supabase
+    let query = adminClient
         .from('crm_bookings')
         .select('*, member:id_members!user_id(full_name)')
         .eq('is_deleted', false)
@@ -4264,7 +4302,7 @@ export async function getBookings(tenantId?: string) {
     if (error) {
         console.error('[getBookings] Error:', error);
         // Fallback: try without join if the FK fails
-        const fallback = await supabase
+        const fallback = await adminClient
             .from('crm_bookings')
             .select('*')
             .eq('is_deleted', false)
@@ -4277,18 +4315,31 @@ export async function getBookings(tenantId?: string) {
         return fallback.data.map((b: any) => {
             const v = b.vehicle_details || {};
             const c = b.customer_details || {};
+
+            const district = c.district || c.customer_district || '';
+            const pincode = c.pincode || c.customer_pincode || '';
+            let customerLocation = '';
+            if (district && pincode) customerLocation = `${district} (${pincode})`;
+            else if (district) customerLocation = district;
+            else if (pincode) customerLocation = `Pincode: ${pincode}`;
+            else customerLocation = 'Location N/A';
+
             return {
                 id: b.id,
                 displayId: b.display_id || `SO-${b.id.slice(0, 4).toUpperCase()}`,
                 quoteId: b.quote_id,
                 quoteDisplayId: b.quote_id ? `QT-${b.quote_id.slice(0, 4).toUpperCase()}` : '',
-                customer: c.full_name || c.name || c.customer_name || 'N/A',
-                brand: v.brand || 'N/A',
-                model: v.model || 'N/A',
-                variant: v.variant || 'N/A',
+                customerName: c.full_name || c.name || c.customer_name || 'N/A',
+                customerPhone: c.phone || c.customer_phone || c.mobile || 'N/A',
+                customerLocation,
+                vehicleBrand: v.brand || 'N/A',
+                vehicleModel: v.model || 'N/A',
+                vehicleVariant: v.variant || 'N/A',
+                vehicleColor: v.color || '',
                 price: b.grand_total || 0,
                 status: b.status || 'BOOKED',
                 date: b.created_at ? b.created_at.split('T')[0] : '',
+                createdAt: b.created_at || '',
                 currentStage: b.operational_stage || b.current_stage || null,
             };
         });
@@ -4300,18 +4351,30 @@ export async function getBookings(tenantId?: string) {
         const c = b.customer_details || {};
         const memberName = b.member?.full_name;
 
+        const district = c.district || c.customer_district || '';
+        const pincode = c.pincode || c.customer_pincode || '';
+        let customerLocation = '';
+        if (district && pincode) customerLocation = `${district} (${pincode})`;
+        else if (district) customerLocation = district;
+        else if (pincode) customerLocation = `Pincode: ${pincode}`;
+        else customerLocation = 'Location N/A';
+
         return {
             id: b.id,
             displayId: b.display_id || `SO-${b.id.slice(0, 4).toUpperCase()}`,
             quoteId: b.quote_id,
             quoteDisplayId: b.quote_id ? `QT-${b.quote_id.slice(0, 4).toUpperCase()}` : '',
-            customer: memberName || c.full_name || c.name || c.customer_name || 'N/A',
-            brand: v.brand || 'N/A',
-            model: v.model || 'N/A',
-            variant: v.variant || 'N/A',
+            customerName: memberName || c.full_name || c.name || c.customer_name || 'N/A',
+            customerPhone: c.phone || c.customer_phone || c.mobile || 'N/A',
+            customerLocation,
+            vehicleBrand: v.brand || 'N/A',
+            vehicleModel: v.model || 'N/A',
+            vehicleVariant: v.variant || 'N/A',
+            vehicleColor: v.color || '',
             price: b.grand_total || 0,
             status: b.status || 'BOOKED',
             date: b.created_at ? b.created_at.split('T')[0] : '',
+            createdAt: b.created_at || '',
             currentStage: b.operational_stage || b.current_stage || null,
         };
     });
@@ -8453,10 +8516,15 @@ export async function getReceiptsForBooking(bookingId: string) {
 export const getPaymentsForEntity = getReceiptsForEntity;
 
 export async function getReceiptsForTenant(tenantId?: string) {
-    const supabase = await createClient();
-    let query = supabase
+    let query = adminClient
         .from('crm_payments')
-        .select('*')
+        .select(
+            `
+            *,
+            booking:crm_bookings(customer_metadata),
+            quote:crm_quotes(customer_details)
+        `
+        )
         .eq('is_deleted', false)
         .order('created_at', { ascending: false });
 
