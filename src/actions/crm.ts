@@ -3120,7 +3120,7 @@ export async function createLeadAction(data: {
         return { success: false, message: pdpGuard.message, code: pdpGuard.code };
     }
 
-    const selectedDealerId = null;
+    const selectedDealerId = data.selected_dealer_id || null;
 
     // Strict sanitation
     const strictPhone = toAppStorageFormat(data.customer_phone);
@@ -3451,7 +3451,7 @@ export async function createLeadAction(data: {
                 interest_text: interestText || interestModel,
                 interest_variant: data.model === 'GENERAL_ENQUIRY' ? null : null,
                 owner_tenant_id: effectiveOwnerId,
-                selected_dealer_tenant_id: null,
+                selected_dealer_tenant_id: selectedDealerId,
                 // Column is non-nullable UUID; fallback to self to avoid invalid '' UUID writes.
                 referred_by_id: resolvedReferrer?.memberId || customerIdForInsert,
                 referred_by_name:
@@ -3682,7 +3682,7 @@ export async function getQuotes(tenantId?: string) {
         .order('created_at', { ascending: false });
 
     if (tenantId) {
-        query = query.eq('tenant_id', tenantId);
+        query = query.or(`tenant_id.eq.${tenantId},assigned_tenant_id.eq.${tenantId}`);
     }
 
     const { data, error } = await query;
@@ -3860,7 +3860,10 @@ export async function createQuoteAction(data: {
         .select('unified_context_strict_mode, default_owner_tenant_id')
         .single();
     const isStrict = settings?.unified_context_strict_mode !== false; // Active by default
-    let resolvedTenantId = (data.tenant_id || '').trim() || settings?.default_owner_tenant_id || null;
+
+    // Canonical AUMS tenant is always the owner
+    const resolvedTenantId = settings?.default_owner_tenant_id || null;
+    let assignedTenantId = (data.tenant_id || '').trim() || null;
 
     const createdBy = user?.id || null;
     let actorMember: { id: string; role: string | null } | null = null;
@@ -3895,8 +3898,8 @@ export async function createQuoteAction(data: {
         if (lead) {
             leadCustomerPhone = lead.customer_phone || null;
             leadCustomerName = lead.customer_name || null;
-            if (!resolvedTenantId) {
-                resolvedTenantId = lead.selected_dealer_tenant_id || lead.owner_tenant_id || lead.tenant_id || null;
+            if (!assignedTenantId) {
+                assignedTenantId = lead.selected_dealer_tenant_id || lead.owner_tenant_id || lead.tenant_id || null;
             }
 
             // Hardening: Enforce dealer context matching
@@ -3904,7 +3907,8 @@ export async function createQuoteAction(data: {
                 typeof validateQuoteDealerContext === 'function'
                     ? validateQuoteDealerContext
                     : async () => ({ success: true as const });
-            const contextValidation = await runQuoteContextValidation(supabase, safeLeadId, resolvedTenantId || '', {
+            // Validate the assigned dealer matches the lead's locked dealer
+            const contextValidation = await runQuoteContextValidation(supabase, safeLeadId, assignedTenantId || '', {
                 unified_context_strict_mode: isStrict,
             });
             if (!contextValidation.success) {
@@ -3920,7 +3924,7 @@ export async function createQuoteAction(data: {
         }
     }
 
-    if (!resolvedTenantId && createdBy) {
+    if (!assignedTenantId && createdBy) {
         const [{ data: membership }, { data: memberTenantLink }, { data: memberProfile }] = await Promise.all([
             adminClient
                 .from('memberships')
@@ -3941,40 +3945,40 @@ export async function createQuoteAction(data: {
             adminClient.from('id_members').select('tenant_id').eq('id', createdBy).maybeSingle(),
         ]);
 
-        resolvedTenantId = membership?.tenant_id || memberTenantLink?.tenant_id || memberProfile?.tenant_id || null;
+        assignedTenantId = membership?.tenant_id || memberTenantLink?.tenant_id || memberProfile?.tenant_id || null;
     }
 
-    if (!resolvedTenantId) {
-        resolvedTenantId = settings?.default_owner_tenant_id || null;
+    if (!assignedTenantId) {
+        assignedTenantId = settings?.default_owner_tenant_id || null;
     }
-    if (!resolvedTenantId) {
+    if (!resolvedTenantId || !assignedTenantId) {
         return {
             success: false,
             message: 'Quote creation blocked: tenant context is missing.',
         };
     }
 
-    // Hardening: Verify the tenant exists in id_tenants
+    // Hardening: Verify the assigned tenant exists in id_tenants
     const { data: quoteTenantCheck } = await adminClient
         .from('id_tenants')
         .select('id')
-        .eq('id', resolvedTenantId)
+        .eq('id', assignedTenantId as string)
         .maybeSingle();
 
     if (!quoteTenantCheck) {
-        console.error(`[DEBUG] Quote tenant ID ${resolvedTenantId} does not exist in id_tenants.`);
+        console.error(`[DEBUG] Assigned Quote tenant ID ${assignedTenantId} does not exist in id_tenants.`);
         return {
             success: false,
-            message: 'Configuration error: The designated quote tenant is invalid or missing.',
+            message: 'Configuration error: The designated assigned quote tenant is invalid or missing.',
         };
     }
 
     let dealer = normalizeDealerPayload(comms.pricing_snapshot?.dealer || comms.dealer);
-    if (!dealer) {
+    if (!dealer && assignedTenantId) {
         const { data: tenant } = await supabase
             .from('id_tenants')
             .select('id, name, studio_id')
-            .eq('id', resolvedTenantId)
+            .eq('id', assignedTenantId as string)
             .maybeSingle();
         if (tenant) {
             dealer = normalizeDealerPayload({
@@ -4040,6 +4044,7 @@ export async function createQuoteAction(data: {
         .from('crm_quotes')
         .insert({
             tenant_id: resolvedTenantId,
+            assigned_tenant_id: assignedTenantId,
             lead_id: safeLeadId,
             member_id: memberId,
             lead_referrer_id: leadReferrerId,
@@ -5115,6 +5120,7 @@ export interface QuoteEditorData {
     studioId: string | null;
     studioName: string | null;
     tenantId: string | null;
+    assignedTenantId: string | null;
     district: string | null;
     customer: {
         name: string;
@@ -5471,6 +5477,7 @@ export async function getQuoteById(
         district: pricingSnapshot?.location?.district || null,
         financeMode: q.finance_mode || (commercials.finance?.mode as any) || 'CASH',
         tenantId: q.tenant_id || null,
+        assignedTenantId: q.assigned_tenant_id || null,
         delivery: commercials.delivery || null,
     };
 
@@ -6934,7 +6941,12 @@ export async function fetchQuoteForShare(identifier: string) {
 
 async function canUserShareQuote(
     userId: string,
-    quote: { tenant_id?: string | null; created_by?: string | null; member_id?: string | null }
+    quote: {
+        tenant_id?: string | null;
+        assigned_tenant_id?: string | null;
+        created_by?: string | null;
+        member_id?: string | null;
+    }
 ) {
     if (!userId) return false;
     // Creator of the quote can always share it
@@ -6952,14 +6964,18 @@ async function canUserShareQuote(
     }
 
     const tenantId = String(quote?.tenant_id || '').trim();
-    if (!tenantId) return false;
+    const assignedTenantId = String(quote?.assigned_tenant_id || '').trim();
+
+    const tenantIdsToCheck = [tenantId, assignedTenantId].filter(Boolean);
+    if (tenantIdsToCheck.length === 0) return false;
 
     const { data: membership } = await adminClient
         .from('id_team')
         .select('id')
         .eq('user_id', userId)
-        .eq('tenant_id', tenantId)
+        .in('tenant_id', tenantIdsToCheck)
         .eq('status', 'ACTIVE')
+        .limit(1)
         .maybeSingle();
 
     return Boolean(membership?.id);
@@ -8735,11 +8751,19 @@ export async function getDealershipInfo(tenantId: string) {
 
 /**
  * Lists all dealership-type tenants for assignment.
+ * Now includes supported brands for brand-safe filtering.
  */
 export async function getDealerships() {
     const { data, error } = await adminClient
         .from('id_tenants')
-        .select('id, name, location, studio_id, display_id')
+        .select(
+            `
+            id, name, location, studio_id, display_id,
+            dealer_brands(
+                cat_brands(name)
+            )
+        `
+        )
         .eq('type', 'DEALER')
         .order('name', { ascending: true });
 
@@ -8748,12 +8772,16 @@ export async function getDealerships() {
         return [];
     }
 
-    return (data || []).map((d: any) => ({
-        id: d.id,
-        name: d.name,
-        location: d.location,
-        studioId: d.studio_id || d.display_id || null,
-    }));
+    return (data || []).map((d: any) => {
+        const brands = d.dealer_brands?.map((db: any) => db.cat_brands?.name).filter(Boolean) || [];
+        return {
+            id: d.id,
+            name: d.name,
+            location: d.location,
+            studioId: d.studio_id || d.display_id || null,
+            supportedBrands: brands,
+        };
+    });
 }
 
 /**
@@ -8815,11 +8843,11 @@ export async function reassignQuoteDealership(
             },
         };
 
-        // 4. Atomic update: tenant_id and commercials
+        // 4. Atomic update: assigned_tenant_id and commercials
         const { error: updateError } = await adminClient
             .from('crm_quotes')
             .update({
-                tenant_id: dealer.id,
+                assigned_tenant_id: dealer.id,
                 commercials: updatedCommercials,
             })
             .eq('id', quoteId);

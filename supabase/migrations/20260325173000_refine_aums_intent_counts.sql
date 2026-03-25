@@ -7,21 +7,55 @@ RETURNS TABLE (
     total_warm bigint,
     total_cold bigint
 )
-LANGUAGE sql
+LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
+BEGIN
+    -- Compatibility path: if presence table is missing, treat everyone as offline.
+    IF to_regclass('public.id_member_presence') IS NULL THEN
+        RETURN QUERY
+        SELECT
+            COUNT(*) AS total_all,
+            COUNT(*) FILTER (
+                WHERE coalesce(quotes_count, 0) > 0
+            ) AS total_hot,
+            COUNT(*) FILTER (
+                WHERE coalesce(quotes_count, 0) = 0
+                  AND (current_temperature = 'HOT' OR current_temperature = 'WARM')
+            ) AS total_warm,
+            COUNT(*) FILTER (
+                WHERE coalesce(quotes_count, 0) = 0
+                  AND current_temperature = 'COLD'
+            ) AS total_cold
+        FROM public.id_members;
+        RETURN;
+    END IF;
+
+    RETURN QUERY
     WITH live_members AS (
-        SELECT member_id FROM id_member_presence WHERE updated_at >= NOW() - INTERVAL '10 minutes'
+        SELECT member_id
+        FROM public.id_member_presence
+        WHERE updated_at >= NOW() - INTERVAL '10 minutes'
     )
-    SELECT 
-        COUNT(*) as total_all,
-        -- HOT: Has a quote OR (is live AND currentTemp is HOT)
-        COUNT(*) FILTER (WHERE coalesce(quotes_count, 0) > 0 OR (current_temperature = 'HOT' AND id IN (SELECT member_id FROM live_members))) as total_hot,
-        -- WARM: No quotes AND ((was HOT but now offline) OR is WARM)
-        COUNT(*) FILTER (WHERE coalesce(quotes_count, 0) = 0 AND ((current_temperature = 'HOT' AND id NOT IN (SELECT member_id FROM live_members)) OR current_temperature = 'WARM')) as total_warm,
-        -- COLD: current_temperature = COLD and no quotes
-        COUNT(*) FILTER (WHERE coalesce(quotes_count, 0) = 0 AND current_temperature = 'COLD') as total_cold
-    FROM id_members;
+    SELECT
+        COUNT(*) AS total_all,
+        COUNT(*) FILTER (
+            WHERE coalesce(quotes_count, 0) > 0
+               OR (current_temperature = 'HOT' AND id IN (SELECT member_id FROM live_members))
+        ) AS total_hot,
+        COUNT(*) FILTER (
+            WHERE coalesce(quotes_count, 0) = 0
+              AND (
+                    (current_temperature = 'HOT' AND id NOT IN (SELECT member_id FROM live_members))
+                    OR current_temperature = 'WARM'
+              )
+        ) AS total_warm,
+        COUNT(*) FILTER (
+            WHERE coalesce(quotes_count, 0) = 0
+              AND current_temperature = 'COLD'
+        ) AS total_cold
+    FROM public.id_members;
+END;
 $$;
 
 -- Grant execute to authenticated users (and service role)

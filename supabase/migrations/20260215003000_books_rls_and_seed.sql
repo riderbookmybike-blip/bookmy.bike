@@ -19,23 +19,28 @@ as $$
 $$;
 
 -- Policies: tenant isolation using JWT tenant_id claim
-create policy if not exists accounts_tenant_isolation on public.accounts
+drop policy if exists accounts_tenant_isolation on public.accounts;
+create policy accounts_tenant_isolation on public.accounts
     for all using (tenant_id = public.current_tenant_id()) with check (tenant_id = public.current_tenant_id());
 
-create policy if not exists journal_entries_tenant_isolation on public.journal_entries
+drop policy if exists journal_entries_tenant_isolation on public.journal_entries;
+create policy journal_entries_tenant_isolation on public.journal_entries
     for all using (tenant_id = public.current_tenant_id()) with check (tenant_id = public.current_tenant_id());
 
-create policy if not exists journal_lines_tenant_isolation on public.journal_lines
+drop policy if exists journal_lines_tenant_isolation on public.journal_lines;
+create policy journal_lines_tenant_isolation on public.journal_lines
     for all using (
         exists (select 1 from public.journal_entries je where je.id = entry_id and je.tenant_id = public.current_tenant_id())
     ) with check (
         exists (select 1 from public.journal_entries je where je.id = entry_id and je.tenant_id = public.current_tenant_id())
     );
 
-create policy if not exists bank_txn_tenant_isolation on public.bank_transactions
+drop policy if exists bank_txn_tenant_isolation on public.bank_transactions;
+create policy bank_txn_tenant_isolation on public.bank_transactions
     for all using (tenant_id = public.current_tenant_id()) with check (tenant_id = public.current_tenant_id());
 
-create policy if not exists recon_rules_tenant_isolation on public.reconciliation_rules
+drop policy if exists recon_rules_tenant_isolation on public.reconciliation_rules;
+create policy recon_rules_tenant_isolation on public.reconciliation_rules
     for all using (tenant_id = public.current_tenant_id()) with check (tenant_id = public.current_tenant_id());
 
 -- Seed function for default chart of accounts per tenant
