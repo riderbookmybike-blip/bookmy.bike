@@ -158,6 +158,7 @@ export default function ProductClient({
     const [forceMobileLayout, setForceMobileLayout] = useState(false);
     const { trackEvent } = useAnalytics();
     const [showPdpLogin, setShowPdpLogin] = useState(false);
+    const [pdpLoginInitialStep, setPdpLoginInitialStep] = useState<'INITIAL' | 'SIGNUP'>('INITIAL');
 
     // ── Open PDP gate — location-only, no auth wall ───────────────────────────
     // RESOLVING         — checking pincode + serviceability (all users)
@@ -258,7 +259,11 @@ export default function ProductClient({
 
     // Listen for gate CTA click from ShopperBottomNav → open LoginSidebar.
     useEffect(() => {
-        const handler = () => setShowPdpLogin(true);
+        const handler = (event: Event) => {
+            const detail = (event as CustomEvent<{ initialStep?: 'INITIAL' | 'SIGNUP' }>).detail;
+            setPdpLoginInitialStep(detail?.initialStep === 'SIGNUP' ? 'SIGNUP' : 'INITIAL');
+            setShowPdpLogin(true);
+        };
         window.addEventListener('pdpConsentLoginRequested', handler);
         return () => window.removeEventListener('pdpConsentLoginRequested', handler);
     }, []);
@@ -271,6 +276,7 @@ export default function ProductClient({
     const requireAuth = (actionLabel: string): boolean => {
         if (isAuthenticated || isLoggedIn) return false; // already logged in
         trackEvent('INTENT_SIGNAL', 'pdp_auth_gate_opened', { action: actionLabel, path: window.location.pathname });
+        setPdpLoginInitialStep('INITIAL');
         setShowPdpLogin(true);
         return true; // caller should early-return
     };
@@ -1893,6 +1899,7 @@ export default function ProductClient({
                 redirectTo={
                     typeof window !== 'undefined' ? window.location.pathname + window.location.search : undefined
                 }
+                initialStep={pdpLoginInitialStep}
             />
             {showLeadContextAlert && (
                 <div className="mx-auto w-full max-w-7xl px-4 pt-3">

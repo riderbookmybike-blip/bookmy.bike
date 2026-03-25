@@ -319,14 +319,13 @@ export function CompactProductCard({
                                             <>
                                                 <div className="space-y-1">
                                                     <div className="text-slate-700 text-[10px] leading-tight flex flex-col items-center gap-1">
-                                                        <span>You are a step away from earning</span>
+                                                        <span>Sign up and unlock instant benefit</span>
                                                         <span className="text-[#F4B000] text-sm italic flex items-center gap-1">
-                                                            {coinPricing.coinsUsed} <Logo variant="icon" size={10} />
+                                                            13 <Logo variant="icon" size={10} />
                                                         </span>
                                                     </div>
                                                     <p className="text-slate-500 text-[8px] font-medium leading-normal normal-case">
-                                                        Signup now to join O&apos;Club and unlock this special member
-                                                        price.
+                                                        13 BCoins = ₹1,000 member discount. Sign up to claim it.
                                                     </p>
                                                 </div>
                                                 <span
@@ -344,14 +343,13 @@ export function CompactProductCard({
                                             <>
                                                 <div className="space-y-1">
                                                     <div className="text-slate-700 text-[10px] leading-tight flex flex-col items-center gap-1">
-                                                        <span>You have just earned</span>
+                                                        <span>Wallet discount available</span>
                                                         <span className="text-emerald-400 text-sm italic flex items-center gap-1">
                                                             {coinPricing.coinsUsed} <Logo variant="icon" size={10} />
                                                         </span>
-                                                        <span>by signup!</span>
                                                     </div>
                                                     <p className="text-slate-500 text-[8px] font-medium leading-normal normal-case">
-                                                        Applied to your member specific offer price.
+                                                        Applied in ₹1,000 blocks for every 13 BCoins.
                                                     </p>
                                                 </div>
                                                 <span

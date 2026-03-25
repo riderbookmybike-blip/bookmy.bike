@@ -47,7 +47,7 @@ type MemberRow = {
     share_earn_clicks: number;
     referral_link_clicks: number;
     current_temperature?: string | null;
-    max_temperature?: string | null;
+    has_saved_quote?: boolean;
     last_pdp_at?: string | null;
     last_catalog_at?: string | null;
     last_landing_at?: string | null;
@@ -55,7 +55,7 @@ type MemberRow = {
 };
 
 type PresenceMapRow = PresenceRow;
-type Filter = 'all' | 'hot' | 'warm' | 'cold';
+type Filter = 'all' | 'live' | 'hot' | 'warm' | 'cold';
 type SortKey = 'temperature' | 'name' | 'joined' | 'last_active' | 'visits' | 'time';
 
 function tempRank(currentTemp: string | null | undefined, isLiveLanding: boolean): number {
@@ -71,6 +71,7 @@ function tempTone(temp: string): string {
     if (temp === 'HOT') return 'text-rose-700 bg-rose-50 border-rose-200';
     if (temp === 'WARM') return 'text-amber-700 bg-amber-50 border-amber-200';
     if (temp === 'COLD') return 'text-sky-700 bg-sky-50 border-sky-200';
+    if (temp === 'LIVE') return 'text-emerald-700 bg-emerald-50 border-emerald-200';
     return 'text-emerald-700 bg-emerald-50 border-emerald-200';
 }
 
@@ -197,7 +198,9 @@ function MemberTableRow({
     referrerDisplayId,
     referrerMemberId,
     currentTemp,
-    maxTemp,
+    hasSavedQuote,
+    lastPdpAt,
+    lastCatalogAt,
     lastActiveAt,
     sessionStartAt,
     pdpInterests,
@@ -222,7 +225,9 @@ function MemberTableRow({
     referrerDisplayId: string | null;
     referrerMemberId: string | null;
     currentTemp?: string | null;
-    maxTemp?: string | null;
+    hasSavedQuote?: boolean;
+    lastPdpAt: string | null;
+    lastCatalogAt: string | null;
     lastActiveAt: string | null;
     sessionStartAt: string | null;
     pdpInterests: string[];
@@ -237,16 +242,15 @@ function MemberTableRow({
     const safeState = validateState(city, state);
     const locationLabel = [city, safeState].filter(Boolean).join(', ') || null;
 
-    // HOT = on PDP right now (live)
-    // WARM = was on PDP before but not currently live on it
-    // COLD = browsed catalog/landing only
-    // LIVE-LANDING = on site now but never hit PDP
+    // HOT = has saved quote OR current DB temperature is HOT
+    // WARM = current DB temperature is WARM
+    // COLD = current DB temperature is COLD
+    // LIVE = on site now but has no temperature tag
     const effectiveTemp = currentTemp ? currentTemp.toUpperCase() : null;
-    const isOnPdpNow = isLiveVal && effectiveTemp === 'HOT';
-    const currentLabel = isOnPdpNow
+    const currentLabel = hasSavedQuote
         ? 'HOT'
-        : effectiveTemp === 'HOT' && !isLiveVal
-          ? 'WARM' // was hot (PDP) but left the site
+        : effectiveTemp === 'HOT'
+          ? 'HOT'
           : effectiveTemp === 'WARM'
             ? 'WARM'
             : effectiveTemp === 'COLD'
@@ -254,7 +258,6 @@ function MemberTableRow({
               : isLiveVal
                 ? 'LIVE'
                 : null;
-    const maxLabel = maxTemp ? maxTemp.toUpperCase() : null;
 
     return (
         <tr
@@ -292,11 +295,6 @@ function MemberTableRow({
                             {currentLabel}
                         </span>
                     )}
-                    {maxLabel && maxLabel !== currentLabel && (
-                        <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full border text-slate-700 bg-slate-100 border-slate-200">
-                            MAX {maxLabel}
-                        </span>
-                    )}
                 </div>
             </td>
             {/* Location */}
@@ -305,7 +303,7 @@ function MemberTableRow({
             </td>
             {/* Referred By */}
             <td className="px-3 py-3">
-                {referrerName ? (
+                {referrerMemberId || referrerName || referrerDisplayId ? (
                     <button
                         onClick={e => {
                             e.stopPropagation();
@@ -314,10 +312,13 @@ function MemberTableRow({
                         className="text-left group"
                     >
                         <div className="text-[10px] font-black text-indigo-600 group-hover:text-indigo-800 transition-colors leading-tight">
-                            {referrerName}
+                            {referrerName || referrerDisplayId || 'Anonymous Referrer'}
                         </div>
-                        {referrerDisplayId && (
+                        {referrerDisplayId && referrerName && (
                             <div className="text-[9px] font-bold text-indigo-400 mt-0.5">{referrerDisplayId}</div>
+                        )}
+                        {referrerDisplayId && !referrerName && (
+                            <div className="text-[9px] font-bold text-indigo-400 mt-0.5">ID: {referrerDisplayId}</div>
                         )}
                     </button>
                 ) : (
@@ -395,6 +396,7 @@ function MemberTableRow({
 
 const FILTER_OPTIONS: { key: Filter; emoji: string; label: string }[] = [
     { key: 'all', emoji: '👥', label: 'All' },
+    { key: 'live', emoji: '🟢', label: 'Live' },
     { key: 'hot', emoji: '🔥', label: 'Hot' },
     { key: 'warm', emoji: '🌡️', label: 'Warm' },
     { key: 'cold', emoji: '❄️', label: 'Cold' },
@@ -428,8 +430,11 @@ export default function AumsMembersPage() {
     const [presence, setPresence] = useState<Map<string, PresenceMapRow>>(new Map());
     const [liveNowCount, setLiveNowCount] = useState(0);
     const [active1hCount, setActive1hCount] = useState(0);
-    const [tempCounts, setTempCounts] = useState({ HOT: 0, WARM: 0, COLD: 0 });
-
+    const [tempCounts, setTempCounts] = useState<{ ALL?: number; HOT: number; WARM: number; COLD: number }>({
+        HOT: 0,
+        WARM: 0,
+        COLD: 0,
+    });
     const liveIds = useMemo(() => new Set(activeMembers.filter(isLive).map(m => m.member_id)), [activeMembers]);
 
     // ── Debounced search ─────────────────────────────────────────────────────
@@ -543,12 +548,13 @@ export default function AumsMembersPage() {
     // ── Filter counts ─────────────────────────────────────────────────────────
     const counts: Record<Filter, number | string> = useMemo(
         () => ({
-            all: totalMembers,
+            all: tempCounts.ALL ?? totalMembers,
+            live: liveNowCount,
             hot: tempCounts.HOT,
             warm: tempCounts.WARM,
             cold: tempCounts.COLD,
         }),
-        [totalMembers, tempCounts]
+        [totalMembers, tempCounts, liveNowCount]
     );
 
     // ── Sortable column headers ───────────────────────────────────────────────
@@ -594,45 +600,74 @@ export default function AumsMembersPage() {
                 </span>
             </div>
 
-            {/* ── Stats Cards ─────────────────────────────────────────────── */}
-            <div className="grid grid-cols-3 gap-4">
-                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                    <div className="flex items-center gap-2 mb-3">
-                        <div className="w-8 h-8 rounded-xl bg-indigo-50 flex items-center justify-center">
-                            <Users className="w-4 h-4 text-indigo-500" />
-                        </div>
-                    </div>
-                    <div className="text-3xl font-black text-indigo-600">{totalMembers.toLocaleString('en-IN')}</div>
-                    <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mt-1">
-                        Total Members
-                    </div>
-                    <div className="text-[10px] text-slate-400 mt-0.5">Platform-wide registry</div>
-                </div>
-                <div className="rounded-2xl border border-emerald-200 bg-white p-6 shadow-sm">
-                    <div className="flex items-center justify-between mb-3">
-                        <div className="w-8 h-8 rounded-xl bg-emerald-50 flex items-center justify-center">
-                            <Activity className="w-4 h-4 text-emerald-500" />
-                        </div>
-                        <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1">
-                            <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" /> LIVE
-                        </span>
-                    </div>
-                    <div className="text-3xl font-black text-emerald-600">{liveNowCount}</div>
-                    <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mt-1">Live Now</div>
-                    <div className="text-[10px] text-slate-400 mt-0.5">Active in last 10 min</div>
-                </div>
-                <div className="rounded-2xl border border-amber-200 bg-white p-6 shadow-sm">
-                    <div className="flex items-center gap-2 mb-3">
-                        <div className="w-8 h-8 rounded-xl bg-amber-50 flex items-center justify-center">
-                            <UserCheck className="w-4 h-4 text-amber-500" />
-                        </div>
-                    </div>
-                    <div className="text-3xl font-black text-amber-600">{active1hCount}</div>
-                    <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mt-1">
-                        Active (1h)
-                    </div>
-                    <div className="text-[10px] text-slate-400 mt-0.5">Seen in last 60 min</div>
-                </div>
+            {/* ── Filter Cards ─────────────────────────────────────────────── */}
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                {FILTER_OPTIONS.map(f => {
+                    const isActive = filter === f.key;
+                    let bgBase, textCount, textLabel;
+                    if (f.key === 'hot') {
+                        bgBase = isActive
+                            ? 'bg-rose-50 border-rose-400 shadow-md ring-2 ring-rose-100'
+                            : 'bg-white border-slate-200 hover:border-rose-300 hover:bg-rose-50/50';
+                        textCount = 'text-rose-600';
+                        textLabel = 'text-rose-500';
+                    } else if (f.key === 'warm') {
+                        bgBase = isActive
+                            ? 'bg-amber-50 border-amber-400 shadow-md ring-2 ring-amber-100'
+                            : 'bg-white border-slate-200 hover:border-amber-300 hover:bg-amber-50/50';
+                        textCount = 'text-amber-600';
+                        textLabel = 'text-amber-500';
+                    } else if (f.key === 'cold') {
+                        bgBase = isActive
+                            ? 'bg-sky-50 border-sky-400 shadow-md ring-2 ring-sky-100'
+                            : 'bg-white border-slate-200 hover:border-sky-300 hover:bg-sky-50/50';
+                        textCount = 'text-sky-600';
+                        textLabel = 'text-sky-500';
+                    } else if (f.key === 'live') {
+                        bgBase = isActive
+                            ? 'bg-emerald-50 border-emerald-400 shadow-md ring-2 ring-emerald-100'
+                            : 'bg-white border-slate-200 hover:border-emerald-300 hover:bg-emerald-50/50';
+                        textCount = 'text-emerald-600';
+                        textLabel = 'text-emerald-500';
+                    } else {
+                        bgBase = isActive
+                            ? 'bg-indigo-50 border-indigo-400 shadow-md ring-2 ring-indigo-100'
+                            : 'bg-white border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50';
+                        textCount = 'text-indigo-600';
+                        textLabel = 'text-indigo-500';
+                    }
+
+                    return (
+                        <button
+                            key={f.key}
+                            onClick={() => {
+                                setFilter(f.key);
+                                setPage(1);
+                                setStateFilter(''); // Clear sub-filters so counts match
+                                setBrandFilter('');
+                                setSearchInput('');
+                            }}
+                            className={`flex flex-col text-left p-4 md:p-5 rounded-2xl border transition-all duration-200 ease-out outline-none ${bgBase}`}
+                        >
+                            <div className="flex items-center justify-between w-full mb-2 lg:mb-3">
+                                <span className="text-xl md:text-2xl drop-shadow-sm">{f.emoji}</span>
+                                {f.key === 'live' && (
+                                    <span
+                                        className={`w-2 h-2 rounded-full ${isActive ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`}
+                                    />
+                                )}
+                            </div>
+                            <div className={`text-2xl md:text-3xl font-black ${textCount} tracking-tight`}>
+                                {(counts[f.key] || 0).toLocaleString('en-IN')}
+                            </div>
+                            <div
+                                className={`text-[9px] md:text-[10px] font-black uppercase tracking-widest mt-1 opacity-80 ${textLabel}`}
+                            >
+                                {f.label} Members
+                            </div>
+                        </button>
+                    );
+                })}
             </div>
 
             {/* ── Table Card ──────────────────────────────────────────────── */}
@@ -648,37 +683,6 @@ export default function AumsMembersPage() {
                             placeholder="Search name, phone, ID…"
                             className="w-full pl-8 pr-3 py-2 text-xs border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:border-indigo-300 focus:bg-white transition-all"
                         />
-                    </div>
-
-                    {/* Filter pills */}
-                    <div className="flex items-center gap-1">
-                        {FILTER_OPTIONS.map(f => (
-                            <button
-                                key={f.key}
-                                onClick={() => setFilter(f.key)}
-                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${
-                                    filter === f.key
-                                        ? f.key === 'hot'
-                                            ? 'bg-red-500 text-white shadow-sm'
-                                            : f.key === 'warm'
-                                              ? 'bg-orange-500 text-white shadow-sm'
-                                              : f.key === 'cold'
-                                                ? 'bg-sky-500 text-white shadow-sm'
-                                                : 'bg-slate-900 text-white shadow-sm'
-                                        : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-                                }`}
-                            >
-                                <span>{f.emoji}</span>
-                                <span>{f.label}</span>
-                                <span
-                                    className={`ml-0.5 text-[9px] px-1.5 py-0.5 rounded-full font-black ${
-                                        filter === f.key ? 'bg-white/20' : 'bg-slate-200 text-slate-600'
-                                    }`}
-                                >
-                                    {counts[f.key]}
-                                </span>
-                            </button>
-                        ))}
                     </div>
 
                     {/* State filter */}
@@ -792,10 +796,19 @@ export default function AumsMembersPage() {
                                         referrerDisplayId={m.referrer_display_id ?? null}
                                         referrerMemberId={m.referrer_member_id ?? null}
                                         currentTemp={m.current_temperature ?? null}
-                                        maxTemp={m.max_temperature ?? null}
+                                        hasSavedQuote={m.has_saved_quote ?? false}
+                                        lastPdpAt={m.last_pdp_at ?? null}
+                                        lastCatalogAt={m.last_catalog_at ?? null}
                                         shareEarnClicks={m.share_earn_clicks ?? 0}
                                         referralLinkClicks={m.referral_link_clicks ?? 0}
-                                        lastActiveAt={m.last_active_at ?? pres?.updated_at ?? null}
+                                        lastActiveAt={
+                                            m.last_active_at && pres?.updated_at
+                                                ? new Date(m.last_active_at).getTime() >
+                                                  new Date(pres.updated_at).getTime()
+                                                    ? m.last_active_at
+                                                    : pres.updated_at
+                                                : (pres?.updated_at ?? m.last_active_at ?? null)
+                                        }
                                         sessionStartAt={null}
                                         pdpInterests={m.pdp_interests ?? []}
                                         totalSessions={m.total_sessions ?? 0}
@@ -819,7 +832,9 @@ export default function AumsMembersPage() {
                                               ? '🌡️ No Warm prospects yet.'
                                               : filter === 'cold'
                                                 ? '❄️ No Cold prospects yet.'
-                                                : 'No members found.'}
+                                                : filter === 'live'
+                                                  ? '🟢 No Live members right now.'
+                                                  : 'No members found.'}
                                     </td>
                                 </tr>
                             )}

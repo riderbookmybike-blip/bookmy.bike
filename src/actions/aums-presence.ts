@@ -73,6 +73,7 @@ type GetAllPlatformMembersResult = {
         last_pdp_at: string | null;
         last_catalog_at: string | null;
         last_landing_at: string | null;
+        has_saved_quote: boolean;
         // O' Circle
         oclub_balance: number;
     }>;
@@ -106,10 +107,9 @@ export async function getAllPlatformMembers(
     const to = from + safePageSize - 1;
 
     const SELECT_COLS =
-        'id, display_id, full_name, phone, primary_phone, whatsapp, created_at, district, taluka, state, referral_code, last_visit_at, visitor_temperature, current_temperature, max_temperature, last_pdp_at, last_catalog_at, last_landing_at, preferences';
+        'id, display_id, full_name, phone, primary_phone, whatsapp, created_at, district, taluka, state, referral_code, last_visit_at, visitor_temperature, current_temperature, max_temperature, last_pdp_at, last_catalog_at, last_landing_at, preferences, quotes_count';
 
-    let query = adminClient.from('id_members').select(SELECT_COLS, { count: 'planned' }).range(from, to);
-
+    let query = adminClient.from('id_members').select(SELECT_COLS, { count: 'estimated' }).range(from, to);
     if (prioritizeRecent) {
         query = query
             .order('last_visit_at', { ascending: false, nullsFirst: false })
@@ -126,13 +126,32 @@ export async function getAllPlatformMembers(
         query = query.ilike('state', stateFilter);
     }
     if (temperatureFilter && temperatureFilter !== 'all') {
-        query = query.eq('current_temperature', temperatureFilter.toUpperCase());
+        const t = temperatureFilter.toLowerCase();
+        if (t === 'hot') {
+            query = query.or('current_temperature.eq.HOT,quotes_count.gt.0');
+        } else if (t === 'warm') {
+            query = query.eq('current_temperature', 'WARM').eq('quotes_count', 0);
+        } else if (t === 'cold') {
+            query = query.eq('current_temperature', 'COLD').eq('quotes_count', 0);
+        } else if (t === 'live') {
+            const tenMinsAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+            const { data: presenceRows } = await adminClient
+                .from('id_member_presence')
+                .select('member_id')
+                .gte('updated_at', tenMinsAgo);
+            const liveIds = (presenceRows || []).map((r: any) => r.member_id).filter(Boolean);
+            if (liveIds.length > 0) {
+                query = query.in('id', liveIds);
+            } else {
+                query = query.in('id', ['00000000-0000-0000-0000-000000000000']); // force empty
+            }
+        }
     }
 
     const adminResult = await withTimeout<any>(query, DB_QUERY_TIMEOUT_MS, 'getAllPlatformMembers admin query');
     let { data, error, count } = adminResult;
     if (error) {
-        let fallbackQuery = supabase.from('id_members').select(SELECT_COLS, { count: 'planned' }).range(from, to);
+        let fallbackQuery = supabase.from('id_members').select(SELECT_COLS, { count: 'estimated' }).range(from, to);
 
         if (prioritizeRecent) {
             fallbackQuery = fallbackQuery
@@ -151,7 +170,26 @@ export async function getAllPlatformMembers(
             fallbackQuery = fallbackQuery.ilike('state', stateFilter);
         }
         if (temperatureFilter && temperatureFilter !== 'all') {
-            fallbackQuery = fallbackQuery.eq('current_temperature', temperatureFilter.toUpperCase());
+            const t = temperatureFilter.toLowerCase();
+            if (t === 'hot') {
+                fallbackQuery = fallbackQuery.or('current_temperature.eq.HOT,quotes_count.gt.0');
+            } else if (t === 'warm') {
+                fallbackQuery = fallbackQuery.eq('current_temperature', 'WARM').eq('quotes_count', 0);
+            } else if (t === 'cold') {
+                fallbackQuery = fallbackQuery.eq('current_temperature', 'COLD').eq('quotes_count', 0);
+            } else if (t === 'live') {
+                const tenMinsAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+                const { data: presenceRows } = await adminClient
+                    .from('id_member_presence')
+                    .select('member_id')
+                    .gte('updated_at', tenMinsAgo);
+                const liveIds = (presenceRows || []).map((r: any) => r.member_id).filter(Boolean);
+                if (liveIds.length > 0) {
+                    fallbackQuery = fallbackQuery.in('id', liveIds);
+                } else {
+                    fallbackQuery = fallbackQuery.in('id', ['00000000-0000-0000-0000-000000000000']);
+                }
+            }
         }
 
         const fallback = await withTimeout<any>(
@@ -261,6 +299,7 @@ export async function getAllPlatformMembers(
                 last_pdp_at: r.last_pdp_at ?? null,
                 last_catalog_at: r.last_catalog_at ?? null,
                 last_landing_at: r.last_landing_at ?? null,
+                has_saved_quote: (Number(r.quotes_count) || 0) > 0,
                 oclub_balance: oclubMap.get(r.id) ?? 0,
             };
         }),
@@ -294,21 +333,23 @@ export async function getPlatformPresenceSummary() {
 
 export async function getPlatformTemperatureSummary() {
     await assertAumsAdminAccess();
-    const supabase = await createClient();
 
-    // Best-effort decay pass so current pipeline remains fresh even without cron wiring.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (adminClient as any).rpc('apply_visitor_temperature_decay').catch(() => null);
+    // Do exact counts globally to bypass the broken RPC and match the new strict definitions.
+    // We use a single optimized RPC to prevent 4 concurrent table scans which cause severe UI latency.
+    const { data, error } = await (adminClient as any).rpc('get_aums_intent_counts').maybeSingle();
 
-    let { data, error } = await (adminClient as any).rpc('get_platform_temperature_counts');
-    if (error) {
-        const fallback = await (supabase as any).rpc('get_platform_temperature_counts');
-        data = fallback.data;
-        error = fallback.error;
+    if (error || !data) {
+        console.error('[getPlatformTemperatureSummary] RPC failed:', error);
+        return { ALL: 0, HOT: 0, WARM: 0, COLD: 0 };
     }
-    if (error) throw error;
 
-    return data || { HOT: 0, WARM: 0, COLD: 0 };
+    const res = data as any;
+    return {
+        ALL: Number(res.total_all || 0),
+        HOT: Number(res.total_hot || 0),
+        WARM: Number(res.total_warm || 0),
+        COLD: Number(res.total_cold || 0),
+    };
 }
 
 export interface PresenceRow {

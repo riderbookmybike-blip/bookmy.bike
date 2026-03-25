@@ -262,7 +262,7 @@ export function ShopperBottomNav() {
             if (pdpStage === 0 && !isPdpAuthenticated) {
                 return {
                     label: 'Claim ₹1,000 Instant Discount',
-                    subLabel: 'sign up free · applied at checkout',
+                    subLabel: 'sign up now · 13 BCoins = ₹1,000',
                     icon: LogIn,
                     bg: 'bg-gradient-to-r from-[#F4B000] to-[#FF6B00]',
                     shadow: 'shadow-[0_6px_28px_rgba(244,107,0,0.5)]',
@@ -271,7 +271,7 @@ export function ShopperBottomNav() {
                     onClick: () =>
                         window.dispatchEvent(
                             new CustomEvent('pdpConsentLoginRequested', {
-                                detail: { source: 'bottom_nav_discount', stage: 0 },
+                                detail: { source: 'bottom_nav_discount', stage: 0, initialStep: 'SIGNUP' },
                             })
                         ),
                 };
