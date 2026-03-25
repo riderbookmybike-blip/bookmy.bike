@@ -40,5 +40,10 @@ To prevent compounding errors and maintain a highly scalable codebase, all AI ag
 - **Console Log Discipline:** Do NOT leave `console.log` statements inside React render methods or UI loops. Use tracking logs strictly inside Server Actions or API routes, and always prefix them with the exact module name (e.g., `console.error('[QuoteEditor] Failed...')`) for easy upstream debugging.
 - **Mandatory Pre-Commit Checks:** Before committing any logic, ALWAYS run `npm run typecheck` or `eslint` via background terminal to verify that no "hallucinated" properties or missing imports will break the deployment build.
 
+## 8. Impact Analysis & Regression Testing
+- **Cross-File Dependency Checks:** Whenever modifying a core component, hook, or Server Action, the AI MUST proactively consider: *"What other files import or depend on this?"*
+- **Verify Affected Files:** Use `grep_search` (or similar tools) to find all dependent files. Ensure that the change does not break contracts, props, or data requirements in those files.
+- **Never Break in Silos:** Do not blindly assume that fixing one component is safe without verifying that the whole system remains stable.
+
 ---
 *By reading this document, the AI acknowledges and binds itself to these operating procedures for the duration of the development session.*
