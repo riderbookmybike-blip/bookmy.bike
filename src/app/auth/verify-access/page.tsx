@@ -73,17 +73,25 @@ export default async function VerifyAccessPage({ searchParams }: { searchParams?
     // 1. Ensure Profile Exists
     if (!profile) {
         const resolvedPhone = user.phone || user.user_metadata?.phone || '';
-        await supabase.from('id_members').insert({
-            id: user.id,
-            email: user.email,
-            primary_email: user.email,
-            primary_phone: resolvedPhone || null,
-            whatsapp: resolvedPhone || null,
-            full_name: user.user_metadata?.full_name || user.user_metadata?.name || '',
-            avatar_url: user.user_metadata?.avatar_url || user.user_metadata?.picture || '',
-            tenant_id: MARKETPLACE_TENANT_ID,
-            role: 'MEMBER',
-        });
+        const { error: profileError } = await supabase.from('id_members').upsert(
+            {
+                id: user.id,
+                email: user.email,
+                primary_email: user.email,
+                primary_phone: resolvedPhone || null,
+                whatsapp: resolvedPhone || null,
+                full_name: user.user_metadata?.full_name || user.user_metadata?.name || '',
+                avatar_url: user.user_metadata?.avatar_url || user.user_metadata?.picture || '',
+                tenant_id: MARKETPLACE_TENANT_ID,
+                role: 'MEMBER',
+            },
+            { onConflict: 'id' }
+        );
+
+        if (profileError) {
+            console.error('Verify Access Profile Error:', profileError);
+            throw new Error('Failed to create member profile during auto-registration.');
+        }
     }
 
     // 2. Ensure Lead Entry Exists (Marketplace Hub)

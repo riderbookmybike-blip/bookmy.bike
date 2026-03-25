@@ -938,40 +938,52 @@ export async function backfillCampaignStatus(
         if (ten.length === 10) phoneMap.set(ten, { id: r.id, delivered_at: r.delivered_at, read_at: r.read_at });
     }
 
-    // ── Single fetch — 500 records, 10s timeout ──────────────────────────────
+    // ── Paginated fetch — max 20 pages (10,000 records max for safety) ───────
     let rows: Msg91ReportRow[] = [];
     let scanned = 0;
 
     try {
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 10_000);
+        for (let page = 1; page <= 20; page++) {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), 8000);
 
-        const res = await fetch('https://control.msg91.com/api/v5/report/logs/wa', {
-            method: 'POST',
-            headers: { authkey: authKey, 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                startDate: fmt(startDate),
-                endDate: fmt(endDate),
-                perPageData: 500,
-                pageNo: 1,
-            }),
-            signal: controller.signal,
-            cache: 'no-store',
-        });
-        clearTimeout(timer);
+            const res = await fetch('https://control.msg91.com/api/v5/report/logs/wa', {
+                method: 'POST',
+                headers: { authkey: authKey, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    startDate: fmt(startDate),
+                    endDate: fmt(endDate),
+                    perPageData: 500,
+                    pageNo: page,
+                }),
+                signal: controller.signal,
+                cache: 'no-store',
+            });
+            clearTimeout(timer);
 
-        const json = await res.json();
-        console.log('[WaCampaign] backfill response keys:', Object.keys(json ?? {}));
+            const json = await res.json();
+            const pageRows = Array.isArray(json?.data)
+                ? json.data
+                : Array.isArray(json?.logs)
+                  ? json.logs
+                  : Array.isArray(json?.message)
+                    ? json.message
+                    : Array.isArray(json)
+                      ? json
+                      : [];
 
-        rows = Array.isArray(json?.data)
-            ? json.data
-            : Array.isArray(json?.logs)
-              ? json.logs
-              : Array.isArray(json?.message)
-                ? json.message
-                : Array.isArray(json)
-                  ? json
-                  : [];
+            rows.push(...pageRows);
+
+            if (page === 1) {
+                console.log(
+                    `[WaCampaign] backfill payload: 30-days, page ${page} response keys:`,
+                    Object.keys(json ?? {})
+                );
+            }
+
+            // Stop fetching if this page returned fewer than max records
+            if (pageRows.length < 500) break;
+        }
     } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         console.error('[WaCampaign] backfill fetch error:', msg);
@@ -984,6 +996,7 @@ export async function backfillCampaignStatus(
     // ── Match rows → recipients ──────────────────────────────────────────────
     const deliveredIds: Array<{ id: string; delivered_at: string }> = [];
     const readIds: Array<{ id: string; read_at: string }> = [];
+    const failedIds: Array<{ id: string; send_status: string }> = [];
 
     for (const row of rows) {
         const rawPhone = row.customerNumber || row.to || row.mobile || row.phone || '';
@@ -993,6 +1006,14 @@ export async function backfillCampaignStatus(
 
         const recipient = phoneMap.get(ten);
         if (!recipient) continue;
+
+        const status = (row.status || '').toLowerCase();
+        if (status === 'failed' || status === 'undelivered' || status === 'rejected' || status === 'bounced') {
+            failedIds.push({ id: recipient.id, send_status: 'FAILED' });
+            // Remove from phoneMap so we don't attempt to match read/delivered below
+            phoneMap.delete(ten);
+            continue;
+        }
 
         const deliveredAt = extractTs(row.deliveryTime) ?? row.deliveredAt ?? row.delivered_time ?? null;
         const readAt = extractTs(row.readTime) ?? row.readAt ?? row.read_time ?? null;
@@ -1014,11 +1035,12 @@ export async function backfillCampaignStatus(
         return results.filter(r => !r.error).length;
     };
 
-    const [d, r] = await Promise.all([
+    const [d, r, f] = await Promise.all([
         bulkUpdate(deliveredIds as Array<{ id: string } & Record<string, string>>, 'delivered_at'),
         bulkUpdate(readIds as Array<{ id: string } & Record<string, string>>, 'read_at'),
+        bulkUpdate(failedIds as Array<{ id: string } & Record<string, string>>, 'send_status'),
     ]);
-    updated = d + r;
+    updated = d + r + f;
 
     console.log(`[WaCampaign] Backfill done — scanned:${scanned} updated:${updated}`);
     return { success: true, data: { updated, scanned } };

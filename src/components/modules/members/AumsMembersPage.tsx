@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import {
     getAllPlatformMembers,
     getPlatformPresenceSummary,
+    getPlatformTemperatureSummary,
     getPresenceForPage,
     getLiveMembersWithDetails,
     type PresenceRow,
@@ -41,11 +42,32 @@ type MemberRow = {
     pdp_interests: string[];
     share_earn_clicks: number;
     referral_link_clicks: number;
+    current_temperature?: string | null;
+    max_temperature?: string | null;
+    last_pdp_at?: string | null;
+    last_catalog_at?: string | null;
+    last_landing_at?: string | null;
 };
 
 type PresenceMapRow = PresenceRow;
 type Filter = 'all' | 'hot' | 'warm' | 'cold';
-type SortKey = 'name' | 'joined' | 'last_active' | 'visits' | 'time';
+type SortKey = 'temperature' | 'name' | 'joined' | 'last_active' | 'visits' | 'time';
+
+function tempRank(currentTemp: string | null | undefined, isLiveLanding: boolean): number {
+    const t = String(currentTemp || '').toUpperCase();
+    if (t === 'HOT') return 4;
+    if (t === 'WARM') return 3;
+    if (t === 'COLD') return 2;
+    if (isLiveLanding) return 1;
+    return 0;
+}
+
+function tempTone(temp: string): string {
+    if (temp === 'HOT') return 'text-rose-700 bg-rose-50 border-rose-200';
+    if (temp === 'WARM') return 'text-amber-700 bg-amber-50 border-amber-200';
+    if (temp === 'COLD') return 'text-sky-700 bg-sky-50 border-sky-200';
+    return 'text-emerald-700 bg-emerald-50 border-emerald-200';
+}
 
 // Common Indian states for filter dropdown
 const INDIAN_STATES = [
@@ -67,18 +89,6 @@ const INDIAN_STATES = [
 ];
 
 const PAGE_SIZE = 50;
-const NON_PRODUCT_PATHS = new Set([
-    'catalog',
-    'compare',
-    'search',
-    'ocircle',
-    'login',
-    'booking',
-    'cart',
-    'checkout',
-    'wishlist',
-    'payment',
-]);
 
 // ── Known Indian city → correct state (display-layer guard) ──────────────────
 const CITY_STATE_CANON: Record<string, string> = {
@@ -125,16 +135,6 @@ function validateState(city: string | null, state: string | null): string | null
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-function parsePDP(url: string | null): { make: string; model: string; variant?: string } | null {
-    if (!url) return null;
-    const m = url.match(/^\/store\/([^/?#]+)\/([^/?#]+)(?:\/([^/?#]+))?/);
-    if (!m) return null;
-    const make = m[1].toLowerCase();
-    if (NON_PRODUCT_PATHS.has(make)) return null;
-    const capitalize = (s: string) => s.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-    return { make: capitalize(m[1]), model: capitalize(m[2]), variant: m[3] ? capitalize(m[3]) : undefined };
-}
 
 function timeAgo(iso: string | null): string {
     if (!iso) return '—';
@@ -189,6 +189,8 @@ function MemberTableRow({
     taluka,
     state,
     referralCode,
+    currentTemp,
+    maxTemp,
     lastActiveAt,
     sessionStartAt,
     pdpInterests,
@@ -208,6 +210,8 @@ function MemberTableRow({
     taluka: string | null;
     state: string | null;
     referralCode: string | null;
+    currentTemp?: string | null;
+    maxTemp?: string | null;
     lastActiveAt: string | null;
     sessionStartAt: string | null;
     pdpInterests: string[];
@@ -219,6 +223,8 @@ function MemberTableRow({
     const city = taluka || district;
     const safeState = validateState(city, state);
     const locationLabel = [city, safeState].filter(Boolean).join(', ') || null;
+    const currentLabel = currentTemp ? currentTemp.toUpperCase() : isLiveVal ? 'LIVE-LANDING' : null;
+    const maxLabel = maxTemp ? maxTemp.toUpperCase() : null;
 
     return (
         <tr className="border-b border-slate-100 last:border-0 hover:bg-slate-50/60 transition-colors">
@@ -243,6 +249,20 @@ function MemberTableRow({
                     {isAnon ? `Visitor ${id.slice(-6).toUpperCase()}` : name || 'Unnamed'}
                 </div>
                 <div className="text-[10px] text-slate-400 font-medium mt-0.5">{isAnon ? '—' : phone || '—'}</div>
+                <div className="flex items-center gap-1.5 mt-1">
+                    {currentLabel && (
+                        <span
+                            className={`text-[9px] font-black px-1.5 py-0.5 rounded-full border ${tempTone(currentLabel)}`}
+                        >
+                            {currentLabel}
+                        </span>
+                    )}
+                    {maxLabel && maxLabel !== currentLabel && (
+                        <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full border text-slate-700 bg-slate-100 border-slate-200">
+                            MAX {maxLabel}
+                        </span>
+                    )}
+                </div>
             </td>
             {/* Location */}
             <td className="px-3 py-3 text-[10px] font-bold text-slate-600">
@@ -334,7 +354,7 @@ export default function AumsMembersPage() {
     const [searchInput, setSearchInput] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
     const [filter, setFilter] = useState<Filter>('all');
-    const [sort, setSort] = useState<SortKey>('last_active');
+    const [sort, setSort] = useState<SortKey>('temperature');
     const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
     const [stateFilter, setStateFilter] = useState('Maharashtra');
     const [stateOpen, setStateOpen] = useState(false);
@@ -344,10 +364,8 @@ export default function AumsMembersPage() {
     const [presence, setPresence] = useState<Map<string, PresenceMapRow>>(new Map());
     const [liveNowCount, setLiveNowCount] = useState(0);
     const [active1hCount, setActive1hCount] = useState(0);
+    const [tempCounts, setTempCounts] = useState({ HOT: 0, WARM: 0, COLD: 0 });
 
-    const hotRows = useMemo(() => activeMembers.filter(m => isLive(m) && !!parsePDP(m.current_url)), [activeMembers]);
-    const warmRows = useMemo(() => activeMembers.filter(m => !!parsePDP(m.current_url) && !isLive(m)), [activeMembers]);
-    const coldRows = useMemo(() => activeMembers.filter(m => !parsePDP(m.current_url)), [activeMembers]);
     const liveIds = useMemo(() => new Set(activeMembers.filter(isLive).map(m => m.member_id)), [activeMembers]);
 
     // ── Debounced search ─────────────────────────────────────────────────────
@@ -359,12 +377,11 @@ export default function AumsMembersPage() {
         return () => window.clearTimeout(t);
     }, [searchInput]);
 
-    // ── Load paginated all-members ────────────────────────────────────────────
+    // ── Load paginated members (unified for all tabs) ─────────────────────────
     useEffect(() => {
-        if (filter !== 'all') return;
         let cancelled = false;
         setIsLoading(true);
-        getAllPlatformMembers(searchQuery, page, PAGE_SIZE, stateFilter || undefined)
+        getAllPlatformMembers(searchQuery, page, PAGE_SIZE, stateFilter || undefined, filter)
             .then(r => {
                 if (cancelled) return;
                 setMembers((r?.data || []) as MemberRow[]);
@@ -386,10 +403,15 @@ export default function AumsMembersPage() {
     // ── Load active members ───────────────────────────────────────────────────
     const refreshActive = useCallback(async () => {
         try {
-            const [summary, live] = await Promise.all([getPlatformPresenceSummary(), getLiveMembersWithDetails()]);
+            const [summary, live, temps] = await Promise.all([
+                getPlatformPresenceSummary(),
+                getLiveMembersWithDetails(),
+                getPlatformTemperatureSummary(),
+            ]);
             setLiveNowCount(summary.liveNowCount);
             setActive1hCount(summary.active1hCount);
             setActiveMembers(live);
+            setTempCounts(temps);
         } catch {
             /* silent */
         }
@@ -401,9 +423,9 @@ export default function AumsMembersPage() {
         return () => window.clearInterval(t);
     }, [refreshActive]);
 
-    // ── Presence overlay for All tab ──────────────────────────────────────────
+    // ── Presence overlay for paginated members ────────────────────────────────
     useEffect(() => {
-        if (filter !== 'all' || !members.length) return;
+        if (!members.length) return;
         getPresenceForPage(members.map(m => m.id))
             .then(rows => {
                 setPresence(prev => {
@@ -418,43 +440,27 @@ export default function AumsMembersPage() {
     // ── Page reset on filter change ───────────────────────────────────────────
     useEffect(() => {
         setPage(1);
-        setIsLoading(filter === 'all');
+        setIsLoading(true);
     }, [filter]);
 
-    // ── Sort active rows client-side ──────────────────────────────────────────
+    // ── Brand filter (client-side, current page only) ─────────────────────────
     const brandFilter_lc = brandFilter.toLowerCase();
-    const filteredByBrand = useCallback(
-        (rows: LiveMemberRow[]) => {
-            if (!brandFilter_lc) return rows;
-            return rows.filter(m => {
-                const pdp = parsePDP(m.current_url);
-                return pdp
-                    ? pdp.make.toLowerCase().includes(brandFilter_lc) ||
-                          pdp.model.toLowerCase().includes(brandFilter_lc)
-                    : false;
-            });
-        },
-        [brandFilter_lc]
-    );
-
-    const sortedActive = useCallback(
-        (rows: LiveMemberRow[]) => {
-            const dir = sortDir === 'asc' ? 1 : -1;
-            return [...rows].sort((a, b) => {
-                if (sort === 'name') return dir * (a.full_name || '').localeCompare(b.full_name || '');
-                if (sort === 'joined')
-                    return dir * (new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime());
-                if (sort === 'time') return dir * ((b.total_time_ms || 0) - (a.total_time_ms || 0));
-                return dir * (new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
-            });
-        },
-        [sort, sortDir]
-    );
+    const filteredMembers = useMemo(() => {
+        if (!brandFilter_lc) return members;
+        return members.filter(m => (m.pdp_interests || []).some(i => i.toLowerCase().includes(brandFilter_lc)));
+    }, [members, brandFilter_lc]);
 
     // ── Sort paginated rows client-side (current page only) ──────────────────
     const sortedMembers = useMemo(() => {
         const dir = sortDir === 'asc' ? 1 : -1;
-        return [...members].sort((a, b) => {
+        return [...filteredMembers].sort((a, b) => {
+            if (sort === 'temperature') {
+                const aLiveLanding = liveIds.has(a.id) && !a.current_temperature;
+                const bLiveLanding = liveIds.has(b.id) && !b.current_temperature;
+                const diff =
+                    tempRank(b.current_temperature, bLiveLanding) - tempRank(a.current_temperature, aLiveLanding);
+                return sortDir === 'asc' ? -diff : diff;
+            }
             if (sort === 'name') return dir * (a.full_name || '').localeCompare(b.full_name || '');
             if (sort === 'joined')
                 return dir * (new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime());
@@ -466,34 +472,26 @@ export default function AumsMembersPage() {
                     new Date(a.last_active_at || a.created_at || '').getTime())
             );
         });
-    }, [members, sort, sortDir]);
+    }, [filteredMembers, sort, sortDir, liveIds]);
 
-    // ── Select display rows ───────────────────────────────────────────────────
-    const activeRows = useMemo(() => {
-        if (filter === 'hot') return sortedActive(filteredByBrand(hotRows));
-        if (filter === 'warm') return sortedActive(filteredByBrand(warmRows));
-        if (filter === 'cold') return sortedActive(filteredByBrand(coldRows));
-        return [];
-    }, [filter, hotRows, warmRows, coldRows, sortedActive, filteredByBrand]);
-
-    const displayCount = filter === 'all' ? totalMembers : activeRows.length;
+    const displayCount = brandFilter_lc ? sortedMembers.length : totalMembers;
 
     // ── Filter counts ─────────────────────────────────────────────────────────
-    const counts: Record<Filter, number> = useMemo(
+    const counts: Record<Filter, number | string> = useMemo(
         () => ({
             all: totalMembers,
-            hot: hotRows.length,
-            warm: warmRows.length,
-            cold: coldRows.length,
+            hot: tempCounts.HOT,
+            warm: tempCounts.WARM,
+            cold: tempCounts.COLD,
         }),
-        [totalMembers, hotRows, warmRows, coldRows]
+        [totalMembers, tempCounts]
     );
 
     // ── Sortable column headers ───────────────────────────────────────────────
     type ColDef = { label: string; key?: SortKey };
     const COLUMNS: ColDef[] = [
         { label: '' },
-        { label: 'Member', key: 'name' },
+        { label: 'Member', key: 'temperature' },
         { label: 'Location' },
         { label: 'Referred By' },
         { label: 'S&E Clicks' },
@@ -710,92 +708,53 @@ export default function AumsMembersPage() {
                             </tr>
                         </thead>
                         <tbody>
-                            {/* Active rows (Hot / Warm / Cold filters) */}
-                            {filter !== 'all' &&
-                                activeRows.map(m => {
-                                    const pdp = parsePDP(m.current_url);
-                                    const pdpInterests = pdp
-                                        ? [`${pdp.make} ${pdp.model}${pdp.variant ? ` · ${pdp.variant}` : ''}`]
-                                        : [];
-                                    return (
-                                        <MemberTableRow
-                                            key={m.member_id}
-                                            id={m.member_id}
-                                            displayId={m.display_id}
-                                            name={m.full_name}
-                                            phone={m.primary_phone}
-                                            isLiveVal={isLive(m)}
-                                            isAnon={m.is_anon}
-                                            joined={m.created_at}
-                                            district={m.district}
-                                            taluka={m.taluka}
-                                            state={m.state}
-                                            referralCode={null}
-                                            shareEarnClicks={0}
-                                            referralLinkClicks={0}
-                                            lastActiveAt={m.updated_at}
-                                            sessionStartAt={m.session_start_at}
-                                            pdpInterests={pdpInterests}
-                                            totalSessions={0}
-                                            totalTimeMs={m.total_time_ms ?? 0}
-                                        />
-                                    );
-                                })}
-
-                            {/* Paginated 'all' rows */}
-                            {filter === 'all' &&
-                                sortedMembers.map(m => {
-                                    const pres = presence.get(m.id);
-                                    return (
-                                        <MemberTableRow
-                                            key={m.id}
-                                            id={m.id}
-                                            displayId={m.display_id}
-                                            name={m.full_name}
-                                            phone={m.primary_phone}
-                                            isLiveVal={liveIds.has(m.id)}
-                                            joined={m.created_at}
-                                            district={m.district}
-                                            taluka={m.taluka}
-                                            state={m.state}
-                                            referralCode={m.referral_code}
-                                            shareEarnClicks={m.share_earn_clicks ?? 0}
-                                            referralLinkClicks={m.referral_link_clicks ?? 0}
-                                            lastActiveAt={m.last_active_at ?? pres?.updated_at ?? null}
-                                            sessionStartAt={null}
-                                            pdpInterests={m.pdp_interests ?? []}
-                                            totalSessions={m.total_sessions ?? 0}
-                                            totalTimeMs={m.total_time_ms ?? 0}
-                                        />
-                                    );
-                                })}
+                            {/* Unified paginated rows */}
+                            {sortedMembers.map(m => {
+                                const pres = presence.get(m.id);
+                                return (
+                                    <MemberTableRow
+                                        key={m.id}
+                                        id={m.id}
+                                        displayId={m.display_id}
+                                        name={m.full_name}
+                                        phone={m.primary_phone}
+                                        isLiveVal={liveIds.has(m.id)}
+                                        joined={m.created_at}
+                                        district={m.district}
+                                        taluka={m.taluka}
+                                        state={m.state}
+                                        referralCode={m.referral_code}
+                                        currentTemp={m.current_temperature ?? null}
+                                        maxTemp={m.max_temperature ?? null}
+                                        shareEarnClicks={m.share_earn_clicks ?? 0}
+                                        referralLinkClicks={m.referral_link_clicks ?? 0}
+                                        lastActiveAt={m.last_active_at ?? pres?.updated_at ?? null}
+                                        sessionStartAt={null}
+                                        pdpInterests={m.pdp_interests ?? []}
+                                        totalSessions={m.total_sessions ?? 0}
+                                        totalTimeMs={m.total_time_ms ?? 0}
+                                    />
+                                );
+                            })}
 
                             {/* Empty states */}
-                            {filter !== 'all' && activeRows.length === 0 && !isLoading && (
+                            {sortedMembers.length === 0 && !isLoading && (
                                 <tr>
                                     <td
                                         colSpan={11}
                                         className="px-5 py-16 text-center text-xs font-black text-slate-400 uppercase tracking-widest"
                                     >
                                         {filter === 'hot'
-                                            ? '🔥 No members live on PDP right now'
+                                            ? '🔥 No Hot prospects yet.'
                                             : filter === 'warm'
-                                              ? '🌡️ No recent PDP visitors'
-                                              : '❄️ No cold traffic right now'}
+                                              ? '🌡️ No Warm prospects yet.'
+                                              : filter === 'cold'
+                                                ? '❄️ No Cold prospects yet.'
+                                                : 'No members found.'}
                                     </td>
                                 </tr>
                             )}
-                            {filter === 'all' && sortedMembers.length === 0 && !isLoading && (
-                                <tr>
-                                    <td
-                                        colSpan={11}
-                                        className="px-5 py-16 text-center text-xs font-black text-slate-400 uppercase tracking-widest"
-                                    >
-                                        No members found.
-                                    </td>
-                                </tr>
-                            )}
-                            {isLoading && filter === 'all' && (
+                            {isLoading && (
                                 <tr>
                                     <td colSpan={11} className="px-5 py-12 text-center">
                                         <div className="flex items-center justify-center gap-2 text-xs text-slate-400 font-bold">
@@ -809,8 +768,8 @@ export default function AumsMembersPage() {
                     </table>
                 </div>
 
-                {/* Pagination (All filter only) */}
-                {filter === 'all' && totalPages > 1 && (
+                {/* Unified Pagination */}
+                {totalPages > 1 && (
                     <div className="flex items-center justify-between px-5 py-3 border-t border-slate-100">
                         <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
                             Page {page} of {totalPages} · {totalMembers.toLocaleString('en-IN')} members

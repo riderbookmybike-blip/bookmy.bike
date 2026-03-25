@@ -187,54 +187,32 @@ export async function POST(req: NextRequest) {
             userId = newUser.user.id;
         }
 
-        const { data: existingMember } = await adminClient
-            .from('id_members')
-            .select('id')
-            .eq('id', userId)
-            .maybeSingle();
+        const payload = {
+            id: userId,
+            full_name: fullName,
+            phone,
+            primary_phone: phone,
+            ...(emailInput ? { email: emailInput, primary_email: emailInput } : {}),
+            ...(pincode ? { pincode } : {}),
+            ...(resolvedLocation?.state ? { state: resolvedLocation.state } : {}),
+            ...(resolvedLocation?.district ? { district: resolvedLocation.district } : {}),
+            ...(resolvedLocation?.taluka ? { taluka: resolvedLocation.taluka } : {}),
+            ...(resolvedLocation && resolvedLocation.latitude != null ? { latitude: resolvedLocation.latitude } : {}),
+            ...(resolvedLocation && resolvedLocation.longitude != null
+                ? { longitude: resolvedLocation.longitude }
+                : {}),
+        };
 
-        if (existingMember?.id) {
-            await adminClient
-                .from('id_members')
-                .update({
-                    full_name: fullName,
-                    phone,
-                    primary_phone: phone,
-                    ...(emailInput ? { email: emailInput, primary_email: emailInput } : {}),
-                    ...(pincode ? { pincode } : {}),
-                    ...(resolvedLocation?.state ? { state: resolvedLocation.state } : {}),
-                    ...(resolvedLocation?.district ? { district: resolvedLocation.district } : {}),
-                    ...(resolvedLocation?.taluka ? { taluka: resolvedLocation.taluka } : {}),
-                    ...(resolvedLocation && resolvedLocation.latitude != null
-                        ? { latitude: resolvedLocation.latitude }
-                        : {}),
-                    ...(resolvedLocation && resolvedLocation.longitude != null
-                        ? { longitude: resolvedLocation.longitude }
-                        : {}),
-                })
-                .eq('id', userId);
-        } else {
-            const { error: memberInsertError } = await adminClient.from('id_members').insert({
-                id: userId,
-                full_name: fullName,
-                phone,
-                primary_phone: phone,
+        const { error: memberUpsertError } = await adminClient.from('id_members').upsert(
+            {
+                ...payload,
                 role: 'member',
-                ...(emailInput ? { email: emailInput, primary_email: emailInput } : {}),
-                ...(pincode ? { pincode } : {}),
-                ...(resolvedLocation?.state ? { state: resolvedLocation.state } : {}),
-                ...(resolvedLocation?.district ? { district: resolvedLocation.district } : {}),
-                ...(resolvedLocation?.taluka ? { taluka: resolvedLocation.taluka } : {}),
-                ...(resolvedLocation && resolvedLocation.latitude != null
-                    ? { latitude: resolvedLocation.latitude }
-                    : {}),
-                ...(resolvedLocation && resolvedLocation.longitude != null
-                    ? { longitude: resolvedLocation.longitude }
-                    : {}),
-            });
-            if (memberInsertError) {
-                return NextResponse.json({ success: false, message: memberInsertError.message }, { status: 500 });
-            }
+            },
+            { onConflict: 'id' }
+        );
+
+        if (memberUpsertError) {
+            return NextResponse.json({ success: false, message: memberUpsertError.message }, { status: 500 });
         }
 
         const requestId = crypto.randomUUID();

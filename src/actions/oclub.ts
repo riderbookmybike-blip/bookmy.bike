@@ -33,7 +33,50 @@ export async function getOClubLedger(memberId: string, limit = 50) {
         return { success: false, error: error.message };
     }
 
-    return { success: true, ledger: data || [] };
+    const ledger = data || [];
+    const leadIds = new Set<string>();
+
+    ledger.forEach((r: any) => {
+        if (r.source_type === 'REFERRAL_LEAD' && r.source_id) {
+            leadIds.add(r.source_id);
+        } else if (r.metadata?.lead_id) {
+            leadIds.add(r.metadata.lead_id);
+        } else if (r.metadata?.referral_lead) {
+            leadIds.add(r.metadata.referral_lead);
+        }
+    });
+
+    if (leadIds.size > 0) {
+        const { data: leads } = await adminClient
+            .from('crm_leads')
+            .select('id, customer_name')
+            .in('id', Array.from(leadIds));
+
+        const leadMap = new Map((leads || []).map((l: any) => [l.id, l.customer_name]));
+
+        ledger.forEach((r: any) => {
+            let leadId = null;
+            if (r.source_type === 'REFERRAL_LEAD') leadId = r.source_id;
+            else if (r.metadata?.lead_id) leadId = r.metadata.lead_id;
+            else if (r.metadata?.referral_lead) leadId = r.metadata.referral_lead;
+
+            if (leadId && leadMap.has(leadId)) {
+                r.referred_customer_name = leadMap.get(leadId);
+            } else if (r.metadata?.referred_name) {
+                // Fallback for orphaned test records where lead no longer exists
+                r.referred_customer_name = r.metadata.referred_name;
+            }
+        });
+    } else {
+        // Even if no lead IDs to fetch, fallback to metadata name
+        ledger.forEach((r: any) => {
+            if (r.metadata?.referred_name) {
+                r.referred_customer_name = r.metadata.referred_name;
+            }
+        });
+    }
+
+    return { success: true, ledger };
 }
 
 export async function getSponsorByTenant(tenantId: string) {

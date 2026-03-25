@@ -41,6 +41,43 @@ function sanitisePayload(payload: Record<string, unknown>): Record<string, unkno
     return out;
 }
 
+function computeEventTemperature(eventType: string, payload: Record<string, unknown>): string | null {
+    if (eventType === 'PAGE_VIEW') {
+        const url = String(payload.url || '');
+        if (!url) return null;
+        if (url.startsWith('/store/catalog') || url === '/store' || url === '/store/') return 'COLD';
+
+        if (url.startsWith('/store/')) {
+            const parts = url.split('/').filter(Boolean); // ['store', 'honda', 'activa-6g']
+            if (parts.length >= 3) {
+                const make = parts[1].toLowerCase();
+                const NON_PRODUCT_PATHS = new Set([
+                    'catalog',
+                    'compare',
+                    'search',
+                    'ocircle',
+                    'booking',
+                    'login',
+                    'cart',
+                    'checkout',
+                    'wishlist',
+                    'payment',
+                ]);
+                if (!NON_PRODUCT_PATHS.has(make)) {
+                    return 'HOT';
+                }
+            }
+        }
+    } else if (eventType === 'CARD_CLICK') {
+        return 'WARM';
+    } else if (eventType === 'INTENT_SIGNAL') {
+        if (payload.event_name === 'variant_card_click') {
+            return 'WARM';
+        }
+    }
+    return null;
+}
+
 /**
  * Auth-hardened tracker: ignores the client-passed memberId and instead
  * resolves the authenticated user server-side. Silently drops if no session.
@@ -91,6 +128,16 @@ export async function trackMemberEvent(
                 p_device: (cleanPayload.device as string) ?? null,
                 p_session_id: (cleanPayload.session_id as string) ?? null,
                 p_event_type: eventType,
+            });
+        }
+
+        // Evaluate temperature intent escalation
+        const targetTemp = computeEventTemperature(eventType, cleanPayload);
+        if (targetTemp) {
+            await presenceClient.rpc('escalate_visitor_temperature', {
+                p_member_id: user.id,
+                p_session_id: (cleanPayload.session_id as string) ?? null,
+                p_temp: targetTemp,
             });
         }
     } catch {
@@ -164,6 +211,15 @@ export async function trackAnonEvent(
                 p_device: (payload.device as string) ?? null,
                 p_session_id: (payload.session_id as string) ?? null,
                 p_event_type: eventType,
+            });
+        }
+
+        const targetTemp = computeEventTemperature(eventType, cleanPayload);
+        if (targetTemp) {
+            await pc.rpc('escalate_visitor_temperature', {
+                p_member_id: null,
+                p_session_id: (cleanPayload.session_id as string) ?? anonSessionId,
+                p_temp: targetTemp,
             });
         }
     } catch {

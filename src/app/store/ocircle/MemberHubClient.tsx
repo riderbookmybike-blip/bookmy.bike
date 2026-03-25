@@ -899,8 +899,10 @@ export default function MemberHubClient({
                                         <h3 className="text-base font-black text-slate-900">O&apos;Circle Privilege</h3>
                                     </div>
                                     {/* Column headers */}
-                                    <div className="hidden md:grid grid-cols-[1.5fr_140px_90px_72px_72px_72px] gap-6 px-6 py-3 bg-slate-50 border-b border-slate-100 text-[11px] font-semibold text-slate-400">
+                                    <div className="hidden md:grid grid-cols-[1.2fr_1.2fr_70px_100px_70px_60px_60px_70px] gap-4 px-6 py-3 bg-slate-50 border-b border-slate-100 text-[11px] font-semibold text-slate-400">
                                         <span>Transaction</span>
+                                        <span>Notes</span>
+                                        <span>Status</span>
                                         <span>Date</span>
                                         <span>Validity</span>
                                         <span className="text-right">Credit</span>
@@ -915,7 +917,8 @@ export default function MemberHubClient({
                                         (() => {
                                             const sourceLabel: Record<string, string> = {
                                                 SIGNUP: 'Welcome Bonus',
-                                                REFERRAL_LEAD: "O'Circle",
+                                                REFERRAL_LEAD: 'Thank you!!!',
+                                                REFERRAL_UNLOCK: 'Thank you!!!',
                                             };
                                             const toLabel = (s: string) =>
                                                 sourceLabel[s] ??
@@ -923,6 +926,14 @@ export default function MemberHubClient({
                                                     .toLowerCase()
                                                     .replace(/_/g, ' ')
                                                     .replace(/\b\w/g, c => c.toUpperCase());
+                                            const statusMap: Record<string, string> = {
+                                                LOCKED: 'Lock',
+                                                UNLOCKED: 'Released',
+                                                AVAILABLE: 'Refilled',
+                                                CONSUMED: 'Consumed',
+                                                EXPIRED: 'Expired',
+                                                PENDING_BACKED: 'Pending',
+                                            };
                                             const now = new Date();
                                             const fmtDate = (d: Date) =>
                                                 d.toLocaleDateString('en-IN', {
@@ -934,6 +945,8 @@ export default function MemberHubClient({
                                             type EntryRow = {
                                                 id: string;
                                                 label: string;
+                                                notes: string | null;
+                                                status: string;
                                                 date: Date;
                                                 validity: number | null;
                                                 isLifetime: boolean;
@@ -949,35 +962,43 @@ export default function MemberHubClient({
                                             sorted.forEach((row: any) => {
                                                 const delta = Number(row.delta || 0);
                                                 const exp = row.expires_at ? new Date(row.expires_at) : null;
-                                                const isExpired = exp && exp < now;
+                                                const isExpired = exp ? exp < now : false;
 
                                                 running += delta;
+
+                                                let creditAmount = delta > 0 ? delta : null;
+                                                let debitAmount = delta < 0 ? Math.abs(delta) : null;
+
+                                                if (exp && isExpired) {
+                                                    // Reverse the added credit from the running balance since it expired
+                                                    running -= delta;
+                                                    // Show the expired amount as debit on the same row
+                                                    debitAmount = (debitAmount || 0) + (delta > 0 ? delta : 0);
+                                                }
+
+                                                const labelStr = toLabel(row.source_type || 'Activity');
+                                                let finalNotes: string | null =
+                                                    row.referred_customer_name || row.metadata?.notes || null;
+
+                                                if (labelStr === 'Welcome Bonus') {
+                                                    finalNotes = 'Welcome to BookMyBike!';
+                                                } else if (labelStr.includes('Valentine')) {
+                                                    finalNotes = 'Happy Valentine!';
+                                                }
+
                                                 entries.push({
                                                     id: `${row.id}-cr`,
-                                                    label: toLabel(row.source_type || 'Activity'),
+                                                    label: labelStr,
+                                                    notes: finalNotes,
+                                                    status: isExpired ? 'Expired' : statusMap[row.status] || row.status,
                                                     date: new Date(row.created_at),
                                                     validity: row.validity_days ?? null,
                                                     isLifetime: !exp,
-                                                    credit: delta > 0 ? delta : null,
-                                                    debit: delta < 0 ? Math.abs(delta) : null,
+                                                    credit: creditAmount,
+                                                    debit: debitAmount && debitAmount > 0 ? debitAmount : null,
                                                     balance: running,
-                                                    muted: false,
+                                                    muted: isExpired,
                                                 });
-
-                                                if (exp && isExpired) {
-                                                    running -= delta;
-                                                    entries.push({
-                                                        id: `${row.id}-dr`,
-                                                        label: toLabel(row.source_type || 'Activity'),
-                                                        date: exp,
-                                                        validity: null,
-                                                        isLifetime: false,
-                                                        credit: null,
-                                                        debit: delta > 0 ? delta : null,
-                                                        balance: running,
-                                                        muted: true,
-                                                    });
-                                                }
                                             });
 
                                             return (
@@ -991,7 +1012,7 @@ export default function MemberHubClient({
                                                             return (
                                                                 <div
                                                                     key={entry.id}
-                                                                    className={`px-6 py-3.5 grid grid-cols-1 md:grid-cols-[1.5fr_140px_90px_72px_72px_72px] gap-2 md:gap-6 md:items-center border-b border-slate-100 last:border-0 transition-colors ${
+                                                                    className={`px-6 py-3.5 grid grid-cols-1 md:grid-cols-[1.2fr_1.2fr_70px_100px_70px_60px_60px_70px] gap-2 md:gap-4 md:items-center border-b border-slate-100 last:border-0 transition-colors ${
                                                                         entry.muted
                                                                             ? 'border-l-2 border-l-rose-300 bg-rose-50/30 hover:bg-rose-50/60'
                                                                             : 'hover:bg-slate-50/80'
@@ -1000,7 +1021,7 @@ export default function MemberHubClient({
                                                                     {/* Label */}
                                                                     <div className="flex items-center gap-2">
                                                                         <p
-                                                                            className={`text-[13px] font-bold ${
+                                                                            className={`text-[12px] md:text-[13px] font-bold ${
                                                                                 entry.muted
                                                                                     ? 'text-slate-400'
                                                                                     : 'text-slate-800'
@@ -1014,6 +1035,19 @@ export default function MemberHubClient({
                                                                             </span>
                                                                         )}
                                                                     </div>
+
+                                                                    {/* Notes */}
+                                                                    <p
+                                                                        className="text-[12px] font-medium text-slate-500 truncate"
+                                                                        title={entry.notes || ''}
+                                                                    >
+                                                                        {entry.notes || '—'}
+                                                                    </p>
+
+                                                                    {/* Status */}
+                                                                    <p className="text-[11px] font-bold text-slate-600">
+                                                                        {entry.status}
+                                                                    </p>
 
                                                                     {/* Date */}
                                                                     <p

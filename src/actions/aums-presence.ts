@@ -50,6 +50,11 @@ type GetAllPlatformMembersResult = {
         pdp_interests: string[]; // ['Honda Activa 6g', 'TVS Ntorq']
         share_earn_clicks: number;
         referral_link_clicks: number;
+        current_temperature: string | null;
+        max_temperature: string | null;
+        last_pdp_at: string | null;
+        last_catalog_at: string | null;
+        last_landing_at: string | null;
     }>;
     metadata: {
         total: number;
@@ -68,7 +73,8 @@ export async function getAllPlatformMembers(
     search?: string,
     page: number = 1,
     pageSize: number = 50,
-    stateFilter?: string
+    stateFilter?: string,
+    temperatureFilter?: string
 ): Promise<GetAllPlatformMembersResult> {
     await assertAumsAdminAccess();
     const supabase = await createClient();
@@ -79,7 +85,7 @@ export async function getAllPlatformMembers(
     const to = from + safePageSize - 1;
 
     const SELECT_COLS =
-        'id, display_id, full_name, phone, primary_phone, whatsapp, created_at, district, taluka, state, referral_code, last_visit_at';
+        'id, display_id, full_name, phone, primary_phone, whatsapp, created_at, district, taluka, state, referral_code, last_visit_at, visitor_temperature, current_temperature, max_temperature, last_pdp_at, last_catalog_at, last_landing_at';
 
     let query = adminClient
         .from('id_members')
@@ -94,14 +100,31 @@ export async function getAllPlatformMembers(
     if (stateFilter) {
         query = query.ilike('state', stateFilter);
     }
+    if (temperatureFilter && temperatureFilter !== 'all') {
+        query = query.eq('current_temperature', temperatureFilter.toUpperCase());
+    }
 
     let { data, error, count } = await query;
     if (error) {
-        const fallback = await supabase
+        let fallbackQuery = supabase
             .from('id_members')
             .select(SELECT_COLS, { count: 'exact' })
             .order('created_at', { ascending: false })
             .range(from, to);
+
+        if (term) {
+            fallbackQuery = fallbackQuery.or(
+                `full_name.ilike.%${term}%,primary_phone.ilike.%${term}%,display_id.ilike.%${term}%`
+            );
+        }
+        if (stateFilter) {
+            fallbackQuery = fallbackQuery.ilike('state', stateFilter);
+        }
+        if (temperatureFilter && temperatureFilter !== 'all') {
+            fallbackQuery = fallbackQuery.eq('current_temperature', temperatureFilter.toUpperCase());
+        }
+
+        const fallback = await fallbackQuery;
         data = fallback.data;
         error = fallback.error;
         count = fallback.count;
@@ -165,6 +188,12 @@ export async function getAllPlatformMembers(
                 pdp_interests: a.pdp_interests,
                 share_earn_clicks: a.share_earn_clicks,
                 referral_link_clicks: a.referral_link_clicks,
+                visitor_temperature: r.visitor_temperature ?? null,
+                current_temperature: r.current_temperature ?? r.visitor_temperature ?? null,
+                max_temperature: r.max_temperature ?? r.visitor_temperature ?? null,
+                last_pdp_at: r.last_pdp_at ?? null,
+                last_catalog_at: r.last_catalog_at ?? null,
+                last_landing_at: r.last_landing_at ?? null,
             };
         }),
         metadata: {
@@ -193,6 +222,25 @@ export async function getPlatformPresenceSummary() {
         liveNowCount: Number(row?.live_now_count || 0),
         active1hCount: Number(row?.active_1h_count || 0),
     };
+}
+
+export async function getPlatformTemperatureSummary() {
+    await assertAumsAdminAccess();
+    const supabase = await createClient();
+
+    // Best-effort decay pass so current pipeline remains fresh even without cron wiring.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (adminClient as any).rpc('apply_visitor_temperature_decay').catch(() => null);
+
+    let { data, error } = await (adminClient as any).rpc('get_platform_temperature_counts');
+    if (error) {
+        const fallback = await (supabase as any).rpc('get_platform_temperature_counts');
+        data = fallback.data;
+        error = fallback.error;
+    }
+    if (error) throw error;
+
+    return data || { HOT: 0, WARM: 0, COLD: 0 };
 }
 
 export interface PresenceRow {

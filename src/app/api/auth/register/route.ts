@@ -51,15 +51,18 @@ export async function POST() {
         return NextResponse.json({ error: 'Invalid phone number' }, { status: 400 });
     }
 
-    const { error } = await supabase.from('id_members').insert({
-        id: user.id,
-        email: user.email,
-        phone: cleanPhone,
-        full_name: user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || '',
-        avatar_url: user.user_metadata?.avatar_url || user.user_metadata?.picture || '',
-        tenant_id: MARKETPLACE_TENANT_ID,
-        role: 'team',
-    });
+    const { error } = await supabase.from('id_members').upsert(
+        {
+            id: user.id,
+            email: user.email,
+            phone: cleanPhone,
+            full_name: user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || '',
+            avatar_url: user.user_metadata?.avatar_url || user.user_metadata?.picture || '',
+            tenant_id: MARKETPLACE_TENANT_ID,
+            role: 'team',
+        },
+        { onConflict: 'id' }
+    );
 
     if (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });

@@ -102,26 +102,45 @@ export async function POST(req: NextRequest) {
             continue;
         }
 
-        // Map MSG91 status → column
-        // Note: 'failed'/'undelivered' have no dedicated column — we just skip them
-        let updateCol: 'delivered_at' | 'read_at' | null = null;
+        // Map MSG91 status → column/state
+        let updateCol: 'delivered_at' | 'read_at' | 'failed' | null = null;
         if (status === 'delivered') updateCol = 'delivered_at';
         else if (status === 'read') updateCol = 'read_at';
+        else if (status === 'failed' || status === 'undelivered' || status === 'rejected' || status === 'bounced')
+            updateCol = 'failed';
         else {
             skipped++;
             continue;
-        } // 'sent', 'failed', 'submitted' — no column to update
+        }
 
-        // Update the most recent SENT row for this phone
-        // (phone is not unique — can appear in multiple campaigns; update latest)
+        // Find the most recent SENT row for this phone (exact match against common clean DB formats)
+        let query = adminClient
+            .from('cam_whatsapp_recipients')
+            .select('id')
+            .in('phone', [phone, `91${phone}`, `+91${phone}`])
+            .eq('send_status', 'SENT');
+
+        // Only update delivered/read if not already set (for idempotency)
+        if (updateCol !== 'failed') {
+            query = query.is(updateCol, null);
+        }
+
+        const { data: latestRow, error: fetchError } = await query
+            .order('sent_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+        if (fetchError || !latestRow) {
+            skipped++;
+            continue;
+        }
+
+        const updatePayload = updateCol === 'failed' ? { send_status: 'FAILED' } : { [updateCol]: ts };
+
         const { error } = await adminClient
             .from('cam_whatsapp_recipients')
-            .update({ [updateCol]: ts })
-            .eq('phone', phone)
-            .eq('send_status', 'SENT')
-            .is(updateCol, null) // only update if not already set
-            .order('sent_at', { ascending: false })
-            .limit(1);
+            .update(updatePayload)
+            .eq('id', latestRow.id);
 
         if (error) {
             console.error('[WA Webhook] DB update error:', { phone, status, error: error.message });

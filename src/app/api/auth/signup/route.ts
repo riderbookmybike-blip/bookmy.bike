@@ -177,9 +177,81 @@ export async function POST(req: NextRequest) {
 
         // 1. Check if User Already Exists
         const { data: existingUsers } = await adminClient.auth.admin.listUsers();
-        const userExists = existingUsers?.users.some(u => u.phone === formattedPhone || u.email === email);
+        const existingUser = existingUsers?.users.find(u => u.phone === formattedPhone || u.email === email);
 
-        if (userExists) {
+        let userId: string;
+        let isExistingUser = false;
+
+        if (existingUser) {
+            userId = existingUser.id;
+            isExistingUser = true;
+        } else {
+            // 2. Create Auth User
+            const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
+                email: email,
+                phone: formattedPhone,
+                email_confirm: true,
+                phone_confirm: true,
+                user_metadata: {
+                    full_name: resolvedDisplayName,
+                    phone: cleanPhone,
+                    referral_code_used: canonicalReferralCode,
+                },
+                password: password,
+            });
+
+            if (createError) {
+                console.error('Signup Auth Error:', createError);
+                return NextResponse.json(
+                    {
+                        success: false,
+                        message: 'Failed to create account.',
+                    },
+                    { status: 500 }
+                );
+            }
+            userId = newUser.user.id;
+        }
+        // 3. Create Profile (member role by default)
+        const { error: profileError } = await adminClient.from('id_members').upsert(
+            {
+                id: userId,
+                full_name: resolvedDisplayName,
+                phone: cleanPhone,
+                primary_phone: cleanPhone,
+                role: 'member',
+                pincode: pincode || null,
+                state: resolvedState,
+                district: resolvedDistrict,
+                taluka: resolvedTaluka,
+                latitude: hasCoords ? Number(lat) : null,
+                longitude: hasCoords ? Number(lng) : null,
+                preferences: {
+                    signup_referral_code: canonicalReferralCode,
+                    signup_referrer_member_id: referrer.id,
+                    signup_referrer_type: referrerType,
+                    signup_referrer_name: referrer.full_name || null,
+                    signup_referrer_display_id: referrer.display_id || null,
+                    signup_referral_benefit_eligible: referralBenefitEligible,
+                    signup_referral_benefit_status: referralBenefitEligible ? 'ELIGIBLE' : 'BLOCKED_TEAM_REFERRER',
+                    signup_area: area || null,
+                },
+            },
+            { onConflict: 'id' }
+        );
+
+        if (profileError) {
+            console.error('Signup Profile Error:', profileError);
+            return NextResponse.json(
+                {
+                    success: false,
+                    message: 'Failed to create member profile. Please try again.',
+                },
+                { status: 500 }
+            );
+        }
+
+        if (isExistingUser) {
             return NextResponse.json(
                 {
                     success: false,
@@ -188,63 +260,6 @@ export async function POST(req: NextRequest) {
                 },
                 { status: 409 }
             );
-        }
-
-        // 2. Create Auth User
-        const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
-            email: email,
-            phone: formattedPhone,
-            email_confirm: true,
-            phone_confirm: true,
-            user_metadata: {
-                full_name: resolvedDisplayName,
-                phone: cleanPhone,
-                referral_code_used: canonicalReferralCode,
-            },
-            password: password,
-        });
-
-        if (createError) {
-            console.error('Signup Auth Error:', createError);
-            return NextResponse.json(
-                {
-                    success: false,
-                    message: 'Failed to create account.',
-                },
-                { status: 500 }
-            );
-        }
-
-        const userId = newUser.user.id;
-        // 3. Create Profile (member role by default)
-        const { error: profileError } = await adminClient.from('id_members').insert({
-            id: userId,
-            full_name: resolvedDisplayName,
-            phone: cleanPhone,
-            primary_phone: cleanPhone,
-            role: 'member',
-            pincode: pincode || null,
-            state: resolvedState,
-            district: resolvedDistrict,
-            taluka: resolvedTaluka,
-            latitude: hasCoords ? Number(lat) : null,
-            longitude: hasCoords ? Number(lng) : null,
-            preferences: {
-                signup_referral_code: canonicalReferralCode,
-                signup_referrer_member_id: referrer.id,
-                signup_referrer_type: referrerType,
-                signup_referrer_name: referrer.full_name || null,
-                signup_referrer_display_id: referrer.display_id || null,
-                signup_referral_benefit_eligible: referralBenefitEligible,
-                signup_referral_benefit_status: referralBenefitEligible ? 'ELIGIBLE' : 'BLOCKED_TEAM_REFERRER',
-                signup_area: area || null,
-            },
-        });
-
-        if (profileError) {
-            console.error('Signup Profile Error:', profileError);
-            // Rollback? Deleting auth user might be dangerous if async, but ideally yes.
-            // For now, allow it, but log error.
         }
 
         // Campaign attribution (best effort): mark latest recipient row for this member as signed up.
