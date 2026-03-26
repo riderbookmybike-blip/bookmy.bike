@@ -74,7 +74,7 @@ import {
     getDealershipInfo,
     getAlternativeRecommendations,
     getDealerships,
-    reassignQuoteDealership,
+    assignQuoteSupplier,
     updateReceipt,
     reconcileReceipt,
     getBookingFeedbackAction,
@@ -143,6 +143,7 @@ export interface QuoteData {
     district?: string | null;
     tenantId?: string | null;
     assignedTenantId?: string | null;
+    supplierTenantId?: string | null;
     financeMode?: 'CASH' | 'LOAN';
     delivery?: {
         serviceable?: boolean | null;
@@ -718,6 +719,7 @@ export default function QuoteEditorTable({
     const [managerNote, setManagerNote] = useState(quote.pricing.managerDiscountNote || '');
     const [isSaving, setIsSaving] = useState(false);
     const [dealerInfo, setDealerInfo] = useState<any>(null);
+    const [supplierInfo, setSupplierInfo] = useState<any>(null);
     const [alternativeBikes, setAlternativeBikes] = useState<any[]>([]);
     const [pdfLoading, setPdfLoading] = useState(false);
     const [qrCodes, setQrCodes] = useState({ bookNow: '', viewQuote: '' });
@@ -727,18 +729,22 @@ export default function QuoteEditorTable({
         if (quote.tenantId) {
             getDealershipInfo(quote.tenantId).then(setDealerInfo);
         }
+        const effectiveSupplierTenantId = quote.supplierTenantId || quote.tenantId;
+        if (effectiveSupplierTenantId) {
+            getDealershipInfo(effectiveSupplierTenantId).then(setSupplierInfo);
+        }
         if (quote.vehicle?.skuId) {
             getAlternativeRecommendations(quote.vehicle.skuId).then(setAlternativeBikes);
         }
-    }, [quote.tenantId, quote.vehicle?.skuId]);
+    }, [quote.tenantId, quote.supplierTenantId, quote.vehicle?.skuId]);
 
-    // Dealer reassignment
+    // Supplier assignment
     const [dealerList, setDealerList] = useState<
         { id: string; name: string; location: string; studioId: string | null; supportedBrands?: string[] }[]
     >([]);
     const [dealerDropdownOpen, setDealerDropdownOpen] = useState(false);
     const [dealerSearchQuery, setDealerSearchQuery] = useState('');
-    const [isReassigningDealer, setIsReassigningDealer] = useState(false);
+    const [isAssigningSupplier, setIsAssigningSupplier] = useState(false);
     const dealerDropdownRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
@@ -785,7 +791,7 @@ export default function QuoteEditorTable({
             return nameMatch || locationMatch;
         });
     }, [brandAwareDealers, dealerSearchQuery]);
-    const currentAssignedDealerId = quote.assignedTenantId || null;
+    const currentSupplierTenantId = quote.supplierTenantId || quote.tenantId || null;
     const [hasChanges, setHasChanges] = useState(false);
     const [confirmOpen, setConfirmOpen] = useState(false);
 
@@ -2594,126 +2600,151 @@ export default function QuoteEditorTable({
                                         </p>
                                     </div>
 
-                                    <div className="relative mt-2" ref={dealerDropdownRef}>
-                                        <button
-                                            onClick={() => setDealerDropdownOpen(!dealerDropdownOpen)}
-                                            disabled={isReassigningDealer}
+                                    <div className="mt-2 flex flex-col gap-2">
+                                        <div
                                             className={cn(
                                                 'w-full h-9 px-3 rounded-lg border transition-all flex items-center justify-between',
-                                                'border-slate-200 bg-white hover:bg-slate-50 text-slate-700',
-                                                'dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10 dark:text-white'
+                                                'border-slate-200 bg-slate-50 text-slate-700',
+                                                'dark:border-white/10 dark:bg-white/5 dark:text-white'
                                             )}
                                         >
                                             <span className="flex items-center gap-2 min-w-0">
                                                 <Building2 size={12} className="text-indigo-500 shrink-0" />
                                                 <span className="text-[10px] uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400 shrink-0">
-                                                    Assigned Dealership
+                                                    Dealership
                                                 </span>
                                                 <span className="text-[10px] font-black uppercase tracking-tight truncate text-slate-900 dark:text-white">
-                                                    {quote.studioName || 'Not Assigned'}
+                                                    {quote.studioName || dealerInfo?.name || 'Not Assigned'}
                                                 </span>
                                             </span>
-                                            <ChevronDown
-                                                size={12}
+                                        </div>
+
+                                        <div className="relative" ref={dealerDropdownRef}>
+                                            <button
+                                                onClick={() => setDealerDropdownOpen(!dealerDropdownOpen)}
+                                                disabled={isAssigningSupplier}
                                                 className={cn(
-                                                    'text-slate-400 shrink-0 transition-transform',
-                                                    dealerDropdownOpen && 'rotate-180'
+                                                    'w-full h-9 px-3 rounded-lg border transition-all flex items-center justify-between',
+                                                    'border-slate-200 bg-white hover:bg-slate-50 text-slate-700',
+                                                    'dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10 dark:text-white'
                                                 )}
-                                            />
-                                        </button>
+                                            >
+                                                <span className="flex items-center gap-2 min-w-0">
+                                                    <Building2 size={12} className="text-emerald-500 shrink-0" />
+                                                    <span className="text-[10px] uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400 shrink-0">
+                                                        Supplier
+                                                    </span>
+                                                    <span className="text-[10px] font-black uppercase tracking-tight truncate text-slate-900 dark:text-white">
+                                                        {quote.supplierTenantId &&
+                                                        quote.supplierTenantId !== quote.tenantId
+                                                            ? supplierInfo?.name || 'Not Assigned'
+                                                            : 'Same as Dealership'}
+                                                    </span>
+                                                </span>
+                                                <ChevronDown
+                                                    size={12}
+                                                    className={cn(
+                                                        'text-slate-400 shrink-0 transition-transform',
+                                                        dealerDropdownOpen && 'rotate-180'
+                                                    )}
+                                                />
+                                            </button>
 
-                                        {dealerDropdownOpen && (
-                                            <div className="absolute top-full left-0 mt-2 w-[360px] max-w-[calc(100vw-120px)] bg-white dark:bg-[#1a1d23] border border-slate-200 dark:border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden">
-                                                <div className="px-3 py-2 border-b border-slate-100 dark:border-white/10">
-                                                    <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">
-                                                        Reassign Dealership
-                                                    </p>
-                                                    <p className="text-[10px] text-slate-400 mt-0.5">
-                                                        Brand: {quote.vehicle.brand || 'N/A'}
-                                                    </p>
-                                                    <input
-                                                        type="text"
-                                                        placeholder="Search by dealership or location..."
-                                                        value={dealerSearchQuery}
-                                                        onChange={e => setDealerSearchQuery(e.target.value)}
-                                                        className="mt-2 w-full text-[11px] px-3 py-2 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-lg outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800 dark:text-white placeholder:text-slate-400"
-                                                        autoFocus
-                                                    />
-                                                </div>
+                                            {dealerDropdownOpen && (
+                                                <div className="absolute top-full left-0 mt-2 w-[360px] max-w-[calc(100vw-120px)] bg-white dark:bg-[#1a1d23] border border-slate-200 dark:border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden">
+                                                    <div className="px-3 py-2 border-b border-slate-100 dark:border-white/10">
+                                                        <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">
+                                                            Assign Supplier
+                                                        </p>
+                                                        <p className="text-[10px] text-slate-400 mt-0.5">
+                                                            Brand: {quote.vehicle.brand || 'N/A'}
+                                                        </p>
+                                                        <input
+                                                            type="text"
+                                                            placeholder="Search by dealership or location..."
+                                                            value={dealerSearchQuery}
+                                                            onChange={e => setDealerSearchQuery(e.target.value)}
+                                                            className="mt-2 w-full text-[11px] px-3 py-2 bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 rounded-lg outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800 dark:text-white placeholder:text-slate-400"
+                                                            autoFocus
+                                                        />
+                                                    </div>
 
-                                                <div className="max-h-60 overflow-y-auto">
-                                                    {filteredDealers.map(d => {
-                                                        const isCurrent = d.id === currentAssignedDealerId;
-                                                        return (
-                                                            <button
-                                                                key={d.id}
-                                                                disabled={isReassigningDealer}
-                                                                onClick={async () => {
-                                                                    if (isCurrent) {
+                                                    <div className="max-h-60 overflow-y-auto">
+                                                        {filteredDealers.map(d => {
+                                                            const isCurrent = d.id === currentSupplierTenantId;
+                                                            return (
+                                                                <button
+                                                                    key={d.id}
+                                                                    disabled={isAssigningSupplier}
+                                                                    onClick={async () => {
+                                                                        if (isCurrent) {
+                                                                            setDealerDropdownOpen(false);
+                                                                            setDealerSearchQuery('');
+                                                                            return;
+                                                                        }
+                                                                        setIsAssigningSupplier(true);
+                                                                        const result = await assignQuoteSupplier(
+                                                                            quote.id,
+                                                                            d.id
+                                                                        );
+                                                                        setIsAssigningSupplier(false);
                                                                         setDealerDropdownOpen(false);
                                                                         setDealerSearchQuery('');
-                                                                        return;
-                                                                    }
-                                                                    setIsReassigningDealer(true);
-                                                                    const result = await reassignQuoteDealership(
-                                                                        quote.id,
-                                                                        d.id
-                                                                    );
-                                                                    setIsReassigningDealer(false);
-                                                                    setDealerDropdownOpen(false);
-                                                                    setDealerSearchQuery('');
-                                                                    if (result.success) {
-                                                                        toast.success(
-                                                                            `Dealership changed to ${d.name}`
-                                                                        );
-                                                                        onRefresh?.();
-                                                                    } else {
-                                                                        toast.error(
-                                                                            result.error || 'Failed to reassign'
-                                                                        );
-                                                                    }
-                                                                }}
-                                                                className={cn(
-                                                                    'w-full text-left px-3 py-2.5 transition-colors border-b border-slate-50 dark:border-white/5 last:border-0',
-                                                                    isCurrent
-                                                                        ? 'bg-indigo-50 dark:bg-indigo-500/10'
-                                                                        : 'hover:bg-slate-50 dark:hover:bg-white/5'
-                                                                )}
-                                                            >
-                                                                <div className="flex items-center justify-between gap-2">
-                                                                    <p className="text-[10px] font-black text-slate-800 dark:text-white uppercase tracking-wider truncate">
-                                                                        {d.name}
-                                                                    </p>
-                                                                    {isCurrent && (
-                                                                        <span className="inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300 shrink-0">
-                                                                            <Check size={9} />
-                                                                            Current
-                                                                        </span>
+                                                                        if (result.success) {
+                                                                            toast.success(
+                                                                                `Supplier changed to ${d.name}`
+                                                                            );
+                                                                            onRefresh?.();
+                                                                        } else {
+                                                                            toast.error(
+                                                                                result.error ||
+                                                                                    'Failed to assign supplier'
+                                                                            );
+                                                                        }
+                                                                    }}
+                                                                    className={cn(
+                                                                        'w-full text-left px-3 py-2.5 transition-colors border-b border-slate-50 dark:border-white/5 last:border-0',
+                                                                        isCurrent
+                                                                            ? 'bg-indigo-50 dark:bg-indigo-500/10'
+                                                                            : 'hover:bg-slate-50 dark:hover:bg-white/5'
                                                                     )}
-                                                                </div>
-                                                                {d.location && (
-                                                                    <p className="text-[9px] text-slate-400 mt-0.5 truncate">
-                                                                        {d.location}
-                                                                    </p>
-                                                                )}
-                                                            </button>
-                                                        );
-                                                    })}
+                                                                >
+                                                                    <div className="flex items-center justify-between gap-2">
+                                                                        <p className="text-[10px] font-black text-slate-800 dark:text-white uppercase tracking-wider truncate">
+                                                                            {d.name}
+                                                                        </p>
+                                                                        {isCurrent && (
+                                                                            <span className="inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300 shrink-0">
+                                                                                <Check size={9} />
+                                                                                Current
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                    {d.location && (
+                                                                        <p className="text-[9px] text-slate-400 mt-0.5 truncate">
+                                                                            {d.location}
+                                                                        </p>
+                                                                    )}
+                                                                </button>
+                                                            );
+                                                        })}
 
-                                                    {brandAwareDealers.length === 0 && (
-                                                        <p className="text-[10px] text-slate-400 text-center py-4 px-3">
-                                                            No brand-compatible dealerships found for{' '}
-                                                            {quote.vehicle.brand || 'this quote'}.
-                                                        </p>
-                                                    )}
-                                                    {brandAwareDealers.length > 0 && filteredDealers.length === 0 && (
-                                                        <p className="text-[10px] text-slate-400 text-center py-4 px-3">
-                                                            No dealerships match your search.
-                                                        </p>
-                                                    )}
+                                                        {brandAwareDealers.length === 0 && (
+                                                            <p className="text-[10px] text-slate-400 text-center py-4 px-3">
+                                                                No brand-compatible dealerships found for{' '}
+                                                                {quote.vehicle.brand || 'this quote'}.
+                                                            </p>
+                                                        )}
+                                                        {brandAwareDealers.length > 0 &&
+                                                            filteredDealers.length === 0 && (
+                                                                <p className="text-[10px] text-slate-400 text-center py-4 px-3">
+                                                                    No dealerships match your search.
+                                                                </p>
+                                                            )}
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        )}
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             </div>

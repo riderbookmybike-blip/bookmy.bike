@@ -3676,7 +3676,9 @@ export async function backfillLeadLocationsAction() {
 export async function getQuotes(tenantId?: string) {
     let query = adminClient
         .from('crm_quotes')
-        .select('*, tenant:id_tenants!fk_quotes_tenant_protect(name)')
+        .select(
+            '*, tenant:id_tenants!fk_quotes_tenant_protect(name), supplier:id_tenants!crm_quotes_supplier_tenant_id_fkey(name)'
+        )
         .eq('is_deleted', false)
         .neq('status', 'SUPERSEDED')
         .order('created_at', { ascending: false });
@@ -3737,6 +3739,7 @@ export async function getQuotes(tenantId?: string) {
             customerLocation,
             avatarUrl: lead.member?.avatar_url || null,
             dealership: q.tenant?.name || 'Unknown Hub',
+            supplier: q.supplier?.name || null,
             financeMode: commercials?.finance?.mode || q.finance_mode || 'N/A',
             validUntil: q.valid_until || null,
             productName: q.snap_variant || 'Custom Quote',
@@ -4045,6 +4048,7 @@ export async function createQuoteAction(data: {
         .insert({
             tenant_id: resolvedTenantId,
             assigned_tenant_id: assignedTenantId,
+            supplier_tenant_id: resolvedTenantId,
             lead_id: safeLeadId,
             member_id: memberId,
             lead_referrer_id: leadReferrerId,
@@ -5121,6 +5125,7 @@ export interface QuoteEditorData {
     studioName: string | null;
     tenantId: string | null;
     assignedTenantId: string | null;
+    supplierTenantId: string | null;
     district: string | null;
     customer: {
         name: string;
@@ -5478,6 +5483,7 @@ export async function getQuoteById(
         financeMode: q.finance_mode || (commercials.finance?.mode as any) || 'CASH',
         tenantId: q.tenant_id || null,
         assignedTenantId: q.assigned_tenant_id || null,
+        supplierTenantId: q.supplier_tenant_id || null,
         delivery: commercials.delivery || null,
     };
 
@@ -8863,6 +8869,45 @@ export async function reassignQuoteDealership(
         return { success: true };
     } catch (error: unknown) {
         console.error('reassignQuoteDealership Error:', error);
+        return { success: false, error: getErrorMessage(error) };
+    }
+}
+
+/**
+ * Assigns delivery supplier for a quote without changing the winning dealership.
+ * Updates supplier_tenant_id only.
+ */
+export async function assignQuoteSupplier(
+    quoteId: string,
+    supplierTenantId: string
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        const { data: supplier, error: supplierError } = await adminClient
+            .from('id_tenants')
+            .select('id, name')
+            .eq('id', supplierTenantId)
+            .single();
+
+        if (supplierError || !supplier) {
+            return { success: false, error: 'Supplier not found' };
+        }
+
+        const { error: updateError } = await (adminClient as any)
+            .from('crm_quotes')
+            .update({
+                supplier_tenant_id: supplier.id,
+            })
+            .eq('id', quoteId);
+
+        if (updateError) {
+            console.error('assignQuoteSupplier Error:', updateError);
+            return { success: false, error: updateError.message };
+        }
+
+        await logQuoteEvent(quoteId, `Supplier changed to ${supplier.name}`, null, 'team');
+        return { success: true };
+    } catch (error: unknown) {
+        console.error('assignQuoteSupplier Error:', error);
         return { success: false, error: getErrorMessage(error) };
     }
 }
