@@ -1,3 +1,27 @@
+do $$
+begin
+  if not exists (
+    select 1 from pg_type t
+    join pg_namespace n on n.oid = t.typnamespace
+    where n.nspname = 'public' and t.typname = 'crm_operational_stage'
+  ) then
+    create type public.crm_operational_stage as enum (
+      'QUOTE','BOOKING','PAYMENT','FINANCE','ALLOTMENT','PDI',
+      'INSURANCE','REGISTRATION','COMPLIANCE','DELIVERY','DELIVERED','FEEDBACK'
+    );
+  end if;
+end
+$$;
+
+create table if not exists public.crm_allotments (
+  id uuid primary key default gen_random_uuid(),
+  booking_id uuid,
+  inv_stock_id uuid,
+  status text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
 create or replace function public.transition_booking_stage(
     p_booking_id uuid,
     p_to_stage public.crm_operational_stage,

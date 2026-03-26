@@ -45,6 +45,7 @@ export interface Quote {
     deliveryTimeline?: number | null;
     avatarUrl?: string | null;
     dealership?: string;
+    supplier?: string | null;
     financeMode?: string;
     validUntil?: string | null;
 }
@@ -340,6 +341,11 @@ export default function QuotesPage({ initialQuoteId }: { initialQuoteId?: string
                                             <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
                                                 {quote.dealership} &bull; {quote.financeMode}
                                             </div>
+                                            {quote.supplier && quote.supplier !== quote.dealership && (
+                                                <div className="text-[9px] font-bold text-indigo-400 uppercase tracking-widest mt-0.5">
+                                                    Supplier: {quote.supplier}
+                                                </div>
+                                            )}
                                         </div>
                                         <div className="text-slate-900 font-black text-sm tabular-nums">
                                             ₹{quote.price.toLocaleString()}
@@ -406,10 +412,7 @@ export default function QuotesPage({ initialQuoteId }: { initialQuoteId?: string
                                             Configuration
                                         </th>
                                         <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
-                                            Finance
-                                        </th>
-                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
-                                            Dealership
+                                            Dealership / Supplier
                                         </th>
                                         <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
                                             Origin & Time
@@ -469,12 +472,16 @@ export default function QuotesPage({ initialQuoteId }: { initialQuoteId?: string
                                                     <div className="text-[9px] font-semibold text-slate-500 uppercase truncate max-w-[200px]">
                                                         {quote.vehicleColor || 'N/A Color'}
                                                     </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex flex-col gap-0.5">
-                                                    <div className="text-[10px] font-black text-slate-900 tracking-widest uppercase mb-0.5">
-                                                        {quote.financeMode}
+                                                    <div className="mt-0.5">
+                                                        <span
+                                                            className={`inline-block text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded ${
+                                                                quote.financeMode === 'LOAN'
+                                                                    ? 'bg-indigo-50 text-indigo-500 border border-indigo-100'
+                                                                    : 'bg-slate-50 text-slate-400 border border-slate-100'
+                                                            }`}
+                                                        >
+                                                            {quote.financeMode === 'LOAN' ? 'Loan' : 'Cash'}
+                                                        </span>
                                                     </div>
                                                 </div>
                                             </td>
@@ -482,6 +489,13 @@ export default function QuotesPage({ initialQuoteId }: { initialQuoteId?: string
                                                 <div className="flex flex-col gap-0.5">
                                                     <div className="text-[10px] font-black text-slate-900 tracking-widest uppercase truncate max-w-[150px]">
                                                         {quote.dealership}
+                                                    </div>
+                                                    <div className="text-[9px] font-bold uppercase tracking-widest truncate max-w-[150px] mt-0.5">
+                                                        {quote.supplier && quote.supplier !== quote.dealership ? (
+                                                            <span className="text-indigo-500">↳ {quote.supplier}</span>
+                                                        ) : (
+                                                            <span className="text-slate-300">Same as Dealer</span>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </td>

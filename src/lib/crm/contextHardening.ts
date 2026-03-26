@@ -104,13 +104,20 @@ export async function validateBookingDealerContext(
     authorizedTenantIds: string[], // Tenants the current user can manage
     settings: HardeningSettings
 ): Promise<{ success: boolean; message?: string }> {
-    const { data: quote } = await supabase.from('crm_quotes').select('tenant_id').eq('id', quoteId).single();
+    const { data: quote } = await supabase
+        .from('crm_quotes')
+        .select('tenant_id, assigned_tenant_id')
+        .eq('id', quoteId)
+        .single();
 
     if (!quote) {
         return { success: false, message: 'Source quote not found.' };
     }
 
-    if (!authorizedTenantIds.includes(quote.tenant_id)) {
+    if (
+        !authorizedTenantIds.includes(quote.tenant_id) &&
+        (!quote.assigned_tenant_id || !authorizedTenantIds.includes(quote.assigned_tenant_id))
+    ) {
         if (settings.unified_context_strict_mode !== false) {
             return {
                 success: false,

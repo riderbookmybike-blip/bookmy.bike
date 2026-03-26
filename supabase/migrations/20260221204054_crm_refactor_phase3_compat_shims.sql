@@ -27,5 +27,23 @@ create index if not exists idx_crm_bookings_lead_id
     on public.crm_bookings (lead_id)
     where lead_id is not null;
 
-create or replace view public.crm_receipts as
-select * from public.crm_payments;
+do $$
+declare
+  v_relkind "char";
+begin
+  select c.relkind
+  into v_relkind
+  from pg_class c
+  join pg_namespace n on n.oid = c.relnamespace
+  where n.nspname = 'public'
+    and c.relname = 'crm_receipts';
+
+  if v_relkind is null then
+    execute 'create view public.crm_receipts as select * from public.crm_payments';
+  elsif v_relkind = 'v' then
+    execute 'create or replace view public.crm_receipts as select * from public.crm_payments';
+  else
+    raise notice 'Skipping crm_receipts view shim: relation exists as non-view (relkind=%)', v_relkind;
+  end if;
+end
+$$;

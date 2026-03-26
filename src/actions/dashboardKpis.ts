@@ -411,7 +411,11 @@ function emptyStageCounts(): DealerStageCounts {
 export async function getDealerCrmInsights(tenantId: string): Promise<DealerCrmInsights> {
     const [quoteValuesRes, bookingRowsRes, paymentRowsRes, financeRowsRes, feedbackRowsRes, stockRowsRes, poItemsRes] =
         await Promise.all([
-            adminClient.from('crm_quotes').select('on_road_price, is_deleted').eq('tenant_id', tenantId).limit(50000),
+            adminClient
+                .from('crm_quotes')
+                .select('on_road_price, is_deleted')
+                .or(`tenant_id.eq.${tenantId},assigned_tenant_id.eq.${tenantId}`)
+                .limit(50000),
             adminClient
                 .from('crm_bookings')
                 .select(
@@ -658,11 +662,14 @@ export async function getDealerDashboardKpis(tenantId: string): Promise<Dashboar
             .eq('tenant_id', tenantId)
             .gte('created_at', today),
         // Quotes
-        adminClient.from('crm_quotes').select('*', { count: 'exact', head: true }).eq('tenant_id', tenantId),
         adminClient
             .from('crm_quotes')
             .select('*', { count: 'exact', head: true })
-            .eq('tenant_id', tenantId)
+            .or(`tenant_id.eq.${tenantId},assigned_tenant_id.eq.${tenantId}`),
+        adminClient
+            .from('crm_quotes')
+            .select('*', { count: 'exact', head: true })
+            .or(`tenant_id.eq.${tenantId},assigned_tenant_id.eq.${tenantId}`)
             .in('status', ['DRAFT', 'IN_REVIEW', 'SENT']),
         // Bookings (records with stage BOOKING or later)
         adminClient.from('crm_bookings').select('*', { count: 'exact', head: true }).eq('tenant_id', tenantId),
