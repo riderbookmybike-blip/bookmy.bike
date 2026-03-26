@@ -4299,7 +4299,7 @@ export async function cancelQuoteAction(id: string): Promise<{ success: boolean;
 export async function getBookings(tenantId?: string) {
     let query = adminClient
         .from('crm_bookings')
-        .select('*, member:id_members!user_id(full_name)')
+        .select('*, member:id_members!user_id(full_name, avatar_url)')
         .eq('is_deleted', false)
         .order('created_at', { ascending: false });
 
@@ -4345,11 +4345,21 @@ export async function getBookings(tenantId?: string) {
                 vehicleModel: v.model || 'N/A',
                 vehicleVariant: v.variant || 'N/A',
                 vehicleColor: v.color || '',
+                vehicleColorHex: v.color_hex || v.colorHex || '',
                 price: b.grand_total || 0,
                 status: b.status || 'BOOKED',
                 date: b.created_at ? b.created_at.split('T')[0] : '',
                 createdAt: b.created_at || '',
                 currentStage: b.operational_stage || b.current_stage || null,
+                financeMode: b.finance_mode || null,
+                vinNumber: b.vin_number || null,
+                paymentStatus: b.payment_status || null,
+                allotmentStatus: b.allotment_status || null,
+                pdiStatus: b.pdi_status || null,
+                insuranceStatus: b.insurance_status || null,
+                registrationStatus: b.registration_status || null,
+                bookingAmountReceived: b.booking_amount_received || null,
+                memberAvatarUrl: null,
             };
         });
     }
@@ -4380,11 +4390,21 @@ export async function getBookings(tenantId?: string) {
             vehicleModel: v.model || 'N/A',
             vehicleVariant: v.variant || 'N/A',
             vehicleColor: v.color || '',
+            vehicleColorHex: v.color_hex || v.colorHex || '',
             price: b.grand_total || 0,
             status: b.status || 'BOOKED',
             date: b.created_at ? b.created_at.split('T')[0] : '',
             createdAt: b.created_at || '',
             currentStage: b.operational_stage || b.current_stage || null,
+            financeMode: b.finance_mode || null,
+            vinNumber: b.vin_number || null,
+            paymentStatus: b.payment_status || null,
+            allotmentStatus: b.allotment_status || null,
+            pdiStatus: b.pdi_status || null,
+            insuranceStatus: b.insurance_status || null,
+            registrationStatus: b.registration_status || null,
+            bookingAmountReceived: b.booking_amount_received || null,
+            memberAvatarUrl: b.member?.avatar_url || null,
         };
     });
 }

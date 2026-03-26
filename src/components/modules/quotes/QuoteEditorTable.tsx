@@ -52,6 +52,7 @@ import {
     Receipt,
     ShoppingBag,
     Tag,
+    Key,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -66,6 +67,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {
     updateMemberProfile,
+    updateBookingStage,
     setQuoteFinanceMode,
     createQuoteFinanceAttempt,
     updateQuoteFinanceAttempt,
@@ -361,6 +363,7 @@ interface QuoteEditorTableProps {
         payment_status?: string | null;
         finance_status?: string | null;
         delivery_status?: string | null;
+        vin_number?: string | null;
         registration_number?: string | null;
         booking_amount_received?: number | null;
         current_stage?: string | null;
@@ -690,6 +693,257 @@ const getBankInitials = (name: string) => {
 };
 
 // ============================================================================
+// STAGE FORM SUB-COMPONENTS
+// ============================================================================
+
+function PdiRemarksForm({
+    bookingId,
+    bookingStage,
+    onRefresh,
+}: {
+    bookingId: string;
+    bookingStage: string;
+    onRefresh?: () => void;
+}) {
+    const [remarks, setRemarks] = React.useState('');
+    const [saving, setSaving] = React.useState(false);
+    return (
+        <div className="space-y-3">
+            <textarea
+                value={remarks}
+                onChange={e => setRemarks(e.target.value)}
+                rows={3}
+                placeholder="e.g. Minor scratch on rear panel — noted and photographed. All systems OK."
+                className="w-full bg-white dark:bg-[#0b0d10] border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-[11px] font-semibold text-slate-900 dark:text-white placeholder:text-slate-300 outline-none focus:border-orange-400 dark:focus:border-orange-500 resize-none transition-colors"
+            />
+            <button
+                disabled={saving || !remarks.trim()}
+                onClick={async () => {
+                    if (!bookingId || !remarks.trim()) return;
+                    setSaving(true);
+                    try {
+                        const { updateBookingStage } = await import('@/actions/crm');
+                        const r = await updateBookingStage(bookingId, bookingStage, {
+                            operational_stage: bookingStage,
+                            pdi_remarks: remarks.trim(),
+                        });
+                        if (r.success) {
+                            const { toast } = await import('sonner');
+                            toast.success('PDI remarks saved.');
+                            if (onRefresh) onRefresh();
+                            setRemarks('');
+                        } else {
+                            const { toast } = await import('sonner');
+                            toast.error(r.message || 'Failed to save remarks');
+                        }
+                    } finally {
+                        setSaving(false);
+                    }
+                }}
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all active:scale-95 shadow-lg shadow-orange-500/20"
+            >
+                {saving ? (
+                    <>
+                        <Loader2 size={13} className="animate-spin" /> Saving&hellip;
+                    </>
+                ) : (
+                    <>
+                        <Save size={13} /> Save Remarks
+                    </>
+                )}
+            </button>
+        </div>
+    );
+}
+
+function InsuranceForm({
+    bookingId,
+    bookingStage,
+    onRefresh,
+}: {
+    bookingId: string;
+    bookingStage: string;
+    onRefresh?: () => void;
+}) {
+    const [form, setForm] = React.useState({ policyNo: '', insurer: '', premium: '', startDate: '', expiryDate: '' });
+    const [saving, setSaving] = React.useState(false);
+    const set = (k: keyof typeof form, v: string) => setForm(p => ({ ...p, [k]: v }));
+    const canSave = form.policyNo.trim().length > 4;
+    return (
+        <div className="bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 rounded-2xl p-5 space-y-4">
+            <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">Policy Details</div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {(
+                    [
+                        {
+                            key: 'policyNo',
+                            label: 'Policy Number',
+                            placeholder: 'e.g. OG-25-1234-567890',
+                            type: 'text',
+                        },
+                        {
+                            key: 'insurer',
+                            label: 'Insurance Company',
+                            placeholder: 'e.g. New India Assurance',
+                            type: 'text',
+                        },
+                        { key: 'premium', label: 'Premium Amount (₹)', placeholder: 'e.g. 4250', type: 'number' },
+                        { key: 'startDate', label: 'Policy Start Date', placeholder: '', type: 'date' },
+                        { key: 'expiryDate', label: 'Policy Expiry Date', placeholder: '', type: 'date' },
+                    ] as { key: keyof typeof form; label: string; placeholder: string; type: string }[]
+                ).map(f => (
+                    <div
+                        key={f.key}
+                        className="bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/5 rounded-xl p-4"
+                    >
+                        <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">
+                            {f.label}
+                        </div>
+                        <input
+                            type={f.type}
+                            value={form[f.key]}
+                            onChange={e => set(f.key, e.target.value)}
+                            placeholder={f.placeholder}
+                            className="w-full bg-transparent text-[11px] font-black text-slate-900 dark:text-white outline-none border-b border-slate-200 dark:border-white/10 pb-1 focus:border-cyan-400 dark:focus:border-cyan-500 transition-colors placeholder:font-normal placeholder:text-slate-300"
+                        />
+                    </div>
+                ))}
+            </div>
+            <button
+                disabled={saving || !canSave}
+                onClick={async () => {
+                    setSaving(true);
+                    try {
+                        const { updateBookingStage } = await import('@/actions/crm');
+                        const r = await updateBookingStage(bookingId, bookingStage, {
+                            operational_stage: bookingStage,
+                            insurance_policy_number: form.policyNo.trim(),
+                            insurance_provider: form.insurer.trim(),
+                            insurance_premium: form.premium ? Number(form.premium) : null,
+                            insurance_start_date: form.startDate || null,
+                            insurance_expiry_date: form.expiryDate || null,
+                        });
+                        const { toast } = await import('sonner');
+                        if (r.success) {
+                            toast.success('Insurance details saved.');
+                            if (onRefresh) onRefresh();
+                        } else toast.error(r.message || 'Save failed');
+                    } finally {
+                        setSaving(false);
+                    }
+                }}
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-cyan-600 hover:bg-cyan-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all active:scale-95 shadow-lg shadow-cyan-600/20"
+            >
+                {saving ? (
+                    <>
+                        <Loader2 size={13} className="animate-spin" /> Saving&hellip;
+                    </>
+                ) : (
+                    <>
+                        <Save size={13} /> Save Policy
+                    </>
+                )}
+            </button>
+        </div>
+    );
+}
+
+function RegistrationForm({
+    bookingId,
+    bookingStage,
+    onRefresh,
+}: {
+    bookingId: string;
+    bookingStage: string;
+    onRefresh?: () => void;
+}) {
+    const [form, setForm] = React.useState({ rtoNumber: '', taxToken: '', permitType: '', dateOfReg: '' });
+    const [saving, setSaving] = React.useState(false);
+    const set = (k: keyof typeof form, v: string) => setForm(p => ({ ...p, [k]: v }));
+    const canSave = form.rtoNumber.trim().length > 4;
+    return (
+        <div className="bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 rounded-2xl p-5 space-y-4">
+            <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">RTO Details</div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {(
+                    [
+                        {
+                            key: 'rtoNumber',
+                            label: 'Registration Number',
+                            placeholder: 'e.g. MH02AB1234',
+                            type: 'text',
+                        },
+                        {
+                            key: 'taxToken',
+                            label: 'Tax Token / Receipt No',
+                            placeholder: 'e.g. TT-2025-001234',
+                            type: 'text',
+                        },
+                        {
+                            key: 'permitType',
+                            label: 'Permit Type',
+                            placeholder: 'e.g. PRIVATE / COMMERCIAL',
+                            type: 'text',
+                        },
+                        { key: 'dateOfReg', label: 'Date of Registration', placeholder: '', type: 'date' },
+                    ] as { key: keyof typeof form; label: string; placeholder: string; type: string }[]
+                ).map(f => (
+                    <div
+                        key={f.key}
+                        className="bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/5 rounded-xl p-4"
+                    >
+                        <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">
+                            {f.label}
+                        </div>
+                        <input
+                            type={f.type}
+                            value={form[f.key]}
+                            onChange={e => set(f.key, e.target.value)}
+                            placeholder={f.placeholder}
+                            className="w-full bg-transparent text-[11px] font-black text-slate-900 dark:text-white outline-none border-b border-slate-200 dark:border-white/10 pb-1 focus:border-teal-400 dark:focus:border-teal-500 transition-colors uppercase placeholder:normal-case placeholder:font-normal placeholder:text-slate-300"
+                        />
+                    </div>
+                ))}
+            </div>
+            <button
+                disabled={saving || !canSave}
+                onClick={async () => {
+                    setSaving(true);
+                    try {
+                        const { updateBookingStage } = await import('@/actions/crm');
+                        const r = await updateBookingStage(bookingId, bookingStage, {
+                            operational_stage: bookingStage,
+                            registration_number: form.rtoNumber.trim().toUpperCase(),
+                            tax_token: form.taxToken.trim(),
+                            permit_type: form.permitType.trim().toUpperCase(),
+                            registration_date: form.dateOfReg || null,
+                        });
+                        const { toast } = await import('sonner');
+                        if (r.success) {
+                            toast.success('RTO details saved.');
+                            if (onRefresh) onRefresh();
+                        } else toast.error(r.message || 'Save failed');
+                    } finally {
+                        setSaving(false);
+                    }
+                }}
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-teal-600 hover:bg-teal-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all active:scale-95 shadow-lg shadow-teal-600/20"
+            >
+                {saving ? (
+                    <>
+                        <Loader2 size={13} className="animate-spin" /> Saving&hellip;
+                    </>
+                ) : (
+                    <>
+                        <Save size={13} /> Save RTO Details
+                    </>
+                )}
+            </button>
+        </div>
+    );
+}
+
+// ============================================================================
 // MAIN COMPONENT
 // ============================================================================
 
@@ -894,6 +1148,9 @@ export default function QuoteEditorTable({
     const [feedbackStageMessage, setFeedbackStageMessage] = useState<string | null>(null);
     const [stageEventsLoading, setStageEventsLoading] = useState(false);
     const [bookingStageEvents, setBookingStageEvents] = useState<any[]>([]);
+    // ALLOTMENT stage — VIN capture
+    const [vinInput, setVinInput] = useState(booking?.vin_number || '');
+    const [vinSaving, setVinSaving] = useState(false);
     const [feedbackDraft, setFeedbackDraft] = useState<BookingFeedbackFormState>({
         id: null,
         npsScore: '',
@@ -914,6 +1171,10 @@ export default function QuoteEditorTable({
             });
         }
     }, [receipt?.id]);
+
+    useEffect(() => {
+        setVinInput(booking?.vin_number || '');
+    }, [booking?.id, booking?.vin_number]);
 
     useEffect(() => {
         if (mode !== 'booking' || !booking?.id) return;
@@ -1309,6 +1570,75 @@ export default function QuoteEditorTable({
     };
 
     const statusConfig = STATUS_CONFIG[quote.status] || STATUS_CONFIG.DRAFT;
+
+    const bookingStage = (booking?.operational_stage || booking?.current_stage || 'BOOKING').toUpperCase();
+    const bookingPrimaryAction =
+        mode !== 'booking'
+            ? null
+            : bookingStage === 'BOOKING'
+              ? {
+                    label: 'Request VIN',
+                    targetStage: 'ALLOTMENT',
+                    successMessage: 'VIN requested. Booking moved to allotment.',
+                }
+              : bookingStage === 'ALLOTMENT'
+                ? {
+                      label: 'Move to PDI',
+                      targetStage: 'PDI',
+                      successMessage: 'Booking moved to PDI.',
+                  }
+                : bookingStage === 'PDI'
+                  ? {
+                        label: 'Move to Insurance',
+                        targetStage: 'INSURANCE',
+                        successMessage: 'Booking moved to Insurance.',
+                    }
+                  : bookingStage === 'INSURANCE'
+                    ? {
+                          label: 'Move to Registration',
+                          targetStage: 'REGISTRATION',
+                          successMessage: 'Booking moved to Registration.',
+                      }
+                    : bookingStage === 'REGISTRATION'
+                      ? {
+                            label: 'Move to Compliance',
+                            targetStage: 'COMPLIANCE',
+                            successMessage: 'Booking moved to Compliance.',
+                        }
+                      : bookingStage === 'COMPLIANCE'
+                        ? {
+                              label: 'Ready for Delivery',
+                              targetStage: 'DELIVERY',
+                              successMessage: 'Booking scheduled for delivery.',
+                          }
+                        : bookingStage === 'DELIVERY'
+                          ? {
+                                label: 'Mark as Delivered',
+                                targetStage: 'DELIVERED',
+                                successMessage: '🎉 Vehicle delivered! Booking marked complete.',
+                            }
+                          : null; // DELIVERED / FEEDBACK — terminal, no CTA
+
+    const handleBookingPrimaryAction = async () => {
+        if (mode !== 'booking' || !booking?.id || !bookingPrimaryAction) return;
+        setIsSaving(true);
+        try {
+            const result = await updateBookingStage(booking.id, bookingPrimaryAction.targetStage, {
+                operational_stage: bookingPrimaryAction.targetStage,
+            });
+            if (!result.success) {
+                toast.error(result.message || `Failed to move booking to ${bookingPrimaryAction.targetStage}`);
+                return;
+            }
+            toast.success(bookingPrimaryAction.successMessage);
+            if (onRefresh) onRefresh();
+            if (slug) {
+                router.push(`/app/${slug}/sales-orders?stage=${bookingPrimaryAction.targetStage}`);
+            }
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
     const formatDate = (value?: string | null) => {
         if (!value) return '—';
@@ -3463,6 +3793,612 @@ export default function QuoteEditorTable({
 
                     {activeTab === 'DYNAMIC' && (
                         <>
+                            {/* ── ALLOTMENT STAGE PANEL ───────────────────────────────── */}
+                            {mode === 'booking' && bookingStage === 'ALLOTMENT' && (
+                                <div className={cn('w-full pt-6', isPhone ? 'px-0' : 'px-4')}>
+                                    <div
+                                        className={cn(
+                                            'bg-white dark:bg-[#0b0d10] border border-violet-200 dark:border-violet-500/20 overflow-hidden mb-6',
+                                            isPhone ? 'rounded-none' : 'rounded-[2rem]'
+                                        )}
+                                    >
+                                        {/* Header */}
+                                        <div
+                                            className={cn(
+                                                'py-5 border-b border-violet-100 dark:border-violet-500/10 bg-violet-50/50 dark:bg-violet-500/5 flex items-center justify-between',
+                                                isPhone ? 'px-4' : 'px-8'
+                                            )}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 rounded-xl bg-violet-600 flex items-center justify-center text-white shadow-lg shadow-violet-600/30">
+                                                    <Key size={16} />
+                                                </div>
+                                                <div>
+                                                    <div className="text-[9px] font-black uppercase tracking-widest text-violet-500">
+                                                        Allotment Stage
+                                                    </div>
+                                                    <h3 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-tighter italic">
+                                                        Assign Vehicle
+                                                    </h3>
+                                                </div>
+                                            </div>
+                                            {booking?.vin_number && (
+                                                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20">
+                                                    <CheckCircle2 size={12} className="text-emerald-600" />
+                                                    <span className="text-[9px] font-black uppercase tracking-widest text-emerald-600">
+                                                        {booking.vin_number}
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Body */}
+                                        <div
+                                            className={cn(
+                                                'grid grid-cols-1 md:grid-cols-2 gap-4',
+                                                isPhone ? 'p-4' : 'p-6'
+                                            )}
+                                        >
+                                            {/* VIN input */}
+                                            <div className="md:col-span-2">
+                                                <div className="bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 rounded-2xl p-5">
+                                                    <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">
+                                                        VIN / Chassis Number
+                                                    </div>
+                                                    <div className="text-[10px] font-semibold text-slate-400 mb-3">
+                                                        Vehicle Identification Number — 17 characters
+                                                    </div>
+                                                    <div className="flex items-center gap-3">
+                                                        <input
+                                                            type="text"
+                                                            value={vinInput}
+                                                            onChange={e =>
+                                                                setVinInput(
+                                                                    e.target.value
+                                                                        .toUpperCase()
+                                                                        .replace(/[^A-Z0-9]/g, '')
+                                                                        .slice(0, 17)
+                                                                )
+                                                            }
+                                                            placeholder="e.g. MA3FJEB1S00123456"
+                                                            maxLength={17}
+                                                            spellCheck={false}
+                                                            className="flex-1 bg-white dark:bg-[#0b0d10] border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm font-black tracking-widest text-slate-900 dark:text-white uppercase placeholder:normal-case placeholder:font-normal placeholder:tracking-normal placeholder:text-slate-300 outline-none focus:border-violet-400 dark:focus:border-violet-500 transition-colors"
+                                                        />
+                                                        <button
+                                                            disabled={vinSaving || vinInput.trim().length < 10}
+                                                            onClick={async () => {
+                                                                if (!booking?.id || !vinInput.trim()) return;
+                                                                setVinSaving(true);
+                                                                try {
+                                                                    const result = await updateBookingStage(
+                                                                        booking.id,
+                                                                        bookingStage,
+                                                                        {
+                                                                            operational_stage: bookingStage,
+                                                                            vin_number: vinInput.trim(),
+                                                                        }
+                                                                    );
+                                                                    if (!result.success) {
+                                                                        toast.error(
+                                                                            result.message || 'Failed to save VIN'
+                                                                        );
+                                                                        return;
+                                                                    }
+                                                                    toast.success('VIN saved successfully.');
+                                                                    if (onRefresh) onRefresh();
+                                                                } finally {
+                                                                    setVinSaving(false);
+                                                                }
+                                                            }}
+                                                            className="inline-flex items-center gap-2 px-5 py-3 bg-violet-600 hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all active:scale-95 whitespace-nowrap shadow-lg shadow-violet-600/20"
+                                                        >
+                                                            {vinSaving ? (
+                                                                <>
+                                                                    <Loader2 size={14} className="animate-spin" />{' '}
+                                                                    Saving…
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <Save size={14} /> Save VIN
+                                                                </>
+                                                            )}
+                                                        </button>
+                                                    </div>
+                                                    {vinInput.trim().length > 0 && vinInput.trim().length < 17 && (
+                                                        <div className="mt-2 text-[9px] font-bold text-amber-500">
+                                                            {17 - vinInput.trim().length} more characters needed
+                                                        </div>
+                                                    )}
+                                                    {vinInput.trim().length === 17 && (
+                                                        <div className="mt-2 text-[9px] font-bold text-emerald-600">
+                                                            ✓ VIN looks complete
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Vehicle snapshot */}
+                                            <div className="bg-slate-50 dark:bg-white/[0.02] border border-slate-100 dark:border-white/5 rounded-2xl p-5">
+                                                <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3">
+                                                    Vehicle Snapshot
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <div className="flex justify-between">
+                                                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+                                                            Brand
+                                                        </span>
+                                                        <span className="text-[10px] font-black text-slate-900 dark:text-white uppercase">
+                                                            {quote.vehicle?.brand || '—'}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex justify-between">
+                                                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+                                                            Model
+                                                        </span>
+                                                        <span className="text-[10px] font-black text-slate-900 dark:text-white uppercase">
+                                                            {quote.vehicle?.model || '—'}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex justify-between">
+                                                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+                                                            Variant
+                                                        </span>
+                                                        <span className="text-[10px] font-black text-slate-900 dark:text-white uppercase">
+                                                            {quote.vehicle?.variant || '—'}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex justify-between items-center">
+                                                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+                                                            Color
+                                                        </span>
+                                                        <span className="inline-flex items-center gap-1.5">
+                                                            <span
+                                                                className="w-3 h-3 rounded-full border border-black/10"
+                                                                style={{
+                                                                    background: quote.vehicle?.colorHex || '#94a3b8',
+                                                                }}
+                                                            />
+                                                            <span className="text-[10px] font-black text-slate-900 dark:text-white uppercase">
+                                                                {quote.vehicle?.color || '—'}
+                                                            </span>
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Allotment status & checklist */}
+                                            <div className="bg-slate-50 dark:bg-white/[0.02] border border-slate-100 dark:border-white/5 rounded-2xl p-5">
+                                                <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3">
+                                                    Allotment Checklist
+                                                </div>
+                                                <div className="space-y-2">
+                                                    {[
+                                                        { label: 'VIN Captured', done: !!booking?.vin_number },
+                                                        {
+                                                            label: 'Stock Allocated',
+                                                            done: (booking?.allotment_status || 'NONE') !== 'NONE',
+                                                        },
+                                                        { label: 'Pre-PDI Clearance', done: false },
+                                                    ].map(item => (
+                                                        <div
+                                                            key={item.label}
+                                                            className={`flex items-center justify-between px-3 py-2 rounded-xl border text-left transition-all ${
+                                                                item.done
+                                                                    ? 'bg-emerald-50 border-emerald-200 dark:bg-emerald-500/10 dark:border-emerald-500/20'
+                                                                    : 'bg-white border-slate-200 dark:bg-white/[0.01] dark:border-white/5'
+                                                            }`}
+                                                        >
+                                                            <span
+                                                                className={`text-[9px] font-black uppercase tracking-widest ${item.done ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-500'}`}
+                                                            >
+                                                                {item.label}
+                                                            </span>
+                                                            <span
+                                                                className={`text-[8px] font-black uppercase ${item.done ? 'text-emerald-600' : 'text-slate-300'}`}
+                                                            >
+                                                                {item.done ? '✓ Done' : 'Pending'}
+                                                            </span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Prompt to advance to PDI */}
+                                        <div
+                                            className={cn(
+                                                'py-4 border-t border-violet-100 dark:border-violet-500/10 bg-violet-50/30 dark:bg-violet-500/5 flex items-center justify-between',
+                                                isPhone ? 'px-4' : 'px-8'
+                                            )}
+                                        >
+                                            <div className="text-[9px] font-bold text-slate-500 dark:text-white/40">
+                                                After assigning a VIN, click{' '}
+                                                <span className="font-black text-violet-600">Move to PDI</span> in the
+                                                bottom bar.
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* ── PDI STAGE PANEL ──────────────────────────────────────── */}
+                            {mode === 'booking' && bookingStage === 'PDI' && (
+                                <div className={cn('w-full pt-6', isPhone ? 'px-0' : 'px-4')}>
+                                    <div
+                                        className={cn(
+                                            'bg-white dark:bg-[#0b0d10] border border-orange-200 dark:border-orange-500/20 overflow-hidden mb-6',
+                                            isPhone ? 'rounded-none' : 'rounded-[2rem]'
+                                        )}
+                                    >
+                                        {/* Header */}
+                                        <div
+                                            className={cn(
+                                                'py-5 border-b border-orange-100 dark:border-orange-500/10 bg-orange-50/50 dark:bg-orange-500/5 flex items-center justify-between',
+                                                isPhone ? 'px-4' : 'px-8'
+                                            )}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 rounded-xl bg-orange-500 flex items-center justify-center text-white shadow-lg shadow-orange-500/30">
+                                                    <Wrench size={16} />
+                                                </div>
+                                                <div>
+                                                    <div className="text-[9px] font-black uppercase tracking-widest text-orange-500">
+                                                        PDI Stage
+                                                    </div>
+                                                    <h3 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-tighter italic">
+                                                        Pre-Delivery Inspection
+                                                    </h3>
+                                                </div>
+                                            </div>
+                                            {booking?.pdi_status && booking.pdi_status !== 'PENDING' && (
+                                                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20">
+                                                    <CheckCircle2 size={12} className="text-emerald-600" />
+                                                    <span className="text-[9px] font-black uppercase tracking-widest text-emerald-600">
+                                                        PDI {booking.pdi_status}
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Body */}
+                                        <div className={cn('space-y-4', isPhone ? 'p-4' : 'p-6')}>
+                                            {/* Inspection checklist */}
+                                            <div className="bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 rounded-2xl p-5">
+                                                <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-4">
+                                                    Inspection Checklist
+                                                </div>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                                    {[
+                                                        { key: 'tyres', label: 'Tyre Pressure & Condition' },
+                                                        { key: 'brakes', label: 'Brakes & Brake Fluid' },
+                                                        { key: 'lights', label: 'All Lights & Indicators' },
+                                                        { key: 'battery', label: 'Battery Health & Charge' },
+                                                        { key: 'engine_oil', label: 'Engine Oil / Coolant Level' },
+                                                        { key: 'body', label: 'Body Panel & Paint Check' },
+                                                        { key: 'accessories', label: 'Accessories Fitted' },
+                                                        { key: 'test_ride', label: 'Test Ride Completed' },
+                                                    ].map(item => {
+                                                        const pdiMeta = (booking as any)?._pdi_checklist || {};
+                                                        const isChecked = !!pdiMeta[item.key];
+                                                        return (
+                                                            <div
+                                                                key={item.key}
+                                                                className={`flex items-center justify-between px-4 py-3 rounded-xl border transition-all ${isChecked ? 'bg-emerald-50 border-emerald-200 dark:bg-emerald-500/10 dark:border-emerald-500/20' : 'bg-white border-slate-200 dark:bg-white/[0.02] dark:border-white/10'}`}
+                                                            >
+                                                                <span
+                                                                    className={`text-[9px] font-black uppercase tracking-wider ${isChecked ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-300'}`}
+                                                                >
+                                                                    {item.label}
+                                                                </span>
+                                                                <span
+                                                                    className={`text-[8px] font-black uppercase ${isChecked ? 'text-emerald-600' : 'text-slate-300'}`}
+                                                                >
+                                                                    {isChecked ? '✓ OK' : '—'}
+                                                                </span>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+
+                                            {/* PDI Remarks + Save */}
+                                            <div className="bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 rounded-2xl p-5">
+                                                <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3">
+                                                    PDI Remarks / Technician Notes
+                                                </div>
+                                                <PdiRemarksForm
+                                                    bookingId={booking?.id || ''}
+                                                    bookingStage={bookingStage}
+                                                    onRefresh={onRefresh}
+                                                />
+                                            </div>
+
+                                            {/* Status selector */}
+                                            <div className="bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 rounded-2xl p-5">
+                                                <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3">
+                                                    PDI Status
+                                                </div>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {['PENDING', 'IN_PROGRESS', 'PASSED', 'FAILED'].map(s => {
+                                                        const isActive = (booking?.pdi_status || 'PENDING') === s;
+                                                        const color =
+                                                            s === 'PASSED'
+                                                                ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-500/10 dark:border-emerald-500/20 dark:text-emerald-300'
+                                                                : s === 'FAILED'
+                                                                  ? 'bg-red-50 border-red-200 text-red-700 dark:bg-red-500/10 dark:border-red-500/20 dark:text-red-300'
+                                                                  : s === 'IN_PROGRESS'
+                                                                    ? 'bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-500/10 dark:border-amber-500/20 dark:text-amber-300'
+                                                                    : 'bg-slate-100 border-slate-200 text-slate-600 dark:bg-white/[0.03] dark:border-white/10 dark:text-slate-400';
+                                                        return (
+                                                            <button
+                                                                key={s}
+                                                                disabled={isActive}
+                                                                onClick={async () => {
+                                                                    if (!booking?.id) return;
+                                                                    const r = await updateBookingStage(
+                                                                        booking.id,
+                                                                        bookingStage,
+                                                                        {
+                                                                            operational_stage: bookingStage,
+                                                                            pdi_status: s,
+                                                                        }
+                                                                    );
+                                                                    if (r.success) {
+                                                                        toast.success(`PDI status → ${s}`);
+                                                                        if (onRefresh) onRefresh();
+                                                                    } else toast.error(r.message || 'Update failed');
+                                                                }}
+                                                                className={`px-4 py-2 rounded-xl border text-[9px] font-black uppercase tracking-widest transition-all ${isActive ? `${color} ring-2 ring-offset-1 ring-current` : `${color} opacity-60 hover:opacity-100`}`}
+                                                            >
+                                                                {s.replace('_', ' ')}
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Footer */}
+                                        <div
+                                            className={cn(
+                                                'py-4 border-t border-orange-100 dark:border-orange-500/10 bg-orange-50/30 dark:bg-orange-500/5',
+                                                isPhone ? 'px-4' : 'px-8'
+                                            )}
+                                        >
+                                            <div className="text-[9px] font-bold text-slate-500 dark:text-white/40">
+                                                Once PDI is <span className="font-black text-orange-600">PASSED</span>,
+                                                click{' '}
+                                                <span className="font-black text-orange-600">Move to Insurance</span> in
+                                                the bottom bar.
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* ── INSURANCE STAGE PANEL ────────────────────────────────── */}
+                            {mode === 'booking' && bookingStage === 'INSURANCE' && (
+                                <div className={cn('w-full pt-6', isPhone ? 'px-0' : 'px-4')}>
+                                    <div
+                                        className={cn(
+                                            'bg-white dark:bg-[#0b0d10] border border-cyan-200 dark:border-cyan-500/20 overflow-hidden mb-6',
+                                            isPhone ? 'rounded-none' : 'rounded-[2rem]'
+                                        )}
+                                    >
+                                        {/* Header */}
+                                        <div
+                                            className={cn(
+                                                'py-5 border-b border-cyan-100 dark:border-cyan-500/10 bg-cyan-50/50 dark:bg-cyan-500/5 flex items-center justify-between',
+                                                isPhone ? 'px-4' : 'px-8'
+                                            )}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 rounded-xl bg-cyan-600 flex items-center justify-center text-white shadow-lg shadow-cyan-600/30">
+                                                    <ShieldCheck size={16} />
+                                                </div>
+                                                <div>
+                                                    <div className="text-[9px] font-black uppercase tracking-widest text-cyan-600">
+                                                        Insurance Stage
+                                                    </div>
+                                                    <h3 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-tighter italic">
+                                                        Policy Registration
+                                                    </h3>
+                                                </div>
+                                            </div>
+                                            {booking?.insurance_status && booking.insurance_status !== 'PENDING' && (
+                                                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20">
+                                                    <CheckCircle2 size={12} className="text-emerald-600" />
+                                                    <span className="text-[9px] font-black uppercase tracking-widest text-emerald-600">
+                                                        INS {booking.insurance_status}
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Body */}
+                                        <div className={cn('space-y-4', isPhone ? 'p-4' : 'p-6')}>
+                                            <InsuranceForm
+                                                bookingId={booking?.id || ''}
+                                                bookingStage={bookingStage}
+                                                onRefresh={onRefresh}
+                                            />
+
+                                            {/* Insurance status */}
+                                            <div className="bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 rounded-2xl p-5">
+                                                <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3">
+                                                    Policy Status
+                                                </div>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {['PENDING', 'APPLIED', 'ISSUED', 'FAILED'].map(s => {
+                                                        const isActive = (booking?.insurance_status || 'PENDING') === s;
+                                                        const color =
+                                                            s === 'ISSUED'
+                                                                ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-500/10 dark:border-emerald-500/20 dark:text-emerald-300'
+                                                                : s === 'FAILED'
+                                                                  ? 'bg-red-50 border-red-200 text-red-700 dark:bg-red-500/10 dark:border-red-500/20 dark:text-red-300'
+                                                                  : s === 'APPLIED'
+                                                                    ? 'bg-cyan-50 border-cyan-200 text-cyan-700 dark:bg-cyan-500/10 dark:border-cyan-500/20 dark:text-cyan-300'
+                                                                    : 'bg-slate-100 border-slate-200 text-slate-600 dark:bg-white/[0.03] dark:border-white/10 dark:text-slate-400';
+                                                        return (
+                                                            <button
+                                                                key={s}
+                                                                disabled={isActive}
+                                                                onClick={async () => {
+                                                                    if (!booking?.id) return;
+                                                                    const r = await updateBookingStage(
+                                                                        booking.id,
+                                                                        bookingStage,
+                                                                        {
+                                                                            operational_stage: bookingStage,
+                                                                            insurance_status: s,
+                                                                        }
+                                                                    );
+                                                                    if (r.success) {
+                                                                        toast.success(`Insurance status → ${s}`);
+                                                                        if (onRefresh) onRefresh();
+                                                                    } else toast.error(r.message || 'Update failed');
+                                                                }}
+                                                                className={`px-4 py-2 rounded-xl border text-[9px] font-black uppercase tracking-widest transition-all ${isActive ? `${color} ring-2 ring-offset-1 ring-current` : `${color} opacity-60 hover:opacity-100`}`}
+                                                            >
+                                                                {s}
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Footer */}
+                                        <div
+                                            className={cn(
+                                                'py-4 border-t border-cyan-100 dark:border-cyan-500/10 bg-cyan-50/30 dark:bg-cyan-500/5',
+                                                isPhone ? 'px-4' : 'px-8'
+                                            )}
+                                        >
+                                            <div className="text-[9px] font-bold text-slate-500 dark:text-white/40">
+                                                Once policy is <span className="font-black text-cyan-600">ISSUED</span>,
+                                                click{' '}
+                                                <span className="font-black text-cyan-600">Move to Registration</span>{' '}
+                                                in the bottom bar.
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* ── REGISTRATION STAGE PANEL ─────────────────────────────── */}
+                            {mode === 'booking' && bookingStage === 'REGISTRATION' && (
+                                <div className={cn('w-full pt-6', isPhone ? 'px-0' : 'px-4')}>
+                                    <div
+                                        className={cn(
+                                            'bg-white dark:bg-[#0b0d10] border border-teal-200 dark:border-teal-500/20 overflow-hidden mb-6',
+                                            isPhone ? 'rounded-none' : 'rounded-[2rem]'
+                                        )}
+                                    >
+                                        {/* Header */}
+                                        <div
+                                            className={cn(
+                                                'py-5 border-b border-teal-100 dark:border-teal-500/10 bg-teal-50/50 dark:bg-teal-500/5 flex items-center justify-between',
+                                                isPhone ? 'px-4' : 'px-8'
+                                            )}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 rounded-xl bg-teal-600 flex items-center justify-center text-white shadow-lg shadow-teal-600/30">
+                                                    <FileText size={16} />
+                                                </div>
+                                                <div>
+                                                    <div className="text-[9px] font-black uppercase tracking-widest text-teal-600">
+                                                        Registration Stage
+                                                    </div>
+                                                    <h3 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-tighter italic">
+                                                        RTO Registration
+                                                    </h3>
+                                                </div>
+                                            </div>
+                                            {booking?.registration_status &&
+                                                booking.registration_status !== 'PENDING' && (
+                                                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20">
+                                                        <CheckCircle2 size={12} className="text-emerald-600" />
+                                                        <span className="text-[9px] font-black uppercase tracking-widest text-emerald-600">
+                                                            RTO {booking.registration_status}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                        </div>
+
+                                        {/* Body */}
+                                        <div className={cn('space-y-4', isPhone ? 'p-4' : 'p-6')}>
+                                            <RegistrationForm
+                                                bookingId={booking?.id || ''}
+                                                bookingStage={bookingStage}
+                                                onRefresh={onRefresh}
+                                            />
+
+                                            {/* Registration status */}
+                                            <div className="bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 rounded-2xl p-5">
+                                                <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3">
+                                                    Registration Status
+                                                </div>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {['PENDING', 'APPLIED', 'APPROVED', 'FAILED'].map(s => {
+                                                        const isActive =
+                                                            (booking?.registration_status || 'PENDING') === s;
+                                                        const color =
+                                                            s === 'APPROVED'
+                                                                ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-500/10 dark:border-emerald-500/20 dark:text-emerald-300'
+                                                                : s === 'FAILED'
+                                                                  ? 'bg-red-50 border-red-200 text-red-700 dark:bg-red-500/10 dark:border-red-500/20 dark:text-red-300'
+                                                                  : s === 'APPLIED'
+                                                                    ? 'bg-teal-50 border-teal-200 text-teal-700 dark:bg-teal-500/10 dark:border-teal-500/20 dark:text-teal-300'
+                                                                    : 'bg-slate-100 border-slate-200 text-slate-600 dark:bg-white/[0.03] dark:border-white/10 dark:text-slate-400';
+                                                        return (
+                                                            <button
+                                                                key={s}
+                                                                disabled={isActive}
+                                                                onClick={async () => {
+                                                                    if (!booking?.id) return;
+                                                                    const r = await updateBookingStage(
+                                                                        booking.id,
+                                                                        bookingStage,
+                                                                        {
+                                                                            operational_stage: bookingStage,
+                                                                            registration_status: s,
+                                                                        }
+                                                                    );
+                                                                    if (r.success) {
+                                                                        toast.success(`Registration status → ${s}`);
+                                                                        if (onRefresh) onRefresh();
+                                                                    } else toast.error(r.message || 'Update failed');
+                                                                }}
+                                                                className={`px-4 py-2 rounded-xl border text-[9px] font-black uppercase tracking-widest transition-all ${isActive ? `${color} ring-2 ring-offset-1 ring-current` : `${color} opacity-60 hover:opacity-100`}`}
+                                                            >
+                                                                {s}
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Footer */}
+                                        <div
+                                            className={cn(
+                                                'py-4 border-t border-teal-100 dark:border-teal-500/10 bg-teal-50/30 dark:bg-teal-500/5',
+                                                isPhone ? 'px-4' : 'px-8'
+                                            )}
+                                        >
+                                            <div className="text-[9px] font-bold text-slate-500 dark:text-white/40">
+                                                Once registration is{' '}
+                                                <span className="font-black text-teal-600">APPROVED</span>, click{' '}
+                                                <span className="font-black text-teal-600">Move to Compliance</span> in
+                                                the bottom bar.
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             {mode === 'receipt' && receipt && (
                                 <div className={cn('w-full pt-6', isPhone ? 'px-0' : 'px-4')}>
                                     <div
@@ -3618,220 +4554,6 @@ export default function QuoteEditorTable({
                                                     className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-5 h-9 text-[10px] font-black uppercase tracking-widest"
                                                 >
                                                     Mark Reconciled
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {mode === 'booking' && booking && (
-                                <div className={cn('w-full pt-6', isPhone ? 'px-0' : 'px-4')}>
-                                    <div
-                                        className={cn(
-                                            'bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/10 shadow-2xl dark:shadow-none overflow-hidden mb-6',
-                                            isPhone ? 'rounded-none' : 'rounded-[2.5rem]'
-                                        )}
-                                    >
-                                        <div
-                                            className={cn(
-                                                'py-5 border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.01] flex items-center justify-between',
-                                                isPhone ? 'px-4' : 'px-8'
-                                            )}
-                                        >
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-xl bg-emerald-600 dark:bg-white flex items-center justify-center text-white dark:text-black shadow-lg shadow-emerald-600/30 dark:shadow-white/10">
-                                                    <ShoppingBag size={16} />
-                                                </div>
-                                                <h3 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-tighter italic">
-                                                    Booking Details
-                                                </h3>
-                                            </div>
-                                            <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">
-                                                Booking
-                                            </div>
-                                        </div>
-
-                                        <div
-                                            className={cn(
-                                                'grid grid-cols-1 md:grid-cols-3 gap-4',
-                                                isPhone ? 'p-4' : 'p-6'
-                                            )}
-                                        >
-                                            <div className="bg-slate-50 dark:bg-white/[0.02] border border-slate-100 dark:border-white/5 rounded-2xl p-4">
-                                                <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">
-                                                    Status
-                                                </div>
-                                                <div className="text-sm font-black text-slate-900 dark:text-white mt-1">
-                                                    {booking.status || '—'}
-                                                </div>
-                                            </div>
-                                            <div className="bg-slate-50 dark:bg-white/[0.02] border border-slate-100 dark:border-white/5 rounded-2xl p-4">
-                                                <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">
-                                                    Operational Stage
-                                                </div>
-                                                <div className="text-sm font-black text-slate-900 dark:text-white mt-1">
-                                                    {booking.operational_stage || booking.current_stage || '—'}
-                                                </div>
-                                            </div>
-                                            <div className="bg-slate-50 dark:bg-white/[0.02] border border-slate-100 dark:border-white/5 rounded-2xl p-4">
-                                                <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">
-                                                    Allotment
-                                                </div>
-                                                <div className="text-sm font-black text-slate-900 dark:text-white mt-1">
-                                                    {booking.allotment_status || '—'}
-                                                </div>
-                                            </div>
-                                            <div className="bg-slate-50 dark:bg-white/[0.02] border border-slate-100 dark:border-white/5 rounded-2xl p-4">
-                                                <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">
-                                                    Registration
-                                                </div>
-                                                <div className="text-sm font-black text-slate-900 dark:text-white mt-1">
-                                                    {booking.registration_number || '—'}
-                                                </div>
-                                            </div>
-                                            <div className="bg-slate-50 dark:bg-white/[0.02] border border-slate-100 dark:border-white/5 rounded-2xl p-4">
-                                                <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">
-                                                    Insurance
-                                                </div>
-                                                <div className="text-sm font-black text-slate-900 dark:text-white mt-1">
-                                                    {(booking as any).insurance_provider ||
-                                                        (booking as any).insurance_policy_number ||
-                                                        booking.insurance_status ||
-                                                        '—'}
-                                                </div>
-                                            </div>
-                                            <div className="bg-slate-50 dark:bg-white/[0.02] border border-slate-100 dark:border-white/5 rounded-2xl p-4">
-                                                <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">
-                                                    Booking Amount
-                                                </div>
-                                                <div className="text-sm font-black text-slate-900 dark:text-white mt-1">
-                                                    ₹
-                                                    {Number(booking.booking_amount_received || 0).toLocaleString(
-                                                        'en-IN'
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div
-                                            className={cn(
-                                                'border-t border-slate-100 dark:border-white/5 bg-slate-50/40 dark:bg-white/[0.01]',
-                                                isPhone ? 'p-4' : 'p-6'
-                                            )}
-                                        >
-                                            <div className="flex items-center justify-between gap-3 mb-4">
-                                                <div>
-                                                    <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">
-                                                        Customer Feedback
-                                                    </div>
-                                                    <div className="text-sm font-black text-slate-900 dark:text-white">
-                                                        NPS + Delivery Experience
-                                                    </div>
-                                                </div>
-                                                <div className="text-[9px] font-bold text-slate-400">
-                                                    {feedbackDraft.updatedAt
-                                                        ? `Updated ${formatDate(feedbackDraft.updatedAt)}`
-                                                        : 'Not submitted'}
-                                                </div>
-                                            </div>
-
-                                            {feedbackLoading ? (
-                                                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                                    Loading feedback...
-                                                </div>
-                                            ) : (
-                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                                    <div className="bg-white dark:bg-white/[0.02] border border-slate-100 dark:border-white/10 rounded-xl p-3">
-                                                        <div className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1.5">
-                                                            NPS (1-10)
-                                                        </div>
-                                                        <input
-                                                            type="number"
-                                                            min={1}
-                                                            max={10}
-                                                            value={feedbackDraft.npsScore}
-                                                            onChange={e =>
-                                                                setFeedbackDraft(prev => ({
-                                                                    ...prev,
-                                                                    npsScore: e.target.value,
-                                                                }))
-                                                            }
-                                                            className="w-full bg-transparent border-b border-slate-200 dark:border-white/10 text-sm font-black text-slate-900 dark:text-white outline-none"
-                                                            placeholder="8"
-                                                        />
-                                                    </div>
-                                                    <div className="bg-white dark:bg-white/[0.02] border border-slate-100 dark:border-white/10 rounded-xl p-3">
-                                                        <div className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1.5">
-                                                            Delivery Rating (1-5)
-                                                        </div>
-                                                        <input
-                                                            type="number"
-                                                            min={1}
-                                                            max={5}
-                                                            value={feedbackDraft.deliveryRating}
-                                                            onChange={e =>
-                                                                setFeedbackDraft(prev => ({
-                                                                    ...prev,
-                                                                    deliveryRating: e.target.value,
-                                                                }))
-                                                            }
-                                                            className="w-full bg-transparent border-b border-slate-200 dark:border-white/10 text-sm font-black text-slate-900 dark:text-white outline-none"
-                                                            placeholder="5"
-                                                        />
-                                                    </div>
-                                                    <div className="bg-white dark:bg-white/[0.02] border border-slate-100 dark:border-white/10 rounded-xl p-3">
-                                                        <div className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1.5">
-                                                            Staff Rating (1-5)
-                                                        </div>
-                                                        <input
-                                                            type="number"
-                                                            min={1}
-                                                            max={5}
-                                                            value={feedbackDraft.staffRating}
-                                                            onChange={e =>
-                                                                setFeedbackDraft(prev => ({
-                                                                    ...prev,
-                                                                    staffRating: e.target.value,
-                                                                }))
-                                                            }
-                                                            className="w-full bg-transparent border-b border-slate-200 dark:border-white/10 text-sm font-black text-slate-900 dark:text-white outline-none"
-                                                            placeholder="5"
-                                                        />
-                                                    </div>
-                                                    <div className="md:col-span-3 bg-white dark:bg-white/[0.02] border border-slate-100 dark:border-white/10 rounded-xl p-3">
-                                                        <div className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1.5">
-                                                            Review
-                                                        </div>
-                                                        <textarea
-                                                            rows={3}
-                                                            value={feedbackDraft.reviewText}
-                                                            onChange={e =>
-                                                                setFeedbackDraft(prev => ({
-                                                                    ...prev,
-                                                                    reviewText: e.target.value,
-                                                                }))
-                                                            }
-                                                            className="w-full bg-transparent border border-slate-200 dark:border-white/10 rounded-lg p-2 text-xs font-bold text-slate-900 dark:text-white outline-none"
-                                                            placeholder="Customer feedback summary..."
-                                                        />
-                                                    </div>
-                                                </div>
-                                            )}
-
-                                            {feedbackStageMessage && (
-                                                <div className="mt-3 text-[10px] font-bold text-amber-600 dark:text-amber-400">
-                                                    {feedbackStageMessage}
-                                                </div>
-                                            )}
-
-                                            <div className="mt-4 flex justify-end">
-                                                <Button
-                                                    onClick={handleSaveBookingFeedback}
-                                                    disabled={feedbackLoading || feedbackSaving}
-                                                    className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl px-5 h-9 text-[10px] font-black uppercase tracking-widest"
-                                                >
-                                                    {feedbackSaving ? 'Saving...' : 'Save Feedback'}
                                                 </Button>
                                             </div>
                                         </div>
@@ -4595,11 +5317,27 @@ export default function QuoteEditorTable({
                                                 </div>
                                             </div>
                                             <button
-                                                onClick={onSendToCustomer}
+                                                onClick={
+                                                    mode === 'booking' ? handleBookingPrimaryAction : onSendToCustomer
+                                                }
+                                                disabled={
+                                                    mode === 'booking' ? isSaving || !bookingPrimaryAction : false
+                                                }
                                                 className="inline-flex items-center justify-center bg-white hover:bg-slate-100 text-slate-900 rounded-xl px-8 h-12 text-xs font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap shadow-lg"
                                             >
-                                                <Send size={16} className="mr-2" />
-                                                Release Quote
+                                                {mode === 'booking' ? (
+                                                    <>
+                                                        <Tag size={16} className="mr-2" />
+                                                        {isSaving
+                                                            ? 'Updating...'
+                                                            : bookingPrimaryAction?.label || 'No Action'}
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Send size={16} className="mr-2" />
+                                                        Release Quote
+                                                    </>
+                                                )}
                                             </button>
                                         </div>
                                     )}
