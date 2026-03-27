@@ -4817,7 +4817,7 @@ export async function updateBookingStage(id: string, stage: string, statusUpdate
     const { error } = await supabase
         .from('crm_bookings')
         .update({
-            current_stage: stage,
+            operational_stage: stage as any,
             ...statusUpdates,
             updated_at: new Date().toISOString(),
         })
@@ -4829,6 +4829,238 @@ export async function updateBookingStage(id: string, stage: string, statusUpdate
     }
     revalidatePath('/app/[slug]/sales-orders');
     return { success: true };
+}
+
+export async function getAllotmentStockOptions(bookingId: string, searchQuery?: string) {
+    const user = await getAuthUser();
+    if (!user) return { success: false, message: 'Authentication required' };
+
+    const supabase = await createClient();
+
+    const { data: booking } = await supabase
+        .from('crm_bookings')
+        .select('id, tenant_id, sku_id, delivery_branch_id')
+        .eq('id', bookingId)
+        .single();
+
+    if (!booking) return { success: false, message: 'Booking not found' };
+    if (!booking.tenant_id) return { success: false, message: 'Booking tenant missing' };
+    if (!booking.sku_id) return { success: false, message: 'Booking SKU missing' };
+
+    const authValidation = await validateDealerAuthorization(supabase, user.id, booking.tenant_id, {
+        unified_context_strict_mode: true,
+    });
+    if (!authValidation.success) return authValidation;
+
+    let stockQuery = adminClient
+        .from('inv_stock')
+        .select(
+            'id, sku_id, status, branch_id, chassis_number, engine_number, key_number, battery_number, battery_make, manufacturing_date, tenant_id, is_shared, locked_by_tenant_id, created_at'
+        )
+        .eq('sku_id', booking.sku_id)
+        .eq('status', 'AVAILABLE')
+        .or(`tenant_id.eq.${booking.tenant_id},and(is_shared.eq.true,locked_by_tenant_id.is.null)`)
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+    if (booking.delivery_branch_id) {
+        stockQuery = stockQuery.eq('branch_id', booking.delivery_branch_id);
+    }
+
+    const { data: stockRows, error } = await stockQuery;
+    if (error) {
+        console.error('[getAllotmentStockOptions] error:', error);
+        return { success: false, message: error.message };
+    }
+
+    const q = String(searchQuery || '')
+        .trim()
+        .toUpperCase();
+    const filtered = (stockRows || []).filter((row: any) => {
+        if (!q) return true;
+        const hay = [row.chassis_number, row.engine_number, row.key_number, row.battery_number, row.battery_make]
+            .map(v => String(v || '').toUpperCase())
+            .join(' ');
+        return hay.includes(q);
+    });
+
+    return { success: true, data: filtered };
+}
+
+export async function triggerBookingRequisitionFromAllotment(bookingId: string) {
+    const user = await getAuthUser();
+    if (!user) return { success: false, message: 'Authentication required' };
+
+    const supabase = await createClient();
+    const { data: booking } = await supabase.from('crm_bookings').select('tenant_id').eq('id', bookingId).single();
+    if (!booking) return { success: false, message: 'Booking not found' };
+    if (!booking.tenant_id) return { success: false, message: 'Booking tenant missing' };
+
+    const authValidation = await validateDealerAuthorization(supabase, user.id, booking.tenant_id, {
+        unified_context_strict_mode: true,
+    });
+    if (!authValidation.success) return authValidation;
+
+    const { bookingShortageCheck } = await import('@/actions/inventory');
+    const result = await bookingShortageCheck(bookingId);
+
+    if (result.status === 'SHORTAGE_CREATED') {
+        return {
+            success: true,
+            data: {
+                request_id: result.request_id,
+                display_id: result.display_id,
+            },
+        };
+    }
+    if (result.status === 'OK') {
+        return {
+            success: false,
+            message: 'Stock is available for this SKU. Requisition not created.',
+        };
+    }
+    return { success: false, message: result.message || 'Failed to create requisition' };
+}
+
+export async function assignStockUnitToBooking(input: {
+    bookingId: string;
+    stockId: string;
+    allocation?: Record<string, any>;
+}) {
+    const user = await getAuthUser();
+    if (!user) return { success: false, message: 'Authentication required' };
+
+    const supabase = await createClient();
+
+    const { data: booking } = await supabase
+        .from('crm_bookings')
+        .select('id, tenant_id, sku_id, delivery_branch_id, is_deleted, vehicle_details, inv_stock_id')
+        .eq('id', input.bookingId)
+        .single();
+
+    if (!booking || booking.is_deleted) return { success: false, message: 'Booking not found' };
+    if (!booking.tenant_id) return { success: false, message: 'Booking tenant missing' };
+    if (!booking.sku_id) return { success: false, message: 'Booking SKU missing' };
+
+    const authValidation = await validateDealerAuthorization(supabase, user.id, booking.tenant_id, {
+        unified_context_strict_mode: true,
+    });
+    if (!authValidation.success) return authValidation;
+
+    const { data: stock, error: stockErr } = await adminClient
+        .from('inv_stock')
+        .select(
+            'id, sku_id, branch_id, status, tenant_id, is_shared, locked_by_tenant_id, locked_at, chassis_number, engine_number, key_number, battery_number, battery_make, manufacturing_date'
+        )
+        .eq('id', input.stockId)
+        .single();
+
+    if (stockErr || !stock) return { success: false, message: 'Stock unit not found' };
+
+    if (stock.sku_id !== booking.sku_id) {
+        return { success: false, message: 'Selected stock does not match booking SKU' };
+    }
+    if (booking.delivery_branch_id && stock.branch_id !== booking.delivery_branch_id) {
+        return { success: false, message: 'Selected stock is from a different branch' };
+    }
+    const tenantAllowed =
+        stock.tenant_id === booking.tenant_id || (stock.is_shared === true && stock.locked_by_tenant_id == null);
+    if (!tenantAllowed) {
+        return { success: false, message: 'Stock unit is not available in this tenant context' };
+    }
+    if (stock.status !== 'AVAILABLE' && stock.id !== booking.inv_stock_id) {
+        return { success: false, message: `Stock unit is not available (status: ${stock.status})` };
+    }
+
+    // Duplicate guard: a stock unit or VIN cannot belong to multiple active bookings.
+    const { data: conflictingByStock } = await adminClient
+        .from('crm_bookings')
+        .select('id, display_id')
+        .eq('inv_stock_id', stock.id)
+        .eq('is_deleted', false)
+        .neq('id', booking.id)
+        .limit(1)
+        .maybeSingle();
+    if (conflictingByStock) {
+        return {
+            success: false,
+            message: `Stock already assigned to booking ${conflictingByStock.display_id || conflictingByStock.id}`,
+        };
+    }
+
+    const { data: conflictingByVin } = await adminClient
+        .from('crm_bookings')
+        .select('id, display_id')
+        .eq('vin_number', stock.chassis_number)
+        .eq('is_deleted', false)
+        .neq('id', booking.id)
+        .limit(1)
+        .maybeSingle();
+    if (conflictingByVin) {
+        return {
+            success: false,
+            message: `VIN/Chassis already mapped to booking ${conflictingByVin.display_id || conflictingByVin.id}`,
+        };
+    }
+
+    const previousStockId = booking.inv_stock_id || null;
+
+    const mergedVehicleDetails = {
+        ...((booking.vehicle_details as Record<string, any> | null) || {}),
+        allocation: {
+            chassisNumber: stock.chassis_number || '',
+            engineNumber: stock.engine_number || '',
+            keyNumber: stock.key_number || '',
+            batteryNumber: stock.battery_number || '',
+            batteryMake: stock.battery_make || '',
+            batteryMfgDate: stock.manufacturing_date || null,
+            ...(input.allocation || {}),
+        },
+    };
+
+    const { error: bookingUpdateErr } = await adminClient
+        .from('crm_bookings')
+        .update({
+            inv_stock_id: stock.id,
+            vin_number: stock.chassis_number,
+            allotment_status: 'HARD_LOCK',
+            vehicle_details: mergedVehicleDetails,
+            updated_at: new Date().toISOString(),
+        })
+        .eq('id', booking.id);
+    if (bookingUpdateErr) {
+        return { success: false, message: bookingUpdateErr.message };
+    }
+
+    // Lock selected stock to this tenant so it does not appear as free elsewhere.
+    const { error: lockErr } = await adminClient
+        .from('inv_stock')
+        .update({
+            status: 'HARD_LOCKED',
+            locked_by_tenant_id: booking.tenant_id,
+            locked_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+        })
+        .eq('id', stock.id);
+    if (lockErr) {
+        return { success: false, message: lockErr.message };
+    }
+
+    // If booking was previously mapped to a different stock unit, unlock it.
+    if (previousStockId && previousStockId !== stock.id) {
+        await adminClient
+            .from('inv_stock')
+            .update({
+                status: 'AVAILABLE',
+                locked_by_tenant_id: null,
+                locked_at: null,
+                updated_at: new Date().toISOString(),
+            })
+            .eq('id', previousStockId);
+    }
+
+    revalidatePath('/app/[slug]/sales-orders');
+    return { success: true, data: { booking_id: booking.id, stock_id: stock.id, vin_number: stock.chassis_number } };
 }
 
 // --- MEMBER DOCUMENTS ---

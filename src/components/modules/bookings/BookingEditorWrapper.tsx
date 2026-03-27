@@ -202,7 +202,6 @@ export default function BookingEditorWrapper({
             onRefresh={onRefresh}
             isEditable={false}
             mode="booking"
-            dynamicTabLabel="BOOKING DETAILS"
             defaultTab={defaultTab}
             booking={booking}
             bookingFinanceApps={financeApps}

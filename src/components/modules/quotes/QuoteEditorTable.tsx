@@ -77,6 +77,9 @@ import {
     getAlternativeRecommendations,
     getDealerships,
     assignQuoteSupplier,
+    getAllotmentStockOptions,
+    assignStockUnitToBooking,
+    triggerBookingRequisitionFromAllotment,
     updateReceipt,
     reconcileReceipt,
     getBookingFeedbackAction,
@@ -374,6 +377,7 @@ interface QuoteEditorTableProps {
         pdi_status?: string | null;
         insurance_status?: string | null;
         registration_status?: string | null;
+        vehicle_details?: any;
     } | null;
     bookingFinanceApps?: any[];
     receipt?: {
@@ -1151,6 +1155,21 @@ export default function QuoteEditorTable({
     // ALLOTMENT stage — VIN capture
     const [vinInput, setVinInput] = useState(booking?.vin_number || '');
     const [vinSaving, setVinSaving] = useState(false);
+    const [allotmentSaving, setAllotmentSaving] = useState(false);
+    const [stockSearch, setStockSearch] = useState('');
+    const [stockLoading, setStockLoading] = useState(false);
+    const [requisitionLoading, setRequisitionLoading] = useState(false);
+    const [allotmentStockRows, setAllotmentStockRows] = useState<any[]>([]);
+    const [allotmentDraft, setAllotmentDraft] = useState({
+        chassisNumber: '',
+        engineNumber: '',
+        keyNumber: '',
+        batteryNumber: '',
+        batteryMake: '',
+        batteryMfgDate: '',
+        tyreMake: '',
+        tyreMfgDate: '',
+    });
     const [feedbackDraft, setFeedbackDraft] = useState<BookingFeedbackFormState>({
         id: null,
         npsScore: '',
@@ -1175,6 +1194,39 @@ export default function QuoteEditorTable({
     useEffect(() => {
         setVinInput(booking?.vin_number || '');
     }, [booking?.id, booking?.vin_number]);
+
+    useEffect(() => {
+        const allocation = ((booking as any)?.vehicle_details?.allocation || {}) as Record<string, any>;
+        setAllotmentDraft({
+            chassisNumber: String(allocation.chassisNumber || ''),
+            engineNumber: String(allocation.engineNumber || ''),
+            keyNumber: String(allocation.keyNumber || ''),
+            batteryNumber: String(allocation.batteryNumber || ''),
+            batteryMake: String(allocation.batteryMake || ''),
+            batteryMfgDate: String(allocation.batteryMfgDate || ''),
+            tyreMake: String(allocation.tyreMake || ''),
+            tyreMfgDate: String(allocation.tyreMfgDate || ''),
+        });
+    }, [booking?.id, (booking as any)?.vehicle_details]);
+
+    useEffect(() => {
+        const stage = (booking?.operational_stage || booking?.current_stage || 'BOOKING').toUpperCase();
+        if (mode !== 'booking' || stage !== 'ALLOTMENT' || !booking?.id) return;
+        let active = true;
+        setStockLoading(true);
+        getAllotmentStockOptions(booking.id, stockSearch)
+            .then(res => {
+                if (!active) return;
+                if (res.success) setAllotmentStockRows((res as any).data || []);
+                else setAllotmentStockRows([]);
+            })
+            .finally(() => {
+                if (active) setStockLoading(false);
+            });
+        return () => {
+            active = false;
+        };
+    }, [mode, booking?.operational_stage, booking?.current_stage, booking?.id, stockSearch]);
 
     useEffect(() => {
         if (mode !== 'booking' || !booking?.id) return;
@@ -1533,7 +1585,30 @@ export default function QuoteEditorTable({
     const slug = typeof params?.slug === 'string' ? params.slug : Array.isArray(params?.slug) ? params.slug[0] : '';
     const { device } = useBreakpoint();
     const isPhone = device === 'phone';
-    const dynamicTabLabel = dynamicTabLabelProp || (mode === 'booking' ? 'BOOKING DETAILS' : 'QUOTE');
+    const bookingStage = (booking?.operational_stage || booking?.current_stage || 'BOOKING').toUpperCase();
+    const stageTabLabelMap: Record<string, string> = {
+        BOOKING: 'BOOKING DETAILS',
+        ALLOTMENT: 'ALLOTMENT',
+        PDI: 'PDI',
+        INSURANCE: 'INSURANCE',
+        REGISTRATION: 'REGISTRATION',
+        COMPLIANCE: 'COMPLIANCE',
+        DELIVERY: 'DELIVERY',
+        DELIVERED: 'DELIVERED',
+    };
+    const dynamicTabLabel =
+        dynamicTabLabelProp || (mode === 'booking' ? stageTabLabelMap[bookingStage] || 'BOOKING DETAILS' : 'QUOTE');
+    const stageWorkspaceStages = new Set([
+        'ALLOTMENT',
+        'PDI',
+        'INSURANCE',
+        'REGISTRATION',
+        'COMPLIANCE',
+        'DELIVERY',
+        'DELIVERED',
+        'FEEDBACK',
+    ]);
+    const showLineItemBreakdown = !(mode === 'booking' && stageWorkspaceStages.has(bookingStage));
 
     // Avatar Upload Handler
     const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1571,7 +1646,6 @@ export default function QuoteEditorTable({
 
     const statusConfig = STATUS_CONFIG[quote.status] || STATUS_CONFIG.DRAFT;
 
-    const bookingStage = (booking?.operational_stage || booking?.current_stage || 'BOOKING').toUpperCase();
     const bookingPrimaryAction =
         mode !== 'booking'
             ? null
@@ -3841,6 +3915,141 @@ export default function QuoteEditorTable({
                                         >
                                             {/* VIN input */}
                                             <div className="md:col-span-2">
+                                                <div className="bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 rounded-2xl p-5 mb-4">
+                                                    <div className="flex items-center justify-between gap-3 mb-3">
+                                                        <div>
+                                                            <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                                In-Stock VIN Search
+                                                            </div>
+                                                            <div className="text-[10px] font-semibold text-slate-400">
+                                                                Search available units for this SKU
+                                                            </div>
+                                                        </div>
+                                                        <button
+                                                            disabled={
+                                                                requisitionLoading ||
+                                                                stockLoading ||
+                                                                allotmentStockRows.length > 0
+                                                            }
+                                                            onClick={async () => {
+                                                                if (!booking?.id) return;
+                                                                setRequisitionLoading(true);
+                                                                try {
+                                                                    const res =
+                                                                        await triggerBookingRequisitionFromAllotment(
+                                                                            booking.id
+                                                                        );
+                                                                    if (!res.success) {
+                                                                        const failureMessage =
+                                                                            'message' in res ? res.message : undefined;
+                                                                        toast.error(
+                                                                            failureMessage ||
+                                                                                'Requisition trigger failed'
+                                                                        );
+                                                                        return;
+                                                                    }
+                                                                    const data = (res as any).data;
+                                                                    toast.success(
+                                                                        `Requisition created: ${data?.display_id || data?.request_id || 'Request created'}`
+                                                                    );
+                                                                } finally {
+                                                                    setRequisitionLoading(false);
+                                                                }
+                                                            }}
+                                                            className="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all"
+                                                        >
+                                                            {requisitionLoading ? (
+                                                                <>
+                                                                    <Loader2 size={12} className="animate-spin" />{' '}
+                                                                    Raising...
+                                                                </>
+                                                            ) : (
+                                                                'Raise Requisition'
+                                                            )}
+                                                        </button>
+                                                    </div>
+                                                    <div className="flex items-center gap-3 mb-3">
+                                                        <input
+                                                            value={stockSearch}
+                                                            onChange={e => setStockSearch(e.target.value.toUpperCase())}
+                                                            placeholder="Search by VIN / Chassis / Engine / Key / Battery"
+                                                            className="flex-1 bg-white dark:bg-[#0b0d10] border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-[11px] font-black tracking-wide text-slate-900 dark:text-white outline-none"
+                                                        />
+                                                    </div>
+                                                    <div className="max-h-44 overflow-auto space-y-2">
+                                                        {stockLoading && (
+                                                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                                                Searching stock...
+                                                            </div>
+                                                        )}
+                                                        {!stockLoading && allotmentStockRows.length === 0 && (
+                                                            <div className="text-[10px] font-bold text-amber-600 uppercase tracking-widest">
+                                                                No stock found for this SKU. Raise requisition.
+                                                            </div>
+                                                        )}
+                                                        {!stockLoading &&
+                                                            allotmentStockRows.map((row: any) => (
+                                                                <button
+                                                                    key={row.id}
+                                                                    onClick={async () => {
+                                                                        if (!booking?.id) return;
+                                                                        const result = await assignStockUnitToBooking({
+                                                                            bookingId: booking.id,
+                                                                            stockId: row.id,
+                                                                            allocation: {
+                                                                                ...(allotmentDraft || {}),
+                                                                                chassisNumber: row.chassis_number || '',
+                                                                                engineNumber: row.engine_number || '',
+                                                                                keyNumber: row.key_number || '',
+                                                                                batteryNumber: row.battery_number || '',
+                                                                                batteryMake: row.battery_make || '',
+                                                                            },
+                                                                        });
+                                                                        if (!result.success) {
+                                                                            const failureMessage =
+                                                                                'message' in result
+                                                                                    ? result.message
+                                                                                    : undefined;
+                                                                            toast.error(
+                                                                                failureMessage ||
+                                                                                    'Stock assignment failed'
+                                                                            );
+                                                                            return;
+                                                                        }
+                                                                        setVinInput(row.chassis_number || '');
+                                                                        setAllotmentDraft(prev => ({
+                                                                            ...prev,
+                                                                            chassisNumber: row.chassis_number || '',
+                                                                            engineNumber: row.engine_number || '',
+                                                                            keyNumber: row.key_number || '',
+                                                                            batteryNumber: row.battery_number || '',
+                                                                            batteryMake: row.battery_make || '',
+                                                                        }));
+                                                                        toast.success(
+                                                                            'Stock unit assigned to booking.'
+                                                                        );
+                                                                        if (onRefresh) onRefresh();
+                                                                    }}
+                                                                    className="w-full text-left bg-white dark:bg-[#0b0d10] border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 hover:border-violet-400 transition-colors"
+                                                                >
+                                                                    <div className="flex items-center justify-between gap-2">
+                                                                        <div className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                                                                            {row.chassis_number || 'NO-CHASSIS'}
+                                                                        </div>
+                                                                        <div className="text-[9px] font-bold text-slate-400">
+                                                                            Assign
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="mt-1 text-[9px] text-slate-500">
+                                                                        Engine: {row.engine_number || '—'} · Key:{' '}
+                                                                        {row.key_number || '—'} · Battery:{' '}
+                                                                        {row.battery_number || '—'}
+                                                                    </div>
+                                                                </button>
+                                                            ))}
+                                                    </div>
+                                                </div>
+
                                                 <div className="bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 rounded-2xl p-5">
                                                     <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">
                                                         VIN / Chassis Number
@@ -3918,6 +4127,136 @@ export default function QuoteEditorTable({
                                                 </div>
                                             </div>
 
+                                            {(booking?.vin_number || allotmentDraft.chassisNumber) && (
+                                                <div className="md:col-span-2 bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 rounded-2xl p-5">
+                                                    <div className="flex items-center justify-between gap-3 mb-3">
+                                                        <div>
+                                                            <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                                Vehicle Instance Details
+                                                            </div>
+                                                            <div className="text-[10px] font-semibold text-slate-400">
+                                                                Unique-per-vehicle fields only
+                                                            </div>
+                                                        </div>
+                                                        <button
+                                                            disabled={allotmentSaving}
+                                                            onClick={async () => {
+                                                                if (!booking?.id) return;
+                                                                setAllotmentSaving(true);
+                                                                try {
+                                                                    const mergedVehicleDetails = {
+                                                                        ...(((booking as any)?.vehicle_details ||
+                                                                            {}) as Record<string, any>),
+                                                                        allocation: {
+                                                                            chassisNumber:
+                                                                                allotmentDraft.chassisNumber.trim(),
+                                                                            engineNumber:
+                                                                                allotmentDraft.engineNumber.trim(),
+                                                                            keyNumber: allotmentDraft.keyNumber.trim(),
+                                                                            batteryNumber:
+                                                                                allotmentDraft.batteryNumber.trim(),
+                                                                            batteryMake:
+                                                                                allotmentDraft.batteryMake.trim(),
+                                                                            batteryMfgDate:
+                                                                                allotmentDraft.batteryMfgDate || null,
+                                                                            tyreMake: allotmentDraft.tyreMake.trim(),
+                                                                            tyreMfgDate:
+                                                                                allotmentDraft.tyreMfgDate || null,
+                                                                        },
+                                                                    };
+                                                                    const hasCore =
+                                                                        vinInput.trim().length >= 10 &&
+                                                                        allotmentDraft.chassisNumber.trim().length >
+                                                                            0 &&
+                                                                        allotmentDraft.engineNumber.trim().length > 0;
+                                                                    const result = await updateBookingStage(
+                                                                        booking.id,
+                                                                        bookingStage,
+                                                                        {
+                                                                            operational_stage: bookingStage,
+                                                                            vin_number: vinInput.trim() || null,
+                                                                            allotment_status: hasCore
+                                                                                ? 'HARD_LOCK'
+                                                                                : 'SOFT_LOCK',
+                                                                            vehicle_details: mergedVehicleDetails,
+                                                                        }
+                                                                    );
+                                                                    if (!result.success) {
+                                                                        toast.error(
+                                                                            result.message ||
+                                                                                'Failed to save allotment details'
+                                                                        );
+                                                                        return;
+                                                                    }
+                                                                    toast.success('Allotment details saved.');
+                                                                    if (onRefresh) onRefresh();
+                                                                } finally {
+                                                                    setAllotmentSaving(false);
+                                                                }
+                                                            }}
+                                                            className="inline-flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all"
+                                                        >
+                                                            {allotmentSaving ? (
+                                                                <>
+                                                                    <Loader2 size={12} className="animate-spin" />{' '}
+                                                                    Saving...
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <Save size={12} /> Save Allocation
+                                                                </>
+                                                            )}
+                                                        </button>
+                                                    </div>
+                                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                                                        {[
+                                                            { key: 'chassisNumber', label: 'Chassis Number' },
+                                                            { key: 'engineNumber', label: 'Engine Number' },
+                                                            { key: 'keyNumber', label: 'Key Number' },
+                                                            { key: 'batteryNumber', label: 'Battery Number' },
+                                                            { key: 'batteryMake', label: 'Battery Make' },
+                                                            {
+                                                                key: 'batteryMfgDate',
+                                                                label: 'Battery Mfg Date',
+                                                                type: 'date',
+                                                            },
+                                                            { key: 'tyreMake', label: 'Tyre Make' },
+                                                            {
+                                                                key: 'tyreMfgDate',
+                                                                label: 'Tyre Mfg Date',
+                                                                type: 'date',
+                                                            },
+                                                        ].map(f => (
+                                                            <div
+                                                                key={f.key}
+                                                                className="bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/10 rounded-xl p-3"
+                                                            >
+                                                                <div className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-2">
+                                                                    {f.label}
+                                                                </div>
+                                                                <input
+                                                                    type={(f as any).type || 'text'}
+                                                                    value={(allotmentDraft as any)[f.key]}
+                                                                    onChange={e =>
+                                                                        setAllotmentDraft(prev => ({
+                                                                            ...prev,
+                                                                            [f.key]:
+                                                                                (f as any).type === 'date'
+                                                                                    ? e.target.value
+                                                                                    : e.target.value
+                                                                                          .toUpperCase()
+                                                                                          .replace(/[^A-Z0-9-]/g, ''),
+                                                                        }))
+                                                                    }
+                                                                    className="w-full bg-transparent border-b border-slate-200 dark:border-white/10 text-[11px] font-black text-slate-900 dark:text-white outline-none"
+                                                                    placeholder="—"
+                                                                />
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+
                                             {/* Vehicle snapshot */}
                                             <div className="bg-slate-50 dark:bg-white/[0.02] border border-slate-100 dark:border-white/5 rounded-2xl p-5">
                                                 <div className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3">
@@ -3979,7 +4318,12 @@ export default function QuoteEditorTable({
                                                             label: 'Stock Allocated',
                                                             done: (booking?.allotment_status || 'NONE') !== 'NONE',
                                                         },
-                                                        { label: 'Pre-PDI Clearance', done: false },
+                                                        {
+                                                            label: 'Engine + Chassis Tagged',
+                                                            done:
+                                                                allotmentDraft.engineNumber.trim().length > 0 &&
+                                                                allotmentDraft.chassisNumber.trim().length > 0,
+                                                        },
                                                     ].map(item => (
                                                         <div
                                                             key={item.label}
@@ -4562,610 +4906,579 @@ export default function QuoteEditorTable({
                             )}
 
                             {/* 2. QUOTATION DETAILS PANEL (COLLAPSIBLE) */}
-                            <div className={cn('w-full pt-6', isPhone ? 'px-0' : 'px-4')}>
-                                <div
-                                    className={cn(
-                                        'bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/10 shadow-2xl dark:shadow-none overflow-hidden mb-6',
-                                        isPhone ? 'rounded-none' : 'rounded-[2.5rem]'
-                                    )}
-                                >
-                                    {/* Section Header - Collapsible Trigger */}
-                                    <button
-                                        onClick={() => setGroups(g => ({ ...g, pricing: !g.pricing }))}
+                            {showLineItemBreakdown && (
+                                <div className={cn('w-full pt-6', isPhone ? 'px-0' : 'px-4')}>
+                                    <div
                                         className={cn(
-                                            'w-full py-5 border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.01] flex items-center justify-between hover:bg-slate-100/50 dark:hover:bg-white/[0.02] transition-colors',
-                                            isPhone ? 'px-4' : 'px-8'
+                                            'bg-white dark:bg-[#0b0d10] border border-slate-100 dark:border-white/10 shadow-2xl dark:shadow-none overflow-hidden mb-6',
+                                            isPhone ? 'rounded-none' : 'rounded-[2.5rem]'
                                         )}
                                     >
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-xl bg-indigo-600 dark:bg-white flex items-center justify-center text-white dark:text-black shadow-lg shadow-indigo-600/30 dark:shadow-white/10">
-                                                <FileText size={16} />
-                                            </div>
-                                            <h3 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-tighter italic">
-                                                Line-Item <span className="opacity-50">Breakdown</span>
-                                            </h3>
-                                        </div>
-                                        <div className="flex items-center gap-4">
-                                            <div className="flex items-center gap-2 px-3 py-1 bg-white dark:bg-white/5 rounded-full border border-slate-100 dark:border-white/10 shadow-sm">
-                                                <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 dark:bg-white animate-pulse" />
-                                                <span className="text-[8px] font-black text-slate-500 dark:text-white/40 uppercase tracking-widest">
-                                                    Active session
-                                                </span>
-                                            </div>
-                                            {groups.pricing ? (
-                                                <ChevronDown size={18} className="text-slate-400" />
-                                            ) : (
-                                                <ChevronRight size={18} className="text-slate-400" />
+                                        {/* Section Header - Collapsible Trigger */}
+                                        <button
+                                            onClick={() => setGroups(g => ({ ...g, pricing: !g.pricing }))}
+                                            className={cn(
+                                                'w-full py-5 border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.01] flex items-center justify-between hover:bg-slate-100/50 dark:hover:bg-white/[0.02] transition-colors',
+                                                isPhone ? 'px-4' : 'px-8'
                                             )}
-                                        </div>
-                                    </button>
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 rounded-xl bg-indigo-600 dark:bg-white flex items-center justify-center text-white dark:text-black shadow-lg shadow-indigo-600/30 dark:shadow-white/10">
+                                                    <FileText size={16} />
+                                                </div>
+                                                <h3 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-tighter italic">
+                                                    Line-Item <span className="opacity-50">Breakdown</span>
+                                                </h3>
+                                            </div>
+                                            <div className="flex items-center gap-4">
+                                                <div className="flex items-center gap-2 px-3 py-1 bg-white dark:bg-white/5 rounded-full border border-slate-100 dark:border-white/10 shadow-sm">
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 dark:bg-white animate-pulse" />
+                                                    <span className="text-[8px] font-black text-slate-500 dark:text-white/40 uppercase tracking-widest">
+                                                        Active session
+                                                    </span>
+                                                </div>
+                                                {groups.pricing ? (
+                                                    <ChevronDown size={18} className="text-slate-400" />
+                                                ) : (
+                                                    <ChevronRight size={18} className="text-slate-400" />
+                                                )}
+                                            </div>
+                                        </button>
 
-                                    {/* Line Items - Conditional Rendering */}
-                                    {groups.pricing && (
-                                        <div className="flex flex-col animate-in fade-in slide-in-from-top-2 duration-300">
-                                            {quote.delivery && (
-                                                <div
-                                                    className={cn(
-                                                        'py-4 bg-slate-50/60 dark:bg-white/[0.02] border-b border-slate-100 dark:border-white/5',
-                                                        isPhone ? 'px-4' : 'px-8'
-                                                    )}
-                                                >
-                                                    <div className="flex items-center justify-between">
-                                                        <div>
-                                                            <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">
-                                                                Delivery & Serviceability
-                                                            </div>
-                                                            <div className="text-xs font-bold text-slate-700 dark:text-white mt-1">
-                                                                {quote.delivery.serviceable === false
-                                                                    ? 'Not Serviceable'
-                                                                    : 'Serviceable'}
-                                                            </div>
-                                                        </div>
-                                                        <div className="text-right">
-                                                            <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">
-                                                                Location
-                                                            </div>
-                                                            <div className="text-xs font-bold text-slate-700 dark:text-white">
-                                                                {quote.delivery.district ||
-                                                                    quote.delivery.taluka ||
-                                                                    quote.delivery.pincode ||
-                                                                    '—'}
-                                                                {quote.delivery.pincode
-                                                                    ? ` (${quote.delivery.pincode})`
-                                                                    : ''}
-                                                            </div>
-                                                            {quote.delivery.delivery_tat_days ? (
-                                                                <div className="text-[9px] font-bold text-slate-400 mt-1">
-                                                                    TAT: {quote.delivery.delivery_tat_days} days
+                                        {/* Line Items - Conditional Rendering */}
+                                        {groups.pricing && (
+                                            <div className="flex flex-col animate-in fade-in slide-in-from-top-2 duration-300">
+                                                {quote.delivery && (
+                                                    <div
+                                                        className={cn(
+                                                            'py-4 bg-slate-50/60 dark:bg-white/[0.02] border-b border-slate-100 dark:border-white/5',
+                                                            isPhone ? 'px-4' : 'px-8'
+                                                        )}
+                                                    >
+                                                        <div className="flex items-center justify-between">
+                                                            <div>
+                                                                <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                                    Delivery & Serviceability
                                                                 </div>
-                                                            ) : null}
+                                                                <div className="text-xs font-bold text-slate-700 dark:text-white mt-1">
+                                                                    {quote.delivery.serviceable === false
+                                                                        ? 'Not Serviceable'
+                                                                        : 'Serviceable'}
+                                                                </div>
+                                                            </div>
+                                                            <div className="text-right">
+                                                                <div className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                                                    Location
+                                                                </div>
+                                                                <div className="text-xs font-bold text-slate-700 dark:text-white">
+                                                                    {quote.delivery.district ||
+                                                                        quote.delivery.taluka ||
+                                                                        quote.delivery.pincode ||
+                                                                        '—'}
+                                                                    {quote.delivery.pincode
+                                                                        ? ` (${quote.delivery.pincode})`
+                                                                        : ''}
+                                                                </div>
+                                                                {quote.delivery.delivery_tat_days ? (
+                                                                    <div className="text-[9px] font-bold text-slate-400 mt-1">
+                                                                        TAT: {quote.delivery.delivery_tat_days} days
+                                                                    </div>
+                                                                ) : null}
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
-                                            )}
-                                            {/* Ex-Showroom Group */}
-                                            <PricingGroup
-                                                title="Ex-Showroom Price"
-                                                icon={Building2}
-                                                total={formatCurrency(
-                                                    localPricing.exShowroom +
-                                                        (localPricing.colorDelta || 0) -
-                                                        (localPricing.dealerDiscount || 0) +
-                                                        (localPricing.offersDelta || 0)
                                                 )}
-                                                isExpanded={groups.exShowroom}
-                                                onToggle={() => setGroups(g => ({ ...g, exShowroom: !g.exShowroom }))}
-                                            >
-                                                <PricingRow
-                                                    isSub
-                                                    label="Base Price"
-                                                    value={formatCurrency(
-                                                        Math.floor(
-                                                            localPricing.exShowroom /
-                                                                (1 + (localPricing.exShowroomGstRate || 28) / 100)
-                                                        )
+                                                {/* Ex-Showroom Group */}
+                                                <PricingGroup
+                                                    title="Ex-Showroom Price"
+                                                    icon={Building2}
+                                                    total={formatCurrency(
+                                                        localPricing.exShowroom +
+                                                            (localPricing.colorDelta || 0) -
+                                                            (localPricing.dealerDiscount || 0) +
+                                                            (localPricing.offersDelta || 0)
                                                     )}
-                                                />
-                                                <PricingRow
-                                                    isSub
-                                                    label={`GST (${localPricing.exShowroomGstRate || 28}%)`}
-                                                    value={formatCurrency(
-                                                        localPricing.exShowroom -
+                                                    isExpanded={groups.exShowroom}
+                                                    onToggle={() =>
+                                                        setGroups(g => ({ ...g, exShowroom: !g.exShowroom }))
+                                                    }
+                                                >
+                                                    <PricingRow
+                                                        isSub
+                                                        label="Base Price"
+                                                        value={formatCurrency(
                                                             Math.floor(
                                                                 localPricing.exShowroom /
                                                                     (1 + (localPricing.exShowroomGstRate || 28) / 100)
                                                             )
-                                                    )}
-                                                />
-                                                {localPricing.colorDelta !== undefined &&
-                                                    localPricing.colorDelta !== 0 && (
-                                                        <PricingRow
-                                                            isSub
-                                                            isSaving={localPricing.colorDelta < 0}
-                                                            label={
-                                                                localPricing.colorDelta < 0
-                                                                    ? 'Colour Discount'
-                                                                    : 'Colour Surge'
-                                                            }
-                                                            value={formatCurrency(localPricing.colorDelta)}
-                                                        />
-                                                    )}
-                                                {(localPricing.offersItems || []).length > 0 &&
-                                                    (localPricing.offersItems || []).map((o: any, idx: number) => {
-                                                        const base = Number(o.price || 0);
-                                                        const effective =
-                                                            o.discountPrice !== undefined && o.discountPrice !== null
-                                                                ? Number(o.discountPrice)
-                                                                : base;
-                                                        const delta = effective - base;
-                                                        if (delta === 0) return null;
-                                                        return (
-                                                            <PricingRow
-                                                                key={`veh-offer-${o.id || idx}`}
-                                                                isSub
-                                                                isSaving
-                                                                label={o.name}
-                                                                value={formatCurrency(delta)}
-                                                            />
-                                                        );
-                                                    })}
-                                                {localPricing.dealerDiscount !== undefined &&
-                                                    localPricing.dealerDiscount !== 0 && (
-                                                        <PricingRow
-                                                            isSub
-                                                            isSaving
-                                                            label="Dealer Discount"
-                                                            value={formatCurrency(-localPricing.dealerDiscount)}
-                                                        />
-                                                    )}
-                                            </PricingGroup>
-
-                                            {/* Registration Group */}
-                                            <PricingGroup
-                                                title="Registration (RTO)"
-                                                icon={MapPin}
-                                                total={formatCurrency(localPricing.rtoTotal)}
-                                                isExpanded={groups.registration}
-                                                onToggle={() =>
-                                                    setGroups(g => ({ ...g, registration: !g.registration }))
-                                                }
-                                            >
-                                                {/* Fixed Charges */}
-                                                {(localPricing.rtoBreakdown || [])
-                                                    .filter(b =>
-                                                        [
-                                                            'Postal Charges',
-                                                            'Smart Card Charges',
-                                                            'Registration Charges',
-                                                        ].includes(b.label)
-                                                    )
-                                                    .map((opt: any, idx: number) => (
-                                                        <PricingRow
-                                                            key={`${opt.label || idx}`}
-                                                            isSub
-                                                            label={opt.label || 'RTO Fee'}
-                                                            value={formatCurrency(opt.amount || 0)}
-                                                        />
-                                                    ))}
-
-                                                {/* Registration Type Selector (in the middle) */}
-                                                <div className="px-6 py-4 bg-slate-50/50 dark:bg-white/[0.02] border-y border-slate-100 dark:border-white/5">
-                                                    <div className="flex flex-col gap-3">
-                                                        <div className="flex items-center justify-between">
-                                                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                                                Registration Type
-                                                            </span>
-                                                            <div className="flex gap-1.5">
-                                                                {(['STATE', 'BH', 'COMPANY'] as const).map(type => (
-                                                                    <div
-                                                                        key={type}
-                                                                        className={cn(
-                                                                            'px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all opacity-60 cursor-not-allowed',
-                                                                            localPricing.rtoType === type
-                                                                                ? 'bg-indigo-600 dark:bg-white text-white dark:text-black shadow-md shadow-indigo-600/20 dark:shadow-white/10'
-                                                                                : 'bg-slate-100 dark:bg-white/5 text-slate-400'
-                                                                        )}
-                                                                    >
-                                                                        {type}
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex items-center gap-1.5 px-3 py-2 bg-slate-100/50 dark:bg-white/[0.02] rounded-xl border border-dashed border-slate-200 dark:border-white/10">
-                                                            <Clock size={10} className="text-slate-400" />
-                                                            <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tight">
-                                                                Locked. Edit on Marketplace to change RTO type.
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                {/* Variable Taxes/Charges */}
-                                                {(localPricing.rtoBreakdown || [])
-                                                    .filter(b => ['Road Tax', 'Cess Amount'].includes(b.label))
-                                                    .map((opt: any, idx: number) => (
-                                                        <PricingRow
-                                                            key={`${opt.label || idx}`}
-                                                            isSub
-                                                            label={opt.label || 'RTO Tax'}
-                                                            value={formatCurrency(opt.amount || 0)}
-                                                        />
-                                                    ))}
-
-                                                {/* Fallback for legacy quotes with no breakdown */}
-                                                {(!localPricing.rtoBreakdown ||
-                                                    localPricing.rtoBreakdown.length === 0) && (
+                                                        )}
+                                                    />
                                                     <PricingRow
                                                         isSub
-                                                        label="MV Tax & Cess"
-                                                        value={formatCurrency(localPricing.rtoTotal)}
+                                                        label={`GST (${localPricing.exShowroomGstRate || 28}%)`}
+                                                        value={formatCurrency(
+                                                            localPricing.exShowroom -
+                                                                Math.floor(
+                                                                    localPricing.exShowroom /
+                                                                        (1 +
+                                                                            (localPricing.exShowroomGstRate || 28) /
+                                                                                100)
+                                                                )
+                                                        )}
                                                     />
-                                                )}
-                                            </PricingGroup>
+                                                    {localPricing.colorDelta !== undefined &&
+                                                        localPricing.colorDelta !== 0 && (
+                                                            <PricingRow
+                                                                isSub
+                                                                isSaving={localPricing.colorDelta < 0}
+                                                                label={
+                                                                    localPricing.colorDelta < 0
+                                                                        ? 'Colour Discount'
+                                                                        : 'Colour Surge'
+                                                                }
+                                                                value={formatCurrency(localPricing.colorDelta)}
+                                                            />
+                                                        )}
+                                                    {(localPricing.offersItems || []).length > 0 &&
+                                                        (localPricing.offersItems || []).map((o: any, idx: number) => {
+                                                            const base = Number(o.price || 0);
+                                                            const effective =
+                                                                o.discountPrice !== undefined &&
+                                                                o.discountPrice !== null
+                                                                    ? Number(o.discountPrice)
+                                                                    : base;
+                                                            const delta = effective - base;
+                                                            if (delta === 0) return null;
+                                                            return (
+                                                                <PricingRow
+                                                                    key={`veh-offer-${o.id || idx}`}
+                                                                    isSub
+                                                                    isSaving
+                                                                    label={o.name}
+                                                                    value={formatCurrency(delta)}
+                                                                />
+                                                            );
+                                                        })}
+                                                    {localPricing.dealerDiscount !== undefined &&
+                                                        localPricing.dealerDiscount !== 0 && (
+                                                            <PricingRow
+                                                                isSub
+                                                                isSaving
+                                                                label="Dealer Discount"
+                                                                value={formatCurrency(-localPricing.dealerDiscount)}
+                                                            />
+                                                        )}
+                                                </PricingGroup>
 
-                                            {/* Insurance Group */}
-                                            <PricingGroup
-                                                title="Insurance Package"
-                                                icon={CheckCircle2}
-                                                total={formatCurrency(localPricing.insuranceTotal)}
-                                                isExpanded={groups.insurance}
-                                                onToggle={() => setGroups(g => ({ ...g, insurance: !g.insurance }))}
-                                            >
-                                                {(() => {
-                                                    const tpItems = (localPricing.insuranceRequiredItems || []).filter(
-                                                        item =>
+                                                {/* Registration Group */}
+                                                <PricingGroup
+                                                    title="Registration (RTO)"
+                                                    icon={MapPin}
+                                                    total={formatCurrency(localPricing.rtoTotal)}
+                                                    isExpanded={groups.registration}
+                                                    onToggle={() =>
+                                                        setGroups(g => ({ ...g, registration: !g.registration }))
+                                                    }
+                                                >
+                                                    {/* Fixed Charges */}
+                                                    {(localPricing.rtoBreakdown || [])
+                                                        .filter(b =>
+                                                            [
+                                                                'Postal Charges',
+                                                                'Smart Card Charges',
+                                                                'Registration Charges',
+                                                            ].includes(b.label)
+                                                        )
+                                                        .map((opt: any, idx: number) => (
+                                                            <PricingRow
+                                                                key={`${opt.label || idx}`}
+                                                                isSub
+                                                                label={opt.label || 'RTO Fee'}
+                                                                value={formatCurrency(opt.amount || 0)}
+                                                            />
+                                                        ))}
+
+                                                    {/* Registration Type Selector (in the middle) */}
+                                                    <div className="px-6 py-4 bg-slate-50/50 dark:bg-white/[0.02] border-y border-slate-100 dark:border-white/5">
+                                                        <div className="flex flex-col gap-3">
+                                                            <div className="flex items-center justify-between">
+                                                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                                                    Registration Type
+                                                                </span>
+                                                                <div className="flex gap-1.5">
+                                                                    {(['STATE', 'BH', 'COMPANY'] as const).map(type => (
+                                                                        <div
+                                                                            key={type}
+                                                                            className={cn(
+                                                                                'px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all opacity-60 cursor-not-allowed',
+                                                                                localPricing.rtoType === type
+                                                                                    ? 'bg-indigo-600 dark:bg-white text-white dark:text-black shadow-md shadow-indigo-600/20 dark:shadow-white/10'
+                                                                                    : 'bg-slate-100 dark:bg-white/5 text-slate-400'
+                                                                            )}
+                                                                        >
+                                                                            {type}
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex items-center gap-1.5 px-3 py-2 bg-slate-100/50 dark:bg-white/[0.02] rounded-xl border border-dashed border-slate-200 dark:border-white/10">
+                                                                <Clock size={10} className="text-slate-400" />
+                                                                <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tight">
+                                                                    Locked. Edit on Marketplace to change RTO type.
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Variable Taxes/Charges */}
+                                                    {(localPricing.rtoBreakdown || [])
+                                                        .filter(b => ['Road Tax', 'Cess Amount'].includes(b.label))
+                                                        .map((opt: any, idx: number) => (
+                                                            <PricingRow
+                                                                key={`${opt.label || idx}`}
+                                                                isSub
+                                                                label={opt.label || 'RTO Tax'}
+                                                                value={formatCurrency(opt.amount || 0)}
+                                                            />
+                                                        ))}
+
+                                                    {/* Fallback for legacy quotes with no breakdown */}
+                                                    {(!localPricing.rtoBreakdown ||
+                                                        localPricing.rtoBreakdown.length === 0) && (
+                                                        <PricingRow
+                                                            isSub
+                                                            label="MV Tax & Cess"
+                                                            value={formatCurrency(localPricing.rtoTotal)}
+                                                        />
+                                                    )}
+                                                </PricingGroup>
+
+                                                {/* Insurance Group */}
+                                                <PricingGroup
+                                                    title="Insurance Package"
+                                                    icon={CheckCircle2}
+                                                    total={formatCurrency(localPricing.insuranceTotal)}
+                                                    isExpanded={groups.insurance}
+                                                    onToggle={() => setGroups(g => ({ ...g, insurance: !g.insurance }))}
+                                                >
+                                                    {(() => {
+                                                        const tpItems = (
+                                                            localPricing.insuranceRequiredItems || []
+                                                        ).filter(item =>
                                                             (item.name || item.label || '')
                                                                 .toLowerCase()
                                                                 .includes(TP_SUBTEXT.toLowerCase())
-                                                    );
-                                                    const odItems = (localPricing.insuranceRequiredItems || []).filter(
-                                                        item =>
+                                                        );
+                                                        const odItems = (
+                                                            localPricing.insuranceRequiredItems || []
+                                                        ).filter(item =>
                                                             (item.name || item.label || '')
                                                                 .toLowerCase()
                                                                 .includes(OD_SUBTEXT.toLowerCase())
-                                                    );
-                                                    const optionalRequired = (
-                                                        localPricing.insuranceRequiredItems || []
-                                                    ).filter(
-                                                        item => !tpItems.includes(item) && !odItems.includes(item)
-                                                    );
-                                                    const allAddons = [
-                                                        ...optionalRequired,
-                                                        ...localPricing.insuranceAddons,
-                                                    ];
+                                                        );
+                                                        const optionalRequired = (
+                                                            localPricing.insuranceRequiredItems || []
+                                                        ).filter(
+                                                            item => !tpItems.includes(item) && !odItems.includes(item)
+                                                        );
+                                                        const allAddons = [
+                                                            ...optionalRequired,
+                                                            ...localPricing.insuranceAddons,
+                                                        ];
 
-                                                    return (
-                                                        <>
-                                                            {/* THIRD PARTY (BASIC) */}
-                                                            <PricingRow
-                                                                isSub
-                                                                label={`${TP_LABEL} (Basic)`}
-                                                                value={
-                                                                    isEditable ? (
-                                                                        <div className="flex items-center gap-1">
-                                                                            <span className="text-slate-400">₹</span>
-                                                                            <input
-                                                                                type="number"
-                                                                                value={localPricing.insuranceTP}
-                                                                                onChange={e =>
-                                                                                    setLocalPricing(p => ({
-                                                                                        ...p,
-                                                                                        insuranceTP:
-                                                                                            parseInt(e.target.value) ||
-                                                                                            0,
-                                                                                    }))
-                                                                                }
-                                                                                className="w-20 bg-transparent border-b border-slate-200 dark:border-white/10 focus:border-indigo-500 outline-none text-right font-black"
-                                                                            />
-                                                                        </div>
-                                                                    ) : (
-                                                                        formatCurrency(localPricing.insuranceTP)
-                                                                    )
-                                                                }
-                                                            />
-                                                            {tpItems.map((item, idx) => (
+                                                        return (
+                                                            <>
+                                                                {/* THIRD PARTY (BASIC) */}
                                                                 <PricingRow
-                                                                    key={`tp-item-${item.id || idx}`}
                                                                     isSub
-                                                                    label={
-                                                                        <span className="text-[10px] opacity-70 italic">
-                                                                            {item.name || item.label}
-                                                                        </span>
-                                                                    }
-                                                                    value={formatCurrency(
-                                                                        Number(item.price || item.amount || 0)
-                                                                    )}
-                                                                    description={
-                                                                        item.breakdown &&
-                                                                        Array.isArray(item.breakdown) && (
-                                                                            <div className="flex flex-col gap-1">
-                                                                                {item.breakdown.map(
-                                                                                    (b: any, bIdx: number) => (
-                                                                                        <span
-                                                                                            key={`${item.id || idx}-b-${bIdx}`}
-                                                                                            className="text-[8px] text-slate-400 uppercase font-bold tracking-widest"
-                                                                                        >
-                                                                                            {b.label}: ₹
-                                                                                            {Number(
-                                                                                                b.amount || 0
-                                                                                            ).toLocaleString('en-IN')}
-                                                                                        </span>
-                                                                                    )
-                                                                                )}
-                                                                            </div>
-                                                                        )
-                                                                    }
-                                                                />
-                                                            ))}
-
-                                                            {/* OWN DAMAGE (OD) */}
-                                                            <PricingRow
-                                                                isSub
-                                                                label={`${OD_LABEL} (OD)`}
-                                                                value={
-                                                                    isEditable ? (
-                                                                        <div className="flex items-center gap-1">
-                                                                            <span className="text-slate-400">₹</span>
-                                                                            <input
-                                                                                type="number"
-                                                                                value={localPricing.insuranceOD}
-                                                                                onChange={e =>
-                                                                                    setLocalPricing(p => ({
-                                                                                        ...p,
-                                                                                        insuranceOD:
-                                                                                            parseInt(e.target.value) ||
-                                                                                            0,
-                                                                                    }))
-                                                                                }
-                                                                                className="w-20 bg-transparent border-b border-slate-200 dark:border-white/10 focus:border-indigo-500 outline-none text-right font-black"
-                                                                            />
-                                                                        </div>
-                                                                    ) : (
-                                                                        formatCurrency(localPricing.insuranceOD)
-                                                                    )
-                                                                }
-                                                            />
-                                                            {odItems.map((item, idx) => (
-                                                                <PricingRow
-                                                                    key={`od-item-${item.id || idx}`}
-                                                                    isSub
-                                                                    label={
-                                                                        <span className="text-[10px] opacity-70 italic">
-                                                                            {item.name || item.label}
-                                                                        </span>
-                                                                    }
-                                                                    value={formatCurrency(
-                                                                        Number(item.price || item.amount || 0)
-                                                                    )}
-                                                                    description={
-                                                                        item.breakdown &&
-                                                                        Array.isArray(item.breakdown) && (
-                                                                            <div className="flex flex-col gap-1">
-                                                                                {item.breakdown.map(
-                                                                                    (b: any, bIdx: number) => (
-                                                                                        <span
-                                                                                            key={`${item.id || idx}-b-${bIdx}`}
-                                                                                            className="text-[8px] text-slate-400 uppercase font-bold tracking-widest"
-                                                                                        >
-                                                                                            {b.label}: ₹
-                                                                                            {Number(
-                                                                                                b.amount || 0
-                                                                                            ).toLocaleString('en-IN')}
-                                                                                        </span>
-                                                                                    )
-                                                                                )}
-                                                                            </div>
-                                                                        )
-                                                                    }
-                                                                />
-                                                            ))}
-
-                                                            {/* OPTIONAL ADD-ONS */}
-                                                            <div className="py-2 px-6 border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.02]">
-                                                                <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
-                                                                    Optional Add-ons
-                                                                </div>
-                                                            </div>
-                                                            {allAddons.map((addon, idx) => (
-                                                                <PricingRow
-                                                                    key={addon.id || `addon-${idx}`}
-                                                                    isSub
-                                                                    label={addon.name || addon.label}
+                                                                    label={`${TP_LABEL} (Basic)`}
                                                                     value={
-                                                                        addon.selected !== undefined
-                                                                            ? addon.selected
-                                                                                ? formatCurrency(
+                                                                        isEditable ? (
+                                                                            <div className="flex items-center gap-1">
+                                                                                <span className="text-slate-400">
+                                                                                    ₹
+                                                                                </span>
+                                                                                <input
+                                                                                    type="number"
+                                                                                    value={localPricing.insuranceTP}
+                                                                                    onChange={e =>
+                                                                                        setLocalPricing(p => ({
+                                                                                            ...p,
+                                                                                            insuranceTP:
+                                                                                                parseInt(
+                                                                                                    e.target.value
+                                                                                                ) || 0,
+                                                                                        }))
+                                                                                    }
+                                                                                    className="w-20 bg-transparent border-b border-slate-200 dark:border-white/10 focus:border-indigo-500 outline-none text-right font-black"
+                                                                                />
+                                                                            </div>
+                                                                        ) : (
+                                                                            formatCurrency(localPricing.insuranceTP)
+                                                                        )
+                                                                    }
+                                                                />
+                                                                {tpItems.map((item, idx) => (
+                                                                    <PricingRow
+                                                                        key={`tp-item-${item.id || idx}`}
+                                                                        isSub
+                                                                        label={
+                                                                            <span className="text-[10px] opacity-70 italic">
+                                                                                {item.name || item.label}
+                                                                            </span>
+                                                                        }
+                                                                        value={formatCurrency(
+                                                                            Number(item.price || item.amount || 0)
+                                                                        )}
+                                                                        description={
+                                                                            item.breakdown &&
+                                                                            Array.isArray(item.breakdown) && (
+                                                                                <div className="flex flex-col gap-1">
+                                                                                    {item.breakdown.map(
+                                                                                        (b: any, bIdx: number) => (
+                                                                                            <span
+                                                                                                key={`${item.id || idx}-b-${bIdx}`}
+                                                                                                className="text-[8px] text-slate-400 uppercase font-bold tracking-widest"
+                                                                                            >
+                                                                                                {b.label}: ₹
+                                                                                                {Number(
+                                                                                                    b.amount || 0
+                                                                                                ).toLocaleString(
+                                                                                                    'en-IN'
+                                                                                                )}
+                                                                                            </span>
+                                                                                        )
+                                                                                    )}
+                                                                                </div>
+                                                                            )
+                                                                        }
+                                                                    />
+                                                                ))}
+
+                                                                {/* OWN DAMAGE (OD) */}
+                                                                <PricingRow
+                                                                    isSub
+                                                                    label={`${OD_LABEL} (OD)`}
+                                                                    value={
+                                                                        isEditable ? (
+                                                                            <div className="flex items-center gap-1">
+                                                                                <span className="text-slate-400">
+                                                                                    ₹
+                                                                                </span>
+                                                                                <input
+                                                                                    type="number"
+                                                                                    value={localPricing.insuranceOD}
+                                                                                    onChange={e =>
+                                                                                        setLocalPricing(p => ({
+                                                                                            ...p,
+                                                                                            insuranceOD:
+                                                                                                parseInt(
+                                                                                                    e.target.value
+                                                                                                ) || 0,
+                                                                                        }))
+                                                                                    }
+                                                                                    className="w-20 bg-transparent border-b border-slate-200 dark:border-white/10 focus:border-indigo-500 outline-none text-right font-black"
+                                                                                />
+                                                                            </div>
+                                                                        ) : (
+                                                                            formatCurrency(localPricing.insuranceOD)
+                                                                        )
+                                                                    }
+                                                                />
+                                                                {odItems.map((item, idx) => (
+                                                                    <PricingRow
+                                                                        key={`od-item-${item.id || idx}`}
+                                                                        isSub
+                                                                        label={
+                                                                            <span className="text-[10px] opacity-70 italic">
+                                                                                {item.name || item.label}
+                                                                            </span>
+                                                                        }
+                                                                        value={formatCurrency(
+                                                                            Number(item.price || item.amount || 0)
+                                                                        )}
+                                                                        description={
+                                                                            item.breakdown &&
+                                                                            Array.isArray(item.breakdown) && (
+                                                                                <div className="flex flex-col gap-1">
+                                                                                    {item.breakdown.map(
+                                                                                        (b: any, bIdx: number) => (
+                                                                                            <span
+                                                                                                key={`${item.id || idx}-b-${bIdx}`}
+                                                                                                className="text-[8px] text-slate-400 uppercase font-bold tracking-widest"
+                                                                                            >
+                                                                                                {b.label}: ₹
+                                                                                                {Number(
+                                                                                                    b.amount || 0
+                                                                                                ).toLocaleString(
+                                                                                                    'en-IN'
+                                                                                                )}
+                                                                                            </span>
+                                                                                        )
+                                                                                    )}
+                                                                                </div>
+                                                                            )
+                                                                        }
+                                                                    />
+                                                                ))}
+
+                                                                {/* OPTIONAL ADD-ONS */}
+                                                                <div className="py-2 px-6 border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.02]">
+                                                                    <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                                                                        Optional Add-ons
+                                                                    </div>
+                                                                </div>
+                                                                {allAddons.map((addon, idx) => (
+                                                                    <PricingRow
+                                                                        key={addon.id || `addon-${idx}`}
+                                                                        isSub
+                                                                        label={addon.name || addon.label}
+                                                                        value={
+                                                                            addon.selected !== undefined
+                                                                                ? addon.selected
+                                                                                    ? formatCurrency(
+                                                                                          addon.amount ||
+                                                                                              addon.price ||
+                                                                                              0
+                                                                                      )
+                                                                                    : 'Not Selected'
+                                                                                : formatCurrency(
                                                                                       addon.amount || addon.price || 0
                                                                                   )
-                                                                                : 'Not Selected'
-                                                                            : formatCurrency(
-                                                                                  addon.amount || addon.price || 0
-                                                                              )
-                                                                    }
-                                                                    description={
-                                                                        <div className="flex flex-col gap-1">
-                                                                            {addon.breakdown &&
-                                                                                Array.isArray(addon.breakdown) &&
-                                                                                addon.breakdown.map(
-                                                                                    (b: any, bIdx: number) => (
-                                                                                        <span
-                                                                                            key={`${addon.id || idx}-b-${bIdx}`}
-                                                                                            className="text-[8px] text-slate-400 uppercase font-bold tracking-widest"
-                                                                                        >
-                                                                                            {b.label}: ₹
-                                                                                            {Number(
-                                                                                                b.amount || 0
-                                                                                            ).toLocaleString('en-IN')}
-                                                                                        </span>
-                                                                                    )
-                                                                                )}
-                                                                            {addon.basePrice !== undefined && (
-                                                                                <span className="text-[8px] text-slate-400 uppercase font-bold tracking-widest">
-                                                                                    Base: ₹
-                                                                                    {Number(
-                                                                                        addon.basePrice || 0
-                                                                                    ).toLocaleString('en-IN')}
-                                                                                </span>
-                                                                            )}
-                                                                            {addon.discountPrice !== null &&
-                                                                                addon.discountPrice !== undefined && (
-                                                                                    <span className="text-[8px] text-emerald-500 uppercase font-bold tracking-widest">
-                                                                                        Offer: ₹
+                                                                        }
+                                                                        description={
+                                                                            <div className="flex flex-col gap-1">
+                                                                                {addon.breakdown &&
+                                                                                    Array.isArray(addon.breakdown) &&
+                                                                                    addon.breakdown.map(
+                                                                                        (b: any, bIdx: number) => (
+                                                                                            <span
+                                                                                                key={`${addon.id || idx}-b-${bIdx}`}
+                                                                                                className="text-[8px] text-slate-400 uppercase font-bold tracking-widest"
+                                                                                            >
+                                                                                                {b.label}: ₹
+                                                                                                {Number(
+                                                                                                    b.amount || 0
+                                                                                                ).toLocaleString(
+                                                                                                    'en-IN'
+                                                                                                )}
+                                                                                            </span>
+                                                                                        )
+                                                                                    )}
+                                                                                {addon.basePrice !== undefined && (
+                                                                                    <span className="text-[8px] text-slate-400 uppercase font-bold tracking-widest">
+                                                                                        Base: ₹
                                                                                         {Number(
-                                                                                            addon.discountPrice || 0
+                                                                                            addon.basePrice || 0
                                                                                         ).toLocaleString('en-IN')}
                                                                                     </span>
                                                                                 )}
-                                                                        </div>
-                                                                    }
-                                                                    extra={
-                                                                        addon.selected !== undefined && (
-                                                                            <div className="flex items-center gap-2">
-                                                                                {addon.selected ? (
-                                                                                    <div className="flex items-center gap-1 px-2 py-0.5 bg-emerald-500/10 text-emerald-500 rounded text-[8px] font-black uppercase tracking-widest">
-                                                                                        <CheckCircle2 size={10} />{' '}
-                                                                                        Active
-                                                                                    </div>
-                                                                                ) : (
-                                                                                    <div className="text-[8px] font-bold text-slate-400 uppercase">
-                                                                                        None
-                                                                                    </div>
-                                                                                )}
+                                                                                {addon.discountPrice !== null &&
+                                                                                    addon.discountPrice !==
+                                                                                        undefined && (
+                                                                                        <span className="text-[8px] text-emerald-500 uppercase font-bold tracking-widest">
+                                                                                            Offer: ₹
+                                                                                            {Number(
+                                                                                                addon.discountPrice || 0
+                                                                                            ).toLocaleString('en-IN')}
+                                                                                        </span>
+                                                                                    )}
                                                                             </div>
-                                                                        )
-                                                                    }
-                                                                />
-                                                            ))}
-                                                        </>
-                                                    );
-                                                })()}
-                                                <PricingRow
-                                                    isSub
-                                                    isBold
-                                                    label="Net Premium"
-                                                    value={formatCurrency(
-                                                        localPricing.insuranceOD +
-                                                            localPricing.insuranceTP +
-                                                            localPricing.insuranceAddons
-                                                                .filter(a => a.selected)
-                                                                .reduce((sum, a) => sum + a.amount, 0)
-                                                    )}
-                                                />
-                                                <PricingRow
-                                                    isSub
-                                                    label="GST (18% GST)"
-                                                    value={formatCurrency(localPricing.insuranceGST)}
-                                                />
-                                            </PricingGroup>
-
-                                            {/* Accessories Group */}
-                                            <PricingGroup
-                                                title="Authorized Accessories"
-                                                icon={Bike}
-                                                total={formatCurrency(localPricing.accessoriesTotal)}
-                                                isExpanded={groups.accessories}
-                                                onToggle={() => setGroups(g => ({ ...g, accessories: !g.accessories }))}
-                                            >
-                                                {localPricing.accessories.map(acc => (
+                                                                        }
+                                                                        extra={
+                                                                            addon.selected !== undefined && (
+                                                                                <div className="flex items-center gap-2">
+                                                                                    {addon.selected ? (
+                                                                                        <div className="flex items-center gap-1 px-2 py-0.5 bg-emerald-500/10 text-emerald-500 rounded text-[8px] font-black uppercase tracking-widest">
+                                                                                            <CheckCircle2 size={10} />{' '}
+                                                                                            Active
+                                                                                        </div>
+                                                                                    ) : (
+                                                                                        <div className="text-[8px] font-bold text-slate-400 uppercase">
+                                                                                            None
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
+                                                                            )
+                                                                        }
+                                                                    />
+                                                                ))}
+                                                            </>
+                                                        );
+                                                    })()}
                                                     <PricingRow
-                                                        key={acc.id}
                                                         isSub
-                                                        label={`${acc.name}${acc.qty && acc.qty > 1 ? ` ×${acc.qty}` : ''}`}
-                                                        value={
-                                                            acc.selected
-                                                                ? formatCurrency((acc.price || 0) * (acc.qty || 1))
-                                                                : 'Excluded'
-                                                        }
-                                                        description={
-                                                            acc.selected &&
-                                                            ((acc.basePrice || 0) > 0 || acc.discountPrice !== null) ? (
-                                                                <div className="flex flex-col gap-1">
-                                                                    <span className="text-[8px] text-slate-400 uppercase font-bold tracking-widest">
-                                                                        Base: ₹
-                                                                        {Number(
-                                                                            acc.basePrice || acc.price || 0
-                                                                        ).toLocaleString('en-IN')}
-                                                                    </span>
-                                                                    {acc.price === 0 && (acc.basePrice || 0) > 0 ? (
-                                                                        <span className="text-[8px] text-emerald-500 uppercase font-bold tracking-widest">
-                                                                            100% Discount (Bundle)
-                                                                        </span>
-                                                                    ) : (
-                                                                        acc.discountPrice !== null &&
-                                                                        acc.discountPrice !== undefined && (
-                                                                            <span className="text-[8px] text-emerald-500 uppercase font-bold tracking-widest">
-                                                                                Offer: ₹
-                                                                                {Number(
-                                                                                    acc.discountPrice || 0
-                                                                                ).toLocaleString('en-IN')}
-                                                                            </span>
-                                                                        )
-                                                                    )}
-                                                                </div>
-                                                            ) : undefined
-                                                        }
-                                                        extra={
-                                                            <div className="flex items-center gap-2">
-                                                                {acc.selected ? (
-                                                                    <div className="flex items-center gap-1 px-2 py-0.5 bg-indigo-500/10 dark:bg-white/10 text-indigo-500 dark:text-white rounded text-[8px] font-black uppercase tracking-widest">
-                                                                        <CheckCircle2 size={10} /> Selected
-                                                                    </div>
-                                                                ) : (
-                                                                    <div className="text-[8px] font-bold text-slate-400 uppercase">
-                                                                        Excluded
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        }
+                                                        isBold
+                                                        label="Net Premium"
+                                                        value={formatCurrency(
+                                                            localPricing.insuranceOD +
+                                                                localPricing.insuranceTP +
+                                                                localPricing.insuranceAddons
+                                                                    .filter(a => a.selected)
+                                                                    .reduce((sum, a) => sum + a.amount, 0)
+                                                        )}
                                                     />
-                                                ))}
-                                            </PricingGroup>
+                                                    <PricingRow
+                                                        isSub
+                                                        label="GST (18% GST)"
+                                                        value={formatCurrency(localPricing.insuranceGST)}
+                                                    />
+                                                </PricingGroup>
 
-                                            {/* Services Group */}
-                                            {(localPricing.services || []).length > 0 && (
+                                                {/* Accessories Group */}
                                                 <PricingGroup
-                                                    title="Services & Warranties"
-                                                    icon={Wrench}
-                                                    total={formatCurrency(localPricing.servicesTotal || 0)}
-                                                    isExpanded={groups.services}
-                                                    onToggle={() => setGroups(g => ({ ...g, services: !g.services }))}
+                                                    title="Authorized Accessories"
+                                                    icon={Bike}
+                                                    total={formatCurrency(localPricing.accessoriesTotal)}
+                                                    isExpanded={groups.accessories}
+                                                    onToggle={() =>
+                                                        setGroups(g => ({ ...g, accessories: !g.accessories }))
+                                                    }
                                                 >
-                                                    {(localPricing.services || []).map((svc: any) => (
+                                                    {localPricing.accessories.map(acc => (
                                                         <PricingRow
-                                                            key={svc.id}
+                                                            key={acc.id}
                                                             isSub
-                                                            label={`${svc.name}${svc.qty && svc.qty > 1 ? ` ×${svc.qty}` : ''}`}
+                                                            label={`${acc.name}${acc.qty && acc.qty > 1 ? ` ×${acc.qty}` : ''}`}
                                                             value={
-                                                                svc.selected
-                                                                    ? formatCurrency((svc.price || 0) * (svc.qty || 1))
+                                                                acc.selected
+                                                                    ? formatCurrency((acc.price || 0) * (acc.qty || 1))
                                                                     : 'Excluded'
                                                             }
                                                             description={
-                                                                svc.selected && (svc.basePrice || svc.discountPrice) ? (
+                                                                acc.selected &&
+                                                                ((acc.basePrice || 0) > 0 ||
+                                                                    acc.discountPrice !== null) ? (
                                                                     <div className="flex flex-col gap-1">
                                                                         <span className="text-[8px] text-slate-400 uppercase font-bold tracking-widest">
                                                                             Base: ₹
                                                                             {Number(
-                                                                                svc.basePrice || svc.price || 0
+                                                                                acc.basePrice || acc.price || 0
                                                                             ).toLocaleString('en-IN')}
                                                                         </span>
-                                                                        {svc.discountPrice !== null &&
-                                                                            svc.discountPrice !== undefined && (
+                                                                        {acc.price === 0 && (acc.basePrice || 0) > 0 ? (
+                                                                            <span className="text-[8px] text-emerald-500 uppercase font-bold tracking-widest">
+                                                                                100% Discount (Bundle)
+                                                                            </span>
+                                                                        ) : (
+                                                                            acc.discountPrice !== null &&
+                                                                            acc.discountPrice !== undefined && (
                                                                                 <span className="text-[8px] text-emerald-500 uppercase font-bold tracking-widest">
                                                                                     Offer: ₹
                                                                                     {Number(
-                                                                                        svc.discountPrice || 0
+                                                                                        acc.discountPrice || 0
                                                                                     ).toLocaleString('en-IN')}
                                                                                 </span>
-                                                                            )}
+                                                                            )
+                                                                        )}
                                                                     </div>
                                                                 ) : undefined
                                                             }
                                                             extra={
                                                                 <div className="flex items-center gap-2">
-                                                                    {svc.selected ? (
-                                                                        <div className="flex items-center gap-1 px-2 py-0.5 bg-teal-500/10 dark:bg-white/10 text-teal-500 dark:text-white rounded text-[8px] font-black uppercase tracking-widest">
-                                                                            <CheckCircle2 size={10} /> Active
+                                                                    {acc.selected ? (
+                                                                        <div className="flex items-center gap-1 px-2 py-0.5 bg-indigo-500/10 dark:bg-white/10 text-indigo-500 dark:text-white rounded text-[8px] font-black uppercase tracking-widest">
+                                                                            <CheckCircle2 size={10} /> Selected
                                                                         </div>
                                                                     ) : (
                                                                         <div className="text-[8px] font-bold text-slate-400 uppercase">
@@ -5177,217 +5490,290 @@ export default function QuoteEditorTable({
                                                         />
                                                     ))}
                                                 </PricingGroup>
-                                            )}
 
-                                            {(localPricing.warrantyItems || []).length > 0 && (
-                                                <div className="border-b border-slate-100 dark:border-white/5 last:border-0">
-                                                    <div className="w-full flex items-center justify-between py-4 px-6">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-500 dark:text-white/40">
-                                                                <ShieldCheck size={16} />
+                                                {/* Services Group */}
+                                                {(localPricing.services || []).length > 0 && (
+                                                    <PricingGroup
+                                                        title="Services & Warranties"
+                                                        icon={Wrench}
+                                                        total={formatCurrency(localPricing.servicesTotal || 0)}
+                                                        isExpanded={groups.services}
+                                                        onToggle={() =>
+                                                            setGroups(g => ({ ...g, services: !g.services }))
+                                                        }
+                                                    >
+                                                        {(localPricing.services || []).map((svc: any) => (
+                                                            <PricingRow
+                                                                key={svc.id}
+                                                                isSub
+                                                                label={`${svc.name}${svc.qty && svc.qty > 1 ? ` ×${svc.qty}` : ''}`}
+                                                                value={
+                                                                    svc.selected
+                                                                        ? formatCurrency(
+                                                                              (svc.price || 0) * (svc.qty || 1)
+                                                                          )
+                                                                        : 'Excluded'
+                                                                }
+                                                                description={
+                                                                    svc.selected &&
+                                                                    (svc.basePrice || svc.discountPrice) ? (
+                                                                        <div className="flex flex-col gap-1">
+                                                                            <span className="text-[8px] text-slate-400 uppercase font-bold tracking-widest">
+                                                                                Base: ₹
+                                                                                {Number(
+                                                                                    svc.basePrice || svc.price || 0
+                                                                                ).toLocaleString('en-IN')}
+                                                                            </span>
+                                                                            {svc.discountPrice !== null &&
+                                                                                svc.discountPrice !== undefined && (
+                                                                                    <span className="text-[8px] text-emerald-500 uppercase font-bold tracking-widest">
+                                                                                        Offer: ₹
+                                                                                        {Number(
+                                                                                            svc.discountPrice || 0
+                                                                                        ).toLocaleString('en-IN')}
+                                                                                    </span>
+                                                                                )}
+                                                                        </div>
+                                                                    ) : undefined
+                                                                }
+                                                                extra={
+                                                                    <div className="flex items-center gap-2">
+                                                                        {svc.selected ? (
+                                                                            <div className="flex items-center gap-1 px-2 py-0.5 bg-teal-500/10 dark:bg-white/10 text-teal-500 dark:text-white rounded text-[8px] font-black uppercase tracking-widest">
+                                                                                <CheckCircle2 size={10} /> Active
+                                                                            </div>
+                                                                        ) : (
+                                                                            <div className="text-[8px] font-bold text-slate-400 uppercase">
+                                                                                Excluded
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                }
+                                                            />
+                                                        ))}
+                                                    </PricingGroup>
+                                                )}
+
+                                                {(localPricing.warrantyItems || []).length > 0 && (
+                                                    <div className="border-b border-slate-100 dark:border-white/5 last:border-0">
+                                                        <div className="w-full flex items-center justify-between py-4 px-6">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-500 dark:text-white/40">
+                                                                    <ShieldCheck size={16} />
+                                                                </div>
+                                                                <span className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-tight">
+                                                                    Warranty & Protection
+                                                                </span>
                                                             </div>
-                                                            <span className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-tight">
-                                                                Warranty & Protection
+                                                            <span className="text-sm font-black text-slate-900 dark:text-white tabular-nums">
+                                                                Included
                                                             </span>
                                                         </div>
-                                                        <span className="text-sm font-black text-slate-900 dark:text-white tabular-nums">
-                                                            Included
-                                                        </span>
+                                                        <div className="bg-slate-50/20 dark:bg-white/[0.005]">
+                                                            {(localPricing.warrantyItems || []).map(
+                                                                (w: any, idx: number) => (
+                                                                    <PricingRow
+                                                                        key={w.id || idx}
+                                                                        isSub
+                                                                        label={w.name || w.label || 'Warranty'}
+                                                                        value={
+                                                                            w.price
+                                                                                ? formatCurrency(Number(w.price || 0))
+                                                                                : 'Included'
+                                                                        }
+                                                                    />
+                                                                )
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                    <div className="bg-slate-50/20 dark:bg-white/[0.005]">
-                                                        {(localPricing.warrantyItems || []).map(
-                                                            (w: any, idx: number) => (
-                                                                <PricingRow
-                                                                    key={w.id || idx}
-                                                                    isSub
-                                                                    label={w.name || w.label || 'Warranty'}
-                                                                    value={
-                                                                        w.price
-                                                                            ? formatCurrency(Number(w.price || 0))
-                                                                            : 'Included'
-                                                                    }
-                                                                />
-                                                            )
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            )}
-
-                                            {/* Discount Section */}
-                                            <div className="bg-emerald-500/[0.03] dark:bg-emerald-500/[0.01]">
-                                                {localPricing.referralApplied && (
-                                                    <PricingRow
-                                                        label="Referral Bonus"
-                                                        value={formatCurrency(-Number(localPricing.referralBonus || 0))}
-                                                    />
                                                 )}
-                                            </div>
-                                            <div className="py-6 px-8 bg-amber-500/[0.05] dark:bg-amber-500/[0.02]">
-                                                <div className="flex items-center justify-between group">
-                                                    <div className="flex flex-col gap-1">
-                                                        <span className="text-xs font-black text-amber-600 dark:text-amber-400 uppercase tracking-tight">
-                                                            Manager Discretionary
-                                                        </span>
-                                                        <span className="text-[9px] text-amber-500/60 font-medium">
-                                                            Applied for special commercial sessions
-                                                        </span>
+
+                                                {/* Discount Section */}
+                                                <div className="bg-emerald-500/[0.03] dark:bg-emerald-500/[0.01]">
+                                                    {localPricing.referralApplied && (
+                                                        <PricingRow
+                                                            label="Referral Bonus"
+                                                            value={formatCurrency(
+                                                                -Number(localPricing.referralBonus || 0)
+                                                            )}
+                                                        />
+                                                    )}
+                                                </div>
+                                                <div className="py-6 px-8 bg-amber-500/[0.05] dark:bg-amber-500/[0.02]">
+                                                    <div className="flex items-center justify-between group">
+                                                        <div className="flex flex-col gap-1">
+                                                            <span className="text-xs font-black text-amber-600 dark:text-amber-400 uppercase tracking-tight">
+                                                                Manager Discretionary
+                                                            </span>
+                                                            <span className="text-[9px] text-amber-500/60 font-medium">
+                                                                Applied for special commercial sessions
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex items-center gap-2 bg-white dark:bg-white/5 rounded-xl border border-amber-200/50 dark:border-amber-500/20 p-2 shadow-sm transition-all focus-within:ring-2 focus-within:ring-amber-500/30">
+                                                            <span className="text-xs font-black text-amber-600">
+                                                                -₹
+                                                            </span>
+                                                            <input
+                                                                type="number"
+                                                                value={managerDiscountInput}
+                                                                onChange={e => {
+                                                                    setManagerDiscountInput(e.target.value);
+                                                                    setHasChanges(true);
+                                                                }}
+                                                                className="w-24 bg-transparent text-right font-black text-amber-700 dark:text-amber-400 focus:outline-none placeholder-amber-200 text-sm"
+                                                                placeholder="0"
+                                                            />
+                                                        </div>
                                                     </div>
-                                                    <div className="flex items-center gap-2 bg-white dark:bg-white/5 rounded-xl border border-amber-200/50 dark:border-amber-500/20 p-2 shadow-sm transition-all focus-within:ring-2 focus-within:ring-amber-500/30">
-                                                        <span className="text-xs font-black text-amber-600">-₹</span>
+                                                    <div className="mt-4">
                                                         <input
-                                                            type="number"
-                                                            value={managerDiscountInput}
+                                                            type="text"
+                                                            value={managerNote}
                                                             onChange={e => {
-                                                                setManagerDiscountInput(e.target.value);
+                                                                setManagerNote(e.target.value);
                                                                 setHasChanges(true);
                                                             }}
-                                                            className="w-24 bg-transparent text-right font-black text-amber-700 dark:text-amber-400 focus:outline-none placeholder-amber-200 text-sm"
-                                                            placeholder="0"
+                                                            className="w-full bg-white dark:bg-white/5 border border-amber-200/50 dark:border-amber-500/20 rounded-xl px-4 py-2.5 text-[10px] font-bold text-amber-900 dark:text-amber-400 placeholder:text-amber-500/30 focus:outline-none focus:ring-1 focus:ring-amber-500/30 shadow-sm"
+                                                            placeholder="Note: Reason for discretionary discount..."
                                                         />
                                                     </div>
                                                 </div>
-                                                <div className="mt-4">
-                                                    <input
-                                                        type="text"
-                                                        value={managerNote}
-                                                        onChange={e => {
-                                                            setManagerNote(e.target.value);
-                                                            setHasChanges(true);
-                                                        }}
-                                                        className="w-full bg-white dark:bg-white/5 border border-amber-200/50 dark:border-amber-500/20 rounded-xl px-4 py-2.5 text-[10px] font-bold text-amber-900 dark:text-amber-400 placeholder:text-amber-500/30 focus:outline-none focus:ring-1 focus:ring-amber-500/30 shadow-sm"
-                                                        placeholder="Note: Reason for discretionary discount..."
+
+                                                {/* MARKETPLACE REDIRECT (Instructional) */}
+                                                <div
+                                                    className="px-8 py-6 bg-slate-50 dark:bg-white/[0.01] border-t border-slate-100 dark:border-white/5 flex items-center justify-between group cursor-pointer hover:bg-slate-100 dark:hover:bg-white/[0.02] transition-all"
+                                                    onClick={async () => {
+                                                        const { getQuoteMarketplaceUrl } =
+                                                            await import('@/actions/crm');
+                                                        const res = await getQuoteMarketplaceUrl(quote.id);
+                                                        if (res.success && res.url) {
+                                                            window.open(res.url, '_blank');
+                                                        } else {
+                                                            toast.error('Could not resolve marketplace link');
+                                                        }
+                                                    }}
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-8 h-8 rounded-xl bg-slate-900 flex items-center justify-center text-white shadow-lg">
+                                                            <Share2 size={14} />
+                                                        </div>
+                                                        <div className="flex flex-col">
+                                                            <span className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-tighter">
+                                                                Configuration Locked
+                                                            </span>
+                                                            <span className="text-[9px] text-slate-500 font-medium tracking-tight">
+                                                                Click to modify vehicle, color, or addons on Marketplace
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <ArrowRight
+                                                        size={16}
+                                                        className="text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white transition-all transform group-hover:translate-x-1"
                                                     />
                                                 </div>
                                             </div>
+                                        )}
 
-                                            {/* MARKETPLACE REDIRECT (Instructional) */}
-                                            <div
-                                                className="px-8 py-6 bg-slate-50 dark:bg-white/[0.01] border-t border-slate-100 dark:border-white/5 flex items-center justify-between group cursor-pointer hover:bg-slate-100 dark:hover:bg-white/[0.02] transition-all"
-                                                onClick={async () => {
-                                                    const { getQuoteMarketplaceUrl } = await import('@/actions/crm');
-                                                    const res = await getQuoteMarketplaceUrl(quote.id);
-                                                    if (res.success && res.url) {
-                                                        window.open(res.url, '_blank');
-                                                    } else {
-                                                        toast.error('Could not resolve marketplace link');
-                                                    }
-                                                }}
-                                            >
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-8 h-8 rounded-xl bg-slate-900 flex items-center justify-center text-white shadow-lg">
-                                                        <Share2 size={14} />
+                                        {/* FINAL TOTAL BAR (Only show if pricing or finance is expanded for context) */}
+                                        {(groups.pricing || groups.finance) && (
+                                            <div className="bg-slate-900 flex flex-col sm:flex-row items-center justify-between p-10 gap-8">
+                                                <div className="flex flex-col gap-1 text-center sm:text-left">
+                                                    <span className="text-[9px] font-black text-white/30 uppercase tracking-[0.3em]">
+                                                        Net Payable Amount
+                                                    </span>
+                                                    <div className="text-4xl font-black text-white tracking-tighter tabular-nums">
+                                                        {formatCurrency(localPricing.finalTotal)}
                                                     </div>
-                                                    <div className="flex flex-col">
-                                                        <span className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-tighter">
-                                                            Configuration Locked
-                                                        </span>
-                                                        <span className="text-[9px] text-slate-500 font-medium tracking-tight">
-                                                            Click to modify vehicle, color, or addons on Marketplace
-                                                        </span>
+                                                    <div className="flex items-center gap-3 mt-1 justify-center sm:justify-start">
+                                                        <div className="flex items-center gap-1 text-[9px] font-bold text-white/40 uppercase">
+                                                            <CheckCircle2 size={10} className="text-emerald-500" />{' '}
+                                                            On-Road Total
+                                                        </div>
+                                                        <div className="w-1 h-1 rounded-full bg-white/10" />
+                                                        <div className="flex items-center gap-1 text-[9px] font-bold text-white/40 uppercase">
+                                                            <Clock
+                                                                size={10}
+                                                                className="text-indigo-500 dark:text-white"
+                                                            />{' '}
+                                                            24h Validity
+                                                        </div>
                                                     </div>
-                                                </div>
-                                                <ArrowRight
-                                                    size={16}
-                                                    className="text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white transition-all transform group-hover:translate-x-1"
-                                                />
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* FINAL TOTAL BAR (Only show if pricing or finance is expanded for context) */}
-                                    {(groups.pricing || groups.finance) && (
-                                        <div className="bg-slate-900 flex flex-col sm:flex-row items-center justify-between p-10 gap-8">
-                                            <div className="flex flex-col gap-1 text-center sm:text-left">
-                                                <span className="text-[9px] font-black text-white/30 uppercase tracking-[0.3em]">
-                                                    Net Payable Amount
-                                                </span>
-                                                <div className="text-4xl font-black text-white tracking-tighter tabular-nums">
-                                                    {formatCurrency(localPricing.finalTotal)}
-                                                </div>
-                                                <div className="flex items-center gap-3 mt-1 justify-center sm:justify-start">
-                                                    <div className="flex items-center gap-1 text-[9px] font-bold text-white/40 uppercase">
-                                                        <CheckCircle2 size={10} className="text-emerald-500" /> On-Road
-                                                        Total
-                                                    </div>
-                                                    <div className="w-1 h-1 rounded-full bg-white/10" />
-                                                    <div className="flex items-center gap-1 text-[9px] font-bold text-white/40 uppercase">
-                                                        <Clock size={10} className="text-indigo-500 dark:text-white" />{' '}
-                                                        24h Validity
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <button
-                                                onClick={
-                                                    mode === 'booking' ? handleBookingPrimaryAction : onSendToCustomer
-                                                }
-                                                disabled={
-                                                    mode === 'booking' ? isSaving || !bookingPrimaryAction : false
-                                                }
-                                                className="inline-flex items-center justify-center bg-white hover:bg-slate-100 text-slate-900 rounded-xl px-8 h-12 text-xs font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap shadow-lg"
-                                            >
-                                                {mode === 'booking' ? (
-                                                    <>
-                                                        <Tag size={16} className="mr-2" />
-                                                        {isSaving
-                                                            ? 'Updating...'
-                                                            : bookingPrimaryAction?.label || 'No Action'}
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <Send size={16} className="mr-2" />
-                                                        Release Quote
-                                                    </>
-                                                )}
-                                            </button>
-                                        </div>
-                                    )}
-
-                                    {/* FINANCE SUMMARY (Always show at bottom if LOAN) */}
-                                    {quote.financeMode === 'LOAN' && (
-                                        <div className="mx-8 mb-8 p-6 bg-indigo-50 dark:bg-indigo-500/5 rounded-3xl border border-indigo-100 dark:border-indigo-500/10 flex flex-col md:flex-row items-center justify-between gap-6">
-                                            <div className="flex items-center gap-4">
-                                                <div className="w-10 h-10 bg-white dark:bg-white/10 rounded-xl flex items-center justify-center text-indigo-600 dark:text-white shadow-sm">
-                                                    <BarChart3 size={20} />
-                                                </div>
-                                                <div>
-                                                    <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest block mb-0.5">
-                                                        Estimated Finance Summary
-                                                    </span>
-                                                    <h3 className="text-sm font-black text-slate-900 dark:text-white">
-                                                        {quote.finance?.bankName || 'Standard Finance Scheme'}
-                                                    </h3>
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center gap-8">
-                                                <div className="text-center md:text-left">
-                                                    <span className="text-[8px] font-bold text-slate-400 uppercase block mb-0.5">
-                                                        Monthly EMI
-                                                    </span>
-                                                    <span className="text-lg font-black text-slate-900 dark:text-white tabular-nums">
-                                                        ₹{quote.finance?.emi?.toLocaleString() || '0'}/mo
-                                                    </span>
-                                                </div>
-                                                <div className="text-center md:text-left">
-                                                    <span className="text-[8px] font-bold text-slate-400 uppercase block mb-0.5">
-                                                        Down Payment
-                                                    </span>
-                                                    <span className="text-lg font-black text-slate-900 dark:text-white tabular-nums">
-                                                        ₹{quote.finance?.downPayment?.toLocaleString() || '0'}
-                                                    </span>
                                                 </div>
                                                 <button
-                                                    onClick={() => setActiveTab('FINANCE')}
-                                                    className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-500/20"
+                                                    onClick={
+                                                        mode === 'booking'
+                                                            ? handleBookingPrimaryAction
+                                                            : onSendToCustomer
+                                                    }
+                                                    disabled={
+                                                        mode === 'booking' ? isSaving || !bookingPrimaryAction : false
+                                                    }
+                                                    className="inline-flex items-center justify-center bg-white hover:bg-slate-100 text-slate-900 rounded-xl px-8 h-12 text-xs font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap shadow-lg"
                                                 >
-                                                    View Details
+                                                    {mode === 'booking' ? (
+                                                        <>
+                                                            <Tag size={16} className="mr-2" />
+                                                            {isSaving
+                                                                ? 'Updating...'
+                                                                : bookingPrimaryAction?.label || 'No Action'}
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Send size={16} className="mr-2" />
+                                                            Release Quote
+                                                        </>
+                                                    )}
                                                 </button>
                                             </div>
-                                        </div>
-                                    )}
-                                    {/* ALTERNATIVE RECOMMENDATIONS */}
-                                    <AlternativeBikesSection recommendations={alternativeBikes} />
+                                        )}
+
+                                        {/* FINANCE SUMMARY (Always show at bottom if LOAN) */}
+                                        {quote.financeMode === 'LOAN' && (
+                                            <div className="mx-8 mb-8 p-6 bg-indigo-50 dark:bg-indigo-500/5 rounded-3xl border border-indigo-100 dark:border-indigo-500/10 flex flex-col md:flex-row items-center justify-between gap-6">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-10 h-10 bg-white dark:bg-white/10 rounded-xl flex items-center justify-center text-indigo-600 dark:text-white shadow-sm">
+                                                        <BarChart3 size={20} />
+                                                    </div>
+                                                    <div>
+                                                        <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest block mb-0.5">
+                                                            Estimated Finance Summary
+                                                        </span>
+                                                        <h3 className="text-sm font-black text-slate-900 dark:text-white">
+                                                            {quote.finance?.bankName || 'Standard Finance Scheme'}
+                                                        </h3>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-8">
+                                                    <div className="text-center md:text-left">
+                                                        <span className="text-[8px] font-bold text-slate-400 uppercase block mb-0.5">
+                                                            Monthly EMI
+                                                        </span>
+                                                        <span className="text-lg font-black text-slate-900 dark:text-white tabular-nums">
+                                                            ₹{quote.finance?.emi?.toLocaleString() || '0'}/mo
+                                                        </span>
+                                                    </div>
+                                                    <div className="text-center md:text-left">
+                                                        <span className="text-[8px] font-bold text-slate-400 uppercase block mb-0.5">
+                                                            Down Payment
+                                                        </span>
+                                                        <span className="text-lg font-black text-slate-900 dark:text-white tabular-nums">
+                                                            ₹{quote.finance?.downPayment?.toLocaleString() || '0'}
+                                                        </span>
+                                                    </div>
+                                                    <button
+                                                        onClick={() => setActiveTab('FINANCE')}
+                                                        className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-500/20"
+                                                    >
+                                                        View Details
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {/* ALTERNATIVE RECOMMENDATIONS */}
+                                        <AlternativeBikesSection recommendations={alternativeBikes} />
+                                    </div>
                                 </div>
-                            </div>
+                            )}
                         </>
                     )}
 
