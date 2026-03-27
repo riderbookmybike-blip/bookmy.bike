@@ -1085,8 +1085,9 @@ export const UniversalCatalog = ({
         setShowDiscoveryBar,
     ]);
 
-    // Location gate: catalog stays in DOM for SEO, but overlaid with modal when location missing
-    const showLocationGate = needsLocation || serviceability.status === 'unserviceable';
+    // Catalog must remain state-first and non-blocking.
+    // Hard gate only when explicit location is required by caller.
+    const showLocationGate = needsLocation;
 
     if (showLocationGate) {
         return (

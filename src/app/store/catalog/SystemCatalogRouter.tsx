@@ -47,7 +47,7 @@ function SmartCatalogRouter({ initialItems, basePath = '/store' }: SystemCatalog
         isLoading: isClientLoading,
         needsLocation,
     } = useSystemCatalogLogic(leadId || undefined, {
-        allowStateOnly: false,
+        allowStateOnly: true,
         ssrItems: initialItems,
     });
     // clientItems is pre-seeded with initialItems; once hook resolves, it has
@@ -79,7 +79,7 @@ function DefaultCatalogRouter({ initialItems, basePath = '/store' }: SystemCatal
         items: clientItems,
         isLoading: isClientLoading,
         needsLocation,
-    } = useSystemCatalogLogic(leadId || undefined, { allowStateOnly: false, ssrItems: initialItems });
+    } = useSystemCatalogLogic(leadId || undefined, { allowStateOnly: true, ssrItems: initialItems });
     const currentItems = useMemo(
         () => selectLowestVariantPerModel(clientItems.length > 0 ? clientItems : initialItems),
         [clientItems, initialItems]

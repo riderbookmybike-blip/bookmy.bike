@@ -199,111 +199,130 @@ function latestIsoTimestamp(values: Array<string | null | undefined>): string | 
 }
 
 async function fetchSkuBookingCounts(days: number = 180): Promise<Map<string, number>> {
-    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
-    const { data, error } = await adminClient
-        .from('crm_bookings')
-        .select('sku_id, color_id, qty, status, is_deleted, created_at')
-        .gte('created_at', since)
-        .limit(50000);
+    return withCache(
+        async () => {
+            const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+            const { data, error } = await adminClient
+                .from('crm_bookings')
+                .select('sku_id, color_id, qty, status, is_deleted, created_at')
+                .gte('created_at', since)
+                .limit(50000);
 
-    if (error || !data) {
-        if (error) {
-            console.warn('[CatalogV2Fetch] Booking count fetch failed:', error.message);
+            if (error || !data) {
+                if (error) {
+                    console.warn('[CatalogV2Fetch] Booking count fetch failed:', error.message);
+                }
+                return new Map();
+            }
+
+            const counts = new Map<string, number>();
+            for (const row of data as Array<any>) {
+                if (row?.is_deleted === true) continue;
+                const status = String(row?.status || '').toUpperCase();
+                if (status.includes('CANCEL')) continue;
+                if (status.includes('REFUND')) continue;
+
+                const skuId = String(row?.sku_id || row?.color_id || '')
+                    .trim()
+                    .toLowerCase();
+                if (!skuId) continue;
+
+                const qty = Math.max(1, Number(row?.qty) || 1);
+                counts.set(skuId, (counts.get(skuId) || 0) + qty);
+            }
+
+            return counts;
+        },
+        ['catalog-booking-counts', String(days)],
+        {
+            revalidate: 3600,
+            tags: [CACHE_TAGS.catalog],
         }
-        return new Map();
-    }
-
-    const counts = new Map<string, number>();
-    for (const row of data as Array<any>) {
-        if (row?.is_deleted === true) continue;
-        const status = String(row?.status || '').toUpperCase();
-        if (status.includes('CANCEL')) continue;
-        if (status.includes('REFUND')) continue;
-
-        const skuId = String(row?.sku_id || row?.color_id || '')
-            .trim()
-            .toLowerCase();
-        if (!skuId) continue;
-
-        const qty = Math.max(1, Number(row?.qty) || 1);
-        counts.set(skuId, (counts.get(skuId) || 0) + qty);
-    }
-
-    return counts;
+    );
 }
 
 async function fetchSkuVisitorSignals(days: number = 30): Promise<VisitorSignalMaps> {
-    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
-    const [pageViewResult, skuSignalResult] = await Promise.all([
-        adminClient
-            .from('analytics_events')
-            .select('event_type, event_name, page_path, metadata')
-            .eq('event_type', 'PAGE_VIEW')
-            .gte('created_at', since)
-            .like('page_path', '/store/%/%/%')
-            .limit(30000),
-        adminClient
-            .from('analytics_events')
-            .select('event_type, event_name, page_path, metadata')
-            .eq('event_type', 'INTENT_SIGNAL')
-            .in('event_name', ['sku_view', 'sku_dwell'])
-            .gte('created_at', since)
-            .limit(30000),
-    ]);
+    return withCache(
+        async () => {
+            const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+            const [pageViewResult, skuSignalResult] = await Promise.all([
+                adminClient
+                    .from('analytics_events')
+                    .select('event_type, event_name, page_path, metadata')
+                    .eq('event_type', 'PAGE_VIEW')
+                    .gte('created_at', since)
+                    .like('page_path', '/store/%/%/%')
+                    .limit(30000),
+                adminClient
+                    .from('analytics_events')
+                    .select('event_type, event_name, page_path, metadata')
+                    .eq('event_type', 'INTENT_SIGNAL')
+                    .in('event_name', ['sku_view', 'sku_dwell'])
+                    .gte('created_at', since)
+                    .limit(30000),
+            ]);
 
-    if (pageViewResult.error || skuSignalResult.error) {
-        if (pageViewResult.error) {
-            console.warn('[CatalogV2Fetch] Page-view signal fetch failed:', pageViewResult.error.message);
+            if (pageViewResult.error || skuSignalResult.error) {
+                if (pageViewResult.error) {
+                    console.warn('[CatalogV2Fetch] Page-view signal fetch failed:', pageViewResult.error.message);
+                }
+                if (skuSignalResult.error) {
+                    console.warn('[CatalogV2Fetch] SKU signal fetch failed:', skuSignalResult.error.message);
+                }
+                return {
+                    skuViews: new Map(),
+                    skuDwellMs: new Map(),
+                    variantViews: new Map(),
+                    variantDwellMs: new Map(),
+                };
+            }
+
+            const data = [...(pageViewResult.data || []), ...(skuSignalResult.data || [])];
+
+            const skuViews = new Map<string, number>();
+            const skuDwellMs = new Map<string, number>();
+            const variantViews = new Map<string, number>();
+            const variantDwellMs = new Map<string, number>();
+
+            for (const row of data as Array<any>) {
+                const metadata =
+                    row?.metadata && typeof row.metadata === 'object' ? (row.metadata as Record<string, any>) : {};
+                const eventType = String(row?.event_type || '').toUpperCase();
+                const eventName = String(row?.event_name || '').toLowerCase();
+                const skuId = String(metadata.sku_id || '')
+                    .trim()
+                    .toLowerCase();
+
+                const metadataVariantKey = normalizeVariantKey(
+                    typeof metadata.model_slug === 'string' ? metadata.model_slug : null,
+                    typeof metadata.variant_slug === 'string' ? metadata.variant_slug : null
+                );
+                const pathVariantKey = extractVariantKeyFromPath(row?.page_path);
+                const variantKey = metadataVariantKey || pathVariantKey;
+
+                const rawDwell = Number(metadata.dwell_ms || metadata.dwellMs || 0);
+                const dwellMs = Number.isFinite(rawDwell) ? Math.max(0, rawDwell) : 0;
+
+                const isSkuView = eventName === 'sku_view';
+                const isSkuDwell = eventName === 'sku_dwell';
+                const isVariantPageView = eventType === 'PAGE_VIEW' && !!pathVariantKey;
+
+                if (isSkuView && skuId) appendMetric(skuViews, skuId, 1);
+                if (isSkuDwell && skuId) appendMetric(skuDwellMs, skuId, dwellMs);
+
+                if (isVariantPageView) appendMetric(variantViews, pathVariantKey, 1);
+                if (isSkuView && variantKey) appendMetric(variantViews, variantKey, 1);
+                if (isSkuDwell && variantKey) appendMetric(variantDwellMs, variantKey, dwellMs);
+            }
+
+            return { skuViews, skuDwellMs, variantViews, variantDwellMs };
+        },
+        ['catalog-visitor-signals', String(days)],
+        {
+            revalidate: 1800,
+            tags: [CACHE_TAGS.catalog],
         }
-        if (skuSignalResult.error) {
-            console.warn('[CatalogV2Fetch] SKU signal fetch failed:', skuSignalResult.error.message);
-        }
-        return {
-            skuViews: new Map(),
-            skuDwellMs: new Map(),
-            variantViews: new Map(),
-            variantDwellMs: new Map(),
-        };
-    }
-
-    const data = [...(pageViewResult.data || []), ...(skuSignalResult.data || [])];
-
-    const skuViews = new Map<string, number>();
-    const skuDwellMs = new Map<string, number>();
-    const variantViews = new Map<string, number>();
-    const variantDwellMs = new Map<string, number>();
-
-    for (const row of data as Array<any>) {
-        const metadata = row?.metadata && typeof row.metadata === 'object' ? (row.metadata as Record<string, any>) : {};
-        const eventType = String(row?.event_type || '').toUpperCase();
-        const eventName = String(row?.event_name || '').toLowerCase();
-        const skuId = String(metadata.sku_id || '')
-            .trim()
-            .toLowerCase();
-
-        const metadataVariantKey = normalizeVariantKey(
-            typeof metadata.model_slug === 'string' ? metadata.model_slug : null,
-            typeof metadata.variant_slug === 'string' ? metadata.variant_slug : null
-        );
-        const pathVariantKey = extractVariantKeyFromPath(row?.page_path);
-        const variantKey = metadataVariantKey || pathVariantKey;
-
-        const rawDwell = Number(metadata.dwell_ms || metadata.dwellMs || 0);
-        const dwellMs = Number.isFinite(rawDwell) ? Math.max(0, rawDwell) : 0;
-
-        const isSkuView = eventName === 'sku_view';
-        const isSkuDwell = eventName === 'sku_dwell';
-        const isVariantPageView = eventType === 'PAGE_VIEW' && !!pathVariantKey;
-
-        if (isSkuView && skuId) appendMetric(skuViews, skuId, 1);
-        if (isSkuDwell && skuId) appendMetric(skuDwellMs, skuId, dwellMs);
-
-        if (isVariantPageView) appendMetric(variantViews, pathVariantKey, 1);
-        if (isSkuView && variantKey) appendMetric(variantViews, variantKey, 1);
-        if (isSkuDwell && variantKey) appendMetric(variantDwellMs, variantKey, dwellMs);
-    }
-
-    return { skuViews, skuDwellMs, variantViews, variantDwellMs };
+    );
 }
 
 /**
