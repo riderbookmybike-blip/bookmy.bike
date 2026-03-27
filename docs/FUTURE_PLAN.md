@@ -3,6 +3,14 @@
 > Ye file un changes ke liye hai jo **sahi hain lekin abhi nahi karne** — jab bhi free time mile, yahan se pick karo.
 > Har item mein: kya karna hai, kyu, aur kahan impact padega.
 
+## 📁 Reference Files
+
+| File | Kya hai |
+|---|---|
+| [`docs/LOCATION_RTO_OPTIMIZATION.md`](./LOCATION_RTO_OPTIMIZATION.md) | Marketplace location gate removal + zone architecture + RTO audit (59 codes) + MMRDA composition. Resume from here. |
+| [District Audit Report](../.gemini/antigravity/brain/785c7c31-e918-491b-8d64-f08e494e8cdd/district_audit_report.md) | 200km district audit, distance table from 401203 (HQ-based), DB fixes applied |
+| [Zone Architecture Plan](../.gemini/antigravity/brain/785c7c31-e918-491b-8d64-f08e494e8cdd/implementation_plan.md) | Full SQL schema for zone tables, trigger, PDP code flow |
+
 ---
 
 ## 🟡 Schema / Database
@@ -109,6 +117,18 @@
   3. Cross-check PDP RTO + insurance display on 2-3 different models post-deploy
 - **Files:** `src/app/store/[make]/[model]/[variant]/page.tsx`
 - **Risk:** LOW-MEDIUM (data-dependent)
+- **Raised:** 2026-03-28
+
+### 10. [PENDING] PDP Performance — Remaining Optimization Steps
+- **Context:** 2 DB calls already removed (cat_reg_rules + cat_ins_rules, commit 1e907915). 11 more to go across 4 steps.
+- **Remaining steps in order:**
+  1. **Accessory fix** (-1 call): Remove `accPricingResult` from `cat_price_state_mh` for accessories → use `price_base` already in first `cat_skus` fetch
+  2. **Duplicate fetch fix** (-3 calls): `page.tsx` calls `resolveModel + fetchModelSkus + fetchVehicleVariants` AND `getPdpSnapshot` repeats all three — choose one path
+  3. **`cat_market_winners` table** (-5 calls): Single flat table (sku_id, winner_tenant_id, offer_amount, zone, district, state_code, country, computed_at). DB trigger on `cat_price_dealer` auto-updates on offer change. Replaces `getDealerDelta()` waterfall. MMRDA zone pre-seeded.
+  4. **PdpLocationGate → MMRDA default** (-1 call + UX): Default zone cookie = MMRDA, non-blocking banner replaces hard gate
+- **Expected result:** ~18 DB calls → ~6–7. Server time ~400–700ms → ~80–150ms
+- **Files:** `page.tsx`, `PdpLocationGate.tsx`, `storeSot.ts`
+- **Risk:** MEDIUM (Step 3 needs migration + trigger)
 - **Raised:** 2026-03-28
 
 ---
