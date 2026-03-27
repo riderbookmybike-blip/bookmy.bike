@@ -602,21 +602,7 @@ export default async function Page({ params, searchParams }: Props) {
     const skuIds = allSkus.map((s: any) => s.id);
     const publishedPriceData: any = sotPricingSnapshot;
 
-    // 3. Fetch RTO/Insurance Rules
-    const { data: ruleData } = await supabase
-        .from('cat_reg_rules')
-        .select('*')
-        .eq('state_code', stateCode)
-        .eq('status', 'ACTIVE');
-
-    const { data: insuranceRuleData } = await supabase
-        .from('cat_ins_rules')
-        .select('*')
-        .eq('status', 'ACTIVE')
-        .eq('vehicle_type', 'TWO_WHEELER')
-        .or(`state_code.eq.${stateCode},state_code.eq.ALL`)
-        .order('state_code', { ascending: false }) // Prioritize specific state over ALL
-        .limit(1);
+    // RTO/Insurance rules removed — all data comes from cat_price_state_mh flat columns directly
 
     // Fetch accessories from canonical V2 tables
     const { data: accessorySkus } = await (supabase as any)
@@ -725,15 +711,6 @@ export default async function Page({ params, searchParams }: Props) {
     });
 
     const { data: servicesData } = await (supabase as any).from('cat_services').select('*').eq('status', 'ACTIVE');
-
-    // Fallback/Mock Rule if missing
-    const effectiveRule: any = ruleData?.[0] || {
-        id: 'default',
-        stateCode: 'MH',
-        components: [{ id: 'tax', type: 'PERCENTAGE', label: 'Road Tax', percentage: 10, isRoadTax: true }],
-    };
-
-    const insuranceRule: any = insuranceRuleData?.[0];
 
     // 4. Resolve Server Pricing (SSPP)
     const firstSkuId = skuIds[0];
@@ -1391,8 +1368,6 @@ export default async function Page({ params, searchParams }: Props) {
                 variantParam={product.variant}
                 initialLocation={location}
                 initialPrice={initialPricingSnapshot}
-                insuranceRule={insuranceRule}
-                registrationRule={effectiveRule} // Passing registration rule for client side calc
                 initialAccessories={accessories}
                 initialServices={services}
                 isAuthenticated={isAuthenticated}
