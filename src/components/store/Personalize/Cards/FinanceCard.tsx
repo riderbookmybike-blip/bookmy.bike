@@ -5,6 +5,7 @@ import React, { useMemo } from 'react';
 import { HelpCircle, Clock, CheckCircle2, SlidersHorizontal, Edit2 } from 'lucide-react';
 import { formatDisplayIdForUI, unformatDisplayId } from '@/lib/displayId';
 import { formatInterestRate } from '@/utils/formatVehicleSpec';
+import { FinanceWinner, pickBestCandidateForTenure } from '@/utils/financeCandidateSelection';
 
 const FALLBACK_TENURES: number[] = [12, 24, 36, 48, 60];
 
@@ -47,15 +48,6 @@ export default function FinanceCard({
 }: FinanceCardProps) {
     const displayDownPayment = downPayment < 1 ? 0 : downPayment;
     const netLoan = Math.max(0, Math.round(totalOnRoad - displayDownPayment));
-    const calcChargeAmt = (c: any, baseLoan: number) => {
-        const type = String(c?.type || c?.valueType || 'FIXED').toUpperCase();
-        if (type === 'PERCENTAGE') {
-            const basisKey = String(c?.calculationBasis || 'ON_ROAD').toUpperCase();
-            const basis = basisKey === 'LOAN_AMOUNT' ? baseLoan : totalOnRoad;
-            return Math.round(Number(basis || 0) * (Number(c?.value || 0) / 100));
-        }
-        return c.value || 0;
-    };
     const getBankName = (b: any) =>
         String(b?.name || b?.identity?.display_name || b?.identity?.displayName || b?.identity?.name || 'Financier');
     const getBankShortCode = (name: string) => {
@@ -117,89 +109,30 @@ export default function FinanceCard({
         return Array.from(set).sort((a, b) => a - b);
     }, [activeCandidates]);
 
-    type WinnerRow = {
-        bankName: string;
-        bankShortCode: string;
-        emi: number;
-        grossLoan: number;
-        interest: number;
-        total: number;
-    };
-
     const winnerByTenure = useMemo(() => {
-        const out = new Map<number, WinnerRow>();
-
-        const evaluateCandidate = (candidate: { bank: any; scheme: any }, tenure: number): WinnerRow | null => {
-            const candidateScheme = candidate?.scheme || {};
-            const charges: any[] = Array.isArray(candidateScheme?.charges) ? candidateScheme.charges : [];
-            const totalUpfront = charges
-                .filter(c => String(c?.impact || '').toUpperCase() === 'UPFRONT')
-                .reduce((s, c) => s + calcChargeAmt(c, netLoan), 0);
-            const totalFunded = charges
-                .filter(c => String(c?.impact || '').toUpperCase() === 'FUNDED')
-                .reduce((s, c) => s + calcChargeAmt(c, netLoan), 0);
-            const grossLoan = Math.max(0, Math.round(netLoan + totalFunded + totalUpfront));
-            if (grossLoan <= 0) return null;
-
-            const annualRate = Number(candidateScheme?.interestRate || 0) / 100;
-            const iType = String(candidateScheme?.interestType || 'REDUCING').toUpperCase();
-            const emiRaw =
-                iType === 'FLAT'
-                    ? (grossLoan + grossLoan * annualRate * (tenure / 12)) / tenure
-                    : (() => {
-                          const monthlyRate = annualRate / 12;
-                          if (monthlyRate === 0) return grossLoan / tenure;
-                          return (
-                              (grossLoan * monthlyRate * Math.pow(1 + monthlyRate, tenure)) /
-                              (Math.pow(1 + monthlyRate, tenure) - 1)
-                          );
-                      })();
-            const emi = Math.round(emiRaw);
-            const totalPaidViaEmi = emi * tenure;
-            const interest = Math.max(0, Math.round(totalPaidViaEmi - grossLoan));
-            const total = Math.round(totalPaidViaEmi + displayDownPayment);
-            const bankName = getBankName(candidate?.bank);
-            return {
-                bankName,
-                bankShortCode: getBankShortCode(bankName),
-                emi,
-                grossLoan,
-                interest,
-                total,
-            };
-        };
-
-        const isExactTenureSupported = (candidate: { bank: any; scheme: any }, tenure: number) => {
-            const s = candidate?.scheme || {};
-            const allowedTenures = Array.isArray(s?.allowedTenures) ? s.allowedTenures.map((t: any) => Number(t)) : [];
-            if (allowedTenures.length > 0) return allowedTenures.includes(tenure);
-            const minT = Number(s?.minTenure || 0);
-            const maxT = Number(s?.maxTenure || 0);
-            if (Number.isFinite(minT) && Number.isFinite(maxT) && minT > 0 && maxT > 0) {
-                return tenure >= minT && tenure <= maxT;
-            }
-            return true;
-        };
+        const out = new Map<number, FinanceWinner>();
 
         for (const tenure of tenures) {
-            let best: WinnerRow | null = null;
-            const exactEligible = activeCandidates.filter(c => isExactTenureSupported(c, tenure));
-            for (const candidate of exactEligible) {
-                const row = evaluateCandidate(candidate, tenure);
-                if (!row) continue;
-                if (!best || row.emi < best.emi) best = row;
-            }
+            const best = pickBestCandidateForTenure(activeCandidates, {
+                tenure,
+                baseLoan: netLoan,
+                totalOnRoad,
+                downPayment: displayDownPayment,
+            });
             if (best) out.set(tenure, best);
         }
         return out;
-    }, [activeCandidates, displayDownPayment, netLoan, tenures]);
+    }, [activeCandidates, displayDownPayment, netLoan, tenures, totalOnRoad]);
 
     const selectedWinner = winnerByTenure.get(emiTenure);
-    const fallbackBankName = getBankName(bank);
-    const fallbackBankShortCode = getBankShortCode(fallbackBankName);
-    const selectedAnnualInterest =
-        selectedWinner && activeCandidates.length > 0 ? null : formatInterestRate(annualInterest);
-    const selectedGrossLoan = selectedWinner?.grossLoan ?? Math.max(0, Math.round(loanAmount || 0));
+    const hasDynamicCandidates = activeCandidates.length > 0;
+    const selectedAnnualInterest = selectedWinner
+        ? null
+        : hasDynamicCandidates
+          ? 'N/A'
+          : formatInterestRate(annualInterest);
+    const selectedGrossLoan =
+        selectedWinner?.grossLoan ?? (hasDynamicCandidates ? 0 : Math.max(0, Math.round(loanAmount || 0)));
 
     const financeItems = [
         { label: 'Down Payment', value: `₹${displayDownPayment.toLocaleString('en-IN')}` },
@@ -211,7 +144,7 @@ export default function FinanceCard({
         { label: 'Loan Amount', value: `₹${selectedGrossLoan.toLocaleString('en-IN')}` },
         {
             label: `Interest (${interestType})`,
-            value: selectedAnnualInterest ?? formatInterestRate(annualInterest),
+            value: selectedAnnualInterest || formatInterestRate(annualInterest),
             isHighlight: true,
         },
         {
@@ -256,8 +189,9 @@ export default function FinanceCard({
                                 const totalInterest = winner?.interest ?? 0;
                                 const totalCost = winner?.total ?? 0;
                                 const rowGrossLoan = winner?.grossLoan ?? 0;
-                                const rowFin = winner?.bankShortCode ?? '--';
-                                const rowFinTitle = winner?.bankName ?? 'No eligible financer';
+                                const rowBankName = winner ? getBankName(winner.bank) : '';
+                                const rowFin = rowBankName ? getBankShortCode(rowBankName) : '--';
+                                const rowFinTitle = rowBankName || 'No eligible financer';
                                 const isSelected = emiTenure === t;
                                 const isSelectable = Boolean(winner);
 

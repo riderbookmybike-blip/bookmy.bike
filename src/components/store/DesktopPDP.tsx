@@ -50,6 +50,7 @@ import { ServiceOption } from '@/types/store';
 import { useI18n } from '@/components/providers/I18nProvider';
 import { toDevanagariScript } from '@/lib/i18n/transliterate';
 import { computeOClubPricing, coinsNeededForPrice } from '@/lib/oclub/coin';
+import { pickBestCandidateForTenure } from '@/utils/financeCandidateSelection';
 
 // Lazy load tab components for code splitting
 const FinanceTab = dynamic(() => import('./Personalize/Tabs/FinanceTab'), {
@@ -279,68 +280,21 @@ export function DesktopPDP({
 
     const tenureWinnerFinance = useMemo(() => {
         if (!financeCandidates.length) return null;
-
-        const isTenureSupported = (scheme: any, tenure: number) => {
-            const allowed = Array.isArray(scheme?.allowedTenures)
-                ? scheme.allowedTenures.map((t: any) => Number(t))
-                : [];
-            if (allowed.length > 0) return allowed.includes(tenure);
-            const minT = Number(scheme?.minTenure || 0);
-            const maxT = Number(scheme?.maxTenure || 0);
-            if (Number.isFinite(minT) && Number.isFinite(maxT) && minT > 0 && maxT >= minT) {
-                return tenure >= minT && tenure <= maxT;
-            }
-            return true;
-        };
-
-        const calcChargeAmt = (charge: any, baseLoan: number) => {
-            const type = String(charge?.type || charge?.valueType || 'FIXED').toUpperCase();
-            if (type === 'PERCENTAGE') {
-                const basisKey = String(charge?.calculationBasis || 'ON_ROAD').toUpperCase();
-                const basis = basisKey === 'LOAN_AMOUNT' ? baseLoan : totalOnRoad;
-                return Math.round(Number(basis || 0) * (Number(charge?.value || 0) / 100));
-            }
-            return Number(charge?.value || 0);
-        };
-
         const baseLoan = Math.max(0, Math.round(displayOnRoad - effectiveDownPayment));
-        let best: { bank: any; scheme: any; emi: number } | null = null;
-        for (const candidate of financeCandidates) {
-            const scheme = candidate?.scheme || {};
-            if (!isTenureSupported(scheme, Number(emiTenure))) continue;
-            const charges: any[] = Array.isArray(scheme?.charges) ? scheme.charges : [];
-            const totalUpfront = charges
-                .filter(c => String(c?.impact || '').toUpperCase() === 'UPFRONT')
-                .reduce((s, c) => s + calcChargeAmt(c, baseLoan), 0);
-            const totalFunded = charges
-                .filter(c => String(c?.impact || '').toUpperCase() === 'FUNDED')
-                .reduce((s, c) => s + calcChargeAmt(c, baseLoan), 0);
-            const grossLoan = Math.max(0, Math.round(baseLoan + totalFunded + totalUpfront));
-            if (grossLoan <= 0) continue;
-
-            const annualRate = Number(scheme?.interestRate || 0) / 100;
-            const iType = String(scheme?.interestType || 'REDUCING').toUpperCase();
-            const emiRaw =
-                iType === 'FLAT'
-                    ? (grossLoan + grossLoan * annualRate * (Number(emiTenure) / 12)) / Number(emiTenure)
-                    : (() => {
-                          const monthlyRate = annualRate / 12;
-                          if (monthlyRate === 0) return grossLoan / Number(emiTenure);
-                          return (
-                              (grossLoan * monthlyRate * Math.pow(1 + monthlyRate, Number(emiTenure))) /
-                              (Math.pow(1 + monthlyRate, Number(emiTenure)) - 1)
-                          );
-                      })();
-            const emiValue = Math.round(emiRaw);
-            if (!best || emiValue < best.emi) best = { bank: candidate?.bank, scheme, emi: emiValue };
-        }
-        return best;
+        return pickBestCandidateForTenure(financeCandidates, {
+            tenure: Number(emiTenure),
+            baseLoan,
+            totalOnRoad,
+            downPayment: effectiveDownPayment,
+        });
     }, [financeCandidates, emiTenure, displayOnRoad, effectiveDownPayment, totalOnRoad]);
 
     const effectiveFinanceForSummary =
         tenureWinnerFinance?.scheme && tenureWinnerFinance?.bank
             ? { ...initialFinance, bank: tenureWinnerFinance.bank, scheme: tenureWinnerFinance.scheme }
-            : initialFinance;
+            : financeCandidates.length > 0
+              ? { ...initialFinance, bank: null, scheme: null }
+              : initialFinance;
     const effectiveFinanceMetrics = computeFinanceMetrics({
         scheme: effectiveFinanceForSummary?.scheme,
         displayOnRoad,
