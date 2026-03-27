@@ -144,6 +144,11 @@ export const ModernFooter = () => {
                     icon: <Download size={14} className="text-white/40 group-hover:text-brand-primary" />,
                 },
                 {
+                    label: 'Vahan Dashboard',
+                    href: '/vahan-dashboard',
+                    icon: <Navigation size={14} className="text-white/40 group-hover:text-brand-primary" />,
+                },
+                {
                     label: 'Track your RC',
                     href: 'https://vahan.parivahan.gov.in/vahanservice/vahan/ui/usermgmt/login.xhtml',
                     icon: <Info size={14} className="text-white/40 group-hover:text-brand-primary" />,

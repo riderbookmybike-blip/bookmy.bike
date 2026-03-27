@@ -1,0 +1,39 @@
+name: VAHAN Daily Scraper
+
+on:
+  schedule:
+    # Runs at 17:30 UTC every day (which is 23:00 / 11:00 PM IST)
+    - cron: '30 17 * * *'
+  workflow_dispatch: # Allows manual trigger from the GitHub UI
+
+jobs:
+  scrape-and-import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run VAHAN Scraper
+        run: npx ts-node scripts/vahan/scrape-vahan.ts
+        env:
+          HEADLESS: "true"
+
+      - name: Import Data to Supabase
+        run: npx tsx scripts/vahan/import-monthly-xlsx.ts scripts/vahan/*.xls
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
