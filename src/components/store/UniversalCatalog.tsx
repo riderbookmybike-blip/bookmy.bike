@@ -314,7 +314,7 @@ export const UniversalCatalog = ({
 
     // Local State
     const isSmart = mode === 'smart';
-    const [sortBy, setSortBy] = useState<SortKey>('price');
+    const [sortBy, setSortBy] = useState<SortKey>('popular');
     const handleSortChange = (val: string) => {
         if (VALID_SORT_KEYS.has(val)) setSortBy(val as SortKey);
     };
@@ -998,8 +998,9 @@ export const UniversalCatalog = ({
         return pool;
     }, [isSmart, results, smartFilteredResults]);
 
-    // Enterprise rule: render all variants directly, clustered by model (contiguous ordering),
-    // with lowest-to-highest pricing as default reading order.
+    // Enterprise rule: render all variants directly, clustered by model.
+    // Keep explicit price ordering only when active sort is `price`; otherwise
+    // preserve the upstream order produced by sortCatalogVehicles (e.g. `popular`).
     const groupedDisplayResults = useMemo(() => {
         const priceOf = (v: ProductVariant) => v.price?.onRoad || v.price?.exShowroom || 0;
         const modelMinPrice = new Map<string, number>();
@@ -1020,20 +1021,23 @@ export const UniversalCatalog = ({
             }
         }
 
-        const sorted = [...displayResults].sort((a, b) => {
-            const aModelKey = String(a.model || '').toLowerCase();
-            const bModelKey = String(b.model || '').toLowerCase();
-            const aModelMin = modelMinPrice.get(aModelKey) ?? Number.MAX_SAFE_INTEGER;
-            const bModelMin = modelMinPrice.get(bModelKey) ?? Number.MAX_SAFE_INTEGER;
+        const sorted =
+            sortBy === 'price'
+                ? [...displayResults].sort((a, b) => {
+                      const aModelKey = String(a.model || '').toLowerCase();
+                      const bModelKey = String(b.model || '').toLowerCase();
+                      const aModelMin = modelMinPrice.get(aModelKey) ?? Number.MAX_SAFE_INTEGER;
+                      const bModelMin = modelMinPrice.get(bModelKey) ?? Number.MAX_SAFE_INTEGER;
 
-            if (aModelMin !== bModelMin) return aModelMin - bModelMin;
-            if (aModelKey !== bModelKey) return aModelKey.localeCompare(bModelKey);
+                      if (aModelMin !== bModelMin) return aModelMin - bModelMin;
+                      if (aModelKey !== bModelKey) return aModelKey.localeCompare(bModelKey);
 
-            const priceCmp = priceOf(a) - priceOf(b);
-            if (priceCmp !== 0) return priceCmp;
+                      const priceCmp = priceOf(a) - priceOf(b);
+                      if (priceCmp !== 0) return priceCmp;
 
-            return String(a.variant || '').localeCompare(String(b.variant || ''));
-        });
+                      return String(a.variant || '').localeCompare(String(b.variant || ''));
+                  })
+                : [...displayResults];
 
         return sorted.map(v => ({
             representative: v,
@@ -1042,7 +1046,7 @@ export const UniversalCatalog = ({
             model: v.model,
             modelSlug: v.modelSlug,
         }));
-    }, [displayResults]);
+    }, [displayResults, sortBy]);
 
     // Dynamic max downpayment = most expensive vehicle on catalog - ₹25,000 min loan
     const maxDp = useMemo(() => {

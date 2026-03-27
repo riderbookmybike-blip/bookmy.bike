@@ -9,6 +9,7 @@ import {
     getPlatformDashboardKpis,
 } from '@/actions/dashboardKpis';
 import { getRecentEvents } from '@/actions/analytics';
+import { getLatestCatalogCacheAuditSummary } from '@/lib/server/cacheAudit';
 
 export default async function TenantDashboard(props: { params: Promise<{ slug: string }> }) {
     const params = await props.params;
@@ -111,7 +112,7 @@ export default async function TenantDashboard(props: { params: Promise<{ slug: s
         ]);
     }
 
-    const recentEvents = await getRecentEvents(10);
+    const [recentEvents, cacheAudit] = await Promise.all([getRecentEvents(10), getLatestCatalogCacheAuditSummary()]);
 
     return (
         <AriaDashboard
@@ -122,6 +123,7 @@ export default async function TenantDashboard(props: { params: Promise<{ slug: s
             recentEvents={recentEvents}
             skuTrends={skuTrends}
             crmInsights={crmInsights}
+            cacheAudit={cacheAudit}
         />
     );
 }

@@ -26,6 +26,17 @@ import { DealerAria } from './DealerAria';
 import { FinancerAria } from './FinancerAria';
 import type { DashboardSkuTrends, DealerCrmInsights } from '@/actions/dashboardKpis';
 
+type CacheAuditSummary = {
+    id: string;
+    createdAt: string;
+    status: 'PASS' | 'MISMATCH' | 'ERROR';
+    stateCode: string;
+    checkedSkus: number;
+    mismatchCount: number;
+    autoFixed: boolean;
+    notes: string | null;
+};
+
 type Persona = 'AUMS' | 'DEALERSHIP' | 'FINANCER';
 
 interface AriaDashboardProps {
@@ -36,6 +47,7 @@ interface AriaDashboardProps {
     recentEvents?: any[];
     skuTrends?: DashboardSkuTrends | null;
     crmInsights?: DealerCrmInsights | null;
+    cacheAudit?: CacheAuditSummary | null;
 }
 
 export default function AriaDashboard({
@@ -46,6 +58,7 @@ export default function AriaDashboard({
     recentEvents = [],
     skuTrends = null,
     crmInsights = null,
+    cacheAudit = null,
 }: AriaDashboardProps) {
     const [greeting, setGreeting] = useState('');
 
@@ -106,6 +119,29 @@ export default function AriaDashboard({
                         </AriaCard>
                     </div>
                 </header>
+
+                {cacheAudit && (
+                    <section
+                        className={`rounded-2xl border px-5 py-4 ${
+                            cacheAudit.status === 'PASS'
+                                ? 'border-emerald-200 bg-emerald-50'
+                                : cacheAudit.status === 'MISMATCH'
+                                  ? 'border-amber-200 bg-amber-50'
+                                  : 'border-rose-200 bg-rose-50'
+                        }`}
+                    >
+                        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2">
+                            <p className="text-sm font-black text-slate-800">
+                                Cache Audit: {cacheAudit.status} | State: {cacheAudit.stateCode} | Checked:{' '}
+                                {cacheAudit.checkedSkus} | Mismatch: {cacheAudit.mismatchCount}
+                            </p>
+                            <p className="text-xs font-bold text-slate-600">
+                                {cacheAudit.autoFixed ? 'Auto-fix applied' : 'No auto-fix needed'}
+                            </p>
+                        </div>
+                        <p className="mt-1 text-xs text-slate-600">{cacheAudit.notes || 'No issues reported.'}</p>
+                    </section>
+                )}
 
                 {/* Perspective Viewport */}
                 <div className="relative">
