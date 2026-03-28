@@ -88,8 +88,28 @@ function normalizeMakerKey(value: unknown): string {
         .toUpperCase();
 }
 
+function resolveSnapshotDate(): string {
+    const override = String(process.env.SNAPSHOT_DATE || '').trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(override)) return override;
+
+    const now = new Date();
+    const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Kolkata',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    }).formatToParts(now);
+
+    const year = parts.find(p => p.type === 'year')?.value || String(now.getUTCFullYear());
+    const month = parts.find(p => p.type === 'month')?.value || String(now.getUTCMonth() + 1).padStart(2, '0');
+    const day = parts.find(p => p.type === 'day')?.value || String(now.getUTCDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
 async function ingest() {
     console.log('🚀 Starting Maharashtra VAHAN JSON Data Ingestion...');
+    const snapshotDate = resolveSnapshotDate();
+    console.log(`🗓️ Snapshot Date: ${snapshotDate}`);
 
     // 1. Fetch the OEM constraints mapping
     console.log('\n1. Fetching Single Source of Truth `vahan_oem_brand_map`...');
@@ -143,6 +163,7 @@ async function ingest() {
         }
 
         const validPayloads: any[] = [];
+        const dailyPayloads: any[] = [];
         const quarantineMap: { [key: string]: number } = {};
         const monthsKeys = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -165,7 +186,7 @@ async function ingest() {
 
                     const units = parseInt(record[i] || '0', 10);
                     if (!isNaN(units) && units > 0) {
-                        validPayloads.push({
+                        const baseRecord = {
                             state_code: 'MH',
                             state_name: 'Maharashtra',
                             rto_code: rtoCodeStr,
@@ -178,6 +199,11 @@ async function ingest() {
                             units: units,
                             source_file_name: file,
                             uploaded_at: new Date().toISOString(),
+                        };
+                        validPayloads.push(baseRecord);
+                        dailyPayloads.push({
+                            ...baseRecord,
+                            snapshot_date: snapshotDate,
                         });
                     }
                 }
@@ -202,6 +228,20 @@ async function ingest() {
                     console.error(`❌ DB Upsert Error for chunk [${i}-${i + 500}]:`, upsertErr.message);
                 } else {
                     totalValidRecords += chunk.length;
+                }
+            }
+        }
+
+        if (dailyPayloads.length > 0) {
+            console.log(`📸 Upserting ${dailyPayloads.length} daily snapshot rows...`);
+            for (let i = 0; i < dailyPayloads.length; i += 500) {
+                const chunk = dailyPayloads.slice(i, i + 500);
+                const { error: dailyErr } = await supabase
+                    .from('vahan_two_wheeler_daily_snapshots')
+                    .upsert(chunk, { onConflict: 'state_code,rto_code,year,month_no,maker,snapshot_date' });
+
+                if (dailyErr) {
+                    console.error(`❌ Daily Snapshot Upsert Error for chunk [${i}-${i + 500}]:`, dailyErr.message);
                 }
             }
         }
@@ -245,6 +285,19 @@ async function ingest() {
     console.log(`\n🎉 INGESTION COMPLETE!`);
     console.log(`🟢 ${totalValidRecords} OEM pure-telemetry points merged into database.`);
     console.log(`🔒 ${totalLogs} unverified tracking entries quarantined.`);
+
+    const cleanupBefore = new Date(`${snapshotDate}T00:00:00+05:30`);
+    cleanupBefore.setDate(cleanupBefore.getDate() - 35);
+    const cutoffDate = cleanupBefore.toISOString().slice(0, 10);
+    const { error: cleanupErr } = await supabase
+        .from('vahan_two_wheeler_daily_snapshots')
+        .delete()
+        .lt('snapshot_date', cutoffDate);
+    if (cleanupErr) {
+        console.error(`⚠️ Daily snapshot cleanup failed for cutoff ${cutoffDate}:`, cleanupErr.message);
+    } else {
+        console.log(`🧹 Daily snapshot cleanup complete. Retained last 35 days (cutoff ${cutoffDate}).`);
+    }
 }
 
 ingest().catch(err => {

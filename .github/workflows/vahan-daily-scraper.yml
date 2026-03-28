@@ -2,7 +2,7 @@ name: VAHAN Daily Scraper
 
 on:
   schedule:
-    # Runs at 17:30 UTC every day (which is 23:00 / 11:00 PM IST)
+    # Runs at 17:30 UTC every day (23:00 IST)
     - cron: '30 17 * * *'
   workflow_dispatch: # Allows manual trigger from the GitHub UI
 
@@ -28,12 +28,13 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Run VAHAN Scraper
-        run: npx ts-node scripts/vahan/scrape-vahan.ts
+        run: npx tsx scripts/vahan/scrape-vahan.ts
         env:
           HEADLESS: "true"
+          RTO_BATCH_SIZE: "0"
 
       - name: Import Data to Supabase
-        run: npx tsx scripts/vahan/import-monthly-xlsx.ts scripts/vahan/*.xls
+        run: npx tsx scripts/vahan/ingest-vahan.ts
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
