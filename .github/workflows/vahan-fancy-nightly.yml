@@ -27,13 +27,35 @@ jobs:
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps chromium
 
-      - name: Scrape Fancy Series (MH)
-        run: npx tsx scripts/vahan/scrape-fancy-series.ts
+      - name: Scrape Fancy Series (MH) with Retry
+        run: |
+          set -euo pipefail
+          attempt=1
+          max_attempts=2
+          until [ "$attempt" -gt "$max_attempts" ]; do
+            echo "Fancy scrape attempt $attempt/$max_attempts"
+            if npx tsx scripts/vahan/scrape-fancy-series.ts; then
+              echo "Fancy scrape succeeded on attempt $attempt"
+              exit 0
+            fi
+            if [ "$attempt" -lt "$max_attempts" ]; then
+              echo "Attempt $attempt failed; retrying after 90s..."
+              sleep 90
+            fi
+            attempt=$((attempt + 1))
+          done
+          echo "Fancy scrape failed after $max_attempts attempts"
+          exit 1
         env:
           WRITE_DB: 'true'
           HEADLESS: 'true'
           FANCY_STATE_CODE: 'MH'
           FANCY_STATE_NAME: 'Maharashtra'
+          FANCY_BATCH_SIZE: '5'
+          FANCY_STRICT_BATCH_VERIFY: 'true'
+          FANCY_MIN_COVERAGE: '50'
+          FANCY_MAX_SAME_FILLED: '8'
+          FANCY_FAIL_ON_QUALITY: 'true'
           FANCY_SCAN_PAGES: '30'
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

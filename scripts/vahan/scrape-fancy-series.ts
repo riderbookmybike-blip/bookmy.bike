@@ -34,6 +34,11 @@ const HEADLESS = process.env.HEADLESS !== 'false';
 const WRITE_DB = process.env.WRITE_DB === 'true';
 const MAX_RTOS = Number(process.env.FANCY_MAX_RTOS || '9999');
 const ONLY_ACTIVE = process.env.FANCY_ONLY_ACTIVE !== 'false';
+const BATCH_SIZE = Math.max(1, Number(process.env.FANCY_BATCH_SIZE || '5'));
+const STRICT_BATCH_VERIFY = process.env.FANCY_STRICT_BATCH_VERIFY !== 'false';
+const MIN_COVERAGE = Math.max(1, Number(process.env.FANCY_MIN_COVERAGE || '50'));
+const MAX_SAME_FILLED = Math.max(2, Number(process.env.FANCY_MAX_SAME_FILLED || '8'));
+const FAIL_ON_QUALITY = process.env.FANCY_FAIL_ON_QUALITY !== 'false';
 
 function cleanText(value: unknown): string {
     return String(value || '')
@@ -84,9 +89,20 @@ function parseRtoDisplay(text: string): { rtoCode: string; rtoName: string } {
     const m = t.match(/^(.+?)\s*\((\d{1,3})\)$/);
     if (!m) return { rtoCode: '', rtoName: t };
     return {
-        rtoCode: `${STATE_CODE}${m[2]}`,
+        rtoCode: normalizeRtoCode(`${STATE_CODE}${m[2]}`),
         rtoName: m[1].trim(),
     };
+}
+
+function normalizeRtoCode(code: string): string {
+    const t = cleanText(code).toUpperCase();
+    const m = t.match(/^([A-Z]{2})(\d{1,3})$/);
+    if (!m) return t;
+    const prefix = m[1];
+    const num = Number(m[2]);
+    if (!Number.isFinite(num)) return t;
+    const width = prefix === 'MH' && num <= 99 ? 2 : 3;
+    return `${prefix}${String(num).padStart(width, '0')}`;
 }
 
 async function primeSelect(page: Page, selectId: string, value: string) {
@@ -119,13 +135,13 @@ async function getRtoOptions(
         return {
             value: o.value,
             label: o.label,
-            rtoCode: parts ? `${STATE_CODE}${parts[2]}` : '',
+            rtoCode: parts ? normalizeRtoCode(`${STATE_CODE}${parts[2]}`) : '',
             rtoName: parts ? parts[1].trim() : o.label,
         };
     });
 
     const filtered = parsed.filter(
-        o => !RTO_FILTER || o.rtoCode === RTO_FILTER || o.label.toUpperCase().includes(RTO_FILTER)
+        o => !!o.rtoCode && (!RTO_FILTER || o.rtoCode === RTO_FILTER || o.label.toUpperCase().includes(RTO_FILTER))
     );
     return filtered.slice(0, Math.max(0, MAX_RTOS));
 }
@@ -178,13 +194,50 @@ async function goToAvailablePage(page: Page) {
     await page.waitForTimeout(4500);
 }
 
-async function setAvailableRto(page: Page, rtoValue: string) {
-    await primeSelect(page, 'ib_rto123_input', rtoValue);
+async function resolveAvailableRtoValueByCode(page: Page, rtoCode: string): Promise<string | null> {
+    const target = normalizeRtoCode(rtoCode);
+    return page.$$eval(
+        '#ib_rto123_input option',
+        (ops, code) => {
+            const pick = ops.find(o => {
+                const txt = (o.textContent || '').replace(/\s+/g, ' ').trim();
+                const m = txt.match(/\((\d{1,3})\)\s*$/);
+                if (!m) return false;
+                const n = Number(m[1]);
+                if (!Number.isFinite(n)) return false;
+                const mhCode = `MH${String(n).padStart(n <= 99 ? 2 : 3, '0')}`;
+                return mhCode === code;
+            });
+            return pick ? pick.getAttribute('value') || null : null;
+        },
+        target
+    );
+}
+
+async function setAvailableRto(page: Page, rtoCode: string) {
+    const optionValue = await resolveAvailableRtoValueByCode(page, rtoCode);
+    if (!optionValue) throw new Error(`RTO option not found on available page for ${rtoCode}`);
+
+    await primeSelect(page, 'ib_rto123_input', optionValue);
     await page.waitForTimeout(5000);
+    await page.waitForFunction(
+        (target: string) => {
+            const sel = document.querySelector('#ib_rto123_input') as HTMLSelectElement | null;
+            if (!sel) return false;
+            const txt = (sel.options[sel.selectedIndex]?.textContent || '').replace(/\s+/g, ' ').trim();
+            const m = txt.match(/\((\d{1,3})\)\s*$/);
+            if (!m) return false;
+            const n = Number(m[1]);
+            const code = `MH${String(n).padStart(n <= 99 ? 2 : 3, '0')}`;
+            return code === target;
+        },
+        rtoCode,
+        { timeout: 15000 }
+    );
 }
 
 async function getSeriesOptionValue(page: Page, seriesName: string): Promise<string | null> {
-    const upperSeries = seriesName.toUpperCase();
+    const upperSeries = seriesName.toUpperCase().trim();
     return page.$$eval(
         '#ib_Veh_Seri_input option',
         (ops, target) => {
@@ -271,6 +324,7 @@ async function parseAvailableNumbers(
 
 async function selectSeriesAndWaitForGrid(page: Page, optionValue: string): Promise<boolean> {
     await primeSelect(page, 'ib_Veh_Seri_input', optionValue);
+    await page.waitForTimeout(800);
     try {
         await page.waitForFunction(
             () => {
@@ -311,6 +365,8 @@ async function upsertToDb(rows: SeriesProgressRow[]) {
         running_open_count: r.runningOpenCount,
         available_count: r.availableCount,
         scraped_at: r.scrapedAt,
+        run_id: currentRunId,
+        published: false,
     }));
 
     const { error } = await (adminClient as any)
@@ -319,6 +375,164 @@ async function upsertToDb(rows: SeriesProgressRow[]) {
 
     if (error) {
         throw new Error(`DB upsert failed: ${error.message || 'unknown error'}`);
+    }
+}
+
+type RunQuality = {
+    totalRtos: number;
+    activeRtos: number;
+    activeWithFilled: number;
+    maxSameFilled: number;
+    maxSameFilledValue: number | null;
+    pass: boolean;
+    notes: string[];
+};
+
+let currentRunId: string | null = null;
+
+async function createRunRecord(expectedRtoCount: number): Promise<string> {
+    const { adminClient } = await import('@/lib/supabase/admin');
+    const snapshotDate = new Date().toISOString().slice(0, 10);
+    const payload = {
+        snapshot_date: snapshotDate,
+        state_code: STATE_CODE,
+        status: 'running',
+        expected_rto_count: expectedRtoCount,
+        processed_rto_count: 0,
+        active_rto_count: 0,
+        anomaly_count: 0,
+        notes: '',
+        started_at: new Date().toISOString(),
+    };
+    const { data, error } = await (adminClient as any)
+        .from('vahan_fancy_series_runs')
+        .insert(payload)
+        .select('id')
+        .single();
+    if (error || !data?.id) {
+        throw new Error(`Failed to create run record: ${error?.message || 'unknown error'}`);
+    }
+    return String(data.id);
+}
+
+async function completeRunRecord(runId: string, quality: RunQuality, published: boolean) {
+    const { adminClient } = await import('@/lib/supabase/admin');
+    const payload = {
+        status: quality.pass ? 'success' : 'failed_quality',
+        processed_rto_count: quality.totalRtos,
+        active_rto_count: quality.activeRtos,
+        anomaly_count: quality.maxSameFilled > MAX_SAME_FILLED ? 1 : 0,
+        notes: quality.notes.join(' | '),
+        published,
+        finished_at: new Date().toISOString(),
+    };
+    const { error } = await (adminClient as any).from('vahan_fancy_series_runs').update(payload).eq('id', runId);
+    if (error) throw new Error(`Failed to update run record: ${error.message || 'unknown error'}`);
+}
+
+async function publishRun(runId: string) {
+    const { adminClient } = await import('@/lib/supabase/admin');
+    const today = new Date().toISOString().slice(0, 10);
+    const { error: clearError } = await (adminClient as any)
+        .from('vahan_fancy_series_daily')
+        .update({ published: false })
+        .eq('state_code', STATE_CODE)
+        .eq('snapshot_date', today);
+    if (clearError) throw new Error(`Publish clear step failed: ${clearError.message || 'unknown error'}`);
+
+    const { error: publishError } = await (adminClient as any)
+        .from('vahan_fancy_series_daily')
+        .update({ published: true })
+        .eq('state_code', STATE_CODE)
+        .eq('snapshot_date', today)
+        .eq('run_id', runId);
+    if (publishError) throw new Error(`Publish step failed: ${publishError.message || 'unknown error'}`);
+}
+
+function evaluateQuality(rows: SeriesProgressRow[]): RunQuality {
+    const bestByRto = new Map<string, SeriesProgressRow>();
+    for (const row of rows) {
+        const code = normalizeRtoCode(row.rtoCode);
+        const prev = bestByRto.get(code);
+        if (!prev) {
+            bestByRto.set(code, row);
+            continue;
+        }
+        const prevFilled = Number(prev.filledTill || 0);
+        const rowFilled = Number(row.filledTill || 0);
+        const prevOpen = Number(prev.runningOpenCount || 0);
+        const rowOpen = Number(row.runningOpenCount || 0);
+        if (rowFilled > prevFilled || (rowFilled === prevFilled && rowOpen > prevOpen)) {
+            bestByRto.set(code, row);
+        }
+    }
+
+    const activeRows = Array.from(bestByRto.values()).filter(r => r.isActive);
+    const activeWithFilled = activeRows.filter(r => Number.isFinite(r.filledTill as number));
+    const sameFilled = new Map<number, number>();
+    for (const row of activeWithFilled) {
+        const v = Number(row.filledTill);
+        sameFilled.set(v, (sameFilled.get(v) || 0) + 1);
+    }
+    let maxSameFilled = 0;
+    let maxSameFilledValue: number | null = null;
+    for (const [k, c] of sameFilled.entries()) {
+        if (c > maxSameFilled) {
+            maxSameFilled = c;
+            maxSameFilledValue = k;
+        }
+    }
+
+    const notes: string[] = [];
+    if (activeRows.length < MIN_COVERAGE) notes.push(`coverage_low:${activeRows.length}<${MIN_COVERAGE}`);
+    if (maxSameFilled > MAX_SAME_FILLED) notes.push(`same_filled_spike:${maxSameFilledValue}x${maxSameFilled}`);
+
+    return {
+        totalRtos: bestByRto.size,
+        activeRtos: activeRows.length,
+        activeWithFilled: activeWithFilled.length,
+        maxSameFilled,
+        maxSameFilledValue,
+        pass: notes.length === 0,
+        notes,
+    };
+}
+
+function chunkArray<T>(items: T[], size: number): T[][] {
+    const out: T[][] = [];
+    for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+    return out;
+}
+
+async function verifyBatchInDb(rows: SeriesProgressRow[]) {
+    if (!rows.length || !WRITE_DB) return;
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        throw new Error('WRITE_DB=true requires NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY');
+    }
+    const { adminClient } = await import('@/lib/supabase/admin');
+
+    const today = new Date().toISOString().slice(0, 10);
+    const batchRtoCodes = Array.from(new Set(rows.map(r => r.rtoCode)));
+
+    const query = (adminClient as any)
+        .from('vahan_fancy_series_daily')
+        .select('rto_code')
+        .eq('state_code', STATE_CODE)
+        .eq('snapshot_date', today)
+        .in('rto_code', batchRtoCodes);
+    if (currentRunId) query.eq('run_id', currentRunId);
+    const { data, error } = await query;
+
+    if (error) throw new Error(`Batch verify failed: ${error.message || 'unknown error'}`);
+
+    const present = new Set((Array.isArray(data) ? data : []).map((r: any) => String(r.rto_code || '').toUpperCase()));
+    const missing = batchRtoCodes.filter(c => !present.has(c));
+    if (missing.length) {
+        const msg = `Batch verify missing RTO rows: ${missing.join(', ')}`;
+        if (STRICT_BATCH_VERIFY) throw new Error(msg);
+        console.warn(msg);
+    } else {
+        console.log(`Batch verify OK: ${batchRtoCodes.length}/${batchRtoCodes.length} RTOs persisted for ${today}`);
     }
 }
 
@@ -332,60 +546,83 @@ async function main() {
         await openSeriesPageAndSetState(page);
         const rtos = await getRtoOptions(page);
         console.log(`RTOs to process: ${rtos.length}`);
-
-        const statusRowsByRto = new Map<string, SeriesStatusRow[]>();
-        for (const rto of rtos) {
-            const rows = await parseSeriesRowsForRto(page, rto.value, rto.rtoCode, rto.rtoName);
-            statusRowsByRto.set(rto.value, rows);
-            console.log(`[${rto.rtoCode}] 2W series rows: ${rows.length}`);
+        if (WRITE_DB) {
+            currentRunId = await createRunRecord(rtos.length);
+            console.log(`Run created: ${currentRunId}`);
         }
 
-        await goToAvailablePage(page);
-
+        const batches = chunkArray(rtos, BATCH_SIZE);
         const progressRows: SeriesProgressRow[] = [];
-        for (const rto of rtos) {
-            const seriesRows = statusRowsByRto.get(rto.value) || [];
-            if (!seriesRows.length) continue;
+        for (let bi = 0; bi < batches.length; bi++) {
+            const batch = batches[bi];
+            console.log(`\nBatch ${bi + 1}/${batches.length} | RTOs: ${batch.map(r => r.rtoCode).join(', ')}`);
 
-            await setAvailableRto(page, rto.value);
+            const statusRowsByRto = new Map<string, SeriesStatusRow[]>();
+            for (const rto of batch) {
+                const rows = await parseSeriesRowsForRto(page, rto.value, rto.rtoCode, rto.rtoName);
+                statusRowsByRto.set(rto.value, rows);
+                console.log(`[${rto.rtoCode}] 2W series rows: ${rows.length}`);
+            }
 
-            for (const row of seriesRows) {
-                const optionValue = await getSeriesOptionValue(page, row.seriesName);
-                if (!optionValue) {
-                    progressRows.push({
+            await goToAvailablePage(page);
+
+            const batchProgressRows: SeriesProgressRow[] = [];
+            for (const rto of batch) {
+                const seriesRows = statusRowsByRto.get(rto.value) || [];
+                if (!seriesRows.length) continue;
+
+                await setAvailableRto(page, rto.rtoCode);
+
+                for (const row of seriesRows) {
+                    const optionValue = await getSeriesOptionValue(page, row.seriesName);
+                    if (!optionValue) {
+                        batchProgressRows.push({
+                            ...row,
+                            firstOpenNumber: null,
+                            filledTill: null,
+                            runningOpenCount: 0,
+                            availableCount: 0,
+                            activeOnDate: parseFancyDate(row.openOnText),
+                            scrapedAt: new Date().toISOString(),
+                        });
+                        continue;
+                    }
+
+                    const hasGrid = await selectSeriesAndWaitForGrid(page, optionValue);
+                    let parsed = hasGrid
+                        ? await parseAvailableNumbers(page)
+                        : { firstOpenNumber: null, runningOpenCount: 0, availableCount: 0 };
+                    if (hasGrid && parsed.availableCount === 0) {
+                        await page.waitForTimeout(2000);
+                        parsed = await parseAvailableNumbers(page);
+                    }
+                    const filledTill =
+                        parsed.firstOpenNumber && row.startRange > 0
+                            ? Math.max(row.startRange - 1, parsed.firstOpenNumber - 1)
+                            : null;
+
+                    batchProgressRows.push({
                         ...row,
-                        firstOpenNumber: null,
-                        filledTill: null,
-                        runningOpenCount: 0,
-                        availableCount: 0,
+                        firstOpenNumber: parsed.firstOpenNumber,
+                        filledTill,
+                        runningOpenCount: parsed.runningOpenCount,
+                        availableCount: parsed.availableCount,
                         activeOnDate: parseFancyDate(row.openOnText),
                         scrapedAt: new Date().toISOString(),
                     });
-                    continue;
                 }
+            }
 
-                const hasGrid = await selectSeriesAndWaitForGrid(page, optionValue);
-                let parsed = hasGrid
-                    ? await parseAvailableNumbers(page)
-                    : { firstOpenNumber: null, runningOpenCount: 0, availableCount: 0 };
-                if (hasGrid && parsed.availableCount === 0) {
-                    await page.waitForTimeout(2000);
-                    parsed = await parseAvailableNumbers(page);
-                }
-                const filledTill =
-                    parsed.firstOpenNumber && row.startRange > 0
-                        ? Math.max(row.startRange - 1, parsed.firstOpenNumber - 1)
-                        : null;
+            progressRows.push(...batchProgressRows);
 
-                progressRows.push({
-                    ...row,
-                    firstOpenNumber: parsed.firstOpenNumber,
-                    filledTill,
-                    runningOpenCount: parsed.runningOpenCount,
-                    availableCount: parsed.availableCount,
-                    activeOnDate: parseFancyDate(row.openOnText),
-                    scrapedAt: new Date().toISOString(),
-                });
+            if (WRITE_DB && batchProgressRows.length) {
+                await upsertToDb(batchProgressRows);
+                console.log(`Batch upserted ${batchProgressRows.length} rows`);
+                await verifyBatchInDb(batchProgressRows);
+            }
+
+            if (bi < batches.length - 1) {
+                await openSeriesPageAndSetState(page);
             }
         }
 
@@ -406,8 +643,24 @@ async function main() {
         console.log(`Saved JSON: ${outPath}`);
 
         if (WRITE_DB) {
-            await upsertToDb(progressRows);
-            console.log(`Upserted ${progressRows.length} rows into public.vahan_fancy_series_daily`);
+            const quality = evaluateQuality(progressRows);
+            console.log(
+                `Quality: active=${quality.activeRtos}, active_with_filled=${quality.activeWithFilled}, max_same_filled=${quality.maxSameFilledValue}:${quality.maxSameFilled}`
+            );
+            let published = false;
+            if (quality.pass) {
+                await publishRun(currentRunId as string);
+                published = true;
+                console.log('Published current run snapshot');
+            } else {
+                console.error(`Quality gates failed: ${quality.notes.join(', ')}`);
+                if (FAIL_ON_QUALITY) {
+                    await completeRunRecord(currentRunId as string, quality, false);
+                    throw new Error(`Quality validation failed: ${quality.notes.join(', ')}`);
+                }
+            }
+            await completeRunRecord(currentRunId as string, quality, published);
+            console.log(`All batches completed. Total rows processed: ${progressRows.length}`);
         }
 
         // quick pointer log for active 2W rows

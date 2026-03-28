@@ -12,7 +12,20 @@ import {
     BarChart3,
     Calendar,
 } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList } from 'recharts';
+import {
+    BarChart,
+    Bar,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    ResponsiveContainer,
+    Cell,
+    LabelList,
+    LineChart,
+    Line,
+    Legend,
+} from 'recharts';
 
 // ─── Constants ────────────────────────────────────────────────
 const MMRD_RTO_NAMES: Record<string, string> = {
@@ -103,6 +116,63 @@ const PALETTE = [
     '#0d9488',
 ];
 
+const RUNNING_SERIES_COLOR_STOPS = [
+    { t: 0.0, h: 132, s: 58, l: 28 }, // 0: dark green
+    { t: 0.25, h: 118, s: 62, l: 44 }, // 2500: light green
+    { t: 0.5, h: 58, s: 74, l: 56 }, // 5000: lighter yellowish
+    { t: 0.75, h: 28, s: 80, l: 47 }, // 7500: amber/orange
+    { t: 0.9, h: 8, s: 78, l: 40 }, // 9000: red
+    { t: 1.0, h: 0, s: 74, l: 28 }, // 10000: dark red
+];
+
+const getRunningSeriesColor = (filledTill: number) => {
+    const clamped = Math.max(0, Math.min(9999, Number(filledTill) || 0));
+    const p = clamped / 9999;
+
+    let left = RUNNING_SERIES_COLOR_STOPS[0];
+    let right = RUNNING_SERIES_COLOR_STOPS[RUNNING_SERIES_COLOR_STOPS.length - 1];
+    for (let i = 0; i < RUNNING_SERIES_COLOR_STOPS.length - 1; i++) {
+        const a = RUNNING_SERIES_COLOR_STOPS[i];
+        const b = RUNNING_SERIES_COLOR_STOPS[i + 1];
+        if (p >= a.t && p <= b.t) {
+            left = a;
+            right = b;
+            break;
+        }
+    }
+
+    const span = Math.max(right.t - left.t, 0.0001);
+    const local = (p - left.t) / span;
+    const h = left.h + (right.h - left.h) * local;
+    const s = left.s + (right.s - left.s) * local;
+    const l = left.l + (right.l - left.l) * local;
+    return `hsl(${Math.round(h)} ${Math.round(s)}% ${Math.round(l)}%)`;
+};
+
+const formatSeriesProgressLabel = (seriesName: string, filledTill: number) => {
+    const normalized = String(seriesName || '')
+        .trim()
+        .toUpperCase();
+    const m = normalized.match(/^([A-Z]{1,3}\d{1,3})([A-Z]{1,5})$/);
+    if (m) return `${m[1]}-${m[2]}-${filledTill}`;
+    return `${normalized || 'NA'}-${filledTill}`;
+};
+
+const getRtoSortNumber = (rtoCode: string) => {
+    const code = String(rtoCode || '')
+        .toUpperCase()
+        .trim();
+    const m = code.match(/^MH(\d{1,3})$/);
+    return m ? Number(m[1]) : Number.MAX_SAFE_INTEGER;
+};
+
+const compareRtoCodeNumeric = (a: string, b: string) => {
+    const aNum = getRtoSortNumber(a);
+    const bNum = getRtoSortNumber(b);
+    if (aNum !== bNum) return aNum - bNum;
+    return String(a || '').localeCompare(String(b || ''), 'en');
+};
+
 // ─── Helpers ─────────────────────────────────────────────────
 const trunc = (s: string, n: number) => (!s ? '' : s.length <= n ? s : s.slice(0, n) + '…');
 
@@ -125,6 +195,12 @@ const formatBrandLabel = (value: string) => {
         .join('')
         .replace(/\s+/g, ' ')
         .trim();
+};
+
+const formatPeriodShort = (value: string) => {
+    const dt = new Date(value);
+    if (Number.isNaN(dt.getTime())) return String(value || '');
+    return dt.toLocaleDateString('en-IN', { month: 'short', year: '2-digit' });
 };
 
 // ─── Props ───────────────────────────────────────────────────
@@ -190,8 +266,8 @@ function KpiStatsRow({
             label: 'Top Brand',
             value: stats?.top_brand ? `${formatBrandLabel(stats.top_brand)} (${stats.top_brand_pct || 0}%)` : '---',
             icon: Award,
-            color: 'text-indigo-500',
-            bg: 'bg-indigo-50',
+            color: 'text-[#FFD700]',
+            bg: 'bg-[#FFD700]/10',
         },
         {
             label: 'Top RTO',
@@ -326,23 +402,23 @@ function BrandChartCard({ filters, apiPath }: { filters: any; apiPath: string })
 
                 const raw: any[] = (payload.brand?.share || []).filter((r: any) => Number(r.units) > 0);
                 const total = raw.reduce((s, r) => s + Number(r.units), 0);
-                setData(
-                    raw.map((r, i) => {
-                        const units = Number(r.units);
-                        const pct = total > 0 ? ((units / total) * 100).toFixed(1) : '0.0';
-                        const brandLabel = formatBrandLabel(r.brand_display || r.brand_name);
-                        return {
-                            ...r,
-                            units,
-                            share_pct: pct,
-                            brand_label: brandLabel,
-                            display_label: isMobile
-                                ? `${fmtIN(units)} (${pct}%)`
-                                : `${trunc(brandLabel, 20)}  -  ${fmtIN(units)} (${pct}%)`,
-                            _idx: i,
-                        };
-                    })
-                );
+                const mapped = raw.map((r, i) => {
+                    const units = Number(r.units);
+                    const pct = total > 0 ? ((units / total) * 100).toFixed(1) : '0.0';
+                    const brandLabel = formatBrandLabel(r.brand_display || r.brand_name);
+                    return {
+                        ...r,
+                        units,
+                        share_pct: pct,
+                        brand_label: brandLabel,
+                        display_label: isMobile
+                            ? `${fmtIN(units)} (${pct}%)`
+                            : `${trunc(brandLabel, 20)}  -  ${fmtIN(units)} (${pct}%)`,
+                        _idx: i,
+                    };
+                });
+
+                setData(mapped.sort((a, b) => Number(b.units || 0) - Number(a.units || 0)));
             } catch (e) {
                 console.error(e);
             } finally {
@@ -361,7 +437,7 @@ function BrandChartCard({ filters, apiPath }: { filters: any; apiPath: string })
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col overflow-hidden group/card shadow-slate-200/50">
             <div className="p-5 border-b border-slate-100 bg-white flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl border border-indigo-100/50 shadow-sm">
+                    <div className="p-2.5 bg-[#FFD700]/10 text-yellow-600 rounded-xl border border-[#FFD700]/30 shadow-sm">
                         <TrendingUp className="w-5 h-5" />
                     </div>
                     <div>
@@ -372,7 +448,7 @@ function BrandChartCard({ filters, apiPath }: { filters: any; apiPath: string })
                     </div>
                 </div>
 
-                <div className="relative flex items-center gap-3 bg-white/80 backdrop-blur-xl px-4 py-2 md:px-6 md:py-2.5 rounded-xl md:rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all cursor-pointer">
+                <div className="relative flex items-center gap-3 bg-white/80 backdrop-blur-xl px-4 py-2 md:px-6 md:py-2.5 rounded-xl md:rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md hover:border-[#FFD700] transition-all cursor-pointer">
                     <div className="flex items-center gap-2 min-w-[100px] md:min-w-[140px]">
                         <select
                             value={rtoCode}
@@ -386,14 +462,14 @@ function BrandChartCard({ filters, apiPath }: { filters: any; apiPath: string })
                                 </option>
                             ))}
                         </select>
-                        <ChevronDown className="w-3.5 h-3.5 md:w-4 md:h-4 text-indigo-400 shrink-0" />
+                        <ChevronDown className="w-3.5 h-3.5 md:w-4 md:h-4 text-slate-800 shrink-0" />
                     </div>
                 </div>
             </div>
             <div className="relative min-h-[400px]">
                 {loading && (
                     <div className="absolute inset-0 z-10 bg-white/70 backdrop-blur-sm flex items-center justify-center">
-                        <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+                        <Loader2 className="w-8 h-8 animate-spin text-[#FFD700]" />
                     </div>
                 )}
                 <div style={{ height: h, padding: isMobile ? '24px 10px 24px 5px' : '24px 24px 24px 10px' }}>
@@ -485,11 +561,11 @@ function RtoChartCard({ filters, apiPath }: { filters: any; apiPath: string }) {
                         share_pct: pct,
                         display_label: isMobile
                             ? `${r.rto_code} - ${fmtIN(units)} (${pct}%)`
-                            : `${r.rto_code} – ${trunc(name, 14)}  -  ${fmtIN(units)} (${pct}%)`,
+                            : `${r.rto_code} – ${name}  -  ${fmtIN(units)} (${pct}%)`,
                     };
                 });
 
-                setData(mapped.sort((a, b) => a.rto_code.localeCompare(b.rto_code)));
+                setData(mapped.sort((a, b) => Number(b.units || 0) - Number(a.units || 0)));
             } catch (e) {
                 console.error(e);
             } finally {
@@ -519,7 +595,7 @@ function RtoChartCard({ filters, apiPath }: { filters: any; apiPath: string }) {
                     </div>
                 </div>
 
-                <div className="relative flex items-center gap-3 bg-white/80 backdrop-blur-xl px-4 py-2 md:px-6 md:py-2.5 rounded-xl md:rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all cursor-pointer">
+                <div className="relative flex items-center gap-3 bg-white/80 backdrop-blur-xl px-4 py-2 md:px-6 md:py-2.5 rounded-xl md:rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md hover:border-[#FFD700] transition-all cursor-pointer">
                     <div className="flex items-center gap-2 min-w-[120px] md:min-w-[170px]">
                         <select
                             value={brandName}
@@ -533,14 +609,14 @@ function RtoChartCard({ filters, apiPath }: { filters: any; apiPath: string }) {
                                 </option>
                             ))}
                         </select>
-                        <ChevronDown className="w-3.5 h-3.5 md:w-4 md:h-4 text-indigo-400 shrink-0" />
+                        <ChevronDown className="w-3.5 h-3.5 md:w-4 md:h-4 text-slate-800 shrink-0" />
                     </div>
                 </div>
             </div>
             <div className="relative min-h-[400px]">
                 {loading && (
                     <div className="absolute inset-0 z-10 bg-white/70 backdrop-blur-sm flex items-center justify-center">
-                        <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+                        <Loader2 className="w-8 h-8 animate-spin text-[#FFD700]" />
                     </div>
                 )}
                 {!loading && data.length === 0 && (
@@ -553,7 +629,7 @@ function RtoChartCard({ filters, apiPath }: { filters: any; apiPath: string }) {
                         <BarChart
                             data={data}
                             layout="vertical"
-                            margin={{ top: 0, right: isMobile ? 120 : 350, left: 0, bottom: 0 }}
+                            margin={{ top: 0, right: isMobile ? 140 : 470, left: 0, bottom: 0 }}
                         >
                             <CartesianGrid strokeDasharray="3 3" horizontal vertical={false} stroke="#f1f5f9" />
                             <XAxis type="number" hide />
@@ -622,14 +698,31 @@ function RunningSeriesStatusCard({ filters, apiPath }: { filters: any; apiPath: 
                 const raw: any[] = payload.series?.running || [];
                 setLatestSnapshotDate(payload.series?.latest_snapshot_date || null);
 
-                const mapped = raw.map((r, i) => {
+                const dedupedByRto = new Map<string, any>();
+                for (const row of raw) {
+                    const code = String(row?.rto_code || '')
+                        .toUpperCase()
+                        .trim();
+                    const prev = dedupedByRto.get(code);
+                    if (!prev) {
+                        dedupedByRto.set(code, row);
+                        continue;
+                    }
+                    const rowFilled = Number(row?.filled_till || 0);
+                    const prevFilled = Number(prev?.filled_till || 0);
+                    const rowOpen = Number(row?.running_open_count || 0);
+                    const prevOpen = Number(prev?.running_open_count || 0);
+                    if (rowFilled > prevFilled || (rowFilled === prevFilled && rowOpen > prevOpen)) {
+                        dedupedByRto.set(code, row);
+                    }
+                }
+
+                const mapped = Array.from(dedupedByRto.values()).map((r, i) => {
                     const runningOpenCount = Number(r.running_open_count || 0);
                     const availableCount = Number(r.available_count || 0);
                     const filledTill = Number(r.filled_till || 0);
                     const remaining = Math.max(9999 - filledTill, 0);
                     const metricUnits = Math.max(filledTill, 0);
-                    const name = MMRD_RTO_NAMES[r.rto_code] || r.rto_name || r.rto_code;
-                    const status = String(r.series_status || '').trim() || 'UNKNOWN';
                     const seriesName = String(r.series_name || '').trim() || 'NA';
                     return {
                         ...r,
@@ -638,14 +731,17 @@ function RunningSeriesStatusCard({ filters, apiPath }: { filters: any; apiPath: 
                         remaining,
                         running_open_count: runningOpenCount,
                         available_count: availableCount,
-                        display_label: isMobile
-                            ? `${r.rto_code} - ${seriesName} [${filledTill}/9999]`
-                            : `${r.rto_code} – ${trunc(name, 14)}  -  ${seriesName} (${status})  [Reached:${filledTill} | Left:${remaining}]`,
+                        display_label: formatSeriesProgressLabel(seriesName, filledTill),
                         _idx: i,
                     };
                 });
 
-                setData(mapped.sort((a, b) => a.rto_code.localeCompare(b.rto_code)));
+                setData(
+                    mapped.sort((a, b) => {
+                        const diff = Number(b.metric_units || 0) - Number(a.metric_units || 0);
+                        return diff !== 0 ? diff : compareRtoCodeNumeric(a.rto_code, b.rto_code);
+                    })
+                );
             } catch (e) {
                 console.error(e);
             } finally {
@@ -681,7 +777,7 @@ function RunningSeriesStatusCard({ filters, apiPath }: { filters: any; apiPath: 
             <div className="relative min-h-[400px]">
                 {loading && (
                     <div className="absolute inset-0 z-10 bg-white/70 backdrop-blur-sm flex items-center justify-center">
-                        <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+                        <Loader2 className="w-8 h-8 animate-spin text-[#FFD700]" />
                     </div>
                 )}
                 {!loading && data.length === 0 && (
@@ -712,8 +808,8 @@ function RunningSeriesStatusCard({ filters, apiPath }: { filters: any; apiPath: 
                                 ]}
                             />
                             <Bar dataKey="metric_units" radius={[0, 6, 6, 0]} barSize={26}>
-                                {data.map((_: any, i: number) => (
-                                    <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
+                                {data.map((row: any, i: number) => (
+                                    <Cell key={i} fill={getRunningSeriesColor(Number(row?.filled_till || 0))} />
                                 ))}
                                 <LabelList
                                     dataKey="display_label"
@@ -724,6 +820,260 @@ function RunningSeriesStatusCard({ filters, apiPath }: { filters: any; apiPath: 
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
+            </div>
+        </div>
+    );
+}
+
+function TimelineByBrandCard({ filters, apiPath }: { filters: any; apiPath: string }) {
+    const { stateCode, fromMonth, toMonth } = filters;
+    const [rtoCode, setRtoCode] = useState('ALL');
+    const [loading, setLoading] = useState(false);
+    const [rtos, setRtos] = useState<any[]>([]);
+    const [chartData, setChartData] = useState<any[]>([]);
+    const [lineKeys, setLineKeys] = useState<string[]>([]);
+
+    useEffect(() => {
+        let alive = true;
+        const t = setTimeout(async () => {
+            setLoading(true);
+            try {
+                const p = new URLSearchParams({
+                    state_code: stateCode || 'MH',
+                    from_month: fromMonth,
+                    to_month: toMonth,
+                    grain: 'month',
+                });
+                if (rtoCode !== 'ALL') p.set('rto_code', rtoCode);
+                const payload = await fetch(`${apiPath}?${p}&_t=${Date.now()}`).then(r => r.json());
+                if (!alive) return;
+
+                setRtos(
+                    (payload.rto?.share || []).sort((a: any, b: any) => compareRtoCodeNumeric(a.rto_code, b.rto_code))
+                );
+
+                const rows: any[] = payload.brand?.trend || [];
+                const totals = new Map<string, number>();
+                for (const r of rows) {
+                    const k = String(r.brand_display || r.brand_name || '').trim();
+                    totals.set(k, (totals.get(k) || 0) + Number(r.units || 0));
+                }
+                const topKeys = Array.from(totals.entries())
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 6)
+                    .map(([k]) => k);
+                const keySet = new Set(topKeys);
+
+                const periodMap = new Map<string, any>();
+                for (const r of rows) {
+                    const label = String(r.brand_display || r.brand_name || '').trim();
+                    if (!keySet.has(label)) continue;
+                    const period = String(r.period_start || '');
+                    const curr = periodMap.get(period) || { period, period_label: formatPeriodShort(period) };
+                    curr[label] = Number(r.units || 0);
+                    periodMap.set(period, curr);
+                }
+                const merged = Array.from(periodMap.values()).sort((a, b) =>
+                    String(a.period).localeCompare(String(b.period), 'en')
+                );
+                setLineKeys(topKeys);
+                setChartData(merged);
+            } catch (e) {
+                console.error(e);
+            } finally {
+                if (alive) setLoading(false);
+            }
+        }, 350);
+
+        return () => {
+            alive = false;
+            clearTimeout(t);
+        };
+    }, [stateCode, fromMonth, toMonth, rtoCode, apiPath]);
+
+    return (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col overflow-hidden group/card shadow-slate-200/50">
+            <div className="p-5 border-b border-slate-100 bg-white flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-[#FFD700]/10 text-yellow-600 rounded-xl border border-[#FFD700]/30 shadow-sm">
+                        <TrendingUp className="w-5 h-5" />
+                    </div>
+                    <div>
+                        <h2 className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-500 mb-0.5">
+                            Timeline
+                        </h2>
+                        <h3 className="text-sm font-black text-slate-900 tracking-tight">Timeline by Brand</h3>
+                    </div>
+                </div>
+                <div className="relative flex items-center gap-3 bg-white/80 backdrop-blur-xl px-4 py-2 rounded-xl border border-slate-200/60 shadow-sm">
+                    <select
+                        value={rtoCode}
+                        onChange={e => setRtoCode(e.target.value)}
+                        className="text-[12px] font-black text-slate-800 bg-transparent border-none p-0 focus:ring-0 cursor-pointer appearance-none min-w-[170px]"
+                    >
+                        <option value="ALL">ALL RTOs</option>
+                        {rtos.map((r: any) => (
+                            <option key={r.rto_code} value={r.rto_code}>
+                                {r.rto_code} - {MMRD_RTO_NAMES[r.rto_code] || r.rto_name}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+            </div>
+            <div className="relative h-[420px] p-4">
+                {loading && (
+                    <div className="absolute inset-0 z-10 bg-white/70 backdrop-blur-sm flex items-center justify-center">
+                        <Loader2 className="w-8 h-8 animate-spin text-[#FFD700]" />
+                    </div>
+                )}
+                <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={chartData} margin={{ top: 8, right: 24, left: 8, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#eef2ff" />
+                        <XAxis dataKey="period_label" tick={{ fontSize: 11 }} />
+                        <YAxis tick={{ fontSize: 11 }} />
+                        <Tooltip />
+                        <Legend />
+                        {lineKeys.map((k, i) => (
+                            <Line
+                                key={k}
+                                type="monotone"
+                                dataKey={k}
+                                stroke={PALETTE[i % PALETTE.length]}
+                                strokeWidth={2.2}
+                                dot={false}
+                                isAnimationActive={false}
+                            />
+                        ))}
+                    </LineChart>
+                </ResponsiveContainer>
+            </div>
+        </div>
+    );
+}
+
+function TimelineByRtoCard({ filters, apiPath }: { filters: any; apiPath: string }) {
+    const { stateCode, fromMonth, toMonth } = filters;
+    const [brandName, setBrandName] = useState('ALL');
+    const [loading, setLoading] = useState(false);
+    const [brands, setBrands] = useState<any[]>([]);
+    const [chartData, setChartData] = useState<any[]>([]);
+    const [lineKeys, setLineKeys] = useState<string[]>([]);
+
+    useEffect(() => {
+        let alive = true;
+        const t = setTimeout(async () => {
+            setLoading(true);
+            try {
+                const p = new URLSearchParams({
+                    state_code: stateCode || 'MH',
+                    from_month: fromMonth,
+                    to_month: toMonth,
+                    grain: 'month',
+                });
+                if (brandName !== 'ALL') p.set('brand_name', brandName);
+                const payload = await fetch(`${apiPath}?${p}&_t=${Date.now()}`).then(r => r.json());
+                if (!alive) return;
+
+                setBrands(payload.brand?.share || []);
+
+                const rows: any[] = payload.timeline_rto || [];
+                const totals = new Map<string, number>();
+                const nameByCode = new Map<string, string>();
+                for (const r of rows) {
+                    const code = String(r.rto_code || '').toUpperCase();
+                    totals.set(code, (totals.get(code) || 0) + Number(r.units || 0));
+                    nameByCode.set(code, String(r.rto_name || code));
+                }
+                const topCodes = Array.from(totals.entries())
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 6)
+                    .map(([k]) => k);
+                const topSet = new Set(topCodes);
+
+                const periodMap = new Map<string, any>();
+                for (const r of rows) {
+                    const code = String(r.rto_code || '').toUpperCase();
+                    if (!topSet.has(code)) continue;
+                    const period = String(r.period_start || '');
+                    const lineLabel = `${code} (${trunc(nameByCode.get(code) || code, 12)})`;
+                    const curr = periodMap.get(period) || { period, period_label: formatPeriodShort(period) };
+                    curr[lineLabel] = Number(r.units || 0);
+                    periodMap.set(period, curr);
+                }
+                const merged = Array.from(periodMap.values()).sort((a, b) =>
+                    String(a.period).localeCompare(String(b.period), 'en')
+                );
+                const labels = topCodes.map(code => `${code} (${trunc(nameByCode.get(code) || code, 12)})`);
+                setLineKeys(labels);
+                setChartData(merged);
+            } catch (e) {
+                console.error(e);
+            } finally {
+                if (alive) setLoading(false);
+            }
+        }, 350);
+
+        return () => {
+            alive = false;
+            clearTimeout(t);
+        };
+    }, [stateCode, fromMonth, toMonth, brandName, apiPath]);
+
+    return (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col overflow-hidden group/card shadow-slate-200/50">
+            <div className="p-5 border-b border-slate-100 bg-white flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-100/50 shadow-sm">
+                        <BarChart3 className="w-5 h-5" />
+                    </div>
+                    <div>
+                        <h2 className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-500 mb-0.5">
+                            Timeline
+                        </h2>
+                        <h3 className="text-sm font-black text-slate-900 tracking-tight">Timeline by RTO</h3>
+                    </div>
+                </div>
+                <div className="relative flex items-center gap-3 bg-white/80 backdrop-blur-xl px-4 py-2 rounded-xl border border-slate-200/60 shadow-sm">
+                    <select
+                        value={brandName}
+                        onChange={e => setBrandName(e.target.value)}
+                        className="text-[12px] font-black text-slate-800 bg-transparent border-none p-0 focus:ring-0 cursor-pointer appearance-none min-w-[170px]"
+                    >
+                        <option value="ALL">ALL Brands</option>
+                        {brands.map((b: any) => (
+                            <option key={b.brand_name} value={b.brand_name}>
+                                {formatBrandLabel(b.brand_display || b.brand_name)}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+            </div>
+            <div className="relative h-[420px] p-4">
+                {loading && (
+                    <div className="absolute inset-0 z-10 bg-white/70 backdrop-blur-sm flex items-center justify-center">
+                        <Loader2 className="w-8 h-8 animate-spin text-[#FFD700]" />
+                    </div>
+                )}
+                <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={chartData} margin={{ top: 8, right: 24, left: 8, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#ecfeff" />
+                        <XAxis dataKey="period_label" tick={{ fontSize: 11 }} />
+                        <YAxis tick={{ fontSize: 11 }} />
+                        <Tooltip />
+                        <Legend />
+                        {lineKeys.map((k, i) => (
+                            <Line
+                                key={k}
+                                type="monotone"
+                                dataKey={k}
+                                stroke={PALETTE[i % PALETTE.length]}
+                                strokeWidth={2.2}
+                                dot={false}
+                                isAnimationActive={false}
+                            />
+                        ))}
+                    </LineChart>
+                </ResponsiveContainer>
             </div>
         </div>
     );
@@ -809,6 +1159,9 @@ export default function VahanTwoWheelerPage({ dataApiPath, title }: Props) {
 
     const filters = { stateCode, period, fromMonth, toMonth };
     const [lastDbUpdateAt, setLastDbUpdateAt] = useState<string | null>(null);
+    const [activeChartTab, setActiveChartTab] = useState<
+        'series' | 'brand' | 'rto' | 'timeline_rto' | 'timeline_brand'
+    >('series');
     const lastRefreshed = (() => {
         if (!lastDbUpdateAt) return '---';
         const dt = new Date(lastDbUpdateAt);
@@ -829,7 +1182,7 @@ export default function VahanTwoWheelerPage({ dataApiPath, title }: Props) {
         <div className="relative min-h-screen bg-[#f8fafc]">
             {/* Cinematic Background Mesh */}
             <div className="fixed inset-0 -z-20 overflow-hidden pointer-events-none">
-                <div className="absolute top-[-10%] left-[-10%] w-[60vw] h-[60vw] bg-indigo-100/40 rounded-full blur-[140px] animate-pulse" />
+                <div className="absolute top-[-10%] left-[-10%] w-[60vw] h-[60vw] bg-[#FFD700]/20 rounded-full blur-[140px] animate-pulse" />
                 <div className="absolute bottom-[0%] right-[-10%] w-[50vw] h-[50vw] bg-orange-100/30 rounded-full blur-[140px]" />
                 <div className="absolute top-[30%] right-[5%] w-[40vw] h-[40vw] bg-emerald-50/40 rounded-full blur-[120px] animate-pulse" />
                 <div className="absolute inset-0 opacity-[0.015] bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay" />
@@ -851,12 +1204,12 @@ export default function VahanTwoWheelerPage({ dataApiPath, title }: Props) {
 
                         {/* Glass Filter Floating Island - Perfectly Aligned */}
                         <div className="relative group">
-                            <div className="absolute -inset-2 bg-gradient-to-r from-indigo-500/40 via-purple-500/40 to-orange-500/40 rounded-[3rem] blur-3xl opacity-20 group-hover:opacity-40 transition duration-1000 group-hover:scale-110" />
+                            <div className="absolute -inset-2 bg-gradient-to-r from-[#FFD700]/40 via-[#FFD700]/20 to-yellow-500/40 rounded-[3rem] blur-3xl opacity-20 group-hover:opacity-40 transition duration-1000 group-hover:scale-110" />
                             <div className="relative bg-white/50 backdrop-blur-[40px] border-[1.5px] border-white/90 rounded-[2rem] md:rounded-[2.8rem] p-2 md:p-4 px-3 md:px-10 shadow-[0_30px_70px_-20px_rgba(0,0,0,0.12)] flex flex-wrap items-center justify-center md:justify-start gap-2 md:gap-10">
                                 <div className="flex items-center gap-2 md:gap-6">
                                     <div className="flex flex-col">
                                         <div className="bg-white/90 px-4 md:px-6 py-2.5 md:py-4 rounded-xl md:rounded-2xl border border-white shadow-sm flex items-center gap-2 md:gap-4 hover:shadow-lg transition-all cursor-pointer">
-                                            <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse hidden md:block" />
+                                            <div className="w-1.5 h-1.5 rounded-full bg-[#FFD700]/100 animate-pulse hidden md:block" />
                                             <select
                                                 value={stateCode}
                                                 onChange={e => setStateCode(e.target.value)}
@@ -866,7 +1219,7 @@ export default function VahanTwoWheelerPage({ dataApiPath, title }: Props) {
                                                 <option value="GUJ">GUJARAT</option>
                                                 <option value="KA">KARNATAKA</option>
                                             </select>
-                                            <ChevronDown className="w-4 h-4 md:w-5 md:h-5 text-indigo-400" />
+                                            <ChevronDown className="w-4 h-4 md:w-5 md:h-5 text-slate-800" />
                                         </div>
                                     </div>
                                 </div>
@@ -892,7 +1245,7 @@ export default function VahanTwoWheelerPage({ dataApiPath, title }: Props) {
                                                 <option value="this_year">This Year</option>
                                                 <option value="last_year">Last Year</option>
                                             </select>
-                                            <ChevronDown className="w-4 h-4 md:w-5 md:h-5 text-indigo-400" />
+                                            <ChevronDown className="w-4 h-4 md:w-5 md:h-5 text-slate-800" />
                                         </div>
                                     </div>
                                 </div>
@@ -904,8 +1257,8 @@ export default function VahanTwoWheelerPage({ dataApiPath, title }: Props) {
                     <div className="flex justify-center xl:justify-end -mt-4 xl:mt-0 transition-all duration-700">
                         <div className="flex items-center gap-3 bg-white/40 backdrop-blur-3xl px-6 py-2 rounded-full border border-white/60 shadow-[0_5px_15px_-5px_rgba(0,0,0,0.05)] group/refresh hover:bg-white/60 cursor-default transition-all">
                             <div className="relative flex items-center justify-center">
-                                <Activity className="w-3.5 h-3.5 text-indigo-500 animate-pulse" />
-                                <div className="absolute inset-0 bg-indigo-500/20 rounded-full blur-[4px] animate-ping" />
+                                <Activity className="w-3.5 h-3.5 text-[#FFD700] animate-pulse" />
+                                <div className="absolute inset-0 bg-[#FFD700]/100/20 rounded-full blur-[4px] animate-ping" />
                             </div>
                             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.15em] flex items-center gap-2">
                                 Last Refreshed
@@ -919,11 +1272,74 @@ export default function VahanTwoWheelerPage({ dataApiPath, title }: Props) {
                 {/* KPI Row */}
                 <KpiStatsRow filters={filters} apiPath={apiPath} onLastDataUpdate={setLastDbUpdateAt} />
 
+                {/* Chart Tabs */}
+                <div className="w-full">
+                    <div className="grid grid-cols-5 items-center gap-2 w-full bg-white/70 backdrop-blur-xl border border-slate-200 rounded-2xl p-2 shadow-sm">
+                        <button
+                            type="button"
+                            onClick={() => setActiveChartTab('series')}
+                            className={`w-full px-4 py-2 rounded-xl text-xs md:text-sm font-black tracking-tight transition ${
+                                activeChartTab === 'series'
+                                    ? 'bg-[#FFD700] text-slate-900 shadow-md'
+                                    : 'text-slate-700 hover:bg-slate-100'
+                            }`}
+                        >
+                            Running Series Status
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setActiveChartTab('brand')}
+                            className={`w-full px-4 py-2 rounded-xl text-xs md:text-sm font-black tracking-tight transition ${
+                                activeChartTab === 'brand'
+                                    ? 'bg-[#FFD700] text-slate-900 shadow-md'
+                                    : 'text-slate-700 hover:bg-slate-100'
+                            }`}
+                        >
+                            Performance by Brand
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setActiveChartTab('rto')}
+                            className={`w-full px-4 py-2 rounded-xl text-xs md:text-sm font-black tracking-tight transition ${
+                                activeChartTab === 'rto'
+                                    ? 'bg-[#FFD700] text-slate-900 shadow-md'
+                                    : 'text-slate-700 hover:bg-slate-100'
+                            }`}
+                        >
+                            Performance by RTO
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setActiveChartTab('timeline_rto')}
+                            className={`w-full px-4 py-2 rounded-xl text-xs md:text-sm font-black tracking-tight transition ${
+                                activeChartTab === 'timeline_rto'
+                                    ? 'bg-[#FFD700] text-slate-900 shadow-md'
+                                    : 'text-slate-700 hover:bg-slate-100'
+                            }`}
+                        >
+                            Timeline by RTO
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setActiveChartTab('timeline_brand')}
+                            className={`w-full px-4 py-2 rounded-xl text-xs md:text-sm font-black tracking-tight transition ${
+                                activeChartTab === 'timeline_brand'
+                                    ? 'bg-[#FFD700] text-slate-900 shadow-md'
+                                    : 'text-slate-700 hover:bg-slate-100'
+                            }`}
+                        >
+                            Timeline by Brand
+                        </button>
+                    </div>
+                </div>
+
                 {/* Charts */}
                 <div className="flex flex-col gap-10 w-full">
-                    <BrandChartCard filters={filters} apiPath={apiPath} />
-                    <RtoChartCard filters={filters} apiPath={apiPath} />
-                    <RunningSeriesStatusCard filters={filters} apiPath={apiPath} />
+                    {activeChartTab === 'brand' && <BrandChartCard filters={filters} apiPath={apiPath} />}
+                    {activeChartTab === 'rto' && <RtoChartCard filters={filters} apiPath={apiPath} />}
+                    {activeChartTab === 'series' && <RunningSeriesStatusCard filters={filters} apiPath={apiPath} />}
+                    {activeChartTab === 'timeline_rto' && <TimelineByRtoCard filters={filters} apiPath={apiPath} />}
+                    {activeChartTab === 'timeline_brand' && <TimelineByBrandCard filters={filters} apiPath={apiPath} />}
                 </div>
             </div>
         </div>
