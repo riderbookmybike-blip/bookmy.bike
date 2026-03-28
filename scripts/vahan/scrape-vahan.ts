@@ -11,6 +11,21 @@ async function main() {
     console.log('🚀 Starting VAHAN Scraper (User Sequenced)...');
     const isHeadless = process.env.HEADLESS === 'true';
     const batchSize = Number(process.env.RTO_BATCH_SIZE || 0);
+    const forceRescrape = process.env.FORCE_RESCRAPE === 'true';
+    const excludedCodes = new Set(
+        String(process.env.EXCLUDED_RTO_CODES || '99')
+            .split(',')
+            .map(v => v.trim())
+            .filter(Boolean)
+            .map(v => String(Number(v)))
+    );
+    const targetCodes = new Set(
+        String(process.env.RTO_CODES || '')
+            .split(',')
+            .map(v => v.trim())
+            .filter(Boolean)
+            .map(v => String(Number(v)))
+    );
     const browser = await chromium.launch({ headless: isHeadless });
     const context = await browser.newContext({ acceptDownloads: true });
     const page = await context.newPage();
@@ -40,6 +55,8 @@ async function main() {
             const val = await opt.getAttribute('value');
             const text = (await opt.textContent()) || '';
             if (val && val !== '0' && val !== '-1' && val.trim() !== '') {
+                const normalizedVal = String(Number(val));
+                if (excludedCodes.has(normalizedVal)) continue;
                 const standardizedVal = val.padStart(2, '0');
                 rtos.push({ val, text, code: 'MH' + standardizedVal });
             }
@@ -49,11 +66,13 @@ async function main() {
         const yearsToScrape = ['2026'];
         const outputDir = path.join(process.cwd(), 'scripts', 'vahan');
 
-        const pendingRtos = rtos.filter(rto => {
+        const scopedRtos = targetCodes.size > 0 ? rtos.filter(rto => targetCodes.has(String(Number(rto.val)))) : rtos;
+
+        const pendingRtos = scopedRtos.filter(rto => {
             return yearsToScrape.some(targetYear => {
                 const cleanCode = rto.val.replace(/[^A-Z0-9]/gi, '');
                 const jsonPath = path.join(outputDir, `vahan_Maker_Month_${cleanCode}_${targetYear}.json`);
-                return !fs.existsSync(jsonPath);
+                return forceRescrape || !fs.existsSync(jsonPath);
             });
         });
 
@@ -84,7 +103,7 @@ async function main() {
             for (const targetYear of yearsToScrape) {
                 const cleanCode = rtoCode.replace(/[^A-Z0-9]/gi, '');
                 const jsonPath = path.join(outputDir, `vahan_Maker_Month_${cleanCode}_${targetYear}.json`);
-                if (fs.existsSync(jsonPath)) {
+                if (!forceRescrape && fs.existsSync(jsonPath)) {
                     console.log(
                         `  ⏭️  Skipping ${current.code} ${targetYear} (already fetched): ${path.basename(jsonPath)}`
                     );

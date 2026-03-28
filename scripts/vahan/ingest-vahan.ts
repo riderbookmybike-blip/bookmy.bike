@@ -150,6 +150,10 @@ async function ingest() {
 
         const parsedRtoCode = match[1]; // e.g: 48
         const parsedYear = match[2]; // e.g: 2026
+        if (String(Number(parsedRtoCode)) === '99') {
+            console.log(`\n⏭️ Skipping File: ${file} (RTO MH99 excluded by policy)`);
+            continue;
+        }
         const rtoCodeStr = `MH${parsedRtoCode.padStart(2, '0')}`; // e.g., MH48
 
         console.log(`\n📄 Processing File: ${file} (RTO: ${rtoCodeStr}, Year: ${parsedYear})`);
