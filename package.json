@@ -15,6 +15,9 @@
     "format:check": "prettier --check .",
     "prepare": "husky",
     "typecheck:scripts": "tsc -p tsconfig.scripts.json --noEmit",
+    "vahan:scrape": "tsx scripts/vahan/scrape-vahan.ts",
+    "vahan:ingest": "tsx scripts/vahan/ingest-vahan.ts",
+    "vahan:batch": "bash scripts/vahan/run-batches.sh",
     "spec:review:build": "tsx scripts/spec_review_queue_build.ts",
     "spec:review:run": "tsx scripts/spec_review_queue_review.ts",
     "test:unit": "jest"

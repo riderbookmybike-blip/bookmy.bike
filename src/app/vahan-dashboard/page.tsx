@@ -15,10 +15,8 @@ export default function PublicVahanDashboardPage() {
         <div className="flex min-h-screen flex-col bg-gradient-to-b from-slate-50 via-white to-slate-100">
             <MarketplaceHeader onLoginClick={() => setIsLoginOpen(true)} />
 
-            <main className="flex-1" style={{ paddingTop: 'var(--header-h, 72px)' }}>
-                <div className="mx-auto max-w-[1440px] px-4 py-8 md:px-6 md:py-10">
-                    <VahanTwoWheelerPage showUpload={false} title="Vahan Dashboard" dataApiPath="/api/vahan-2w" />
-                </div>
+            <main className="flex-1" style={{ paddingTop: 'var(--header-h)' }}>
+                <VahanTwoWheelerPage showUpload={false} title="Vahan Dashboard" />
             </main>
 
             <MarketplaceFooter />

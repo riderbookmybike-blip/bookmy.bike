@@ -59,3 +59,13 @@ public/media/honda/activa-125/h-smart/rebel-red-metallic/download.png
 public/media/hero/hf-deluxe/gallery/media_1efec9989ab3b911afa979208738fb15632b40a5f.png
 public/media/hero/hf-deluxe/gallery/*.png
 public/media/hero/hf-deluxe/gallery/*.jpg
+
+# VAHAN scraper runtime artifacts
+scripts/vahan/vahan_Maker_Month_*_*.json
+scripts/vahan/debug_*.png
+scripts/vahan/vahan_*_snapshot.html
+scripts/vahan/vahan_*.html
+scripts/vahan/vahan_*.png
+tmp/vahan_*.log
+tmp/vahan_*.pid
+tmp/vahan_*.nohup.log

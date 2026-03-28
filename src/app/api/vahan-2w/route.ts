@@ -24,7 +24,33 @@ function mapDbRowToApiRow(row: any): VahanTwoWheelerRow {
     };
 }
 
-function mapMonthlyDbRowToApiRow(row: any): VahanTwoWheelerMonthlyRow {
+function normalizeMakerKey(value: unknown): string {
+    return String(value || '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toUpperCase();
+}
+
+async function fetchVahanBrandMap(): Promise<Map<string, { brandName: string; logoSlug: string | null }>> {
+    const { data } = await (adminClient as any)
+        .from('vahan_oem_brand_map')
+        .select('row_label_key, brand_name, logo_slug');
+    const entries = Array.isArray(data) ? data : [];
+    return new Map(
+        entries.map((row: any) => [
+            normalizeMakerKey(row.row_label_key),
+            { brandName: String(row.brand_name || ''), logoSlug: row.logo_slug ? String(row.logo_slug) : null },
+        ])
+    );
+}
+
+function mapMonthlyDbRowToApiRow(
+    row: any,
+    brandMap: Map<string, { brandName: string; logoSlug: string | null }>
+): VahanTwoWheelerMonthlyRow {
+    const rawMaker = String(row.maker || '');
+    const mapped = brandMap.get(normalizeMakerKey(rawMaker));
+
     return {
         stateCode: row.state_code,
         state: row.state_name,
@@ -33,7 +59,7 @@ function mapMonthlyDbRowToApiRow(row: any): VahanTwoWheelerMonthlyRow {
         year: Number(row.year),
         monthNo: Number(row.month_no),
         monthLabel: String(row.month_label || ''),
-        maker: String(row.maker || ''),
+        maker: mapped?.brandName || rawMaker,
         units: Number(row.units || 0),
         source: row.source_file_name || 'upload',
         fetchedAt: row.updated_at || row.uploaded_at || new Date().toISOString(),
@@ -64,8 +90,65 @@ export async function GET(req: NextRequest) {
         return NextResponse.json(buildVahanApiResponse(getSeedRows(), 'seed', []), { headers: PUBLIC_CACHE_HEADERS });
     }
 
-    const rows = (Array.isArray(data) ? data : []).map(mapDbRowToApiRow);
-    const monthlyRows = (Array.isArray(monthlyData) ? monthlyData : []).map(mapMonthlyDbRowToApiRow);
+    const brandMap = await fetchVahanBrandMap();
+    let rows: VahanTwoWheelerRow[] = (Array.isArray(data) ? data : []).map(row => {
+        const base = mapDbRowToApiRow(row);
+        if (base.axis !== 'MAKER') return base;
+        const mapped = brandMap.get(normalizeMakerKey(base.rowLabel));
+        return mapped ? { ...base, rowLabel: mapped.brandName } : base;
+    });
+
+    const monthlyRows = (Array.isArray(monthlyData) ? monthlyData : []).map((row: any) =>
+        mapMonthlyDbRowToApiRow(row, brandMap)
+    );
+
+    // --- DERIVATION CONTRACT (Synthesize yearly rows from monthly if DB lacks yearly extracts) ---
+    if (rows.length === 0 && monthlyRows.length > 0) {
+        const aggregated = new Map<string, VahanTwoWheelerRow>();
+
+        monthlyRows.forEach((mr: any) => {
+            // Aggregate RTO Axis
+            const rtoKey = `RTO_${mr.year}_${mr.rtoCode}`;
+            if (!aggregated.has(rtoKey)) {
+                aggregated.set(rtoKey, {
+                    axis: 'RTO',
+                    state: mr.state,
+                    stateCode: mr.stateCode,
+                    year: mr.year,
+                    rowLabel: mr.rtoCode,
+                    mCycleScooter: 0,
+                    moped: 0,
+                    motorisedCycleGt25cc: 0,
+                    twoWheelerTotal: 0,
+                    source: 'derived-from-monthly',
+                    fetchedAt: new Date().toISOString(),
+                });
+            }
+            aggregated.get(rtoKey)!.twoWheelerTotal += mr.units;
+
+            // Aggregate Maker Axis
+            const makerKey = `MAKER_${mr.year}_${mr.maker}`;
+            if (!aggregated.has(makerKey)) {
+                aggregated.set(makerKey, {
+                    axis: 'MAKER',
+                    state: mr.state,
+                    stateCode: mr.stateCode,
+                    year: mr.year,
+                    rowLabel: mr.maker,
+                    mCycleScooter: 0,
+                    moped: 0,
+                    motorisedCycleGt25cc: 0,
+                    twoWheelerTotal: 0,
+                    source: 'derived-from-monthly',
+                    fetchedAt: new Date().toISOString(),
+                });
+            }
+            aggregated.get(makerKey)!.twoWheelerTotal += mr.units;
+        });
+
+        rows = Array.from(aggregated.values());
+    }
+
     if (rows.length === 0) {
         return NextResponse.json(buildVahanApiResponse(getSeedRows(), 'seed', monthlyRows), {
             headers: PUBLIC_CACHE_HEADERS,
