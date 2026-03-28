@@ -148,6 +148,15 @@ function KpiStatsRow({
 }) {
     const [stats, setStats] = useState<any>(null);
 
+    // Dynamic width detection for responsive margins
+    const [isMobile, setIsMobile] = useState(false);
+    useEffect(() => {
+        const check = () => setIsMobile(window.innerWidth < 768);
+        check();
+        window.addEventListener('resize', check);
+        return () => window.removeEventListener('resize', check);
+    }, []);
+
     useEffect(() => {
         const ctrl = new AbortController();
         (async () => {
@@ -290,6 +299,14 @@ function BrandChartCard({ filters, apiPath }: { filters: any; apiPath: string })
     const [data, setData] = useState<any[]>([]);
     const [rtos, setRtos] = useState<any[]>([]);
 
+    const [isMobile, setIsMobile] = useState(false);
+    useEffect(() => {
+        const check = () => setIsMobile(window.innerWidth < 768);
+        check();
+        window.addEventListener('resize', check);
+        return () => window.removeEventListener('resize', check);
+    }, []);
+
     useEffect(() => {
         let alive = true;
         const t = setTimeout(async () => {
@@ -319,7 +336,9 @@ function BrandChartCard({ filters, apiPath }: { filters: any; apiPath: string })
                             units,
                             share_pct: pct,
                             brand_label: brandLabel,
-                            display_label: `${trunc(brandLabel, 20)}  -  ${fmtIN(units)} (${pct}%)`,
+                            display_label: isMobile
+                                ? `${fmtIN(units)} (${pct}%)`
+                                : `${trunc(brandLabel, 20)}  -  ${fmtIN(units)} (${pct}%)`,
                             _idx: i,
                         };
                     })
@@ -377,12 +396,16 @@ function BrandChartCard({ filters, apiPath }: { filters: any; apiPath: string })
                         <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
                     </div>
                 )}
-                <div style={{ height: h, padding: '24px 24px 24px 10px' }}>
+                <div style={{ height: h, padding: isMobile ? '24px 10px 24px 5px' : '24px 24px 24px 10px' }}>
                     <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={data} layout="vertical" margin={{ top: 0, right: 350, left: 10, bottom: 0 }}>
+                        <BarChart
+                            data={data}
+                            layout="vertical"
+                            margin={{ top: 0, right: isMobile ? 120 : 350, left: 0, bottom: 0 }}
+                        >
                             <CartesianGrid strokeDasharray="3 3" horizontal vertical={false} stroke="#f1f5f9" />
                             <XAxis type="number" hide />
-                            <YAxis type="category" dataKey="brand_name" hide />
+                            <YAxis type="category" dataKey="brand_label" hide />
                             <Tooltip
                                 cursor={{ fill: '#f8fafc' }}
                                 contentStyle={{
@@ -423,6 +446,14 @@ function RtoChartCard({ filters, apiPath }: { filters: any; apiPath: string }) {
     const [data, setData] = useState<any[]>([]);
     const [brands, setBrands] = useState<any[]>([]);
 
+    const [isMobile, setIsMobile] = useState(false);
+    useEffect(() => {
+        const check = () => setIsMobile(window.innerWidth < 768);
+        check();
+        window.addEventListener('resize', check);
+        return () => window.removeEventListener('resize', check);
+    }, []);
+
     useEffect(() => {
         let alive = true;
         const t = setTimeout(async () => {
@@ -452,7 +483,9 @@ function RtoChartCard({ filters, apiPath }: { filters: any; apiPath: string }) {
                         ...r,
                         units,
                         share_pct: pct,
-                        display_label: `${r.rto_code} – ${trunc(name, 14)}  -  ${fmtIN(units)} (${pct}%)`,
+                        display_label: isMobile
+                            ? `${r.rto_code} - ${fmtIN(units)} (${pct}%)`
+                            : `${r.rto_code} – ${trunc(name, 14)}  -  ${fmtIN(units)} (${pct}%)`,
                     };
                 });
 
@@ -515,9 +548,13 @@ function RtoChartCard({ filters, apiPath }: { filters: any; apiPath: string }) {
                         No RTO data for this period
                     </div>
                 )}
-                <div style={{ height: h, padding: '24px 24px 24px 10px' }}>
+                <div style={{ height: h, padding: isMobile ? '24px 10px 24px 5px' : '24px 24px 24px 10px' }}>
                     <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={data} layout="vertical" margin={{ top: 0, right: 350, left: 10, bottom: 0 }}>
+                        <BarChart
+                            data={data}
+                            layout="vertical"
+                            margin={{ top: 0, right: isMobile ? 120 : 350, left: 0, bottom: 0 }}
+                        >
                             <CartesianGrid strokeDasharray="3 3" horizontal vertical={false} stroke="#f1f5f9" />
                             <XAxis type="number" hide />
                             <YAxis type="category" dataKey="rto_code" hide />
