@@ -1,0 +1,39 @@
+name: VAHAN Fancy Series Nightly
+
+on:
+  schedule:
+    # 20:30 UTC = 02:00 AM IST (next day)
+    - cron: '30 20 * * *'
+  workflow_dispatch:
+
+jobs:
+  scrape-fancy-series:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Scrape Fancy Series (MH)
+        run: npx tsx scripts/vahan/scrape-fancy-series.ts
+        env:
+          WRITE_DB: 'true'
+          HEADLESS: 'true'
+          FANCY_STATE_CODE: 'MH'
+          FANCY_STATE_NAME: 'Maharashtra'
+          FANCY_SCAN_PAGES: '30'
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

@@ -372,12 +372,12 @@ function BrandChartCard({ filters, apiPath }: { filters: any; apiPath: string })
                     </div>
                 </div>
 
-                <div className="relative flex items-center gap-4 bg-slate-50 hover:bg-white px-6 py-2.5 rounded-2xl border border-slate-200/60 hover:border-indigo-200 hover:shadow-md hover:shadow-indigo-500/5 transition-all cursor-pointer">
-                    <div className="flex items-center gap-2 min-w-[140px]">
+                <div className="relative flex items-center gap-3 bg-white/80 backdrop-blur-xl px-4 py-2 md:px-6 md:py-2.5 rounded-xl md:rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all cursor-pointer">
+                    <div className="flex items-center gap-2 min-w-[100px] md:min-w-[140px]">
                         <select
                             value={rtoCode}
                             onChange={e => setRtoCode(e.target.value)}
-                            className="text-[12px] font-bold text-slate-800 bg-transparent border-none p-0 focus:ring-0 cursor-pointer appearance-none w-full"
+                            className="text-[11px] md:text-[12px] font-black text-slate-800 bg-transparent border-none p-0 focus:ring-0 cursor-pointer appearance-none w-full"
                         >
                             <option value="ALL">ALL RTOs</option>
                             {rtos.map(r => (
@@ -386,7 +386,7 @@ function BrandChartCard({ filters, apiPath }: { filters: any; apiPath: string })
                                 </option>
                             ))}
                         </select>
-                        <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
+                        <ChevronDown className="w-3.5 h-3.5 md:w-4 md:h-4 text-indigo-400 shrink-0" />
                     </div>
                 </div>
             </div>
@@ -519,12 +519,12 @@ function RtoChartCard({ filters, apiPath }: { filters: any; apiPath: string }) {
                     </div>
                 </div>
 
-                <div className="relative flex items-center gap-4 bg-slate-50 hover:bg-white px-6 py-2.5 rounded-2xl border border-slate-200/60 hover:border-indigo-200 hover:shadow-md hover:shadow-indigo-500/5 transition-all cursor-pointer">
-                    <div className="flex items-center gap-2 min-w-[170px]">
+                <div className="relative flex items-center gap-3 bg-white/80 backdrop-blur-xl px-4 py-2 md:px-6 md:py-2.5 rounded-xl md:rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all cursor-pointer">
+                    <div className="flex items-center gap-2 min-w-[120px] md:min-w-[170px]">
                         <select
                             value={brandName}
                             onChange={e => setBrandName(e.target.value)}
-                            className="text-[12px] font-bold text-slate-800 bg-transparent border-none p-0 focus:ring-0 cursor-pointer appearance-none w-full uppercase"
+                            className="text-[11px] md:text-[12px] font-black text-slate-800 bg-transparent border-none p-0 focus:ring-0 cursor-pointer appearance-none w-full uppercase"
                         >
                             <option value="ALL">ALL BRANDS</option>
                             {brands.map(b => (
@@ -533,7 +533,7 @@ function RtoChartCard({ filters, apiPath }: { filters: any; apiPath: string }) {
                                 </option>
                             ))}
                         </select>
-                        <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
+                        <ChevronDown className="w-3.5 h-3.5 md:w-4 md:h-4 text-indigo-400 shrink-0" />
                     </div>
                 </div>
             </div>
@@ -572,6 +572,147 @@ function RtoChartCard({ filters, apiPath }: { filters: any; apiPath: string }) {
                             />
                             <Bar dataKey="units" radius={[0, 6, 6, 0]} barSize={26}>
                                 {data.map((_, i) => (
+                                    <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
+                                ))}
+                                <LabelList
+                                    dataKey="display_label"
+                                    position="right"
+                                    style={{ fill: '#64748b', fontSize: 11, fontWeight: 'bold' }}
+                                />
+                            </Bar>
+                        </BarChart>
+                    </ResponsiveContainer>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ─────────────────────────────────────────────────────────────
+// RUNNING SERIES STATUS CARD (mirrors RTO chart style)
+// ─────────────────────────────────────────────────────────────
+function RunningSeriesStatusCard({ filters, apiPath }: { filters: any; apiPath: string }) {
+    const { stateCode, fromMonth, toMonth } = filters;
+    const [loading, setLoading] = useState(false);
+    const [data, setData] = useState<any[]>([]);
+    const [latestSnapshotDate, setLatestSnapshotDate] = useState<string | null>(null);
+
+    const [isMobile, setIsMobile] = useState(false);
+    useEffect(() => {
+        const check = () => setIsMobile(window.innerWidth < 768);
+        check();
+        window.addEventListener('resize', check);
+        return () => window.removeEventListener('resize', check);
+    }, []);
+
+    useEffect(() => {
+        let alive = true;
+        const t = setTimeout(async () => {
+            setLoading(true);
+            try {
+                const p = new URLSearchParams({
+                    state_code: stateCode || 'MH',
+                    from_month: fromMonth,
+                    to_month: toMonth,
+                    grain: 'month',
+                });
+                const payload = await fetch(`${apiPath}?${p}&_t=${Date.now()}`).then(r => r.json());
+                if (!alive) return;
+
+                const raw: any[] = payload.series?.running || [];
+                setLatestSnapshotDate(payload.series?.latest_snapshot_date || null);
+
+                const mapped = raw.map((r, i) => {
+                    const runningOpenCount = Number(r.running_open_count || 0);
+                    const availableCount = Number(r.available_count || 0);
+                    const filledTill = Number(r.filled_till || 0);
+                    const remaining = Math.max(9999 - filledTill, 0);
+                    const metricUnits = Math.max(filledTill, 0);
+                    const name = MMRD_RTO_NAMES[r.rto_code] || r.rto_name || r.rto_code;
+                    const status = String(r.series_status || '').trim() || 'UNKNOWN';
+                    const seriesName = String(r.series_name || '').trim() || 'NA';
+                    return {
+                        ...r,
+                        metric_units: metricUnits,
+                        filled_till: filledTill,
+                        remaining,
+                        running_open_count: runningOpenCount,
+                        available_count: availableCount,
+                        display_label: isMobile
+                            ? `${r.rto_code} - ${seriesName} [${filledTill}/9999]`
+                            : `${r.rto_code} – ${trunc(name, 14)}  -  ${seriesName} (${status})  [Reached:${filledTill} | Left:${remaining}]`,
+                        _idx: i,
+                    };
+                });
+
+                setData(mapped.sort((a, b) => a.rto_code.localeCompare(b.rto_code)));
+            } catch (e) {
+                console.error(e);
+            } finally {
+                if (alive) setLoading(false);
+            }
+        }, 400);
+        return () => {
+            alive = false;
+            clearTimeout(t);
+        };
+    }, [stateCode, fromMonth, toMonth, apiPath, isMobile]);
+
+    const h = Math.max(500, data.length * 40);
+
+    return (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col overflow-hidden group/card shadow-slate-200/50">
+            <div className="p-5 border-b border-slate-100 bg-white flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-cyan-50 text-cyan-600 rounded-xl border border-cyan-100/50 shadow-sm">
+                        <Calendar className="w-5 h-5" />
+                    </div>
+                    <div>
+                        <h2 className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-500 mb-0.5">
+                            Fancy Number
+                        </h2>
+                        <h3 className="text-sm font-black text-slate-900 tracking-tight">Running Series Status</h3>
+                    </div>
+                </div>
+                <div className="text-[11px] font-black uppercase tracking-[0.12em] text-slate-500 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2">
+                    Snapshot: {latestSnapshotDate || '---'}
+                </div>
+            </div>
+            <div className="relative min-h-[400px]">
+                {loading && (
+                    <div className="absolute inset-0 z-10 bg-white/70 backdrop-blur-sm flex items-center justify-center">
+                        <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+                    </div>
+                )}
+                {!loading && data.length === 0 && (
+                    <div className="absolute inset-0 flex items-center justify-center text-slate-400 text-sm font-bold">
+                        No running series data
+                    </div>
+                )}
+                <div style={{ height: h, padding: isMobile ? '24px 10px 24px 5px' : '24px 24px 24px 10px' }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                            data={data}
+                            layout="vertical"
+                            margin={{ top: 0, right: isMobile ? 120 : 350, left: 0, bottom: 0 }}
+                        >
+                            <CartesianGrid strokeDasharray="3 3" horizontal vertical={false} stroke="#f1f5f9" />
+                            <XAxis type="number" hide />
+                            <YAxis type="category" dataKey="rto_code" hide />
+                            <Tooltip
+                                cursor={{ fill: '#f8fafc' }}
+                                contentStyle={{
+                                    borderRadius: 12,
+                                    border: 'none',
+                                    boxShadow: '0 20px 25px -5px rgb(0 0 0/.1)',
+                                }}
+                                formatter={(v: any, _: any, p: any) => [
+                                    `Reached: ${p.payload.filled_till} | Left: ${p.payload.remaining} | Open Pool: ${p.payload.running_open_count}`,
+                                    `${p.payload.rto_code} ${p.payload.series_name}`,
+                                ]}
+                            />
+                            <Bar dataKey="metric_units" radius={[0, 6, 6, 0]} barSize={26}>
+                                {data.map((_: any, i: number) => (
                                     <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
                                 ))}
                                 <LabelList
@@ -711,33 +852,35 @@ export default function VahanTwoWheelerPage({ dataApiPath, title }: Props) {
                         {/* Glass Filter Floating Island - Perfectly Aligned */}
                         <div className="relative group">
                             <div className="absolute -inset-2 bg-gradient-to-r from-indigo-500/40 via-purple-500/40 to-orange-500/40 rounded-[3rem] blur-3xl opacity-20 group-hover:opacity-40 transition duration-1000 group-hover:scale-110" />
-                            <div className="relative bg-white/50 backdrop-blur-[40px] border-[1.5px] border-white/90 rounded-[2.8rem] p-4 px-10 shadow-[0_30px_70px_-20px_rgba(0,0,0,0.12)] flex flex-wrap items-center gap-10">
-                                <div className="flex items-center gap-6">
+                            <div className="relative bg-white/50 backdrop-blur-[40px] border-[1.5px] border-white/90 rounded-[2rem] md:rounded-[2.8rem] p-2 md:p-4 px-3 md:px-10 shadow-[0_30px_70px_-20px_rgba(0,0,0,0.12)] flex flex-wrap items-center justify-center md:justify-start gap-2 md:gap-10">
+                                <div className="flex items-center gap-2 md:gap-6">
                                     <div className="flex flex-col">
-                                        <div className="bg-white/80 px-6 py-4 rounded-2xl border border-white shadow-sm flex items-center gap-4 hover:shadow-lg transition-all cursor-pointer">
+                                        <div className="bg-white/90 px-4 md:px-6 py-2.5 md:py-4 rounded-xl md:rounded-2xl border border-white shadow-sm flex items-center gap-2 md:gap-4 hover:shadow-lg transition-all cursor-pointer">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse hidden md:block" />
                                             <select
                                                 value={stateCode}
                                                 onChange={e => setStateCode(e.target.value)}
-                                                className="bg-transparent text-[13px] font-black text-slate-800 border-none p-0 focus:ring-0 cursor-pointer appearance-none min-w-[160px]"
+                                                className="bg-transparent text-[11px] md:text-[13px] font-black text-slate-800 border-none p-0 focus:ring-0 cursor-pointer appearance-none min-w-[100px] md:min-w-[160px]"
                                             >
                                                 <option value="MH">MAHARASHTRA</option>
                                                 <option value="GUJ">GUJARAT</option>
                                                 <option value="KA">KARNATAKA</option>
                                             </select>
-                                            <ChevronDown className="w-5 h-5 text-indigo-400" />
+                                            <ChevronDown className="w-4 h-4 md:w-5 md:h-5 text-indigo-400" />
                                         </div>
                                     </div>
                                 </div>
 
-                                <div className="w-[1.5px] h-12 bg-slate-200/40 hidden lg:block" />
+                                <div className="w-[1px] h-8 md:w-[1.5px] md:h-12 bg-slate-200/40" />
 
-                                <div className="flex items-center gap-6">
+                                <div className="flex items-center gap-2 md:gap-6">
                                     <div className="flex flex-col">
-                                        <div className="bg-white/80 px-6 py-4 rounded-2xl border border-white shadow-sm flex items-center gap-4 hover:shadow-lg transition-all cursor-pointer">
+                                        <div className="bg-white/90 px-4 md:px-6 py-2.5 md:py-4 rounded-xl md:rounded-2xl border border-white shadow-sm flex items-center gap-2 md:gap-4 hover:shadow-lg transition-all cursor-pointer">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse hidden md:block" />
                                             <select
                                                 value={period}
                                                 onChange={e => setPeriod(e.target.value)}
-                                                className="bg-transparent text-[13px] font-black text-slate-800 border-none p-0 focus:ring-0 cursor-pointer appearance-none min-w-[140px]"
+                                                className="bg-transparent text-[11px] md:text-[13px] font-black text-slate-800 border-none p-0 focus:ring-0 cursor-pointer appearance-none min-w-[80px] md:min-w-[140px]"
                                             >
                                                 <option value="today">Today</option>
                                                 <option value="yesterday">Yesterday</option>
@@ -749,7 +892,7 @@ export default function VahanTwoWheelerPage({ dataApiPath, title }: Props) {
                                                 <option value="this_year">This Year</option>
                                                 <option value="last_year">Last Year</option>
                                             </select>
-                                            <ChevronDown className="w-5 h-5 text-indigo-400" />
+                                            <ChevronDown className="w-4 h-4 md:w-5 md:h-5 text-indigo-400" />
                                         </div>
                                     </div>
                                 </div>
@@ -758,11 +901,16 @@ export default function VahanTwoWheelerPage({ dataApiPath, title }: Props) {
                     </div>
 
                     {/* Secondary Status Row: Meta info aligned below their parents */}
-                    <div className="flex flex-col md:flex-row justify-between items-center -mt-4">
-                        <div className="flex items-center gap-2">
-                            <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping" />
-                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                Last refreshed on {lastRefreshed}
+                    <div className="flex justify-center xl:justify-end -mt-4 xl:mt-0 transition-all duration-700">
+                        <div className="flex items-center gap-3 bg-white/40 backdrop-blur-3xl px-6 py-2 rounded-full border border-white/60 shadow-[0_5px_15px_-5px_rgba(0,0,0,0.05)] group/refresh hover:bg-white/60 cursor-default transition-all">
+                            <div className="relative flex items-center justify-center">
+                                <Activity className="w-3.5 h-3.5 text-indigo-500 animate-pulse" />
+                                <div className="absolute inset-0 bg-indigo-500/20 rounded-full blur-[4px] animate-ping" />
+                            </div>
+                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.15em] flex items-center gap-2">
+                                Last Refreshed
+                                <span className="w-1 h-1 rounded-full bg-slate-300" />
+                                <span className="text-slate-800 font-black tracking-tight">{lastRefreshed}</span>
                             </span>
                         </div>
                     </div>
@@ -775,6 +923,7 @@ export default function VahanTwoWheelerPage({ dataApiPath, title }: Props) {
                 <div className="flex flex-col gap-10 w-full">
                     <BrandChartCard filters={filters} apiPath={apiPath} />
                     <RtoChartCard filters={filters} apiPath={apiPath} />
+                    <RunningSeriesStatusCard filters={filters} apiPath={apiPath} />
                 </div>
             </div>
         </div>

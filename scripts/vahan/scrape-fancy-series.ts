@@ -20,6 +20,7 @@ type SeriesProgressRow = SeriesStatusRow & {
     filledTill: number | null;
     runningOpenCount: number;
     availableCount: number;
+    activeOnDate: string | null;
     scrapedAt: string;
 };
 
@@ -47,6 +48,35 @@ function toInt(value: unknown): number {
             .trim()
     );
     return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function parseFancyDate(value: string): string | null {
+    const raw = cleanText(value).toUpperCase();
+    const datePrefix = raw.match(/^(\d{1,2}[-\/ ][A-Z]{3}[-\/ ]\d{2,4}|\d{1,2}[-\/ ]\d{1,2}[-\/ ]\d{2,4})/);
+    const t = datePrefix ? datePrefix[1] : raw;
+    const m = t.match(/^(\d{1,2})[-\/ ]([A-Z]{3}|\d{1,2})[-\/ ](\d{2,4})$/);
+    if (!m) return null;
+    const day = Number(m[1]);
+    const monthToken = m[2];
+    const yearNum = Number(m[3].length === 2 ? `20${m[3]}` : m[3]);
+    if (!Number.isFinite(day) || !Number.isFinite(yearNum)) return null;
+    const monthMap: Record<string, number> = {
+        JAN: 1,
+        FEB: 2,
+        MAR: 3,
+        APR: 4,
+        MAY: 5,
+        JUN: 6,
+        JUL: 7,
+        AUG: 8,
+        SEP: 9,
+        OCT: 10,
+        NOV: 11,
+        DEC: 12,
+    };
+    const month = monthMap[monthToken] || Number(monthToken);
+    if (!Number.isFinite(month) || month < 1 || month > 12 || day < 1 || day > 31) return null;
+    return `${String(yearNum).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
 function parseRtoDisplay(text: string): { rtoCode: string; rtoName: string } {
@@ -168,31 +198,75 @@ async function getSeriesOptionValue(page: Page, seriesName: string): Promise<str
 async function parseAvailableNumbers(
     page: Page
 ): Promise<{ firstOpenNumber: number | null; runningOpenCount: number; availableCount: number }> {
-    const chips = await page.$$eval(
-        'div.ui-datagrid-column > span.ui-outputlabel-label',
-        spans =>
-            spans
-                .map(span => {
-                    const text = (span.textContent || '').trim();
-                    if (!/^\d{4}$/.test(text)) return null;
-                    const color = window.getComputedStyle(span).color || '';
-                    return { n: Number(text), color };
-                })
-                .filter(Boolean) as Array<{ n: number; color: string }>
-    );
+    const maxScanPages = Number(process.env.FANCY_SCAN_PAGES || '15');
 
-    // Running/Choice chips are blue text; fancy chips are white text (as of 2026-03-28).
-    const running = chips
-        .filter(c => !/255,\s*255,\s*255/.test(c.color))
-        .map(c => c.n)
-        .sort((a, b) => a - b);
+    const parseCurrentPage = async () =>
+        page.evaluate(() => {
+            const allNumbers: number[] = [];
+            const runningNumbers: number[] = [];
+            const nodes = Array.from(document.querySelectorAll('.ui-datagrid *'));
+            for (const node of nodes) {
+                const el = node as HTMLElement;
+                if (!el || el.children.length > 0) continue;
+                const text = (el.textContent || '').trim();
+                const m = text.match(/(\d{4})/);
+                if (!m) continue;
+                const num = Number(m[1]);
+                if (!Number.isFinite(num)) continue;
 
-    const firstOpenNumber = running.length > 0 ? running[0] : null;
-    return {
-        firstOpenNumber,
-        runningOpenCount: running.length,
-        availableCount: chips.length,
-    };
+                const st = window.getComputedStyle(el);
+                const color = st.color || '';
+                const cm = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+                const isLightText = !!cm && Number(cm[1]) > 220 && Number(cm[2]) > 220 && Number(cm[3]) > 220;
+
+                let bg = st.backgroundColor || '';
+                let cursor: HTMLElement | null = el;
+                for (let i = 0; i < 4; i++) {
+                    if (!cursor) break;
+                    const cst = window.getComputedStyle(cursor);
+                    if (cst.backgroundColor && !/rgba?\(0,\s*0,\s*0,\s*0\)/i.test(cst.backgroundColor)) {
+                        bg = cst.backgroundColor;
+                        break;
+                    }
+                    cursor = cursor.parentElement;
+                }
+                const mm = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+                const isOrange = !!mm && Number(mm[1]) > 180 && Number(mm[2]) > 90 && Number(mm[3]) < 120;
+
+                allNumbers.push(num);
+                // Rule: orange chips ignored + white-text labels ignored. Keep only running/green pool.
+                const likelyRunning = !isOrange && !isLightText;
+                if (likelyRunning) runningNumbers.push(num);
+            }
+
+            const all = Array.from(new Set(allNumbers)).sort((a, b) => a - b);
+            const running = Array.from(new Set(runningNumbers)).sort((a, b) => a - b);
+            return {
+                firstOpenNumber: running.length > 0 ? running[0] : null,
+                runningOpenCount: running.length,
+                availableCount: all.length,
+            };
+        });
+
+    let best = await parseCurrentPage();
+    if (best.firstOpenNumber != null) return best;
+
+    for (let i = 1; i < maxScanPages; i++) {
+        const nextBtn = page.locator('.ui-paginator-next').first();
+        if (!(await nextBtn.isVisible())) break;
+        const cls = (await nextBtn.getAttribute('class')) || '';
+        if (cls.includes('ui-state-disabled')) break;
+
+        await nextBtn.click({ force: true });
+        await page.waitForTimeout(1100);
+        const current = await parseCurrentPage();
+        if (current.firstOpenNumber != null) {
+            return current;
+        }
+        best = current;
+    }
+
+    return best;
 }
 
 async function selectSeriesAndWaitForGrid(page: Page, optionValue: string): Promise<boolean> {
@@ -200,10 +274,8 @@ async function selectSeriesAndWaitForGrid(page: Page, optionValue: string): Prom
     try {
         await page.waitForFunction(
             () => {
-                const spans = Array.from(
-                    document.querySelectorAll('div.ui-datagrid-column > span.ui-outputlabel-label')
-                );
-                return spans.some(s => /^\d{4}$/.test((s.textContent || '').trim()));
+                const spans = Array.from(document.querySelectorAll('.ui-datagrid *'));
+                return spans.some(s => /\d{4}/.test((s.textContent || '').trim()));
             },
             { timeout: 12000 }
         );
@@ -230,6 +302,8 @@ async function upsertToDb(rows: SeriesProgressRow[]) {
         series_type: r.seriesType,
         series_status: r.statusText,
         is_active: r.isActive,
+        open_on_text: r.activeOnDate || null,
+        active_on_date: r.activeOnDate || null,
         start_range: r.startRange,
         end_range: r.endRange,
         first_open_number: r.firstOpenNumber,
@@ -284,6 +358,7 @@ async function main() {
                         filledTill: null,
                         runningOpenCount: 0,
                         availableCount: 0,
+                        activeOnDate: parseFancyDate(row.openOnText),
                         scrapedAt: new Date().toISOString(),
                     });
                     continue;
@@ -308,6 +383,7 @@ async function main() {
                     filledTill,
                     runningOpenCount: parsed.runningOpenCount,
                     availableCount: parsed.availableCount,
+                    activeOnDate: parseFancyDate(row.openOnText),
                     scrapedAt: new Date().toISOString(),
                 });
             }

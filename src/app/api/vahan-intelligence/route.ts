@@ -119,6 +119,28 @@ export async function GET(req: NextRequest) {
                     .maybeSingle(),
             ]);
 
+        const { data: latestSeriesRow } = await client
+            .from('vahan_fancy_series_daily')
+            .select('snapshot_date')
+            .eq('state_code', stateCode)
+            .order('snapshot_date', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+        let runningSeries: any[] = [];
+        if (latestSeriesRow?.snapshot_date) {
+            const { data: seriesRows } = await client
+                .from('vahan_fancy_series_daily')
+                .select(
+                    'snapshot_date, state_code, rto_code, rto_name, series_name, series_status, is_active, first_open_number, filled_till, running_open_count, available_count, scraped_at'
+                )
+                .eq('state_code', stateCode)
+                .eq('snapshot_date', latestSeriesRow.snapshot_date)
+                .eq('is_active', true)
+                .order('rto_code', { ascending: true });
+            runningSeries = Array.isArray(seriesRows) ? seriesRows : [];
+        }
+
         const brandShare = (brandShareRes.data || []).map((row: any) => {
             const mapped = mapBrandMeta(row.brand_name);
             return {
@@ -169,6 +191,10 @@ export async function GET(req: NextRequest) {
             timeline: stateTimelineRes.data || [],
             rto: {
                 share: rtoShare,
+            },
+            series: {
+                latest_snapshot_date: latestSeriesRow?.snapshot_date || null,
+                running: runningSeries,
             },
             brand: {
                 share: brandShare,
