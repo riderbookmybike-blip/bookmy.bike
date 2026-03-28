@@ -100,7 +100,7 @@ export async function GET(req: NextRequest) {
                     p_from_month: fromMonth,
                     p_to_month: toMonth,
                     p_brand_name: brandName,
-                    p_top_n: 20,
+                    p_top_n: 999,
                 }),
                 client.rpc('vahan_brand_share', {
                     p_state_code: stateCode,
