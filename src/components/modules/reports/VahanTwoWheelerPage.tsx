@@ -73,7 +73,7 @@ const MMRD_RTO_NAMES: Record<string, string> = {
     MH55: 'Udgir',
     MH56: 'Khamgaon',
     MH57: 'Vaijapur',
-    MH58: 'Ulhasnagar/Ambernath',
+    MH58: 'Mira Bhayandar',
     MH99: 'TC Office',
     MH202: 'Chiplun Track',
     MH203: 'Mira Bhayandar Fitness Track',
