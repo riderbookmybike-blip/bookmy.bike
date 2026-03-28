@@ -3,20 +3,6 @@ import { adminClient } from '@/lib/supabase/admin';
 
 export const dynamic = 'force-dynamic';
 
-const MMRD_RTO_NAMES: Record<string, string> = {
-    MH01: 'Mumbai Central',
-    MH02: 'Mumbai West',
-    MH03: 'Mumbai East',
-    MH04: 'Thane',
-    MH05: 'Kalyan',
-    MH06: 'Pen (Raigad)',
-    MH43: 'Navi Mumbai',
-    MH46: 'Panvel (MMR)',
-    MH47: 'Mumbai North',
-    MH48: 'Vasai-Virar',
-    MH58: 'Ulhasnagar/Ambernath',
-};
-
 function normalizeMakerKey(value: unknown): string {
     return String(value || '')
         .replace(/\s+/g, ' ')
@@ -78,7 +64,7 @@ export async function GET(req: NextRequest) {
         };
 
         // Execute queries in parallel
-        const [kpiRes, stateTimelineRes, rtoShareRes, brandShareRes, brandTrendRes, brandRtoMatrixRes] =
+        const [kpiRes, stateTimelineRes, rtoShareRes, brandShareRes, brandTrendRes, brandRtoMatrixRes, lastUpdateRes] =
             await Promise.all([
                 client.rpc('vahan_kpi_summary', {
                     p_state_code: stateCode,
@@ -124,6 +110,13 @@ export async function GET(req: NextRequest) {
                     p_top_brands: 12,
                     p_top_rtos: 20,
                 }),
+                client
+                    .from('vahan_two_wheeler_monthly_uploads')
+                    .select('updated_at, uploaded_at')
+                    .eq('state_code', stateCode)
+                    .order('uploaded_at', { ascending: false })
+                    .limit(1)
+                    .maybeSingle(),
             ]);
 
         const brandShare = (brandShareRes.data || []).map((row: any) => {
@@ -163,13 +156,16 @@ export async function GET(req: NextRequest) {
             top_brand: topBrand?.brand_display || topBrand?.brand_name || '---',
             top_brand_pct: totalUnits > 0 ? ((Number(topBrand?.units || 0) / totalUnits) * 100).toFixed(1) : '0',
             top_rto_code: topRto?.rto_code || '',
-            top_rto_name: MMRD_RTO_NAMES[topRto?.rto_code || ''] || topRto?.rto_name || '---',
+            top_rto_name: topRto?.rto_name || '---',
             top_rto: topRto?.rto_name || '---',
         };
 
         return NextResponse.json({
             filters: { stateCode, fromMonth, toMonth, grain, rtoCode, brandName },
             kpis: enrichedKpis,
+            meta: {
+                last_data_update_at: lastUpdateRes.data?.updated_at || lastUpdateRes.data?.uploaded_at || null,
+            },
             timeline: stateTimelineRes.data || [],
             rto: {
                 share: rtoShare,

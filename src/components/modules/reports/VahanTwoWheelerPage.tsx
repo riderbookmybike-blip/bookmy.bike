@@ -137,7 +137,15 @@ interface Props {
 // ─────────────────────────────────────────────────────────────
 // KPI STATS ROW
 // ─────────────────────────────────────────────────────────────
-function KpiStatsRow({ filters, apiPath }: { filters: any; apiPath: string }) {
+function KpiStatsRow({
+    filters,
+    apiPath,
+    onLastDataUpdate,
+}: {
+    filters: any;
+    apiPath: string;
+    onLastDataUpdate?: (ts: string | null) => void;
+}) {
     const [stats, setStats] = useState<any>(null);
 
     useEffect(() => {
@@ -152,12 +160,13 @@ function KpiStatsRow({ filters, apiPath }: { filters: any; apiPath: string }) {
                 const res = await fetch(`${apiPath}?${p}`, { signal: ctrl.signal });
                 const d = await res.json();
                 if (d.kpis) setStats(d.kpis);
+                onLastDataUpdate?.(d?.meta?.last_data_update_at || null);
             } catch {
                 /* aborted */
             }
         })();
         return () => ctrl.abort();
-    }, [filters.stateCode, filters.fromMonth, filters.toMonth, apiPath]);
+    }, [filters.stateCode, filters.fromMonth, filters.toMonth, apiPath, onLastDataUpdate]);
 
     const items = [
         {
@@ -621,21 +630,22 @@ export default function VahanTwoWheelerPage({ dataApiPath, title }: Props) {
     }, [period]);
 
     const filters = { stateCode, period, fromMonth, toMonth };
-    const [lastRefreshed, setLastRefreshed] = useState<string>('');
-
-    useEffect(() => {
-        setLastRefreshed(
-            new Date()
-                .toLocaleString('en-IN', {
-                    day: '2-digit',
-                    month: 'short',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    hour12: true,
-                })
-                .toUpperCase()
-        );
-    }, [stateCode, period, fromMonth, toMonth]);
+    const [lastDbUpdateAt, setLastDbUpdateAt] = useState<string | null>(null);
+    const lastRefreshed = (() => {
+        if (!lastDbUpdateAt) return '---';
+        const dt = new Date(lastDbUpdateAt);
+        if (Number.isNaN(dt.getTime())) return '---';
+        return dt
+            .toLocaleString('en-IN', {
+                day: '2-digit',
+                month: 'short',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true,
+                timeZone: 'Asia/Kolkata',
+            })
+            .toUpperCase();
+    })();
 
     return (
         <div className="relative min-h-screen bg-[#f8fafc]">
@@ -722,7 +732,7 @@ export default function VahanTwoWheelerPage({ dataApiPath, title }: Props) {
                 </div>
 
                 {/* KPI Row */}
-                <KpiStatsRow filters={filters} apiPath={apiPath} />
+                <KpiStatsRow filters={filters} apiPath={apiPath} onLastDataUpdate={setLastDbUpdateAt} />
 
                 {/* Charts */}
                 <div className="flex flex-col gap-10 w-full">
