@@ -1,0 +1,29 @@
+{
+  "startedAt": "2026-03-28T21:21:59.067Z",
+  "finishedAt": "2026-03-28T21:22:24.694Z",
+  "stateCode": "MH",
+  "stateName": "Maharashtra",
+  "onlyActive": true,
+  "rtoCount": 1,
+  "seriesCount": 1,
+  "rows": [
+    {
+      "stateCode": "MH",
+      "rtoCode": "MH25",
+      "rtoName": "DHARASHIV",
+      "seriesName": "MH25BH",
+      "seriesType": "Non-Transport 2W",
+      "statusText": "1 ( ACTIVE )",
+      "isActive": true,
+      "startRange": 1,
+      "endRange": 9999,
+      "openOnText": "21-JAN-2026 11:10:21 AM",
+      "firstOpenNumber": 5354,
+      "filledTill": 5353,
+      "runningOpenCount": 80,
+      "availableCount": 100,
+      "activeOnDate": "2026-01-21",
+      "scrapedAt": "2026-03-28T21:22:24.694Z"
+    }
+  ]
+}

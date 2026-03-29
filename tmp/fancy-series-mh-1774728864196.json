@@ -1,0 +1,29 @@
+{
+  "startedAt": "2026-03-28T20:13:32.197Z",
+  "finishedAt": "2026-03-28T20:14:24.196Z",
+  "stateCode": "MH",
+  "stateName": "Maharashtra",
+  "onlyActive": true,
+  "rtoCount": 1,
+  "seriesCount": 1,
+  "rows": [
+    {
+      "stateCode": "MH",
+      "rtoCode": "MH48",
+      "rtoName": "VASAI",
+      "seriesName": "MH48DW",
+      "seriesType": "Non-Transport 2W",
+      "statusText": "1 ( ACTIVE )",
+      "isActive": true,
+      "startRange": 1,
+      "endRange": 9999,
+      "openOnText": "17-MAR-2026 06:02:01 PM",
+      "firstOpenNumber": null,
+      "filledTill": null,
+      "runningOpenCount": 0,
+      "availableCount": 0,
+      "activeOnDate": "2026-03-17",
+      "scrapedAt": "2026-03-28T20:14:24.196Z"
+    }
+  ]
+}

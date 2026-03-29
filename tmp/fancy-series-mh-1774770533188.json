@@ -1,0 +1,29 @@
+{
+  "startedAt": "2026-03-29T07:48:19.323Z",
+  "finishedAt": "2026-03-29T07:48:53.188Z",
+  "stateCode": "MH",
+  "stateName": "Maharashtra",
+  "onlyActive": true,
+  "rtoCount": 1,
+  "seriesCount": 1,
+  "rows": [
+    {
+      "stateCode": "MH",
+      "rtoCode": "MH12",
+      "rtoName": "PUNE",
+      "seriesName": "MH12ZK",
+      "seriesType": "Non-Transport 2W",
+      "statusText": "1 ( ACTIVE )",
+      "isActive": true,
+      "startRange": 1,
+      "endRange": 9999,
+      "openOnText": "16-MAR-2026 12:40:57 PM",
+      "firstOpenNumber": 9999,
+      "filledTill": 9998,
+      "runningOpenCount": 1,
+      "availableCount": 61,
+      "activeOnDate": "2026-03-16",
+      "scrapedAt": "2026-03-29T07:48:53.188Z"
+    }
+  ]
+}

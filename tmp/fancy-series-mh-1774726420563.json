@@ -1,0 +1,28 @@
+{
+  "startedAt": "2026-03-28T19:32:48.940Z",
+  "finishedAt": "2026-03-28T19:33:40.563Z",
+  "stateCode": "MH",
+  "stateName": "Maharashtra",
+  "onlyActive": true,
+  "rtoCount": 1,
+  "seriesCount": 1,
+  "rows": [
+    {
+      "stateCode": "MH",
+      "rtoCode": "MH47",
+      "rtoName": "R.T.O.BORIVALI",
+      "seriesName": "MH47CH",
+      "seriesType": "Non-Transport 2W",
+      "statusText": "1 ( ACTIVE )",
+      "isActive": true,
+      "startRange": 1,
+      "endRange": 9999,
+      "openOnText": "17-MAR-2026 11:58:35 AM",
+      "firstOpenNumber": null,
+      "filledTill": null,
+      "runningOpenCount": 0,
+      "availableCount": 0,
+      "scrapedAt": "2026-03-28T19:33:40.563Z"
+    }
+  ]
+}

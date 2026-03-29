@@ -1,0 +1,29 @@
+{
+  "startedAt": "2026-03-29T06:49:37.720Z",
+  "finishedAt": "2026-03-29T06:50:02.994Z",
+  "stateCode": "MH",
+  "stateName": "Maharashtra",
+  "onlyActive": true,
+  "rtoCount": 1,
+  "seriesCount": 1,
+  "rows": [
+    {
+      "stateCode": "MH",
+      "rtoCode": "MH02",
+      "rtoName": "MUMBAI (WEST)",
+      "seriesName": "MH02GU",
+      "seriesType": "Non-Transport 2W",
+      "statusText": "1 ( ACTIVE )",
+      "isActive": true,
+      "startRange": 1,
+      "endRange": 9999,
+      "openOnText": "26-FEB-2026 04:54:26 PM",
+      "firstOpenNumber": 3692,
+      "filledTill": 3691,
+      "runningOpenCount": 23,
+      "availableCount": 100,
+      "activeOnDate": "2026-02-26",
+      "scrapedAt": "2026-03-29T06:50:02.012Z"
+    }
+  ]
+}

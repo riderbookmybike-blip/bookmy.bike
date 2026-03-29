@@ -1,0 +1,29 @@
+{
+  "startedAt": "2026-03-29T06:46:24.231Z",
+  "finishedAt": "2026-03-29T06:46:48.305Z",
+  "stateCode": "MH",
+  "stateName": "Maharashtra",
+  "onlyActive": true,
+  "rtoCount": 1,
+  "seriesCount": 1,
+  "rows": [
+    {
+      "stateCode": "MH",
+      "rtoCode": "MH04",
+      "rtoName": "THANE",
+      "seriesName": "MH04NC",
+      "seriesType": "Non-Transport 2W",
+      "statusText": "1 ( ACTIVE )",
+      "isActive": true,
+      "startRange": 1,
+      "endRange": 9999,
+      "openOnText": "09-MAR-2026 05:16:36 PM",
+      "firstOpenNumber": 5514,
+      "filledTill": 5513,
+      "runningOpenCount": 34,
+      "availableCount": 100,
+      "activeOnDate": "2026-03-09",
+      "scrapedAt": "2026-03-29T06:46:48.172Z"
+    }
+  ]
+}

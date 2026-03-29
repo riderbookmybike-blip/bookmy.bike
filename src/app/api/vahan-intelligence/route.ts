@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminClient } from '@/lib/supabase/admin';
+import { isEvFuelBucket, reconcileFuelSplit } from '@/lib/vahan/segmentation';
 
 export const dynamic = 'force-dynamic';
 
@@ -92,6 +93,8 @@ const VAHAN_BRAND_CLASSIFICATION: Record<string, 'ICE' | 'EV'> = {
     ZAP: 'EV',
 };
 
+const MIXED_FUEL_BRANDS = new Set(['TVS', 'BAJAJ', 'HERO']);
+
 function normalizeRtoCode(value: unknown): string {
     const raw = String(value || '')
         .trim()
@@ -105,6 +108,14 @@ function normalizeRtoCode(value: unknown): string {
     return `${prefix}${String(num).padStart(width, '0')}`;
 }
 
+function isStandardMhRto(value: unknown): boolean {
+    const code = normalizeRtoCode(value);
+    const m = code.match(/^MH(\d{2})$/);
+    if (!m) return false;
+    const n = Number(m[1]);
+    return Number.isFinite(n) && n >= 1 && n <= 58;
+}
+
 function normalizeMakerKey(value: unknown): string {
     return String(value || '')
         .replace(/\s+/g, ' ')
@@ -112,13 +123,18 @@ function normalizeMakerKey(value: unknown): string {
         .toUpperCase();
 }
 
-function getBrandSegment(value: string): 'ICE' | 'EV' | 'UNCERTAIN' {
-    const normalized = String(value || '')
-        .replace(/\s+/g, ' ')
-        .trim()
-        .toUpperCase();
+function getBrandSegment(value: string): 'ICE' | 'EV' | 'MIXED' | 'UNCERTAIN' {
+    const normalized = normalizeMakerKey(value);
     if (!normalized) return 'UNCERTAIN';
+    if (MIXED_FUEL_BRANDS.has(normalized)) return 'MIXED';
     return VAHAN_BRAND_CLASSIFICATION[normalized] || 'UNCERTAIN';
+}
+
+function matchesSelectedSegment(brandDisplay: string, segment: 'ALL' | 'ICE' | 'EV'): boolean {
+    if (segment === 'ALL') return true;
+    const rowSegment = getBrandSegment(brandDisplay);
+    if (segment === 'EV') return rowSegment === 'EV' || rowSegment === 'MIXED';
+    return rowSegment === 'ICE' || rowSegment === 'MIXED' || rowSegment === 'UNCERTAIN';
 }
 
 function parseYyyyMm(value: string): { year: number; month: number } | null {
@@ -193,64 +209,103 @@ export async function GET(req: NextRequest) {
         };
 
         // Execute queries in parallel
-        const [kpiRes, stateTimelineRes, rtoShareRes, brandShareRes, brandTrendRes, brandRtoMatrixRes, lastUpdateRes] =
-            await Promise.all([
-                client.rpc('vahan_kpi_summary', {
-                    p_state_code: stateCode,
-                    p_from_month: fromMonth,
-                    p_to_month: toMonth,
-                    p_rto_code: rtoCode,
-                    p_brand_name: brandName,
-                }),
-                client.rpc('vahan_state_timeline', {
-                    p_state_code: stateCode,
-                    p_from_month: fromMonth,
-                    p_to_month: toMonth,
-                    p_grain: grain,
-                    p_rto_code: rtoCode,
-                    p_brand_name: brandName,
-                }),
-                client.rpc('vahan_rto_share', {
-                    p_state_code: stateCode,
-                    p_from_month: fromMonth,
-                    p_to_month: toMonth,
-                    p_brand_name: brandName,
-                    p_top_n: 999,
-                }),
-                client.rpc('vahan_brand_share', {
-                    p_state_code: stateCode,
-                    p_from_month: fromMonth,
-                    p_to_month: toMonth,
-                    p_rto_code: rtoCode,
-                    p_top_n: 999,
-                }),
-                client.rpc('vahan_brand_trend', {
-                    p_state_code: stateCode,
-                    p_from_month: fromMonth,
-                    p_to_month: toMonth,
-                    p_grain: grain,
-                    p_rto_code: rtoCode,
-                    p_top_n: 999,
-                }),
-                client.rpc('vahan_brand_rto_matrix', {
-                    p_state_code: stateCode,
-                    p_from_month: fromMonth,
-                    p_to_month: toMonth,
-                    p_top_brands: 12,
-                    p_top_rtos: 20,
-                }),
-                client
-                    .from('vahan_two_wheeler_monthly_uploads')
-                    .select('updated_at, uploaded_at')
-                    .eq('state_code', stateCode)
-                    .order('uploaded_at', { ascending: false })
-                    .limit(1)
-                    .maybeSingle(),
-            ]);
+        const [
+            kpiRes,
+            stateTimelineRes,
+            rtoShareRes,
+            brandShareRes,
+            brandTrendRes,
+            brandRtoMatrixRes,
+            lastUpdateRes,
+            fuelLastUpdateRes,
+        ] = await Promise.all([
+            client.rpc('vahan_kpi_summary', {
+                p_state_code: stateCode,
+                p_from_month: fromMonth,
+                p_to_month: toMonth,
+                p_rto_code: rtoCode,
+                p_brand_name: brandName,
+            }),
+            client.rpc('vahan_state_timeline', {
+                p_state_code: stateCode,
+                p_from_month: fromMonth,
+                p_to_month: toMonth,
+                p_grain: grain,
+                p_rto_code: rtoCode,
+                p_brand_name: brandName,
+            }),
+            client.rpc('vahan_rto_share', {
+                p_state_code: stateCode,
+                p_from_month: fromMonth,
+                p_to_month: toMonth,
+                p_brand_name: brandName,
+                p_top_n: 999,
+            }),
+            client.rpc('vahan_brand_share', {
+                p_state_code: stateCode,
+                p_from_month: fromMonth,
+                p_to_month: toMonth,
+                p_rto_code: rtoCode,
+                p_top_n: 999,
+            }),
+            client.rpc('vahan_brand_trend', {
+                p_state_code: stateCode,
+                p_from_month: fromMonth,
+                p_to_month: toMonth,
+                p_grain: grain,
+                p_rto_code: rtoCode,
+                p_top_n: 999,
+            }),
+            client.rpc('vahan_brand_rto_matrix', {
+                p_state_code: stateCode,
+                p_from_month: fromMonth,
+                p_to_month: toMonth,
+                p_top_brands: 12,
+                p_top_rtos: 20,
+            }),
+            client
+                .from('vahan_two_wheeler_monthly_uploads')
+                .select('updated_at, uploaded_at')
+                .eq('state_code', stateCode)
+                .order('uploaded_at', { ascending: false })
+                .limit(1)
+                .maybeSingle(),
+            client
+                .from('vahan_two_wheeler_monthly_fuel_uploads')
+                .select('updated_at, uploaded_at')
+                .eq('state_code', stateCode)
+                .order('updated_at', { ascending: false })
+                .limit(1)
+                .maybeSingle(),
+        ]);
 
         const fromParts = parseYyyyMm(fromMonth);
         const toParts = parseYyyyMm(toMonth);
+        let rtoShare = Array.isArray(rtoShareRes.data) ? [...rtoShareRes.data] : [];
         let rtoTimeline: any[] = [];
+        let segmentedBrandShare: Array<{
+            brand_name: string;
+            brand_display: string;
+            brand_color_hex: string | null;
+            ice_units: number;
+            ev_units: number;
+            total_units: number;
+            share_pct: number;
+        }> = [];
+        let segmentedRtoShare: Array<{
+            rto_code: string;
+            rto_name: string;
+            ice_units: number;
+            ev_units: number;
+            total_units: number;
+            share_pct: number;
+        }> = [];
+        let evRtoCoverage = {
+            expected_rto_count: 0,
+            covered_rto_count: 0,
+            coverage_pct: 0,
+            is_partial: false,
+        };
         if (fromParts && toParts) {
             const minYear = Math.min(fromParts.year, toParts.year);
             const maxYear = Math.max(fromParts.year, toParts.year);
@@ -292,14 +347,11 @@ export async function GET(req: NextRequest) {
                 const rowRto = normalizeRtoCode(row.rto_code);
                 if (rtoCode && rowRto !== normalizeRtoCode(rtoCode)) continue;
 
-                const rowBrand = normalizeMakerKey(row.brand_name || row.maker);
+                const rowBrandRaw = row.brand_name || row.maker;
+                const rowBrand = normalizeMakerKey(rowBrandRaw);
                 if (targetBrand && rowBrand !== targetBrand) continue;
-                if (segment !== 'ALL') {
-                    const brandDisplay = mapBrandMeta(row.brand_name || row.maker).brandDisplay;
-                    const rowSegment = getBrandSegment(brandDisplay);
-                    if (segment === 'EV' && rowSegment !== 'EV') continue;
-                    if (segment === 'ICE' && rowSegment === 'EV') continue;
-                }
+                const brandDisplay = mapBrandMeta(rowBrandRaw).brandDisplay;
+                if (!matchesSelectedSegment(brandDisplay, segment)) continue;
 
                 const periodStart = periodStartByGrain(year, monthNo, grain);
                 const key = `${periodStart}|${rowRto}`;
@@ -320,6 +372,186 @@ export async function GET(req: NextRequest) {
                 const byPeriod = String(a.period_start).localeCompare(String(b.period_start));
                 return byPeriod !== 0 ? byPeriod : String(a.rto_code).localeCompare(String(b.rto_code));
             });
+
+            if (segment !== 'ALL') {
+                const bucketByRto = new Map<string, { rto_code: string; rto_name: string; units: number }>();
+                const targetBrand = normalizeMakerKey(brandName || '');
+
+                for (const row of rows) {
+                    const year = Number(row.year || 0);
+                    const monthNo = Number(row.month_no || 0);
+                    if (!year || !monthNo) continue;
+                    const ym = year * 100 + monthNo;
+                    if (ym < ymFrom || ym > ymTo) continue;
+
+                    const rowBrandRaw = row.brand_name || row.maker;
+                    const rowBrand = normalizeMakerKey(rowBrandRaw);
+                    if (targetBrand && rowBrand !== targetBrand) continue;
+
+                    const brandDisplay = mapBrandMeta(rowBrandRaw).brandDisplay;
+                    if (!matchesSelectedSegment(brandDisplay, segment)) continue;
+
+                    const rowRto = normalizeRtoCode(row.rto_code);
+                    const prev = bucketByRto.get(rowRto);
+                    const units = Number(row.units || 0);
+                    if (!prev) {
+                        bucketByRto.set(rowRto, {
+                            rto_code: rowRto,
+                            rto_name: String(row.rto_name || rowRto),
+                            units,
+                        });
+                    } else {
+                        prev.units += units;
+                    }
+                }
+
+                const rtoRows = Array.from(bucketByRto.values()).sort((a, b) => b.units - a.units);
+                const totalUnits = rtoRows.reduce((sum, row) => sum + Number(row.units || 0), 0);
+                rtoShare = rtoRows.map(row => ({
+                    ...row,
+                    units: Number(row.units || 0),
+                    share_pct: totalUnits > 0 ? Number((((row.units || 0) / totalUnits) * 100).toFixed(2)) : 0,
+                }));
+            }
+
+            // Build EV/ICE-segmented shares from fuel-level table when available.
+            const fuelRows: any[] = [];
+            const fuelPageSize = 1000;
+            let fuelFrom = 0;
+            while (true) {
+                const fuelTo = fuelFrom + fuelPageSize - 1;
+                const { data: fuelBatch, error: fuelErr } = await client
+                    .from('vahan_two_wheeler_monthly_fuel_uploads')
+                    .select('year, month_no, rto_code, rto_name, maker, brand_name, fuel_bucket, units')
+                    .eq('state_code', stateCode)
+                    .gte('year', minYear)
+                    .lte('year', maxYear)
+                    .range(fuelFrom, fuelTo);
+                if (fuelErr) break;
+                const batch = Array.isArray(fuelBatch) ? fuelBatch : [];
+                if (batch.length === 0) break;
+                fuelRows.push(...batch);
+                if (batch.length < fuelPageSize) break;
+                fuelFrom += batch.length;
+            }
+
+            if (fuelRows.length > 0) {
+                const targetBrand = normalizeMakerKey(brandName || '');
+                const targetRto = rtoCode ? normalizeRtoCode(rtoCode) : '';
+                const brandBucket = new Map<
+                    string,
+                    {
+                        brand_name: string;
+                        brand_display: string;
+                        brand_color_hex: string | null;
+                        ice_units: number;
+                        ev_units: number;
+                    }
+                >();
+                const rtoBucket = new Map<
+                    string,
+                    { rto_code: string; rto_name: string; ice_units: number; ev_units: number }
+                >();
+
+                for (const row of fuelRows) {
+                    const year = Number(row.year || 0);
+                    const monthNo = Number(row.month_no || 0);
+                    if (!year || !monthNo) continue;
+                    const ym = year * 100 + monthNo;
+                    if (ym < ymFrom || ym > ymTo) continue;
+
+                    const rowRto = normalizeRtoCode(row.rto_code);
+                    if (targetRto && rowRto !== targetRto) continue;
+
+                    const rowBrandRaw = row.brand_name || row.maker;
+                    const rowBrand = normalizeMakerKey(rowBrandRaw);
+                    if (targetBrand && rowBrand !== targetBrand) continue;
+
+                    const mapped = mapBrandMeta(rowBrandRaw);
+                    const units = Number(row.units || 0);
+                    const ev = isEvFuelBucket(row.fuel_bucket);
+
+                    const bKey = rowBrand || mapped.brandDisplay;
+                    const bPrev = brandBucket.get(bKey) || {
+                        brand_name: rowBrand || mapped.brandDisplay,
+                        brand_display: mapped.brandDisplay,
+                        brand_color_hex: mapped.brandColorHex,
+                        ice_units: 0,
+                        ev_units: 0,
+                    };
+                    if (ev) bPrev.ev_units += units;
+                    else bPrev.ice_units += units;
+                    brandBucket.set(bKey, bPrev);
+
+                    const rPrev = rtoBucket.get(rowRto) || {
+                        rto_code: rowRto,
+                        rto_name: String(row.rto_name || rowRto),
+                        ice_units: 0,
+                        ev_units: 0,
+                    };
+                    if (ev) rPrev.ev_units += units;
+                    else rPrev.ice_units += units;
+                    rtoBucket.set(rowRto, rPrev);
+                }
+
+                const segBrandRows = Array.from(brandBucket.values())
+                    .map(row => {
+                        const total = Number(row.ice_units || 0) + Number(row.ev_units || 0);
+                        return { ...row, total_units: total };
+                    })
+                    .filter(row => row.total_units > 0)
+                    .sort((a, b) => b.total_units - a.total_units);
+                const totalBrandUnits = segBrandRows.reduce((sum, row) => sum + row.total_units, 0);
+                segmentedBrandShare = segBrandRows.map(row => ({
+                    ...row,
+                    share_pct: totalBrandUnits > 0 ? Number(((row.total_units / totalBrandUnits) * 100).toFixed(2)) : 0,
+                }));
+
+                const segRtoRows = Array.from(rtoBucket.values())
+                    .map(row => {
+                        const total = Number(row.ice_units || 0) + Number(row.ev_units || 0);
+                        return { ...row, total_units: total };
+                    })
+                    .filter(row => row.total_units > 0)
+                    .sort((a, b) => b.total_units - a.total_units);
+                const totalRtoUnits = segRtoRows.reduce((sum, row) => sum + row.total_units, 0);
+                segmentedRtoShare = segRtoRows.map(row => ({
+                    ...row,
+                    share_pct: totalRtoUnits > 0 ? Number(((row.total_units / totalRtoUnits) * 100).toFixed(2)) : 0,
+                }));
+            }
+
+            const expectedRtoSet = new Set<string>();
+            for (const row of rows) {
+                const year = Number(row.year || 0);
+                const monthNo = Number(row.month_no || 0);
+                if (!year || !monthNo) continue;
+                const ym = year * 100 + monthNo;
+                if (ym < ymFrom || ym > ymTo) continue;
+                const code = normalizeRtoCode(row.rto_code);
+                if (!isStandardMhRto(code)) continue;
+                expectedRtoSet.add(code);
+            }
+            const coveredRtoSet = new Set<string>();
+            for (const row of fuelRows) {
+                const year = Number(row.year || 0);
+                const monthNo = Number(row.month_no || 0);
+                if (!year || !monthNo) continue;
+                const ym = year * 100 + monthNo;
+                if (ym < ymFrom || ym > ymTo) continue;
+                const code = normalizeRtoCode(row.rto_code);
+                if (!isStandardMhRto(code)) continue;
+                coveredRtoSet.add(code);
+            }
+            const expectedCount = expectedRtoSet.size;
+            const coveredCount = coveredRtoSet.size;
+            const coveragePct = expectedCount > 0 ? Number(((coveredCount / expectedCount) * 100).toFixed(2)) : 0;
+            evRtoCoverage = {
+                expected_rto_count: expectedCount,
+                covered_rto_count: coveredCount,
+                coverage_pct: coveragePct,
+                is_partial: expectedCount > 0 && coveredCount < expectedCount,
+            };
         }
 
         const { data: latestPublishedSeriesRow } = await client
@@ -394,7 +626,6 @@ export async function GET(req: NextRequest) {
                 brand_color_hex: mapped.brandColorHex,
             };
         });
-        const rtoShare = rtoShareRes.data || [];
         const brandTrend = (brandTrendRes.data || []).map((row: any) => {
             const mapped = mapBrandMeta(row.brand_name);
             return {
@@ -411,6 +642,95 @@ export async function GET(req: NextRequest) {
                 brand_color_hex: mapped.brandColorHex,
             };
         });
+        // Reconcile EV segmented rows with total-share rows so ICE+EV always sum to total.
+        {
+            const brandTotals = new Map<
+                string,
+                { key: string; display: string; colorHex: string | null; total: number }
+            >();
+            for (const row of brandShare) {
+                const display = String(row.brand_display || row.brand_name || '').trim();
+                const key = normalizeMakerKey(display || row.brand_name);
+                if (!key) continue;
+                const prev = brandTotals.get(key) || {
+                    key,
+                    display: display || key,
+                    colorHex: row.brand_color_hex || null,
+                    total: 0,
+                };
+                prev.total += Number(row.units || 0);
+                if (!prev.colorHex && row.brand_color_hex) prev.colorHex = row.brand_color_hex;
+                brandTotals.set(key, prev);
+            }
+            const brandEv = new Map<string, number>();
+            for (const row of segmentedBrandShare) {
+                const key = normalizeMakerKey(row.brand_display || row.brand_name);
+                if (!key) continue;
+                brandEv.set(key, (brandEv.get(key) || 0) + Number(row.ev_units || 0));
+            }
+            const mergedBrands = Array.from(brandTotals.values())
+                .map(row => {
+                    const segment = getBrandSegment(row.display || row.key);
+                    const split = reconcileFuelSplit(row.total, brandEv.get(row.key) || 0, segment);
+
+                    return {
+                        brand_name: row.key,
+                        brand_display: row.display,
+                        brand_color_hex: row.colorHex,
+                        ice_units: split.ice_units,
+                        ev_units: split.ev_units,
+                        total_units: row.total,
+                    };
+                })
+                .filter(row => row.total_units > 0)
+                .sort((a, b) => b.total_units - a.total_units);
+            const brandTotalUnits = mergedBrands.reduce((sum, row) => sum + row.total_units, 0);
+            segmentedBrandShare = mergedBrands.map(row => ({
+                ...row,
+                share_pct: brandTotalUnits > 0 ? Number(((row.total_units / brandTotalUnits) * 100).toFixed(2)) : 0,
+            }));
+        }
+
+        {
+            const rtoTotals = new Map<string, { code: string; name: string; total: number }>();
+            for (const row of rtoShare) {
+                const code = normalizeRtoCode(row.rto_code);
+                if (!code) continue;
+                const prev = rtoTotals.get(code) || {
+                    code,
+                    name: String(row.rto_name || code),
+                    total: 0,
+                };
+                prev.total += Number(row.units || 0);
+                rtoTotals.set(code, prev);
+            }
+            const rtoEv = new Map<string, number>();
+            for (const row of segmentedRtoShare) {
+                const code = normalizeRtoCode(row.rto_code);
+                if (!code) continue;
+                rtoEv.set(code, (rtoEv.get(code) || 0) + Number(row.ev_units || 0));
+            }
+            const mergedRtos = Array.from(rtoTotals.values())
+                .map(row => {
+                    const evUnitsRaw = rtoEv.get(row.code) || 0;
+                    const evUnits = Math.max(0, Math.min(row.total, evUnitsRaw));
+                    const iceUnits = Math.max(0, row.total - evUnits);
+                    return {
+                        rto_code: row.code,
+                        rto_name: row.name,
+                        ice_units: iceUnits,
+                        ev_units: evUnits,
+                        total_units: row.total,
+                    };
+                })
+                .filter(row => row.total_units > 0)
+                .sort((a, b) => b.total_units - a.total_units);
+            const rtoTotalUnits = mergedRtos.reduce((sum, row) => sum + row.total_units, 0);
+            segmentedRtoShare = mergedRtos.map(row => ({
+                ...row,
+                share_pct: rtoTotalUnits > 0 ? Number(((row.total_units / rtoTotalUnits) * 100).toFixed(2)) : 0,
+            }));
+        }
         const kpiData = kpiRes.data?.[0] || { total_units: 0, prev_period_units: 0, prev_period_pct: 0, yoy_pct: 0 };
 
         const totalUnits = Number(kpiData.total_units || 0);
@@ -432,11 +752,15 @@ export async function GET(req: NextRequest) {
             kpis: enrichedKpis,
             meta: {
                 last_data_update_at: lastUpdateRes.data?.updated_at || lastUpdateRes.data?.uploaded_at || null,
+                ev_data_update_at: fuelLastUpdateRes.data?.updated_at || fuelLastUpdateRes.data?.uploaded_at || null,
+                ev_rto_coverage: evRtoCoverage,
+                reliability_mode: 'sot_contract_v1',
             },
             timeline: stateTimelineRes.data || [],
             timeline_rto: rtoTimeline,
             rto: {
                 share: rtoShare,
+                share_segmented: segmentedRtoShare,
             },
             series: {
                 latest_snapshot_date: latestSeriesSnapshotDate || null,
@@ -444,6 +768,7 @@ export async function GET(req: NextRequest) {
             },
             brand: {
                 share: brandShare,
+                share_segmented: segmentedBrandShare,
                 trend: brandTrend,
                 rtoMatrix: brandRtoMatrix,
             },

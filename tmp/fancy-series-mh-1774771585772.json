@@ -1,0 +1,29 @@
+{
+  "startedAt": "2026-03-29T08:06:01.988Z",
+  "finishedAt": "2026-03-29T08:06:25.772Z",
+  "stateCode": "MH",
+  "stateName": "Maharashtra",
+  "onlyActive": true,
+  "rtoCount": 1,
+  "seriesCount": 1,
+  "rows": [
+    {
+      "stateCode": "MH",
+      "rtoCode": "MH36",
+      "rtoName": "BHANDARA",
+      "seriesName": "MH36AT",
+      "seriesType": "Non-Transport 2W",
+      "statusText": "1 ( ACTIVE )",
+      "isActive": true,
+      "startRange": 1,
+      "endRange": 9999,
+      "openOnText": "13-JAN-2026 01:40:26 PM",
+      "firstOpenNumber": 1,
+      "filledTill": 0,
+      "runningOpenCount": 10,
+      "availableCount": 100,
+      "activeOnDate": "2026-01-13",
+      "scrapedAt": "2026-03-29T08:06:25.772Z"
+    }
+  ]
+}

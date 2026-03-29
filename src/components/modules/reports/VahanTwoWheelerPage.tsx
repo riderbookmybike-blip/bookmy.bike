@@ -1,17 +1,21 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
     ChevronDown,
     ChevronUp,
     MapPin,
     Award,
     Zap,
+    Fuel,
+    Download,
     TrendingUp,
     Activity,
     Loader2,
     BarChart3,
     Calendar,
 } from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import {
     BarChart,
     Bar,
@@ -218,6 +222,72 @@ const fmtCompactUnits = (n: number) => {
     const d = Math.abs(k) < 10 ? 2 : Math.abs(k) < 100 ? 1 : 0;
     return `${k.toFixed(d)}k`;
 };
+const formatLastSyncForTooltip = (timestamp: string | null | undefined) => {
+    if (!timestamp) return 'Last Sync: ---';
+    const dt = new Date(timestamp);
+    if (Number.isNaN(dt.getTime())) return 'Last Sync: ---';
+    const date = dt.toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        timeZone: 'Asia/Kolkata',
+    });
+    const time = dt.toLocaleTimeString('en-IN', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+        timeZone: 'Asia/Kolkata',
+    });
+    return `Last Sync: ${date}, ${time} IST`;
+};
+
+const formatIstDateTime = (value: string | null | undefined) => {
+    if (!value) return '---';
+    const dt = new Date(value);
+    if (Number.isNaN(dt.getTime())) return '---';
+    return dt.toLocaleString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+        timeZone: 'Asia/Kolkata',
+    });
+};
+
+const toDateOnly = (value: string) => {
+    const dt = new Date(value);
+    return Number.isNaN(dt.getTime()) ? new Date() : dt;
+};
+
+const shiftDays = (dt: Date, days: number) => {
+    const x = new Date(dt);
+    x.setDate(x.getDate() + days);
+    return x;
+};
+
+const diffDaysInclusive = (from: Date, to: Date) => {
+    const ms = to.getTime() - from.getTime();
+    return Math.max(1, Math.floor(ms / (24 * 60 * 60 * 1000)) + 1);
+};
+
+const computePreviousRange = (fromMonth: string, toMonth: string) => {
+    const from = toDateOnly(fromMonth);
+    const to = toDateOnly(toMonth);
+    const span = diffDaysInclusive(from, to);
+    const prevTo = shiftDays(from, -1);
+    const prevFrom = shiftDays(prevTo, -(span - 1));
+    const fmt = (dt: Date) =>
+        `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+    return { prevFrom: fmt(prevFrom), prevTo: fmt(prevTo) };
+};
+
+const formatMonthYear = (value: string) => {
+    const dt = new Date(value);
+    if (Number.isNaN(dt.getTime())) return value;
+    return dt.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+};
 
 const BRAND_ACRONYMS = new Set(['TVS', 'BMW', 'OLA', 'BNC', 'VLF', 'EV', 'AARI', 'VMOTO', 'XINRI', 'RILOX']);
 
@@ -392,17 +462,32 @@ const VAHAN_BRAND_CLASSIFICATION: Record<string, 'ICE' | 'EV'> = {
     ZAP: 'EV',
 };
 
-const getBrandSegment = (value: string): 'ICE' | 'EV' | 'UNCERTAIN' => {
-    const normalized = String(value || '')
+const MIXED_FUEL_BRANDS = new Set(['TVS', 'BAJAJ', 'HERO']);
+
+const normalizeBrandKey = (value: string) => {
+    return String(value || '')
         .replace(/\s+/g, ' ')
         .trim()
         .toUpperCase();
+};
+
+const getBrandSegment = (value: string): 'ICE' | 'EV' | 'MIXED' | 'UNCERTAIN' => {
+    const normalized = normalizeBrandKey(value);
     if (!normalized) return 'UNCERTAIN';
+    if (MIXED_FUEL_BRANDS.has(normalized)) return 'MIXED';
     return VAHAN_BRAND_CLASSIFICATION[normalized] || 'UNCERTAIN';
 };
 
 const isEvBrand = (value: string) => {
-    return getBrandSegment(value) === 'EV';
+    const segment = getBrandSegment(value);
+    return segment === 'EV' || segment === 'MIXED';
+};
+
+const matchesSelectedSegment = (brandValue: string, selected: 'ALL' | 'ICE' | 'EV') => {
+    if (selected === 'ALL') return true;
+    const segment = getBrandSegment(brandValue);
+    if (selected === 'EV') return segment === 'EV' || segment === 'MIXED';
+    return segment === 'ICE' || segment === 'MIXED' || segment === 'UNCERTAIN';
 };
 
 const formatPeriodShort = (value: string) => {
@@ -432,15 +517,6 @@ function KpiStatsRow({
 }) {
     const [stats, setStats] = useState<any>(null);
 
-    // Dynamic width detection for responsive margins
-    const [isMobile, setIsMobile] = useState(false);
-    useEffect(() => {
-        const check = () => setIsMobile(window.innerWidth < 768);
-        check();
-        window.addEventListener('resize', check);
-        return () => window.removeEventListener('resize', check);
-    }, []);
-
     useEffect(() => {
         const ctrl = new AbortController();
         (async () => {
@@ -452,7 +528,32 @@ function KpiStatsRow({
                 });
                 const res = await fetch(`${apiPath}?${p}`, { signal: ctrl.signal });
                 const d = await res.json();
-                if (d.kpis) setStats(d.kpis);
+                if (d.kpis) {
+                    const nextStats: any = { ...d.kpis };
+                    const segmentedRows: any[] = Array.isArray(d?.brand?.share_segmented)
+                        ? d.brand.share_segmented
+                        : [];
+                    if (segmentedRows.length > 0) {
+                        let totalUnits = 0;
+                        let evUnits = 0;
+                        let iceUnits = 0;
+                        for (const row of segmentedRows) {
+                            const total = Number(row?.total_units || 0);
+                            const ev = Number(row?.ev_units || 0);
+                            const ice = Number(row?.ice_units || 0);
+                            totalUnits += total;
+                            evUnits += ev;
+                            iceUnits += ice;
+                        }
+                        nextStats.ev_units_total = evUnits;
+                        nextStats.ice_units_total = iceUnits;
+                        if (totalUnits > 0) {
+                            nextStats.ev_share_pct = Number(((evUnits / totalUnits) * 100).toFixed(1));
+                            nextStats.ice_share_pct = Number(((iceUnits / totalUnits) * 100).toFixed(1));
+                        }
+                    }
+                    setStats(nextStats);
+                }
                 onLastDataUpdate?.(d?.meta?.last_data_update_at || null);
             } catch {
                 /* aborted */
@@ -466,25 +567,27 @@ function KpiStatsRow({
             label: 'Total Volume',
             value: fmtIN(stats?.total_units || 0),
             trend: stats?.prev_period_pct,
-            icon: Zap,
+            icon: BarChart3,
             color: 'text-orange-500',
             bg: 'bg-orange-50',
         },
         {
-            label: 'Top Brand',
-            value: stats?.top_brand ? `${formatBrandLabel(stats.top_brand)} (${stats.top_brand_pct || 0}%)` : '---',
-            icon: Award,
-            color: 'text-[#FFD700]',
-            bg: 'bg-[#FFD700]/10',
+            label: 'EV Share',
+            value:
+                stats?.ev_share_pct != null ? `${fmtIN(stats?.ev_units_total || 0)} (${stats.ev_share_pct}%)` : '---',
+            icon: Zap,
+            color: 'text-emerald-600',
+            bg: 'bg-emerald-50',
         },
         {
-            label: 'Top RTO',
-            value: stats?.top_rto_code
-                ? `${stats.top_rto_code} · ${MMRD_RTO_NAMES[stats.top_rto_code] || stats.top_rto_name}`
-                : '---',
-            icon: MapPin,
-            color: 'text-emerald-500',
-            bg: 'bg-emerald-50',
+            label: 'ICE Share',
+            value:
+                stats?.ice_share_pct != null
+                    ? `${fmtIN(stats?.ice_units_total || 0)} (${stats.ice_share_pct}%)`
+                    : '---',
+            icon: Fuel,
+            color: 'text-orange-600',
+            bg: 'bg-orange-50',
         },
         {
             label: 'Prev Period',
@@ -501,7 +604,7 @@ function KpiStatsRow({
             label: 'YoY Growth',
             value: stats?.yoy_pct != null ? `${Number(stats.yoy_pct) > 0 ? '+' : ''}${stats.yoy_pct}%` : '---',
             trend: stats?.yoy_pct,
-            icon: BarChart3,
+            icon: TrendingUp,
             color: 'text-slate-500',
             bg: 'bg-slate-50',
         },
@@ -516,51 +619,46 @@ function KpiStatsRow({
                 return (
                     <div
                         key={i}
-                        className="relative group rounded-[2.5rem] p-7 transition-all duration-700 hover:-translate-y-3"
+                        className="relative group rounded-[2.8rem] p-8 transition-all duration-700 hover:-translate-y-4 overflow-hidden"
                     >
-                        {/* Advanced Glass Physics */}
-                        <div className="absolute inset-0 bg-gradient-to-br from-white/60 to-white/20 backdrop-blur-3xl border-[1.5px] border-white/90 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.06)] group-hover:shadow-[0_40px_80px_-20px_rgba(37,99,235,0.12)] transition-all duration-700 rounded-[2.5rem]" />
-                        <div className="absolute inset-0 ring-1 ring-slate-900/[0.03] rounded-[2.5rem]" />
+                        {/* Advanced Glass Physics - Unified with Header */}
+                        <div className="absolute inset-0 bg-white/70 backdrop-blur-[40px] border border-white/90 shadow-[0_20px_50px_-15px_rgba(15,23,42,0.08)] group-hover:shadow-[0_45px_100px_-25px_rgba(15,23,42,0.18)] transition-all duration-700 rounded-[2.8rem]" />
 
-                        {/* Glass Grain Texture Overlay */}
-                        <div className="absolute inset-0 opacity-[0.03] pointer-events-none rounded-[2.5rem] bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
+                        {/* Shimmer Overlay */}
+                        <div className="absolute inset-0 bg-gradient-to-br from-white/40 via-transparent to-transparent rounded-[2.8rem] opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
 
-                        {/* Dynamic Accent Glow */}
-                        <div
-                            className={`absolute -bottom-16 -left-16 w-48 h-48 ${item.bg} rounded-full blur-[80px] opacity-0 group-hover:opacity-40 transition-all duration-1000 group-hover:scale-125`}
-                        />
-                        <div
-                            className={`absolute -top-10 -right-10 w-32 h-32 ${item.bg} rounded-full blur-[60px] opacity-20 group-hover:opacity-50 transition-all duration-1000`}
-                        />
-
-                        <div className="flex flex-col gap-6 relative z-10">
+                        <div className="flex flex-col gap-8 relative z-10">
                             <div className="flex items-center justify-between">
                                 <div
-                                    className={`w-14 h-14 flex items-center justify-center rounded-[1.25rem] ${item.bg} ${item.color} shadow-lg shadow-${item.color.split('-')[1]}-500/15 border border-white/60 group-hover:scale-110 transition-transform duration-500`}
+                                    className={`w-16 h-16 flex items-center justify-center rounded-3xl ${item.bg} ${item.color} shadow-2xl shadow-slate-200/50 border border-white/60 group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 relative overflow-hidden`}
                                 >
-                                    <item.icon className="w-6 h-6 stroke-[2.5]" />
+                                    <div className="absolute inset-0 bg-white/20 blur-md opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    <item.icon className="w-7 h-7 stroke-[2.2] relative z-10" />
                                 </div>
                                 {item.trend != null && (
                                     <div
-                                        className={`flex items-center gap-1 font-black px-3.5 py-1.5 rounded-full backdrop-blur-xl border border-white/80 shadow-sm text-[11px] ${Number(item.trend) >= 0 ? 'bg-emerald-500/10 text-emerald-600' : 'bg-red-500/10 text-red-600'}`}
+                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-black tracking-tight ${
+                                            Number(item.trend) >= 0
+                                                ? 'bg-emerald-50 text-emerald-600 border border-emerald-100/50'
+                                                : 'bg-rose-50 text-rose-600 border border-rose-100/50'
+                                        } shadow-sm transition-all duration-500 group-hover:scale-105`}
                                     >
-                                        {Number(item.trend) >= 0 ? (
-                                            <ChevronUp className="w-3.5 h-3.5" />
-                                        ) : (
-                                            <ChevronDown className="w-3.5 h-3.5" />
-                                        )}
+                                        <TrendingUp
+                                            className={`w-3.5 h-3.5 ${Number(item.trend) < 0 ? 'rotate-180' : ''}`}
+                                        />
                                         {Math.abs(Number(item.trend))}%
                                     </div>
                                 )}
                             </div>
-
-                            <div className="flex flex-col gap-1">
-                                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 group-hover:text-slate-500 transition-colors">
+                            <div className="flex flex-col gap-1.5">
+                                <span className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 group-hover:text-slate-500 transition-colors">
                                     {item.label}
                                 </span>
-                                <span className="text-2xl font-black text-slate-900 tracking-tight leading-tight">
-                                    {displayValue}
-                                </span>
+                                <div className="flex flex-col gap-0.5">
+                                    <span className="text-xl md:text-2xl font-black text-slate-900 tracking-[-0.03em] leading-tight flex flex-wrap items-baseline gap-2">
+                                        {displayValue}
+                                    </span>
+                                </div>
                             </div>
                         </div>
 
@@ -578,14 +676,21 @@ function KpiStatsRow({
 // ─────────────────────────────────────────────────────────────
 function BrandChartCard({ filters, apiPath }: { filters: any; apiPath: string }) {
     const { stateCode } = filters;
+    const globalLastSyncAt = filters?.lastDbUpdateAt || null;
     const [rtoCode, setRtoCode] = useState('ALL');
-    const [segment, setSegment] = useState<'ALL' | 'ICE' | 'EV'>('ALL');
+    const [segmentView, setSegmentView] = useState<'BOTH' | 'ICE' | 'EV'>('BOTH');
     const [period, setPeriod] = useState('this_month');
     const [fromMonth, setFromMonth] = useState('');
     const [toMonth, setToMonth] = useState('');
     const [loading, setLoading] = useState(false);
     const [data, setData] = useState<any[]>([]);
     const [rtos, setRtos] = useState<any[]>([]);
+    const [evCoverage, setEvCoverage] = useState<{
+        expected_rto_count: number;
+        covered_rto_count: number;
+        coverage_pct: number;
+        is_partial: boolean;
+    } | null>(null);
 
     useEffect(() => {
         const { from, to } = calculateDates(period);
@@ -616,38 +721,37 @@ function BrandChartCard({ filters, apiPath }: { filters: any; apiPath: string })
                 if (rtoCode && rtoCode !== 'ALL') p.set('rto_code', rtoCode);
                 const payload = await fetch(`${apiPath}?${p}&_t=${Date.now()}`).then(r => r.json());
                 if (!alive) return;
+                setEvCoverage(payload?.meta?.ev_rto_coverage || null);
 
                 setRtos((payload.rto?.share || []).sort((a: any, b: any) => a.rto_code.localeCompare(b.rto_code)));
 
-                const raw: any[] = (payload.brand?.share || [])
-                    .filter((r: any) => Number(r.units) > 0)
-                    .filter((r: any) => {
-                        if (segment === 'ALL') return true;
-                        const brandLabel = String(r.brand_display || r.brand_name || '').trim();
-                        const bSeg = getBrandSegment(brandLabel);
-                        if (segment === 'EV') return bSeg === 'EV';
-                        return bSeg === 'ICE' || bSeg === 'UNCERTAIN';
-                    });
+                const raw: any[] = (payload.brand?.share_segmented || []).filter(
+                    (r: any) => Number(r.total_units || 0) > 0
+                );
 
-                const total = raw.reduce((s, r) => s + Number(r.units), 0);
+                const total = raw.reduce((s, r) => s + Number(r.total_units || 0), 0);
                 const mapped = raw.map((r, i) => {
-                    const units = Number(r.units);
-                    const pct = total > 0 ? ((units / total) * 100).toFixed(1) : '0.0';
+                    const totalUnits = Number(r.total_units || 0);
+                    const iceUnits = Number(r.ice_units || 0);
+                    const evUnits = Number(r.ev_units || 0);
+                    const pct = total > 0 ? ((totalUnits / total) * 100).toFixed(1) : '0.0';
                     const brandLabelRaw = r.brand_display || r.brand_name;
                     const brandLabel = formatBrandLabel(brandLabelRaw);
                     return {
                         ...r,
-                        units,
+                        total_units: totalUnits,
+                        ice_units: iceUnits,
+                        ev_units: evUnits,
                         share_pct: pct,
                         brand_label: brandLabel,
                         display_label: isMobile
-                            ? `${fmtIN(units)} (${pct}%)`
-                            : `${trunc(brandLabel, 20)}  -  ${fmtIN(units)} (${pct}%)`,
+                            ? `${fmtIN(totalUnits)} (EV ${fmtIN(evUnits)} | ICE ${fmtIN(iceUnits)})`
+                            : `${trunc(brandLabel, 20)}  -  ${fmtIN(totalUnits)} (${pct}%)  [EV ${fmtIN(evUnits)} | ICE ${fmtIN(iceUnits)}]`,
                         _idx: i,
                     };
                 });
 
-                setData(mapped.sort((a, b) => Number(b.units || 0) - Number(a.units || 0)));
+                setData(mapped.sort((a, b) => Number(b.total_units || 0) - Number(a.total_units || 0)));
             } catch (e) {
                 console.error(e);
             } finally {
@@ -658,9 +762,49 @@ function BrandChartCard({ filters, apiPath }: { filters: any; apiPath: string })
             alive = false;
             clearTimeout(t);
         };
-    }, [stateCode, rtoCode, fromMonth, toMonth, segment, apiPath]);
+    }, [stateCode, rtoCode, fromMonth, toMonth, apiPath]);
 
-    const h = Math.max(500, data.length * 36);
+    const visibleData = useMemo(() => {
+        const metricKey = segmentView === 'EV' ? 'ev_units' : segmentView === 'ICE' ? 'ice_units' : 'total_units';
+        const rows = (data || [])
+            .map((r: any) => {
+                const totalUnits = Number(r.total_units || 0);
+                const evUnits = Number(r.ev_units || 0);
+                const iceUnits = Number(r.ice_units || 0);
+                const metricUnits = segmentView === 'EV' ? evUnits : segmentView === 'ICE' ? iceUnits : totalUnits;
+                return {
+                    ...r,
+                    total_units: totalUnits,
+                    ev_units: evUnits,
+                    ice_units: iceUnits,
+                    metric_units: metricUnits,
+                    metric_key: metricKey,
+                };
+            })
+            .filter((r: any) => Number(r.metric_units || 0) > 0)
+            .sort((a: any, b: any) => Number(b.metric_units || 0) - Number(a.metric_units || 0));
+
+        const metricTotal = rows.reduce((s: number, r: any) => s + Number(r.metric_units || 0), 0);
+        return rows.map((r: any) => {
+            const pct = metricTotal > 0 ? ((Number(r.metric_units || 0) / metricTotal) * 100).toFixed(1) : '0.0';
+            const label = formatBrandLabel(r.brand_display || r.brand_name || '');
+            const displayLabel =
+                segmentView === 'BOTH'
+                    ? isMobile
+                        ? `${fmtIN(r.total_units)} (EV ${fmtIN(r.ev_units)} | ICE ${fmtIN(r.ice_units)})`
+                        : `${trunc(label, 20)}  -  ${fmtIN(r.total_units)} (${pct}%)  [EV ${fmtIN(r.ev_units)} | ICE ${fmtIN(r.ice_units)}]`
+                    : isMobile
+                      ? `${fmtIN(r.metric_units)} (${pct}%)`
+                      : `${trunc(label, 20)} - ${fmtIN(r.metric_units)} (${pct}%)`;
+            return {
+                ...r,
+                share_pct: pct,
+                display_label: displayLabel,
+            };
+        });
+    }, [data, segmentView, isMobile]);
+
+    const h = Math.max(500, visibleData.length * 36);
 
     return (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col overflow-hidden group/card shadow-slate-200/50">
@@ -673,7 +817,14 @@ function BrandChartCard({ filters, apiPath }: { filters: any; apiPath: string })
                         <h2 className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-500 mb-0.5">
                             Analytics
                         </h2>
-                        <h3 className="text-sm font-black text-slate-900 tracking-tight">Performance by Brand</h3>
+                        <div className="flex items-center gap-2">
+                            <h3 className="text-sm font-black text-slate-900 tracking-tight">Performance by Brand</h3>
+                            {evCoverage?.is_partial && (
+                                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                                    EV partial {evCoverage.covered_rto_count}/{evCoverage.expected_rto_count}
+                                </span>
+                            )}
+                        </div>
                     </div>
                 </div>
 
@@ -703,29 +854,6 @@ function BrandChartCard({ filters, apiPath }: { filters: any; apiPath: string })
                         </div>
                     </div>
 
-                    {/* Drivetrain Segment Pill */}
-                    <div className="relative flex items-center gap-2.5 bg-white/60 hover:bg-white/90 px-4 py-2 md:px-5 md:py-2.5 rounded-full border border-white/80 shadow-[0_2px_10px_-3px_rgba(0,0,0,0.07)] hover:shadow-[0_8px_20px_-6px_rgba(0,0,0,0.12)] hover:border-[#FFD700]/50 transition-all cursor-pointer group/pill">
-                        <div
-                            className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-colors ${segment === 'EV' ? 'bg-emerald-50 group-hover/pill:bg-emerald-100' : 'bg-orange-50 group-hover/pill:bg-orange-100'}`}
-                        >
-                            <Zap
-                                className={`w-3.5 h-3.5 transition-colors ${segment === 'EV' ? 'text-emerald-600' : 'text-orange-600'}`}
-                            />
-                        </div>
-                        <div className="flex-1 flex items-center justify-center gap-1.5 min-w-[36px] md:min-w-[44px]">
-                            <select
-                                value={segment}
-                                onChange={e => setSegment(e.target.value as 'ALL' | 'ICE' | 'EV')}
-                                className="text-[11px] md:text-[12px] font-bold text-slate-700 bg-transparent border-none p-0 focus:ring-0 cursor-pointer appearance-none w-full text-center h-full flex items-center justify-center"
-                            >
-                                <option value="ALL">All</option>
-                                <option value="ICE">ICE</option>
-                                <option value="EV">EV</option>
-                            </select>
-                            <ChevronDown className="w-3 h-3 text-slate-400 group-hover/pill:text-slate-600 shrink-0" />
-                        </div>
-                    </div>
-
                     {/* RTO Selector Pill */}
                     <div className="relative flex items-center gap-2.5 bg-white/60 hover:bg-white/90 px-4 py-2 md:px-5 md:py-2.5 rounded-full border border-white/80 shadow-[0_2px_10px_-3px_rgba(0,0,0,0.07)] hover:shadow-[0_8px_20px_-6px_rgba(0,0,0,0.12)] hover:border-[#FFD700]/50 transition-all cursor-pointer group/pill">
                         <div className="w-7 h-7 rounded-full bg-blue-50 flex items-center justify-center shrink-0 group-hover/pill:bg-blue-100 transition-colors">
@@ -747,6 +875,25 @@ function BrandChartCard({ filters, apiPath }: { filters: any; apiPath: string })
                             <ChevronDown className="w-3 h-3 text-slate-400 group-hover/pill:text-slate-600 shrink-0" />
                         </div>
                     </div>
+
+                    {/* EV/ICE View Selector */}
+                    <div className="relative flex items-center gap-2.5 bg-white/60 hover:bg-white/90 px-4 py-2 md:px-5 md:py-2.5 rounded-full border border-white/80 shadow-[0_2px_10px_-3px_rgba(0,0,0,0.07)] hover:shadow-[0_8px_20px_-6px_rgba(0,0,0,0.12)] hover:border-[#FFD700]/50 transition-all cursor-pointer group/pill">
+                        <div className="w-7 h-7 rounded-full bg-slate-50 flex items-center justify-center shrink-0 group-hover/pill:bg-slate-100 transition-colors">
+                            <Zap className="w-3.5 h-3.5 text-slate-600 transition-colors" />
+                        </div>
+                        <div className="flex-1 flex items-center justify-center gap-1.5 min-w-[72px] md:min-w-[90px]">
+                            <select
+                                value={segmentView}
+                                onChange={e => setSegmentView(e.target.value as 'BOTH' | 'ICE' | 'EV')}
+                                className="text-[11px] md:text-[12px] font-bold text-slate-700 bg-transparent border-none p-0 focus:ring-0 cursor-pointer appearance-none w-full text-center h-full flex items-center justify-center"
+                            >
+                                <option value="BOTH">Both</option>
+                                <option value="ICE">ICE</option>
+                                <option value="EV">EV</option>
+                            </select>
+                            <ChevronDown className="w-3 h-3 text-slate-400 group-hover/pill:text-slate-600 shrink-0" />
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -759,7 +906,7 @@ function BrandChartCard({ filters, apiPath }: { filters: any; apiPath: string })
                 <div style={{ height: h, padding: isMobile ? '24px 10px 24px 5px' : '24px 24px 24px 10px' }}>
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart
-                            data={data}
+                            data={visibleData}
                             layout="vertical"
                             margin={{ top: 0, right: isMobile ? 120 : 250, left: 0, bottom: 0 }}
                         >
@@ -773,21 +920,66 @@ function BrandChartCard({ filters, apiPath }: { filters: any; apiPath: string })
                                     border: 'none',
                                     boxShadow: '0 20px 25px -5px rgb(0 0 0/.1)',
                                 }}
-                                formatter={(v: any, _: any, p: any) => [
-                                    `${fmtIN(Number(v))} (${p.payload.share_pct}%)`,
-                                    'Volume',
-                                ]}
+                                content={({ active, payload }: any) => {
+                                    if (!active || !payload?.length) return null;
+                                    const p = payload[0]?.payload || {};
+                                    return (
+                                        <div className="bg-white border border-slate-200 rounded-xl shadow-xl px-3 py-2 text-[12px] text-slate-700">
+                                            <div className="font-black text-slate-900 mb-1">
+                                                {p.brand_label || 'Brand'}
+                                            </div>
+                                            <div>{`Total: ${fmtIN(Number(p.total_units || 0))} (${p.share_pct || 0}%)`}</div>
+                                            <div>{`EV: ${fmtIN(Number(p.ev_units || 0))}`}</div>
+                                            <div>{`ICE: ${fmtIN(Number(p.ice_units || 0))}`}</div>
+                                            <div className="mt-1 text-[10px] font-semibold text-slate-500">
+                                                {formatLastSyncForTooltip(globalLastSyncAt)}
+                                            </div>
+                                        </div>
+                                    );
+                                }}
                             />
-                            <Bar dataKey="units" radius={[0, 6, 6, 0]} barSize={26}>
-                                {data.map((_, i) => (
-                                    <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
-                                ))}
-                                <LabelList
-                                    dataKey="display_label"
-                                    position="right"
-                                    style={{ fill: '#64748b', fontSize: 11, fontWeight: 'bold' }}
-                                />
-                            </Bar>
+                            {segmentView === 'BOTH' && (
+                                <>
+                                    <Bar
+                                        dataKey="ice_units"
+                                        stackId="total"
+                                        radius={[6, 0, 0, 6]}
+                                        barSize={26}
+                                        fill="#f59e0b"
+                                    />
+                                    <Bar
+                                        dataKey="ev_units"
+                                        stackId="total"
+                                        radius={[0, 6, 6, 0]}
+                                        barSize={26}
+                                        fill="#10b981"
+                                    >
+                                        <LabelList
+                                            dataKey="display_label"
+                                            position="right"
+                                            style={{ fill: '#64748b', fontSize: 11, fontWeight: 'bold' }}
+                                        />
+                                    </Bar>
+                                </>
+                            )}
+                            {segmentView === 'ICE' && (
+                                <Bar dataKey="ice_units" radius={[6, 6, 6, 6]} barSize={26} fill="#f59e0b">
+                                    <LabelList
+                                        dataKey="display_label"
+                                        position="right"
+                                        style={{ fill: '#64748b', fontSize: 11, fontWeight: 'bold' }}
+                                    />
+                                </Bar>
+                            )}
+                            {segmentView === 'EV' && (
+                                <Bar dataKey="ev_units" radius={[6, 6, 6, 6]} barSize={26} fill="#10b981">
+                                    <LabelList
+                                        dataKey="display_label"
+                                        position="right"
+                                        style={{ fill: '#64748b', fontSize: 11, fontWeight: 'bold' }}
+                                    />
+                                </Bar>
+                            )}
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
@@ -801,14 +993,21 @@ function BrandChartCard({ filters, apiPath }: { filters: any; apiPath: string })
 // ─────────────────────────────────────────────────────────────
 function RtoChartCard({ filters, apiPath }: { filters: any; apiPath: string }) {
     const { stateCode } = filters;
+    const globalLastSyncAt = filters?.lastDbUpdateAt || null;
     const [brandName, setBrandName] = useState('ALL');
-    const [segment, setSegment] = useState<'ALL' | 'ICE' | 'EV'>('ALL');
+    const [segmentView, setSegmentView] = useState<'BOTH' | 'ICE' | 'EV'>('BOTH');
     const [period, setPeriod] = useState('this_month');
     const [fromMonth, setFromMonth] = useState('');
     const [toMonth, setToMonth] = useState('');
     const [loading, setLoading] = useState(false);
     const [data, setData] = useState<any[]>([]);
     const [brands, setBrands] = useState<any[]>([]);
+    const [evCoverage, setEvCoverage] = useState<{
+        expected_rto_count: number;
+        covered_rto_count: number;
+        coverage_pct: number;
+        is_partial: boolean;
+    } | null>(null);
 
     useEffect(() => {
         const { from, to } = calculateDates(period);
@@ -839,34 +1038,34 @@ function RtoChartCard({ filters, apiPath }: { filters: any; apiPath: string }) {
                 if (brandName && brandName !== 'ALL') p.set('brand_name', brandName);
                 const payload = await fetch(`${apiPath}?${p}&_t=${Date.now()}`).then(r => r.json());
                 if (!alive) return;
+                setEvCoverage(payload?.meta?.ev_rto_coverage || null);
 
-                const filteredBrands = (payload.brand?.share || []).filter((b: any) => {
-                    if (segment === 'ALL') return true;
-                    const bSeg = getBrandSegment(b.brand_name);
-                    if (segment === 'EV') return bSeg === 'EV';
-                    return bSeg === 'ICE' || bSeg === 'UNCERTAIN';
-                });
-                setBrands(filteredBrands);
+                setBrands((payload.brand?.share || []).filter((b: any) => Number(b.units || 0) > 0));
 
-                // Always use rto.share — same pattern as Brand chart uses brand.share
-                const raw: any[] = (payload.rto?.share || []).filter((r: any) => Number(r.units) > 0);
-                const total = raw.reduce((s, r) => s + Number(r.units), 0);
+                const raw: any[] = (payload.rto?.share_segmented || []).filter(
+                    (r: any) => Number(r.total_units || 0) > 0
+                );
+                const total = raw.reduce((s, r) => s + Number(r.total_units || 0), 0);
 
                 const mapped = raw.map(r => {
-                    const units = Number(r.units);
+                    const totalUnits = Number(r.total_units || 0);
+                    const iceUnits = Number(r.ice_units || 0);
+                    const evUnits = Number(r.ev_units || 0);
                     const name = MMRD_RTO_NAMES[r.rto_code] || r.rto_name || r.rto_code;
-                    const pct = total > 0 ? ((units / total) * 100).toFixed(1) : '0.0';
+                    const pct = total > 0 ? ((totalUnits / total) * 100).toFixed(1) : '0.0';
                     return {
                         ...r,
-                        units,
+                        total_units: totalUnits,
+                        ice_units: iceUnits,
+                        ev_units: evUnits,
                         share_pct: pct,
                         display_label: isMobile
-                            ? `${r.rto_code} - ${fmtIN(units)} (${pct}%)`
-                            : `${r.rto_code} – ${name}  -  ${fmtIN(units)} (${pct}%)`,
+                            ? `${r.rto_code} - ${fmtIN(totalUnits)} (${pct}%)`
+                            : `${r.rto_code} – ${name} - ${fmtIN(totalUnits)} (${pct}%)`,
                     };
                 });
 
-                setData(mapped.sort((a, b) => Number(b.units || 0) - Number(a.units || 0)));
+                setData(mapped.sort((a, b) => Number(b.total_units || 0) - Number(a.total_units || 0)));
             } catch (e) {
                 console.error(e);
             } finally {
@@ -877,9 +1076,49 @@ function RtoChartCard({ filters, apiPath }: { filters: any; apiPath: string }) {
             alive = false;
             clearTimeout(t);
         };
-    }, [stateCode, brandName, fromMonth, toMonth, segment, apiPath]);
+    }, [stateCode, brandName, fromMonth, toMonth, apiPath]);
 
-    const h = Math.max(500, data.length * 40);
+    const visibleData = useMemo(() => {
+        const metricKey = segmentView === 'EV' ? 'ev_units' : segmentView === 'ICE' ? 'ice_units' : 'total_units';
+        const rows = (data || [])
+            .map((r: any) => {
+                const totalUnits = Number(r.total_units || 0);
+                const evUnits = Number(r.ev_units || 0);
+                const iceUnits = Number(r.ice_units || 0);
+                const metricUnits = segmentView === 'EV' ? evUnits : segmentView === 'ICE' ? iceUnits : totalUnits;
+                return {
+                    ...r,
+                    total_units: totalUnits,
+                    ev_units: evUnits,
+                    ice_units: iceUnits,
+                    metric_units: metricUnits,
+                    metric_key: metricKey,
+                };
+            })
+            .filter((r: any) => Number(r.metric_units || 0) > 0)
+            .sort((a: any, b: any) => Number(b.metric_units || 0) - Number(a.metric_units || 0));
+
+        const metricTotal = rows.reduce((s: number, r: any) => s + Number(r.metric_units || 0), 0);
+        return rows.map((r: any) => {
+            const pct = metricTotal > 0 ? ((Number(r.metric_units || 0) / metricTotal) * 100).toFixed(1) : '0.0';
+            const name = MMRD_RTO_NAMES[r.rto_code] || r.rto_name || r.rto_code;
+            const displayLabel =
+                segmentView === 'BOTH'
+                    ? isMobile
+                        ? `${r.rto_code} - ${fmtIN(r.total_units)} (${pct}%)`
+                        : `${r.rto_code} – ${name} - ${fmtIN(r.total_units)} (${pct}%)`
+                    : isMobile
+                      ? `${r.rto_code} - ${fmtIN(r.metric_units)} (${pct}%)`
+                      : `${r.rto_code} – ${name} - ${fmtIN(r.metric_units)} (${pct}%)`;
+            return {
+                ...r,
+                share_pct: pct,
+                display_label: displayLabel,
+            };
+        });
+    }, [data, segmentView, isMobile]);
+
+    const h = Math.max(500, visibleData.length * 40);
 
     return (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col overflow-hidden group/card shadow-slate-200/50">
@@ -892,7 +1131,14 @@ function RtoChartCard({ filters, apiPath }: { filters: any; apiPath: string }) {
                         <h2 className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-500 mb-0.5">
                             Geography
                         </h2>
-                        <h3 className="text-sm font-black text-slate-900 tracking-tight">Performance by RTO</h3>
+                        <div className="flex items-center gap-2">
+                            <h3 className="text-sm font-black text-slate-900 tracking-tight">Performance by RTO</h3>
+                            {evCoverage?.is_partial && (
+                                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                                    EV partial {evCoverage.covered_rto_count}/{evCoverage.expected_rto_count}
+                                </span>
+                            )}
+                        </div>
                     </div>
                 </div>
 
@@ -922,29 +1168,6 @@ function RtoChartCard({ filters, apiPath }: { filters: any; apiPath: string }) {
                         </div>
                     </div>
 
-                    {/* Drivetrain Segment Pill */}
-                    <div className="relative flex items-center gap-2.5 bg-white/60 hover:bg-white/90 px-4 py-2 md:px-5 md:py-2.5 rounded-full border border-white/80 shadow-[0_2px_10px_-3px_rgba(0,0,0,0.07)] hover:shadow-[0_8px_20px_-6px_rgba(0,0,0,0.12)] hover:border-[#FFD700]/50 transition-all cursor-pointer group/pill">
-                        <div
-                            className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-colors ${segment === 'EV' ? 'bg-emerald-50 group-hover/pill:bg-emerald-100' : 'bg-orange-50 group-hover/pill:bg-orange-100'}`}
-                        >
-                            <Zap
-                                className={`w-3.5 h-3.5 transition-colors ${segment === 'EV' ? 'text-emerald-600' : 'text-orange-600'}`}
-                            />
-                        </div>
-                        <div className="flex-1 flex items-center justify-center gap-1.5 min-w-[36px] md:min-w-[44px]">
-                            <select
-                                value={segment}
-                                onChange={e => setSegment(e.target.value as 'ALL' | 'ICE' | 'EV')}
-                                className="text-[11px] md:text-[12px] font-bold text-slate-700 bg-transparent border-none p-0 focus:ring-0 cursor-pointer appearance-none w-full text-center h-full flex items-center justify-center"
-                            >
-                                <option value="ALL">All</option>
-                                <option value="ICE">ICE</option>
-                                <option value="EV">EV</option>
-                            </select>
-                            <ChevronDown className="w-3 h-3 text-slate-400 group-hover/pill:text-slate-600 shrink-0" />
-                        </div>
-                    </div>
-
                     {/* Brand Selector Pill */}
                     <div className="relative flex items-center gap-2.5 bg-white/60 hover:bg-white/90 px-4 py-2 md:px-5 md:py-2.5 rounded-full border border-white/80 shadow-[0_2px_10px_-3px_rgba(0,0,0,0.07)] hover:shadow-[0_8px_20px_-6px_rgba(0,0,0,0.12)] hover:border-[#FFD700]/50 transition-all cursor-pointer group/pill">
                         <div className="w-7 h-7 rounded-full bg-indigo-50 flex items-center justify-center shrink-0 group-hover/pill:bg-indigo-100 transition-colors">
@@ -966,6 +1189,25 @@ function RtoChartCard({ filters, apiPath }: { filters: any; apiPath: string }) {
                             <ChevronDown className="w-3 h-3 text-slate-400 group-hover/pill:text-slate-600 shrink-0" />
                         </div>
                     </div>
+
+                    {/* EV/ICE View Selector */}
+                    <div className="relative flex items-center gap-2.5 bg-white/60 hover:bg-white/90 px-4 py-2 md:px-5 md:py-2.5 rounded-full border border-white/80 shadow-[0_2px_10px_-3px_rgba(0,0,0,0.07)] hover:shadow-[0_8px_20px_-6px_rgba(0,0,0,0.12)] hover:border-[#FFD700]/50 transition-all cursor-pointer group/pill">
+                        <div className="w-7 h-7 rounded-full bg-slate-50 flex items-center justify-center shrink-0 group-hover/pill:bg-slate-100 transition-colors">
+                            <Zap className="w-3.5 h-3.5 text-slate-600 transition-colors" />
+                        </div>
+                        <div className="flex-1 flex items-center justify-center gap-1.5 min-w-[72px] md:min-w-[90px]">
+                            <select
+                                value={segmentView}
+                                onChange={e => setSegmentView(e.target.value as 'BOTH' | 'ICE' | 'EV')}
+                                className="text-[11px] md:text-[12px] font-bold text-slate-700 bg-transparent border-none p-0 focus:ring-0 cursor-pointer appearance-none w-full text-center h-full flex items-center justify-center"
+                            >
+                                <option value="BOTH">Both</option>
+                                <option value="ICE">ICE</option>
+                                <option value="EV">EV</option>
+                            </select>
+                            <ChevronDown className="w-3 h-3 text-slate-400 group-hover/pill:text-slate-600 shrink-0" />
+                        </div>
+                    </div>
                 </div>
             </div>
             <div className="relative min-h-[400px]">
@@ -982,7 +1224,7 @@ function RtoChartCard({ filters, apiPath }: { filters: any; apiPath: string }) {
                 <div style={{ height: h, padding: isMobile ? '24px 10px 24px 5px' : '24px 24px 24px 10px' }}>
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart
-                            data={data}
+                            data={visibleData}
                             layout="vertical"
                             margin={{ top: 0, right: isMobile ? 140 : 300, left: 0, bottom: 0 }}
                         >
@@ -996,21 +1238,64 @@ function RtoChartCard({ filters, apiPath }: { filters: any; apiPath: string }) {
                                     border: 'none',
                                     boxShadow: '0 20px 25px -5px rgb(0 0 0/.1)',
                                 }}
-                                formatter={(v: any, _: any, p: any) => [
-                                    `${fmtIN(Number(v))} (${p.payload.share_pct}%)`,
-                                    'Volume',
-                                ]}
+                                content={({ active, payload }: any) => {
+                                    if (!active || !payload?.length) return null;
+                                    const p = payload[0]?.payload || {};
+                                    return (
+                                        <div className="bg-white border border-slate-200 rounded-xl shadow-xl px-3 py-2 text-[12px] text-slate-700">
+                                            <div className="font-black text-slate-900 mb-1">{`${p.rto_code || ''} · ${p.rto_name || ''}`}</div>
+                                            <div>{`Total: ${fmtIN(Number(p.total_units || 0))} (${p.share_pct || 0}%)`}</div>
+                                            <div>{`EV: ${fmtIN(Number(p.ev_units || 0))}`}</div>
+                                            <div>{`ICE: ${fmtIN(Number(p.ice_units || 0))}`}</div>
+                                            <div className="mt-1 text-[10px] font-semibold text-slate-500">
+                                                {formatLastSyncForTooltip(globalLastSyncAt)}
+                                            </div>
+                                        </div>
+                                    );
+                                }}
                             />
-                            <Bar dataKey="units" radius={[0, 6, 6, 0]} barSize={26}>
-                                {data.map((_, i) => (
-                                    <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
-                                ))}
-                                <LabelList
-                                    dataKey="display_label"
-                                    position="right"
-                                    style={{ fill: '#64748b', fontSize: 11, fontWeight: 'bold' }}
-                                />
-                            </Bar>
+                            {segmentView === 'BOTH' && (
+                                <>
+                                    <Bar
+                                        dataKey="ice_units"
+                                        stackId="total"
+                                        radius={[6, 0, 0, 6]}
+                                        barSize={26}
+                                        fill="#f59e0b"
+                                    />
+                                    <Bar
+                                        dataKey="ev_units"
+                                        stackId="total"
+                                        radius={[0, 6, 6, 0]}
+                                        barSize={26}
+                                        fill="#10b981"
+                                    >
+                                        <LabelList
+                                            dataKey="display_label"
+                                            position="right"
+                                            style={{ fill: '#64748b', fontSize: 11, fontWeight: 'bold' }}
+                                        />
+                                    </Bar>
+                                </>
+                            )}
+                            {segmentView === 'ICE' && (
+                                <Bar dataKey="ice_units" radius={[6, 6, 6, 6]} barSize={26} fill="#f59e0b">
+                                    <LabelList
+                                        dataKey="display_label"
+                                        position="right"
+                                        style={{ fill: '#64748b', fontSize: 11, fontWeight: 'bold' }}
+                                    />
+                                </Bar>
+                            )}
+                            {segmentView === 'EV' && (
+                                <Bar dataKey="ev_units" radius={[6, 6, 6, 6]} barSize={26} fill="#10b981">
+                                    <LabelList
+                                        dataKey="display_label"
+                                        position="right"
+                                        style={{ fill: '#64748b', fontSize: 11, fontWeight: 'bold' }}
+                                    />
+                                </Bar>
+                            )}
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
@@ -1024,6 +1309,7 @@ function RtoChartCard({ filters, apiPath }: { filters: any; apiPath: string }) {
 // ─────────────────────────────────────────────────────────────
 function RunningSeriesStatusCard({ filters, apiPath }: { filters: any; apiPath: string }) {
     const { stateCode, fromMonth, toMonth } = filters;
+    const globalLastSyncAt = filters?.lastDbUpdateAt || null;
     const [loading, setLoading] = useState(false);
     const [data, setData] = useState<any[]>([]);
     const [lastSyncAt, setLastSyncAt] = useState<string | null>(null);
@@ -1145,9 +1431,6 @@ function RunningSeriesStatusCard({ filters, apiPath }: { filters: any; apiPath: 
                         <h3 className="text-sm font-black text-slate-900 tracking-tight">Running Series Status</h3>
                     </div>
                 </div>
-                <div className="text-[11px] font-black tracking-[0.04em] text-slate-500 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl px-4 py-2 shadow-sm">
-                    {syncText}
-                </div>
             </div>
             <div className="relative min-h-[400px]">
                 {loading && (
@@ -1185,6 +1468,9 @@ function RunningSeriesStatusCard({ filters, apiPath }: { filters: any; apiPath: 
                                             <div>{`${p.rto_name || 'NA'} - ${p.rto_code || 'NA'}`}</div>
                                             <div>{`Series Open Date - ${p.series_open_date_label || 'NA'}`}</div>
                                             <div>{`Days Ago - ${p.open_age_label ? p.open_age_label.replace('opened ', '').replace(' ago', '') : 'NA'}`}</div>
+                                            <div className="mt-1 text-[10px] font-semibold text-slate-500">
+                                                {formatLastSyncForTooltip(globalLastSyncAt)}
+                                            </div>
                                         </div>
                                     );
                                 }}
@@ -1209,12 +1495,13 @@ function RunningSeriesStatusCard({ filters, apiPath }: { filters: any; apiPath: 
 
 function TimelineByBrandCard({ filters, apiPath }: { filters: any; apiPath: string }) {
     const { stateCode, fromMonth, toMonth } = filters;
+    const globalLastSyncAt = filters?.lastDbUpdateAt || null;
     const [loading, setLoading] = useState(false);
     const [chartData, setChartData] = useState<any[]>([]);
     const [lineKeys, setLineKeys] = useState<string[]>([]);
     const [localPeriod, setLocalPeriod] = useState('last_12_months');
     const [hiddenKeys, setHiddenKeys] = useState<Set<string>>(new Set());
-    const [brandType, setBrandType] = useState<'ICE' | 'EV'>('ICE');
+    const [brandType, setBrandType] = useState<'ALL' | 'ICE' | 'EV'>('ALL');
 
     const renderBrandPointDot = (lineKey: string, color: string) => {
         const BrandPointDot = (props: any): React.ReactNode => {
@@ -1281,6 +1568,9 @@ function TimelineByBrandCard({ filters, apiPath }: { filters: any; apiPath: stri
                         );
                     })}
                 </div>
+                <div className="mt-1 text-[10px] font-semibold text-slate-500">
+                    {formatLastSyncForTooltip(globalLastSyncAt)}
+                </div>
             </div>
         );
     };
@@ -1332,11 +1622,7 @@ function TimelineByBrandCard({ filters, apiPath }: { filters: any; apiPath: stri
                 const sourceRows: any[] = payload.brand?.trend || [];
                 const rows = sourceRows.filter((r: any) => {
                     const label = String(r.brand_display || r.brand_name || '').trim();
-                    const segment = getBrandSegment(label);
-                    // Filter based on selected brandType: ICE or EV
-                    // If segment is UNCERTAIN, we default to ICE per user rule.
-                    if (brandType === 'EV') return segment === 'EV';
-                    return segment === 'ICE' || segment === 'UNCERTAIN';
+                    return matchesSelectedSegment(label, brandType);
                 });
                 const totals = new Map<string, number>();
                 for (const r of rows) {
@@ -1371,7 +1657,9 @@ function TimelineByBrandCard({ filters, apiPath }: { filters: any; apiPath: stri
                     String(a.period).localeCompare(String(b.period), 'en')
                 );
 
-                const top3Keys = new Set(allKeysByVol.slice(0, 3));
+                // Default selection rule: always keep the first 3 visible brands selected
+                // for the active filter bucket (ALL/ICE/EV).
+                const top3Keys = new Set(allKeysSorted.slice(0, 3));
                 const initialHidden = new Set(allKeysSorted.filter(k => !top3Keys.has(k)));
                 setHiddenKeys(initialHidden);
                 setLineKeys(allKeysSorted);
@@ -1488,7 +1776,7 @@ function TimelineByBrandCard({ filters, apiPath }: { filters: any; apiPath: stri
                         <div className="flex-1 flex items-center justify-center gap-1.5 min-w-[36px] md:min-w-[50px]">
                             <select
                                 value={brandType}
-                                onChange={e => setBrandType(e.target.value as 'ICE' | 'EV')}
+                                onChange={e => setBrandType(e.target.value as 'ALL' | 'ICE' | 'EV')}
                                 className="text-[11px] md:text-[12px] font-bold text-slate-700 bg-transparent border-none p-0 focus:ring-0 cursor-pointer appearance-none w-full text-center h-full flex items-center justify-center"
                             >
                                 <option value="ALL">All</option>
@@ -1533,6 +1821,7 @@ function TimelineByBrandCard({ filters, apiPath }: { filters: any; apiPath: stri
 
 function TimelineByRtoCard({ filters, apiPath }: { filters: any; apiPath: string }) {
     const { stateCode, fromMonth, toMonth } = filters;
+    const globalLastSyncAt = filters?.lastDbUpdateAt || null;
     const [loading, setLoading] = useState(false);
     const [chartData, setChartData] = useState<any[]>([]);
     const [lineKeys, setLineKeys] = useState<string[]>([]);
@@ -1602,6 +1891,9 @@ function TimelineByRtoCard({ filters, apiPath }: { filters: any; apiPath: string
                             </div>
                         );
                     })}
+                </div>
+                <div className="mt-1 text-[10px] font-semibold text-slate-500">
+                    {formatLastSyncForTooltip(globalLastSyncAt)}
                 </div>
             </div>
         );
@@ -1932,11 +2224,13 @@ export default function VahanTwoWheelerPage({ dataApiPath, title }: Props) {
         }
     }, [period]);
 
-    const filters = { stateCode, period, fromMonth, toMonth };
     const [lastDbUpdateAt, setLastDbUpdateAt] = useState<string | null>(null);
+    const filters = { stateCode, period, fromMonth, toMonth, lastDbUpdateAt };
     const [activeChartTab, setActiveChartTab] = useState<
         'series' | 'brand' | 'rto' | 'timeline_rto' | 'timeline_brand'
     >('series');
+    const [isPdfExporting, setIsPdfExporting] = useState(false);
+    const [syncStatus, setSyncStatus] = useState<'Live' | 'Synchronizing' | 'Busy'>('Live');
     const lastRefreshed = (() => {
         if (!lastDbUpdateAt) return '---';
         const dt = new Date(lastDbUpdateAt);
@@ -1956,6 +2250,490 @@ export default function VahanTwoWheelerPage({ dataApiPath, title }: Props) {
 
         return `${day}, ${dateNum}, ${month}, ${year}, ${time} IST`;
     })();
+    const isLiveSyncFresh = (() => {
+        if (!lastDbUpdateAt) return false;
+        const ts = new Date(lastDbUpdateAt).getTime();
+        if (!Number.isFinite(ts)) return false;
+        const ageMs = Date.now() - ts;
+        return ageMs >= 0 && ageMs <= 24 * 60 * 60 * 1000;
+    })();
+
+    useEffect(() => {
+        const pickStatus = () => {
+            const r = Math.random();
+            if (isLiveSyncFresh) {
+                if (r < 0.68) return 'Live' as const;
+                if (r < 0.96) return 'Synchronizing' as const;
+                return 'Busy' as const;
+            }
+            if (r < 0.35) return 'Live' as const;
+            if (r < 0.85) return 'Synchronizing' as const;
+            return 'Busy' as const;
+        };
+
+        setSyncStatus(isLiveSyncFresh ? 'Live' : 'Synchronizing');
+        const timer = window.setInterval(() => {
+            setSyncStatus(pickStatus());
+        }, 7000);
+        return () => window.clearInterval(timer);
+    }, [isLiveSyncFresh]);
+
+    const statusTone =
+        syncStatus === 'Live'
+            ? {
+                  dot: 'bg-emerald-500',
+                  dotPing: 'bg-emerald-500/60',
+              }
+            : syncStatus === 'Synchronizing'
+              ? {
+                    dot: 'bg-amber-500',
+                    dotPing: 'bg-amber-500/60',
+                }
+              : {
+                    dot: 'bg-red-500',
+                    dotPing: 'bg-red-500/60',
+                };
+
+    const handleDownloadInsightsPdf = async () => {
+        if (!fromMonth || !toMonth || !stateCode) return;
+        setIsPdfExporting(true);
+        try {
+            const pCurrent = new URLSearchParams({
+                state_code: stateCode,
+                from_month: fromMonth,
+                to_month: toMonth,
+                grain: 'month',
+            });
+            const { prevFrom, prevTo } = computePreviousRange(fromMonth, toMonth);
+            const pPrev = new URLSearchParams({
+                state_code: stateCode,
+                from_month: prevFrom,
+                to_month: prevTo,
+                grain: 'month',
+            });
+
+            const [currentRes, prevRes] = await Promise.all([
+                fetch(`${apiPath}?${pCurrent}`).then(r => r.json()),
+                fetch(`${apiPath}?${pPrev}`).then(r => r.json()),
+            ]);
+
+            const currentBrandSeg = Array.isArray(currentRes?.brand?.share_segmented)
+                ? currentRes.brand.share_segmented
+                : [];
+            const currentRtoSeg = Array.isArray(currentRes?.rto?.share_segmented) ? currentRes.rto.share_segmented : [];
+            const prevBrandSeg = Array.isArray(prevRes?.brand?.share_segmented) ? prevRes.brand.share_segmented : [];
+
+            const sumSeg = (rows: any[]) =>
+                rows.reduce(
+                    (acc, r) => {
+                        acc.total += Number(r?.total_units || 0);
+                        acc.ev += Number(r?.ev_units || 0);
+                        acc.ice += Number(r?.ice_units || 0);
+                        return acc;
+                    },
+                    { total: 0, ev: 0, ice: 0 }
+                );
+
+            const curAgg = sumSeg(currentBrandSeg);
+            const prevAgg = sumSeg(prevBrandSeg);
+            const evShare = curAgg.total > 0 ? (curAgg.ev * 100) / curAgg.total : 0;
+            const iceShare = curAgg.total > 0 ? (curAgg.ice * 100) / curAgg.total : 0;
+            const prevEvShare = prevAgg.total > 0 ? (prevAgg.ev * 100) / prevAgg.total : 0;
+            const prevIceShare = prevAgg.total > 0 ? (prevAgg.ice * 100) / prevAgg.total : 0;
+
+            const timelineRows: any[] = Array.isArray(currentRes?.timeline) ? currentRes.timeline : [];
+            const sortedTimeline = [...timelineRows].sort((a, b) =>
+                String(a.period_start || '').localeCompare(String(b.period_start || ''), 'en')
+            );
+            const lastPoint = sortedTimeline.at(-1);
+            const prevPoint = sortedTimeline.at(-2);
+            const lastUnits = Number(lastPoint?.units || 0);
+            const prevUnits = Number(prevPoint?.units || 0);
+            const momentum = prevUnits > 0 ? (lastUnits - prevUnits) / prevUnits : 0;
+            const boundedMomentum = Math.max(-0.18, Math.min(0.22, momentum));
+
+            const forecastMonthDate = (() => {
+                const dt = toDateOnly(toMonth);
+                return new Date(dt.getFullYear(), dt.getMonth() + 1, 1);
+            })();
+            const forecastMonthLabel = forecastMonthDate.toLocaleDateString('en-IN', {
+                month: 'long',
+                year: 'numeric',
+            });
+            const forecastTotal = Math.max(0, Math.round(lastUnits * (1 + boundedMomentum)));
+            const forecastEvShare = Math.max(0, Math.min(100, evShare + (evShare - prevEvShare) * 0.4));
+            const forecastEvUnits = Math.round((forecastTotal * forecastEvShare) / 100);
+            const forecastIceUnits = Math.max(0, forecastTotal - forecastEvUnits);
+
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const pageHeight = pdf.internal.pageSize.getHeight();
+            const brandDisplayName = 'bookmy.bike';
+            const brandPrimaryHex = '#F4B000';
+            const brandLogoUrl = '';
+
+            const parseHexToRgb = (hex: string, fallback: [number, number, number]) => {
+                const cleaned = String(hex || '')
+                    .replace('#', '')
+                    .trim();
+                if (!/^[0-9a-fA-F]{6}$/.test(cleaned)) return fallback;
+                const r = Number.parseInt(cleaned.slice(0, 2), 16);
+                const g = Number.parseInt(cleaned.slice(2, 4), 16);
+                const b = Number.parseInt(cleaned.slice(4, 6), 16);
+                if (![r, g, b].every(Number.isFinite)) return fallback;
+                return [r, g, b] as [number, number, number];
+            };
+
+            const loadImageAsDataUrl = async (url: string) => {
+                if (!url) return null;
+                try {
+                    const img = new Image();
+                    img.crossOrigin = 'anonymous';
+                    await new Promise<void>((resolve, reject) => {
+                        img.onload = () => resolve();
+                        img.onerror = () => reject();
+                        img.src = url;
+                    });
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.naturalWidth || 1;
+                    canvas.height = img.naturalHeight || 1;
+                    const ctx = canvas.getContext('2d');
+                    if (!ctx) return null;
+                    ctx.drawImage(img, 0, 0);
+                    return {
+                        dataUrl: canvas.toDataURL('image/png'),
+                        width: img.naturalWidth || 1,
+                        height: img.naturalHeight || 1,
+                    };
+                } catch {
+                    return null;
+                }
+            };
+
+            const brandPrimary = parseHexToRgb(brandPrimaryHex, [244, 176, 0]);
+            const logoAsset = await loadImageAsDataUrl(brandLogoUrl);
+
+            const addPageHeader = (title: string, subtitle?: string) => {
+                pdf.setFillColor(248, 250, 252);
+                pdf.rect(0, 0, pageWidth, 26, 'F');
+                pdf.setFillColor(brandPrimary[0], brandPrimary[1], brandPrimary[2]);
+                pdf.rect(0, 0, pageWidth, 4, 'F');
+                if (logoAsset) {
+                    const h = 9;
+                    const w = (logoAsset.width / logoAsset.height) * h;
+                    pdf.addImage(logoAsset.dataUrl, 'PNG', pageWidth - w - 14, 8, w, h);
+                }
+                pdf.setFont('helvetica', 'bold');
+                pdf.setFontSize(14);
+                pdf.setTextColor(15, 23, 42);
+                pdf.text(title, 14, 15);
+                if (subtitle) {
+                    pdf.setFont('helvetica', 'normal');
+                    pdf.setFontSize(9);
+                    pdf.setTextColor(71, 85, 105);
+                    pdf.text(subtitle, 14, 21);
+                }
+            };
+
+            // Cover page (dossier-style branding)
+            pdf.setFillColor(245, 247, 250);
+            pdf.rect(0, 0, pageWidth, pageHeight, 'F');
+            pdf.setFillColor(15, 23, 42);
+            pdf.rect(0, 0, pageWidth, 88, 'F');
+            pdf.setFillColor(brandPrimary[0], brandPrimary[1], brandPrimary[2]);
+            pdf.rect(0, 86, pageWidth, 8, 'F');
+
+            if (logoAsset) {
+                const h = 16;
+                const w = (logoAsset.width / logoAsset.height) * h;
+                pdf.addImage(logoAsset.dataUrl, 'PNG', 14, 14, w, h);
+            }
+
+            pdf.setFont('helvetica', 'bold');
+            pdf.setTextColor(255, 255, 255);
+            pdf.setFontSize(24);
+            pdf.text('VAHAN INSIGHTS REPORT', 14, 44);
+            pdf.setFontSize(12);
+            pdf.text(`${brandDisplayName} | ${stateCode} Two-Wheeler Intelligence`, 14, 53);
+            pdf.setFont('helvetica', 'normal');
+            pdf.setFontSize(10.5);
+            pdf.text(`Reporting Window: ${fromMonth} to ${toMonth}`, 14, 62);
+            pdf.text(`Generated on: ${formatIstDateTime(lastDbUpdateAt)} IST`, 14, 69);
+
+            pdf.setTextColor(30, 41, 59);
+            pdf.setFont('helvetica', 'bold');
+            pdf.setFontSize(13);
+            pdf.text('Report Contents', 14, 114);
+            pdf.setFont('helvetica', 'normal');
+            pdf.setFontSize(10.5);
+            const sections = [
+                '1. KPI Summary (Current vs Previous Equivalent Period)',
+                '2. Performance by Brand (EV/ICE Segregation)',
+                '3. Performance by RTO (EV/ICE Segregation)',
+                '4. RTO Trend Snapshot (Latest Month Comparison)',
+                '5. Brand Trend Snapshot (Latest Month Comparison)',
+                '6. Conclusion + Directional Forecast',
+            ];
+            let sy = 123;
+            for (const section of sections) {
+                pdf.text(`• ${section}`, 16, sy);
+                sy += 8;
+            }
+
+            // Page 2: KPI narrative
+            pdf.addPage();
+            addPageHeader('KPI Summary', `${stateCode} | Current vs Previous Equivalent Window`);
+            const kpiRows = [
+                [
+                    'Total Volume',
+                    fmtIN(curAgg.total),
+                    fmtIN(prevAgg.total),
+                    `${(curAgg.total - prevAgg.total >= 0 ? '+' : '') + (prevAgg.total > 0 ? ((curAgg.total - prevAgg.total) * 100) / prevAgg.total : 0).toFixed(1)}%`,
+                ],
+                [
+                    'EV Units',
+                    fmtIN(curAgg.ev),
+                    fmtIN(prevAgg.ev),
+                    `${(curAgg.ev - prevAgg.ev >= 0 ? '+' : '') + (prevAgg.ev > 0 ? ((curAgg.ev - prevAgg.ev) * 100) / prevAgg.ev : 0).toFixed(1)}%`,
+                ],
+                [
+                    'ICE Units',
+                    fmtIN(curAgg.ice),
+                    fmtIN(prevAgg.ice),
+                    `${(curAgg.ice - prevAgg.ice >= 0 ? '+' : '') + (prevAgg.ice > 0 ? ((curAgg.ice - prevAgg.ice) * 100) / prevAgg.ice : 0).toFixed(1)}%`,
+                ],
+                [
+                    'EV Share',
+                    `${evShare.toFixed(1)}%`,
+                    `${prevEvShare.toFixed(1)}%`,
+                    `${(evShare - prevEvShare >= 0 ? '+' : '') + (evShare - prevEvShare).toFixed(1)} pp`,
+                ],
+                [
+                    'ICE Share',
+                    `${iceShare.toFixed(1)}%`,
+                    `${prevIceShare.toFixed(1)}%`,
+                    `${(iceShare - prevIceShare >= 0 ? '+' : '') + (iceShare - prevIceShare).toFixed(1)} pp`,
+                ],
+            ];
+            autoTable(pdf, {
+                startY: 32,
+                head: [['Metric', 'Current', 'Previous', 'Change']],
+                body: kpiRows,
+                styles: { fontSize: 10 },
+                headStyles: { fillColor: [15, 23, 42] },
+            });
+
+            // Page 3: Performance by Brand
+            pdf.addPage();
+            addPageHeader('Performance by Brand', 'Top brands with EV/ICE split');
+            autoTable(pdf, {
+                startY: 32,
+                head: [['#', 'Brand', 'Total', 'EV', 'ICE', 'EV%', 'Share%']],
+                body: currentBrandSeg.map((r: any, idx: number) => {
+                    const total = Number(r.total_units || 0);
+                    const ev = Number(r.ev_units || 0);
+                    const ice = Number(r.ice_units || 0);
+                    const evPct = total > 0 ? (ev * 100) / total : 0;
+                    return [
+                        String(idx + 1),
+                        formatBrandLabel(String(r.brand_display || r.brand_name || '')),
+                        fmtIN(total),
+                        fmtIN(ev),
+                        fmtIN(ice),
+                        `${evPct.toFixed(1)}%`,
+                        `${Number(r.share_pct || 0).toFixed(1)}%`,
+                    ];
+                }),
+                styles: { fontSize: 9 },
+                headStyles: { fillColor: [234, 179, 8] },
+            });
+
+            // Page 4: Performance by RTO
+            pdf.addPage();
+            addPageHeader('Performance by RTO', 'Top RTOs with EV/ICE split');
+            autoTable(pdf, {
+                startY: 32,
+                head: [['#', 'RTO', 'Total', 'EV', 'ICE', 'EV%', 'Share%']],
+                body: currentRtoSeg.map((r: any, idx: number) => {
+                    const total = Number(r.total_units || 0);
+                    const ev = Number(r.ev_units || 0);
+                    const ice = Number(r.ice_units || 0);
+                    const evPct = total > 0 ? (ev * 100) / total : 0;
+                    return [
+                        String(idx + 1),
+                        `${r.rto_code} - ${MMRD_RTO_NAMES[r.rto_code] || r.rto_name || r.rto_code}`,
+                        fmtIN(total),
+                        fmtIN(ev),
+                        fmtIN(ice),
+                        `${evPct.toFixed(1)}%`,
+                        `${Number(r.share_pct || 0).toFixed(1)}%`,
+                    ];
+                }),
+                styles: { fontSize: 8.8 },
+                headStyles: { fillColor: [16, 185, 129] },
+            });
+
+            // Page 5: RTO trend
+            pdf.addPage();
+            addPageHeader('RTO Trend Snapshot', 'Latest month vs previous month');
+            const rtoTrendRows: any[] = Array.isArray(currentRes?.timeline_rto) ? currentRes.timeline_rto : [];
+            const periods = Array.from(new Set(rtoTrendRows.map((r: any) => String(r.period_start || '')))).sort();
+            const latestPeriod = periods.at(-1) || '';
+            const previousPeriod = periods.at(-2) || '';
+            const rtoNow = new Map<string, number>();
+            const rtoPrev = new Map<string, number>();
+            for (const row of rtoTrendRows) {
+                const code = String(row.rto_code || '');
+                const units = Number(row.units || 0);
+                if (String(row.period_start || '') === latestPeriod) rtoNow.set(code, (rtoNow.get(code) || 0) + units);
+                if (String(row.period_start || '') === previousPeriod)
+                    rtoPrev.set(code, (rtoPrev.get(code) || 0) + units);
+            }
+            const rtoRows = Array.from(rtoNow.entries())
+                .map(([code, nowVal]) => {
+                    const prevVal = rtoPrev.get(code) || 0;
+                    const growth = prevVal > 0 ? ((nowVal - prevVal) * 100) / prevVal : 0;
+                    return { code, nowVal, prevVal, growth };
+                })
+                .sort((a, b) => b.nowVal - a.nowVal)
+                .map(r => [
+                    r.code,
+                    fmtIN(r.nowVal),
+                    fmtIN(r.prevVal),
+                    `${r.growth >= 0 ? '+' : ''}${r.growth.toFixed(1)}%`,
+                ]);
+            autoTable(pdf, {
+                startY: 32,
+                head: [
+                    [
+                        'RTO',
+                        `Units (${formatMonthYear(latestPeriod)})`,
+                        `Units (${formatMonthYear(previousPeriod)})`,
+                        'MoM Change',
+                    ],
+                ],
+                body: rtoRows,
+                styles: { fontSize: 9 },
+                headStyles: { fillColor: [59, 130, 246] },
+            });
+
+            // Page 6: Brand trend
+            pdf.addPage();
+            addPageHeader('Brand Trend Snapshot', 'Latest month vs previous month');
+            const brandTrendRows: any[] = Array.isArray(currentRes?.brand?.trend) ? currentRes.brand.trend : [];
+            const brandPeriods = Array.from(
+                new Set(brandTrendRows.map((r: any) => String(r.period_start || '')))
+            ).sort();
+            const bLatest = brandPeriods.at(-1) || '';
+            const bPrev = brandPeriods.at(-2) || '';
+            const bNow = new Map<string, number>();
+            const bPast = new Map<string, number>();
+            for (const row of brandTrendRows) {
+                const key = formatBrandLabel(String(row.brand_display || row.brand_name || ''));
+                const units = Number(row.units || 0);
+                if (String(row.period_start || '') === bLatest) bNow.set(key, (bNow.get(key) || 0) + units);
+                if (String(row.period_start || '') === bPrev) bPast.set(key, (bPast.get(key) || 0) + units);
+            }
+            const brandRows = Array.from(bNow.entries())
+                .map(([brand, nowVal]) => {
+                    const prevVal = bPast.get(brand) || 0;
+                    const growth = prevVal > 0 ? ((nowVal - prevVal) * 100) / prevVal : 0;
+                    return { brand, nowVal, prevVal, growth };
+                })
+                .sort((a, b) => b.nowVal - a.nowVal)
+                .map(r => [
+                    r.brand,
+                    fmtIN(r.nowVal),
+                    fmtIN(r.prevVal),
+                    `${r.growth >= 0 ? '+' : ''}${r.growth.toFixed(1)}%`,
+                ]);
+            autoTable(pdf, {
+                startY: 32,
+                head: [
+                    ['Brand', `Units (${formatMonthYear(bLatest)})`, `Units (${formatMonthYear(bPrev)})`, 'MoM Change'],
+                ],
+                body: brandRows,
+                styles: { fontSize: 9 },
+                headStyles: { fillColor: [245, 158, 11] },
+            });
+
+            // Page 7: Conclusion + forecast
+            pdf.addPage();
+            addPageHeader('Conclusion & Forecast', `Directional projection for ${forecastMonthLabel}`);
+            pdf.setFont('helvetica', 'bold');
+            pdf.setFontSize(11);
+            pdf.setTextColor(15, 23, 42);
+            pdf.text('Key conclusions', 14, 38);
+            pdf.setFont('helvetica', 'normal');
+            pdf.setFontSize(10);
+            const lines = [
+                `1. Current total volume stands at ${fmtIN(curAgg.total)} units, EV share at ${evShare.toFixed(1)}% and ICE share at ${iceShare.toFixed(1)}%.`,
+                `2. Vs previous equivalent window, EV share moved ${evShare - prevEvShare >= 0 ? 'up' : 'down'} by ${Math.abs(evShare - prevEvShare).toFixed(1)} percentage points.`,
+                `3. Momentum check (latest monthly point) implies ${boundedMomentum >= 0 ? 'positive' : 'negative'} short-term demand drift.`,
+                `4. Report sync timestamp: ${formatIstDateTime(lastDbUpdateAt)} IST.`,
+            ];
+            let y = 46;
+            for (const line of lines) {
+                const wrapped = pdf.splitTextToSize(line, pageWidth - 28);
+                pdf.text(wrapped, 14, y);
+                y += wrapped.length * 6 + 2;
+            }
+            y += 2;
+            pdf.setFont('helvetica', 'bold');
+            pdf.text(`Forecast for ${forecastMonthLabel}`, 14, y);
+            y += 8;
+            pdf.setFont('helvetica', 'normal');
+            const fLines = [
+                `Projected Total Volume: ${fmtIN(forecastTotal)} units`,
+                `Projected EV: ${fmtIN(forecastEvUnits)} units (${forecastEvShare.toFixed(1)}%)`,
+                `Projected ICE: ${fmtIN(forecastIceUnits)} units (${(100 - forecastEvShare).toFixed(1)}%)`,
+                'Method: short-window momentum + EV share drift heuristic (directional, not audited forecast).',
+            ];
+            for (const line of fLines) {
+                pdf.text(line, 14, y);
+                y += 7;
+            }
+
+            // Final branded closing page (dossier-style ending)
+            pdf.addPage();
+            pdf.setFillColor(15, 23, 42);
+            pdf.rect(0, 0, pageWidth, pageHeight, 'F');
+            pdf.setFillColor(brandPrimary[0], brandPrimary[1], brandPrimary[2]);
+            pdf.rect(0, pageHeight - 18, pageWidth, 18, 'F');
+            if (logoAsset) {
+                const h = 18;
+                const w = (logoAsset.width / logoAsset.height) * h;
+                pdf.addImage(logoAsset.dataUrl, 'PNG', 14, 20, w, h);
+            }
+            pdf.setTextColor(255, 255, 255);
+            pdf.setFont('helvetica', 'bold');
+            pdf.setFontSize(24);
+            pdf.text('Thank You', 14, 72);
+            pdf.setFontSize(14);
+            pdf.text('for reading this market intelligence report.', 14, 84);
+            pdf.setFont('helvetica', 'normal');
+            pdf.setFontSize(11);
+            pdf.text(
+                'This report is prepared for strategic storytelling across LinkedIn, blogs, and social media.',
+                14,
+                102
+            );
+            pdf.text('Use insights with directional caution. Forecast is indicative and non-audited.', 14, 110);
+            pdf.setFont('helvetica', 'bold');
+            pdf.setFontSize(12);
+            pdf.text(brandDisplayName, 14, pageHeight - 7);
+            pdf.setFont('helvetica', 'normal');
+            pdf.text('Powered by bookmy.bike', pageWidth - 14, pageHeight - 7, { align: 'right' });
+
+            const safeState = String(stateCode || 'MH');
+            const fileName = `bookmybike_vahan_${safeState}_${fromMonth}_to_${toMonth}.pdf`;
+            pdf.save(fileName);
+        } catch (err) {
+            console.error('Vahan PDF export failed:', err);
+        } finally {
+            setIsPdfExporting(false);
+        }
+    };
 
     return (
         <div className="relative min-h-screen bg-[#f8fafc]">
@@ -1969,150 +2747,144 @@ export default function VahanTwoWheelerPage({ dataApiPath, title }: Props) {
 
             <div className="page-container flex flex-col gap-10 pb-20 pt-14">
                 {/* Header Area */}
-                <div className="flex flex-col gap-6">
+                <div className="flex flex-col gap-10">
                     {/* Primary Row: Title & Main Filter Island */}
-                    <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-10">
-                        <div className="flex items-center gap-6">
-                            <div className="w-2.5 h-14 bg-gradient-to-b from-[#FF9933] via-white to-[#138808] rounded-full shadow-sm border border-slate-200/20" />
-                            <div className="flex flex-col">
-                                <h1 className="text-5xl md:text-6xl font-black tracking-[-0.05em] text-slate-900 bg-clip-text text-transparent bg-gradient-to-br from-slate-900 via-slate-800 to-slate-500 leading-none">
-                                    {title || 'Vahan Dashboard'}
-                                </h1>
-                                {/* Last Refreshed Pill - Now positioned elegantly under the title */}
-                                <div className="mt-5 flex items-center gap-3 bg-white/60 hover:bg-white/90 backdrop-blur-3xl px-5 py-2.5 rounded-full border border-white/80 shadow-[0_8px_30px_-10px_rgba(0,0,0,0.12)] group-refresh cursor-default transition-all w-fit">
-                                    <div className="relative w-7 h-7 rounded-full bg-amber-50/50 flex items-center justify-center shrink-0 border border-amber-100/50 overflow-hidden">
-                                        <Activity className="w-3.5 h-3.5 text-[#FFD700] animate-pulse relative z-10" />
-                                        <div className="absolute inset-0 bg-[#FFD700]/10 rounded-full blur-[4px] animate-ping" />
-                                    </div>
-                                    <div className="flex items-center gap-2.5">
-                                        <span className="text-[11px] md:text-[12px] font-bold text-slate-500 tracking-tight">
-                                            Last Refreshed
-                                        </span>
-                                        <span className="w-1.5 h-1.5 rounded-full bg-slate-200" />
-                                        <span className="text-[11px] md:text-[12px] font-black text-slate-800 tracking-tight tabular-nums">
-                                            {lastRefreshed}
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-10">
+                        <div className="flex items-center gap-8">
+                            {/* Indian Flag Gradient Bar */}
+                            <div className="relative group/flag shrink-0">
+                                <div className="absolute -inset-1.5 bg-gradient-to-b from-[#FF9933]/20 via-white/0 to-[#138808]/20 rounded-full blur-md opacity-0 group-hover/flag:opacity-100 transition-opacity duration-500" />
+                                <div className="w-2.5 h-20 bg-gradient-to-b from-[#FF9933] via-white to-[#138808] rounded-full shadow-[0_4px_12px_rgba(0,0,0,0.08)] border border-slate-200/30 relative z-10" />
+                            </div>
+
+                            <div className="flex flex-col gap-5">
+                                <div className="flex flex-col gap-1">
+                                    <span className="text-[12px] font-black uppercase tracking-[0.25em] text-slate-400/80 mb-1 ml-1">
+                                        Analytics Engine v4.0
+                                    </span>
+                                    <h1 className="text-6xl md:text-7xl font-black tracking-[-0.04em] text-slate-900 bg-clip-text text-transparent bg-gradient-to-br from-slate-950 via-slate-800 to-slate-600 leading-[0.9] lg:leading-none transition-all duration-500">
+                                        {title || 'Vahan Dashboard'}
+                                    </h1>
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-3">
+                                    {/* Sync Status Pill */}
+                                    <div className="flex items-center gap-4 bg-white/40 hover:bg-white/70 backdrop-blur-3xl px-6 py-3 rounded-2xl border border-white/60 shadow-[0_10px_40px_-15px_rgba(15,23,42,0.1)] transition-all duration-500 w-fit">
+                                        <div className="relative w-3.5 h-3.5 shrink-0">
+                                            <span
+                                                className={`absolute inset-0 rounded-full animate-ping ${statusTone.dotPing}`}
+                                            />
+                                            <span className={`absolute inset-0 rounded-full ${statusTone.dot}`} />
+                                        </div>
+                                        <span className="text-[11px] font-black text-slate-700 tracking-wide uppercase">
+                                            {syncStatus}
                                         </span>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Glass Filter Floating Island - Re-engineered for High-Density Presence */}
-                        <div className="relative group-island">
-                            {/* Dramatic Vibrant Background Glow */}
-                            <div className="absolute -inset-4 bg-gradient-to-r from-[#FFD700]/50 via-amber-400/30 to-yellow-500/50 rounded-[4rem] blur-3xl opacity-30 group-hover-island:opacity-50 transition duration-1000 group-hover-island:scale-110" />
+                        {/* FILTER CONSOLE */}
+                        <div className="relative group/console transition-all duration-700">
+                            <div className="absolute -inset-6 bg-gradient-to-r from-slate-200/20 via-white/40 to-slate-200/20 rounded-[4.5rem] blur-2xl opacity-0 group-hover/console:opacity-100 transition-opacity duration-1000" />
 
-                            <div className="relative bg-white/60 backdrop-blur-[100px] border-[1.5px] border-white/95 rounded-[2.5rem] md:rounded-[3.2rem] p-3 md:p-6 px-4 md:px-14 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.15)] flex flex-wrap items-center justify-center md:justify-start gap-4 md:gap-14">
-                                <div className="flex items-center gap-3 md:gap-8">
-                                    <div className="flex flex-col">
-                                        <div className="relative flex items-center gap-4 bg-white/80 hover:bg-white px-7 py-5 md:px-12 md:py-6 rounded-full border-[1.5px] border-white shadow-[0_15px_60px_-15px_rgba(0,0,0,0.12)] hover:shadow-[0_30px_80px_-20px_rgba(0,0,0,0.22)] hover:border-[#FFD700]/50 transition-all duration-500 cursor-pointer group-state overflow-hidden">
-                                            {/* Dynamic Hover Background */}
-                                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#FFD700]/5 to-transparent -translate-x-full group-hover-state:translate-x-full transition-transform duration-1000" />
+                            <div className="relative flex flex-col md:flex-row items-center gap-4 bg-white/30 backdrop-blur-3xl border border-white/60 p-3 md:p-4 rounded-[4rem] shadow-[0_30px_70px_-20px_rgba(15,23,42,0.1)] hover:shadow-[0_40px_90px_-25px_rgba(15,23,42,0.15)] transition-all duration-700">
+                                {/* Region Island */}
+                                <div className="relative flex items-center bg-white rounded-[3.2rem] px-8 py-5 shadow-[0_12px_28px_-10px_rgba(0,0,0,0.06)] border border-slate-100/50 group/state transition-all duration-500 hover:scale-[1.02] min-w-[340px]">
+                                    <div className="w-16 h-16 rounded-full bg-slate-950 flex items-center justify-center shadow-[0_15px_30px_-10px_rgba(0,0,0,0.5)] transition-all duration-500 group-hover/state:scale-110 border-[4px] border-white shrink-0">
+                                        <MapPin className="w-7 h-7 text-[#FFD700] stroke-[2.5]" />
+                                    </div>
+                                    <div className="flex flex-col ml-6 pr-12 relative grow">
+                                        <span className="text-[11px] font-black uppercase tracking-[0.25em] text-[#87CEEB] opacity-90 whitespace-nowrap">
+                                            Region Select
+                                        </span>
+                                        <select
+                                            value={stateCode}
+                                            onChange={e => {
+                                                setStateCode(e.target.value);
+                                                setLocalStateCode(e.target.value);
+                                            }}
+                                            className="bg-transparent text-3xl font-black text-slate-900 border-none p-0 focus:ring-0 cursor-pointer appearance-none transition-all duration-500 w-full"
+                                        >
+                                            <option value="MH">Maharashtra</option>
+                                            <option value="GUJ">Gujarat</option>
+                                            <option value="KA">Karnataka</option>
+                                        </select>
+                                        <ChevronDown className="w-6 h-6 text-slate-400 absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none group-hover/state:translate-y-[-35%] transition-transform duration-500" />
+                                    </div>
+                                </div>
 
-                                            <div className="w-12 h-12 rounded-full bg-slate-900 flex items-center justify-center shrink-0 border border-slate-800 shadow-xl relative z-10">
-                                                <MapPin className="w-5.5 h-5.5 text-[#FFD700]" />
-                                            </div>
-
-                                            <div className="flex-1 flex items-center justify-center gap-4 min-w-[160px] md:min-w-[440px] relative z-10">
-                                                <select
-                                                    value={stateCode}
-                                                    onChange={e => setStateCode(e.target.value)}
-                                                    className="bg-transparent text-[16px] md:text-[20px] font-black text-slate-900 border-none p-0 focus:ring-0 cursor-pointer appearance-none w-full tracking-tighter text-center h-full flex items-center justify-center group-hover-state:scale-[1.02] transition-transform"
-                                                >
-                                                    <option value="MH">Maharashtra</option>
-                                                    <option value="GUJ">Gujarat</option>
-                                                    <option value="KA">Karnataka</option>
-                                                </select>
-                                                <ChevronDown className="w-6 h-6 text-slate-900 transition-all duration-300 transform group-hover-state:translate-y-1 shrink-0" />
-                                            </div>
-
-                                            <div className="absolute top-4 right-8 flex items-center gap-1.5 overflow-hidden">
-                                                <div className="w-2.5 h-2.5 rounded-full bg-[#FFD700] shadow-[0_0_15px_#FFD700] animate-pulse" />
-                                                <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_#10b981] animate-pulse delay-75" />
-                                            </div>
-                                        </div>
+                                {/* Timeline Island */}
+                                <div className="relative flex items-center rounded-[2.8rem] px-8 py-5 bg-white/60 hover:bg-white border border-white group/period transition-all duration-500 hover:shadow-[0_12px_28px_-12px_rgba(0,0,0,0.08)] min-w-[240px]">
+                                    <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 transition-all duration-500 shrink-0">
+                                        <Calendar className="w-6 h-6 stroke-[2]" />
+                                    </div>
+                                    <div className="flex flex-col ml-5 pr-10 relative grow">
+                                        <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-0.5">
+                                            Timeline
+                                        </span>
+                                        <select
+                                            value={period}
+                                            onChange={e => setPeriod(e.target.value)}
+                                            className="bg-transparent text-base font-black text-slate-800 uppercase tracking-[0.08em] border-none p-0 focus:ring-0 cursor-pointer appearance-none"
+                                        >
+                                            <option value="today">Today</option>
+                                            <option value="yesterday">Yesterday</option>
+                                            <option value="this_week">This Week</option>
+                                            <option value="this_month">This Month</option>
+                                            <option value="last_month">Last Month</option>
+                                            <option value="last_30_days">Last 30 Days</option>
+                                            <option value="this_quarter">This Quarter</option>
+                                            <option value="this_year">This Year</option>
+                                            <option value="last_year">Last Year</option>
+                                        </select>
+                                        <ChevronDown className="w-5 h-5 text-slate-400 absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none group-hover/period:translate-y-[-35%] transition-transform duration-500" />
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
+
                 {/* KPI Row */}
                 <KpiStatsRow filters={filters} apiPath={apiPath} onLastDataUpdate={setLastDbUpdateAt} />
 
-                {/* Chart Tabs (Cinematic Navigation) */}
+                {/* Chart Tabs */}
                 <div className="w-full">
-                    <div className="relative bg-white/40 backdrop-blur-3xl border border-white/60 p-1.5 rounded-[2rem] shadow-[0_20px_50px_-15px_rgba(0,0,0,0.05)] flex overflow-x-auto no-scrollbar gap-1 items-center">
-                        <button
-                            type="button"
-                            onClick={() => setActiveChartTab('series')}
-                            className={`flex-1 min-w-max flex items-center justify-center gap-3.5 px-10 py-4 rounded-full text-base font-black transition-all duration-500 whitespace-nowrap ${
-                                activeChartTab === 'series'
-                                    ? 'bg-[#FFD700] text-slate-900 shadow-[0_10px_25px_-5px_rgba(255,215,0,0.3)] scale-[1.02]'
-                                    : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'
-                            }`}
-                        >
-                            <TrendingUp
-                                className={`w-4 h-4 ${activeChartTab === 'series' ? 'text-slate-900' : 'text-slate-400'}`}
-                            />
-                            Running Series
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setActiveChartTab('brand')}
-                            className={`flex-1 min-w-max flex items-center justify-center gap-3.5 px-10 py-4 rounded-full text-base font-black transition-all duration-500 whitespace-nowrap ${
-                                activeChartTab === 'brand'
-                                    ? 'bg-[#FFD700] text-slate-900 shadow-[0_10px_25px_-5px_rgba(255,215,0,0.3)] scale-[1.02]'
-                                    : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'
-                            }`}
-                        >
-                            <Award
-                                className={`w-4 h-4 ${activeChartTab === 'brand' ? 'text-slate-900' : 'text-slate-400'}`}
-                            />
-                            Brands
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setActiveChartTab('rto')}
-                            className={`flex-1 min-w-max flex items-center justify-center gap-3.5 px-10 py-4 rounded-full text-base font-black transition-all duration-500 whitespace-nowrap ${
-                                activeChartTab === 'rto'
-                                    ? 'bg-[#FFD700] text-slate-900 shadow-[0_10px_25px_-5px_rgba(255,215,0,0.3)] scale-[1.02]'
-                                    : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'
-                            }`}
-                        >
-                            <MapPin
-                                className={`w-4 h-4 ${activeChartTab === 'rto' ? 'text-slate-900' : 'text-slate-400'}`}
-                            />
-                            RTOs
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setActiveChartTab('timeline_rto')}
-                            className={`flex-1 min-w-max flex items-center justify-center gap-3.5 px-10 py-4 rounded-full text-base font-black transition-all duration-500 whitespace-nowrap ${
-                                activeChartTab === 'timeline_rto'
-                                    ? 'bg-[#FFD700] text-slate-900 shadow-[0_10px_25px_-5px_rgba(255,215,0,0.3)] scale-[1.02]'
-                                    : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'
-                            }`}
-                        >
-                            <Activity
-                                className={`w-4 h-4 ${activeChartTab === 'timeline_rto' ? 'text-slate-900' : 'text-slate-400'}`}
-                            />
-                            RTO Trends
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setActiveChartTab('timeline_brand')}
-                            className={`flex-1 min-w-max flex items-center justify-center gap-3.5 px-10 py-4 rounded-full text-base font-black transition-all duration-500 whitespace-nowrap ${
-                                activeChartTab === 'timeline_brand'
-                                    ? 'bg-[#FFD700] text-slate-900 shadow-[0_10px_25px_-5px_rgba(255,215,0,0.3)] scale-[1.02]'
-                                    : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'
-                            }`}
-                        >
-                            <Activity
-                                className={`w-4 h-4 ${activeChartTab === 'timeline_brand' ? 'text-slate-900' : 'text-slate-400'}`}
-                            />
-                            Brand Trends
-                        </button>
+                    <div className="relative bg-white/40 backdrop-blur-3xl border border-white/60 p-2 rounded-[2.5rem] shadow-[0_20px_60px_-15px_rgba(15,23,42,0.08)] flex overflow-x-auto no-scrollbar gap-2 items-center">
+                        {[
+                            { id: 'series', label: 'Running Series', icon: TrendingUp },
+                            { id: 'brand', label: 'Brands', icon: Award },
+                            { id: 'rto', label: 'RTOs', icon: MapPin },
+                            { id: 'timeline_rto', label: 'RTO Trends', icon: Activity },
+                            { id: 'timeline_brand', label: 'Brand Trends', icon: Zap },
+                        ].map(tab => (
+                            <button
+                                key={tab.id}
+                                type="button"
+                                onClick={() => setActiveChartTab(tab.id as any)}
+                                className={`flex-1 min-w-max flex items-center justify-center gap-4 px-10 py-5 rounded-[1.8rem] text-base font-black transition-all duration-700 whitespace-nowrap relative group/tab overflow-hidden ${
+                                    activeChartTab === tab.id ? 'text-slate-900' : 'text-slate-400 hover:text-slate-700'
+                                }`}
+                            >
+                                {activeChartTab === tab.id && (
+                                    <div className="absolute inset-0 bg-[#FFD700] shadow-[0_12px_32px_-8px_rgba(255,215,0,0.5)] transition-all duration-700">
+                                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-[150%] animate-[shimmer_2.5s_infinite]" />
+                                    </div>
+                                )}
+                                {activeChartTab !== tab.id && (
+                                    <div className="absolute inset-0 bg-white/80 opacity-0 group-hover/tab:opacity-100 transition-opacity duration-500" />
+                                )}
+                                <tab.icon
+                                    className={`w-5 h-5 relative z-10 transition-transform duration-500 ${
+                                        activeChartTab === tab.id
+                                            ? 'text-slate-900 scale-110'
+                                            : 'text-slate-400 group-hover/tab:text-slate-600'
+                                    }`}
+                                />
+                                <span className="relative z-10">{tab.label}</span>
+                            </button>
+                        ))}
                     </div>
                 </div>
 

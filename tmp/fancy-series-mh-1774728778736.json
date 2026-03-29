@@ -1,0 +1,29 @@
+{
+  "startedAt": "2026-03-28T20:12:06.835Z",
+  "finishedAt": "2026-03-28T20:12:58.736Z",
+  "stateCode": "MH",
+  "stateName": "Maharashtra",
+  "onlyActive": true,
+  "rtoCount": 1,
+  "seriesCount": 1,
+  "rows": [
+    {
+      "stateCode": "MH",
+      "rtoCode": "MH58",
+      "rtoName": "MIRA BHAYANDAR",
+      "seriesName": "MH58D",
+      "seriesType": "Non-Transport 2W",
+      "statusText": "1 ( ACTIVE )",
+      "isActive": true,
+      "startRange": 1,
+      "endRange": 9999,
+      "openOnText": "27-NOV-2025 04:11:01 PM",
+      "firstOpenNumber": null,
+      "filledTill": null,
+      "runningOpenCount": 0,
+      "availableCount": 0,
+      "activeOnDate": "2025-11-27",
+      "scrapedAt": "2026-03-28T20:12:58.736Z"
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "startedAt": "2026-03-29T08:08:28.522Z",
+  "finishedAt": "2026-03-29T08:08:54.785Z",
+  "stateCode": "MH",
+  "stateName": "Maharashtra",
+  "onlyActive": true,
+  "rtoCount": 1,
+  "seriesCount": 1,
+  "rows": [
+    {
+      "stateCode": "MH",
+      "rtoCode": "MH29",
+      "rtoName": "YAWATMAL",
+      "seriesName": "MH29CQ",
+      "seriesType": "Non-Transport 2W",
+      "statusText": "1 ( ACTIVE )",
+      "isActive": true,
+      "startRange": 1,
+      "endRange": 9999,
+      "openOnText": "02-MAR-2026 01:25:23 PM",
+      "firstOpenNumber": 6,
+      "filledTill": 5,
+      "runningOpenCount": 5,
+      "availableCount": 100,
+      "activeOnDate": "2026-03-02",
+      "scrapedAt": "2026-03-29T08:08:54.785Z"
+    }
+  ]
+}

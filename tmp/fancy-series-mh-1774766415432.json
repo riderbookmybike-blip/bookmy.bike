@@ -1,0 +1,29 @@
+{
+  "startedAt": "2026-03-29T06:39:51.683Z",
+  "finishedAt": "2026-03-29T06:40:15.432Z",
+  "stateCode": "MH",
+  "stateName": "Maharashtra",
+  "onlyActive": true,
+  "rtoCount": 1,
+  "seriesCount": 1,
+  "rows": [
+    {
+      "stateCode": "MH",
+      "rtoCode": "MH05",
+      "rtoName": "KALYAN",
+      "seriesName": "MH05GK",
+      "seriesType": "Non-Transport 2W",
+      "statusText": "1 ( ACTIVE )",
+      "isActive": true,
+      "startRange": 1,
+      "endRange": 9999,
+      "openOnText": "21-MAR-2026 11:09:00 AM",
+      "firstOpenNumber": 3395,
+      "filledTill": 3394,
+      "runningOpenCount": 30,
+      "availableCount": 100,
+      "activeOnDate": "2026-03-21",
+      "scrapedAt": "2026-03-29T06:40:15.215Z"
+    }
+  ]
+}

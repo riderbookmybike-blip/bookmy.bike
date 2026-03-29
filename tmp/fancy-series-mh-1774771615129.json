@@ -1,0 +1,29 @@
+{
+  "startedAt": "2026-03-29T08:06:30.062Z",
+  "finishedAt": "2026-03-29T08:06:55.129Z",
+  "stateCode": "MH",
+  "stateName": "Maharashtra",
+  "onlyActive": true,
+  "rtoCount": 1,
+  "seriesCount": 1,
+  "rows": [
+    {
+      "stateCode": "MH",
+      "rtoCode": "MH52",
+      "rtoName": "CHALISGAON",
+      "seriesName": "MH52D",
+      "seriesType": "Non-Transport 2W",
+      "statusText": "1 ( ACTIVE )",
+      "isActive": true,
+      "startRange": 1,
+      "endRange": 9999,
+      "openOnText": "30-OCT-2025 02:25:57 PM",
+      "firstOpenNumber": 1,
+      "filledTill": 0,
+      "runningOpenCount": 7,
+      "availableCount": 100,
+      "activeOnDate": "2025-10-30",
+      "scrapedAt": "2026-03-29T08:06:55.129Z"
+    }
+  ]
+}

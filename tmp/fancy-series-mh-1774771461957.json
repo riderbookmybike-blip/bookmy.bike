@@ -1,0 +1,29 @@
+{
+  "startedAt": "2026-03-29T08:03:58.049Z",
+  "finishedAt": "2026-03-29T08:04:21.957Z",
+  "stateCode": "MH",
+  "stateName": "Maharashtra",
+  "onlyActive": true,
+  "rtoCount": 1,
+  "seriesCount": 1,
+  "rows": [
+    {
+      "stateCode": "MH",
+      "rtoCode": "MH39",
+      "rtoName": "NANDURBAR",
+      "seriesName": "MH39AS",
+      "seriesType": "Non-Transport 2W",
+      "statusText": "1 ( ACTIVE )",
+      "isActive": true,
+      "startRange": 1,
+      "endRange": 9999,
+      "openOnText": "25-NOV-2025 03:25:41 PM",
+      "firstOpenNumber": 4,
+      "filledTill": 3,
+      "runningOpenCount": 5,
+      "availableCount": 100,
+      "activeOnDate": "2025-11-25",
+      "scrapedAt": "2026-03-29T08:04:21.957Z"
+    }
+  ]
+}
