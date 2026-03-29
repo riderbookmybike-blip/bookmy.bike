@@ -24,7 +24,6 @@ import {
     LabelList,
     LineChart,
     Line,
-    Legend,
 } from 'recharts';
 
 // ─── Constants ────────────────────────────────────────────────
@@ -205,6 +204,20 @@ const compareRtoCodeNumeric = (a: string, b: string) => {
 const trunc = (s: string, n: number) => (!s ? '' : s.length <= n ? s : s.slice(0, n) + '…');
 
 const fmtIN = (n: number) => new Intl.NumberFormat('en-IN').format(Math.round(n));
+const fmtCompactUnits = (n: number) => {
+    const v = Number(n || 0);
+    if (!Number.isFinite(v)) return '0';
+    if (Math.abs(v) < 1000) return String(Math.round(v));
+    const abs = Math.abs(v);
+    if (abs >= 1000000) {
+        const m = v / 1000000;
+        const d = Math.abs(m) < 10 ? 2 : Math.abs(m) < 100 ? 1 : 0;
+        return `${m.toFixed(d)}m`;
+    }
+    const k = v / 1000;
+    const d = Math.abs(k) < 10 ? 2 : Math.abs(k) < 100 ? 1 : 0;
+    return `${k.toFixed(d)}k`;
+};
 
 const BRAND_ACRONYMS = new Set(['TVS', 'BMW', 'OLA', 'BNC', 'VLF', 'EV', 'AARI', 'VMOTO', 'XINRI', 'RILOX']);
 
@@ -223,6 +236,38 @@ const formatBrandLabel = (value: string) => {
         .join('')
         .replace(/\s+/g, ' ')
         .trim();
+};
+
+const EV_BRAND_EXACT = new Set([
+    'ATHER',
+    'BGAUSS',
+    'ODOYSSE',
+    'ODYSSE',
+    'REVOLT',
+    'OKINAWA',
+    'PURE ENERGY',
+    'RIVER',
+    'ULTRAVIOLETTE',
+    'AMPERE',
+    'JIYAYI',
+    'JITENDRA EV',
+    'KINETIC GREEN',
+    'OLA ELECTRIC',
+    'ELECTRIC ALLIANCE',
+    'SIMPLE ENERGY',
+    'HERO ELECTRIC',
+    'GREAVES ELECTRIC',
+    'KABIRA',
+    'MATTER',
+]);
+
+const isEvBrand = (value: string) => {
+    const normalized = String(value || '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toUpperCase();
+    if (!normalized) return false;
+    return EV_BRAND_EXACT.has(normalized);
 };
 
 const formatPeriodShort = (value: string) => {
@@ -882,13 +927,81 @@ function RunningSeriesStatusCard({ filters, apiPath }: { filters: any; apiPath: 
 
 function TimelineByBrandCard({ filters, apiPath }: { filters: any; apiPath: string }) {
     const { stateCode, fromMonth, toMonth } = filters;
-    const [rtoCode, setRtoCode] = useState('ALL');
     const [loading, setLoading] = useState(false);
-    const [rtos, setRtos] = useState<any[]>([]);
     const [chartData, setChartData] = useState<any[]>([]);
     const [lineKeys, setLineKeys] = useState<string[]>([]);
     const [localPeriod, setLocalPeriod] = useState('last_12_months');
     const [hiddenKeys, setHiddenKeys] = useState<Set<string>>(new Set());
+    const [brandType, setBrandType] = useState<'ICE' | 'EV'>('ICE');
+
+    const renderBrandPointDot = (lineKey: string, color: string) => {
+        const BrandPointDot = (props: any): React.ReactNode => {
+            const row = props?.payload || {};
+            const units = Number(row?.[lineKey] || 0);
+            if (!Number.isFinite(units) || units <= 0) return null;
+            const x = Number(props?.cx || 0);
+            const y = Number(props?.cy || 0);
+            return (
+                <g>
+                    <circle cx={x} cy={y} r={3} fill={color} />
+                    <text
+                        x={x}
+                        y={y - 8}
+                        fill="#64748b"
+                        fontSize={10}
+                        fontWeight={800}
+                        dominantBaseline="auto"
+                        textAnchor="middle"
+                    >
+                        {fmtCompactUnits(units)}
+                    </text>
+                </g>
+            );
+        };
+        BrandPointDot.displayName = `BrandPointDot_${lineKey}`;
+        return BrandPointDot;
+    };
+
+    const renderTimelineTooltip = ({ active, payload, label }: any) => {
+        if (!active || !Array.isArray(payload) || payload.length === 0) return null;
+        const entries = payload
+            .map((p: any) => ({
+                name: String(p?.name || ''),
+                value: Number(p?.value || 0),
+                color: String(p?.color || '#94a3b8'),
+            }))
+            .filter((p: any) => Number.isFinite(p.value) && p.value > 0)
+            .sort((a: any, b: any) => b.value - a.value);
+        if (!entries.length) return null;
+
+        const total = entries.reduce((sum: number, e: any) => sum + e.value, 0);
+        return (
+            <div className="rounded-xl border border-slate-200 bg-white/95 backdrop-blur px-3 py-2 shadow-lg min-w-[220px]">
+                <p className="text-[11px] font-black text-slate-800 mb-1">{String(label || '')}</p>
+                <div className="space-y-1.5 max-h-[220px] overflow-y-auto pr-1">
+                    {entries.map((e: any) => {
+                        const pct = total > 0 ? (e.value * 100) / total : 0;
+                        return (
+                            <div key={e.name} className="flex items-center justify-between gap-3 text-[11px]">
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                    <span
+                                        className="w-2 h-2 rounded-full shrink-0"
+                                        style={{ backgroundColor: e.color }}
+                                    />
+                                    <span className="font-bold text-slate-700 truncate">
+                                        {formatBrandLabel(e.name)}
+                                    </span>
+                                </div>
+                                <span className="font-black text-slate-900 whitespace-nowrap">
+                                    {fmtIN(e.value)} ({pct.toFixed(1)}%)
+                                </span>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+        );
+    };
 
     useEffect(() => {
         let alive = true;
@@ -931,19 +1044,15 @@ function TimelineByBrandCard({ filters, apiPath }: { filters: any; apiPath: stri
                     to_month: activeTo,
                     grain: activeGrain,
                 });
-                if (rtoCode !== 'ALL') p.set('rto_code', rtoCode);
                 const payload = await fetch(`${apiPath}?${p}&_t=${Date.now()}`).then(r => r.json());
                 if (!alive) return;
 
-                const rtoMap = new Map<string, any>();
-                for (const r of payload.rto?.share || []) {
-                    if (r.rto_code) rtoMap.set(r.rto_code, r);
-                }
-                setRtos(
-                    Array.from(rtoMap.values()).sort((a: any, b: any) => compareRtoCodeNumeric(a.rto_code, b.rto_code))
-                );
-
-                const rows: any[] = payload.brand?.trend || [];
+                const sourceRows: any[] = payload.brand?.trend || [];
+                const rows = sourceRows.filter((r: any) => {
+                    const label = String(r.brand_display || r.brand_name || '').trim();
+                    const ev = isEvBrand(label);
+                    return brandType === 'EV' ? ev : !ev;
+                });
                 const totals = new Map<string, number>();
                 for (const r of rows) {
                     const k = String(r.brand_display || r.brand_name || '').trim();
@@ -951,7 +1060,6 @@ function TimelineByBrandCard({ filters, apiPath }: { filters: any; apiPath: stri
                 }
                 const sortedBrands = Array.from(totals.entries()).sort((a, b) => b[1] - a[1]);
                 const allKeysByVol = sortedBrands.map(([k]) => k);
-                const top3Keys = new Set(allKeysByVol.slice(0, 3));
 
                 const allKeysSorted = [...allKeysByVol].sort((a, b) => a.localeCompare(b, 'en'));
 
@@ -978,7 +1086,9 @@ function TimelineByBrandCard({ filters, apiPath }: { filters: any; apiPath: stri
                     String(a.period).localeCompare(String(b.period), 'en')
                 );
 
-                setHiddenKeys(new Set());
+                const top3Keys = new Set(allKeysByVol.slice(0, 3));
+                const initialHidden = new Set(allKeysSorted.filter(k => !top3Keys.has(k)));
+                setHiddenKeys(initialHidden);
                 setLineKeys(allKeysSorted);
                 setChartData(merged);
             } catch (e) {
@@ -992,114 +1102,130 @@ function TimelineByBrandCard({ filters, apiPath }: { filters: any; apiPath: stri
             alive = false;
             clearTimeout(t);
         };
-    }, [stateCode, fromMonth, toMonth, rtoCode, localPeriod, apiPath]);
+    }, [stateCode, fromMonth, toMonth, localPeriod, brandType, apiPath]);
 
     return (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col overflow-hidden group/card shadow-slate-200/50">
-            <div className="p-5 border-b border-slate-100 bg-white flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-[#FFD700]/10 text-yellow-600 rounded-xl border border-[#FFD700]/30 shadow-sm">
-                        <TrendingUp className="w-5 h-5" />
+        <div className="flex flex-col gap-4">
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col overflow-hidden group/card shadow-slate-200/50">
+                <div className="p-5 border-b border-slate-100 bg-white flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2.5 bg-[#FFD700]/10 text-yellow-600 rounded-xl border border-[#FFD700]/30 shadow-sm">
+                            <TrendingUp className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <h2 className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-500 mb-0.5">
+                                Timeline
+                            </h2>
+                            <h3 className="text-sm font-black text-slate-900 tracking-tight">Timeline by Brand</h3>
+                        </div>
                     </div>
-                    <div>
-                        <h2 className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-500 mb-0.5">
-                            Timeline
-                        </h2>
-                        <h3 className="text-sm font-black text-slate-900 tracking-tight">Timeline by Brand</h3>
+                    <div className="flex items-center gap-2">
+                        <div className="relative flex items-center gap-3 bg-white/80 backdrop-blur-xl px-4 py-2 rounded-xl border border-slate-200/60 shadow-sm">
+                            <select
+                                value={localPeriod}
+                                onChange={e => setLocalPeriod(e.target.value)}
+                                className="text-[12px] font-black text-slate-800 bg-transparent border-none p-0 focus:ring-0 cursor-pointer appearance-none min-w-[100px]"
+                            >
+                                <option value="inherit">Sync (Global)</option>
+                                <option value="all_time">All Time</option>
+                                <option value="last_12_months">Last 12 Months</option>
+                                <option value="this_year">This Year</option>
+                                <option value="last_year">Last Year</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
-                <div className="flex items-center gap-2">
-                    <div className="relative flex items-center gap-3 bg-white/80 backdrop-blur-xl px-4 py-2 rounded-xl border border-slate-200/60 shadow-sm">
-                        <select
-                            value={localPeriod}
-                            onChange={e => setLocalPeriod(e.target.value)}
-                            className="text-[12px] font-black text-slate-800 bg-transparent border-none p-0 focus:ring-0 cursor-pointer appearance-none min-w-[100px]"
-                        >
-                            <option value="inherit">Sync (Global)</option>
-                            <option value="all_time">All Time</option>
-                            <option value="last_12_months">Last 12 Months</option>
-                            <option value="this_year">This Year</option>
-                            <option value="last_year">Last Year</option>
-                        </select>
-                    </div>
-                    <div className="relative flex items-center gap-3 bg-white/80 backdrop-blur-xl px-4 py-2 rounded-xl border border-slate-200/60 shadow-sm">
-                        <select
-                            value={rtoCode}
-                            onChange={e => setRtoCode(e.target.value)}
-                            className="text-[12px] font-black text-slate-800 bg-transparent border-none p-0 focus:ring-0 cursor-pointer appearance-none min-w-[170px]"
-                        >
-                            <option value="ALL">ALL RTOs</option>
-                            {rtos.map((r: any) => (
-                                <option key={r.rto_code} value={r.rto_code}>
-                                    {r.rto_code} - {MMRD_RTO_NAMES[r.rto_code] || r.rto_name}
-                                </option>
-                            ))}
-                        </select>
+                <div className="relative flex flex-col h-[760px] p-4">
+                    {loading && (
+                        <div className="absolute inset-0 z-10 bg-white/70 backdrop-blur-sm flex items-center justify-center">
+                            <Loader2 className="w-8 h-8 animate-spin text-[#FFD700]" />
+                        </div>
+                    )}
+                    <div className="flex-1 min-h-0">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={chartData} margin={{ top: 24, right: 36, left: 16, bottom: 0 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#eef2ff" />
+                                <XAxis dataKey="period_label" tick={{ fontSize: 11 }} />
+                                <YAxis tick={{ fontSize: 11 }} />
+                                <Tooltip content={renderTimelineTooltip} />
+                                {lineKeys
+                                    .filter(k => !hiddenKeys.has(k))
+                                    .map(k => {
+                                        const i = lineKeys.indexOf(k);
+                                        return (
+                                            <Line
+                                                key={k}
+                                                type="monotone"
+                                                dataKey={k}
+                                                stroke={PALETTE[i % PALETTE.length]}
+                                                strokeWidth={2.2}
+                                                dot={renderBrandPointDot(k, PALETTE[i % PALETTE.length])}
+                                                isAnimationActive={false}
+                                            />
+                                        );
+                                    })}
+                            </LineChart>
+                        </ResponsiveContainer>
                     </div>
                 </div>
             </div>
-            <div className="flex flex-col h-[520px] p-4">
-                {loading && (
-                    <div className="absolute inset-0 z-10 bg-white/70 backdrop-blur-sm flex items-center justify-center">
-                        <Loader2 className="w-8 h-8 animate-spin text-[#FFD700]" />
+
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+                <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-start gap-3">
+                        <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg border border-indigo-100/70 shadow-sm">
+                            <BarChart3 className="w-4 h-4" />
+                        </div>
+                        <div className="flex flex-col">
+                            <p className="text-[10px] md:text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">
+                                Timeline
+                            </p>
+                            <p className="text-sm font-black text-slate-900 tracking-tight">Select Brands</p>
+                            <p className="text-[10px] md:text-[11px] font-semibold text-slate-400 mt-0.5">
+                                Select the brands you want to compare in the timeline chart.
+                            </p>
+                        </div>
                     </div>
-                )}
-                <div className="flex-1 min-h-0 relative">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={chartData} margin={{ top: 8, right: 24, left: 8, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#eef2ff" />
-                            <XAxis dataKey="period_label" tick={{ fontSize: 11 }} />
-                            <YAxis tick={{ fontSize: 11 }} />
-                            <Tooltip />
-                            <Legend
-                                verticalAlign="bottom"
-                                content={() => (
-                                    <div className="flex flex-wrap items-center justify-start gap-x-3 gap-y-2 mt-6 px-2 text-[10px] md:text-[11px] overflow-y-auto max-h-[140px] scrollbar-hide">
-                                        {lineKeys.map((k, i) => {
-                                            const active = !hiddenKeys.has(k);
-                                            const color = PALETTE[i % PALETTE.length];
-                                            return (
-                                                <button
-                                                    key={k}
-                                                    onClick={() => {
-                                                        setHiddenKeys(prev => {
-                                                            const next = new Set(prev);
-                                                            if (next.has(k)) next.delete(k);
-                                                            else next.add(k);
-                                                            return next;
-                                                        });
-                                                    }}
-                                                    className={`flex items-center gap-1.5 transition-all px-2.5 py-1 rounded-full border ${active ? 'border-transparent bg-slate-100/60 opacity-100 hover:bg-slate-200/60 text-slate-700' : 'border-dashed border-slate-200 bg-transparent opacity-40 grayscale hover:opacity-60 text-slate-500'}`}
-                                                >
-                                                    <span
-                                                        className="w-2.5 h-2.5 rounded-full"
-                                                        style={{ backgroundColor: color }}
-                                                    />
-                                                    <span className="font-bold">{k}</span>
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-                            />
-                            {lineKeys
-                                .filter(k => !hiddenKeys.has(k))
-                                .map(k => {
-                                    const i = lineKeys.indexOf(k);
-                                    return (
-                                        <Line
-                                            key={k}
-                                            type="monotone"
-                                            dataKey={k}
-                                            stroke={PALETTE[i % PALETTE.length]}
-                                            strokeWidth={2.2}
-                                            dot={false}
-                                            isAnimationActive={false}
-                                        />
-                                    );
-                                })}
-                        </LineChart>
-                    </ResponsiveContainer>
+                    <div className="relative flex items-center gap-3 bg-white/80 backdrop-blur-xl px-3 py-2 rounded-xl border border-slate-200/60 shadow-sm">
+                        <p className="text-[10px] md:text-[11px] font-black text-slate-500 whitespace-nowrap">
+                            Select Type
+                        </p>
+                        <select
+                            value={brandType}
+                            onChange={e => setBrandType(e.target.value as 'ICE' | 'EV')}
+                            className="text-[11px] md:text-[12px] font-black text-slate-800 bg-transparent border-none p-0 focus:ring-0 cursor-pointer appearance-none min-w-[56px]"
+                        >
+                            <option value="ICE">ICE</option>
+                            <option value="EV">EV</option>
+                        </select>
+                    </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2 text-[10px] md:text-[11px]">
+                    {lineKeys.map((k, i) => {
+                        const active = !hiddenKeys.has(k);
+                        const color = PALETTE[i % PALETTE.length];
+                        return (
+                            <button
+                                key={k}
+                                onClick={() => {
+                                    setHiddenKeys(prev => {
+                                        const next = new Set(prev);
+                                        if (next.has(k)) next.delete(k);
+                                        else next.add(k);
+                                        return next;
+                                    });
+                                }}
+                                className={`w-full flex items-center justify-center gap-1.5 transition-all px-2.5 py-1.5 rounded-lg border text-center ${active ? 'border-transparent bg-slate-50 opacity-100 hover:bg-slate-100 text-slate-700 shadow-sm' : 'border-dashed border-slate-200 bg-transparent opacity-40 grayscale hover:opacity-60 text-slate-500'}`}
+                            >
+                                <span
+                                    className="font-bold truncate inline-block pb-0.5"
+                                    style={{ borderBottom: `2px solid ${color}` }}
+                                >
+                                    {formatBrandLabel(k)}
+                                </span>
+                            </button>
+                        );
+                    })}
                 </div>
             </div>
         </div>
@@ -1108,13 +1234,78 @@ function TimelineByBrandCard({ filters, apiPath }: { filters: any; apiPath: stri
 
 function TimelineByRtoCard({ filters, apiPath }: { filters: any; apiPath: string }) {
     const { stateCode, fromMonth, toMonth } = filters;
-    const [brandName, setBrandName] = useState('ALL');
     const [loading, setLoading] = useState(false);
-    const [brands, setBrands] = useState<any[]>([]);
     const [chartData, setChartData] = useState<any[]>([]);
     const [lineKeys, setLineKeys] = useState<string[]>([]);
     const [localPeriod, setLocalPeriod] = useState('last_12_months');
     const [hiddenKeys, setHiddenKeys] = useState<Set<string>>(new Set());
+
+    const renderRtoPointDot = (lineKey: string, color: string) => {
+        const RtoPointDot = (props: any): React.ReactNode => {
+            const row = props?.payload || {};
+            const units = Number(row?.[lineKey] || 0);
+            if (!Number.isFinite(units) || units <= 0) return null;
+            const x = Number(props?.cx || 0);
+            const y = Number(props?.cy || 0);
+            return (
+                <g>
+                    <circle cx={x} cy={y} r={3} fill={color} />
+                    <text
+                        x={x}
+                        y={y - 8}
+                        fill="#64748b"
+                        fontSize={10}
+                        fontWeight={800}
+                        dominantBaseline="auto"
+                        textAnchor="middle"
+                    >
+                        {fmtCompactUnits(units)}
+                    </text>
+                </g>
+            );
+        };
+        RtoPointDot.displayName = `RtoPointDot_${lineKey}`;
+        return RtoPointDot;
+    };
+
+    const renderTimelineTooltip = ({ active, payload, label }: any) => {
+        if (!active || !Array.isArray(payload) || payload.length === 0) return null;
+        const entries = payload
+            .map((p: any) => ({
+                name: String(p?.name || ''),
+                value: Number(p?.value || 0),
+                color: String(p?.color || '#94a3b8'),
+            }))
+            .filter((p: any) => Number.isFinite(p.value) && p.value > 0)
+            .sort((a: any, b: any) => b.value - a.value);
+        if (!entries.length) return null;
+
+        const total = entries.reduce((sum: number, e: any) => sum + e.value, 0);
+        return (
+            <div className="rounded-xl border border-slate-200 bg-white/95 backdrop-blur px-3 py-2 shadow-lg min-w-[220px]">
+                <p className="text-[11px] font-black text-slate-800 mb-1">{String(label || '')}</p>
+                <div className="space-y-1.5 max-h-[220px] overflow-y-auto pr-1">
+                    {entries.map((e: any) => {
+                        const pct = total > 0 ? (e.value * 100) / total : 0;
+                        return (
+                            <div key={e.name} className="flex items-center justify-between gap-3 text-[11px]">
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                    <span
+                                        className="w-2 h-2 rounded-full shrink-0"
+                                        style={{ backgroundColor: e.color }}
+                                    />
+                                    <span className="font-bold text-slate-700 truncate">{e.name}</span>
+                                </div>
+                                <span className="font-black text-slate-900 whitespace-nowrap">
+                                    {fmtIN(e.value)} ({pct.toFixed(1)}%)
+                                </span>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+        );
+    };
 
     useEffect(() => {
         let alive = true;
@@ -1150,15 +1341,8 @@ function TimelineByRtoCard({ filters, apiPath }: { filters: any; apiPath: string
                     to_month: activeTo,
                     grain: 'month',
                 });
-                if (brandName !== 'ALL') p.set('brand_name', brandName);
                 const payload = await fetch(`${apiPath}?${p}&_t=${Date.now()}`).then(r => r.json());
                 if (!alive) return;
-
-                const brandMap = new Map<string, any>();
-                for (const b of payload.brand?.share || []) {
-                    if (b.brand_name) brandMap.set(b.brand_name, b);
-                }
-                setBrands(Array.from(brandMap.values()));
 
                 const rows: any[] = payload.timeline_rto || [];
                 const totals = new Map<string, number>();
@@ -1172,7 +1356,7 @@ function TimelineByRtoCard({ filters, apiPath }: { filters: any; apiPath: string
                 const allCodesByVol = sortedRtos.map(([k]) => k);
                 const top3Codes = new Set(allCodesByVol.slice(0, 3));
 
-                const allCodesSorted = [...allCodesByVol].sort((a, b) => compareRtoCodeNumeric(a, b));
+                const allCodesSorted = [...allCodesByVol];
                 const allLabelsSorted = allCodesSorted.map(
                     code => `${code} (${trunc(nameByCode.get(code) || code, 12)})`
                 );
@@ -1224,113 +1408,116 @@ function TimelineByRtoCard({ filters, apiPath }: { filters: any; apiPath: string
             alive = false;
             clearTimeout(t);
         };
-    }, [stateCode, fromMonth, toMonth, brandName, localPeriod, apiPath]);
+    }, [stateCode, fromMonth, toMonth, localPeriod, apiPath]);
 
     return (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col overflow-hidden group/card shadow-slate-200/50">
-            <div className="p-5 border-b border-slate-100 bg-white flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-100/50 shadow-sm">
-                        <BarChart3 className="w-5 h-5" />
+        <div className="flex flex-col gap-4">
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col overflow-hidden group/card shadow-slate-200/50">
+                <div className="p-5 border-b border-slate-100 bg-white flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-100/50 shadow-sm">
+                            <BarChart3 className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <h2 className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-500 mb-0.5">
+                                Timeline
+                            </h2>
+                            <h3 className="text-sm font-black text-slate-900 tracking-tight">Timeline by RTO</h3>
+                        </div>
                     </div>
-                    <div>
-                        <h2 className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-500 mb-0.5">
-                            Timeline
-                        </h2>
-                        <h3 className="text-sm font-black text-slate-900 tracking-tight">Timeline by RTO</h3>
+                    <div className="flex items-center gap-2">
+                        <div className="relative flex items-center gap-3 bg-white/80 backdrop-blur-xl px-4 py-2 rounded-xl border border-slate-200/60 shadow-sm">
+                            <select
+                                value={localPeriod}
+                                onChange={e => setLocalPeriod(e.target.value)}
+                                className="text-[12px] font-black text-slate-800 bg-transparent border-none p-0 focus:ring-0 cursor-pointer appearance-none min-w-[100px]"
+                            >
+                                <option value="last_12_months">Last 12 Months</option>
+                                <option value="last_year">Last Year</option>
+                                <option value="last_30_days">Last 30 Days</option>
+                                <option value="all_time">All Time</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
-                <div className="flex items-center gap-2">
-                    <div className="relative flex items-center gap-3 bg-white/80 backdrop-blur-xl px-4 py-2 rounded-xl border border-slate-200/60 shadow-sm">
-                        <select
-                            value={localPeriod}
-                            onChange={e => setLocalPeriod(e.target.value)}
-                            className="text-[12px] font-black text-slate-800 bg-transparent border-none p-0 focus:ring-0 cursor-pointer appearance-none min-w-[100px]"
-                        >
-                            <option value="last_12_months">Last 12 Months</option>
-                            <option value="last_year">Last Year</option>
-                            <option value="last_30_days">Last 30 Days</option>
-                            <option value="all_time">All Time</option>
-                        </select>
-                    </div>
-                    <div className="relative flex items-center gap-3 bg-white/80 backdrop-blur-xl px-4 py-2 rounded-xl border border-slate-200/60 shadow-sm">
-                        <select
-                            value={brandName}
-                            onChange={e => setBrandName(e.target.value)}
-                            className="text-[12px] font-black text-slate-800 bg-transparent border-none p-0 focus:ring-0 cursor-pointer appearance-none min-w-[170px]"
-                        >
-                            <option value="ALL">ALL Brands</option>
-                            {brands.map((b: any) => (
-                                <option key={b.brand_name} value={b.brand_name}>
-                                    {formatBrandLabel(b.brand_display || b.brand_name)}
-                                </option>
-                            ))}
-                        </select>
+                <div className="relative flex flex-col h-[760px] p-4">
+                    {loading && (
+                        <div className="absolute inset-0 z-10 bg-white/70 backdrop-blur-sm flex items-center justify-center">
+                            <Loader2 className="w-8 h-8 animate-spin text-[#FFD700]" />
+                        </div>
+                    )}
+                    <div className="flex-1 min-h-0">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={chartData} margin={{ top: 24, right: 36, left: 16, bottom: 0 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#ecfeff" />
+                                <XAxis dataKey="period_label" tick={{ fontSize: 11 }} />
+                                <YAxis tick={{ fontSize: 11 }} />
+                                <Tooltip content={renderTimelineTooltip} />
+                                {lineKeys
+                                    .filter(k => !hiddenKeys.has(k))
+                                    .map(k => {
+                                        const i = lineKeys.indexOf(k);
+                                        return (
+                                            <Line
+                                                key={k}
+                                                type="monotone"
+                                                dataKey={k}
+                                                stroke={PALETTE[i % PALETTE.length]}
+                                                strokeWidth={2.2}
+                                                dot={renderRtoPointDot(k, PALETTE[i % PALETTE.length])}
+                                                isAnimationActive={false}
+                                            />
+                                        );
+                                    })}
+                            </LineChart>
+                        </ResponsiveContainer>
                     </div>
                 </div>
             </div>
-            <div className="flex flex-col h-[520px] p-4">
-                {loading && (
-                    <div className="absolute inset-0 z-10 bg-white/70 backdrop-blur-sm flex items-center justify-center">
-                        <Loader2 className="w-8 h-8 animate-spin text-[#FFD700]" />
+
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+                <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-start gap-3">
+                        <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg border border-emerald-100/70 shadow-sm">
+                            <BarChart3 className="w-4 h-4" />
+                        </div>
+                        <div className="flex flex-col">
+                            <p className="text-[10px] md:text-[11px] font-black uppercase tracking-[0.12em] text-slate-500">
+                                Timeline
+                            </p>
+                            <p className="text-sm font-black text-slate-900 tracking-tight">Select RTOs</p>
+                            <p className="text-[10px] md:text-[11px] font-semibold text-slate-400 mt-0.5">
+                                Select the RTOs you want to compare in the timeline chart.
+                            </p>
+                        </div>
                     </div>
-                )}
-                <div className="flex-1 min-h-0 relative">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={chartData} margin={{ top: 8, right: 24, left: 8, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#ecfeff" />
-                            <XAxis dataKey="period_label" tick={{ fontSize: 11 }} />
-                            <YAxis tick={{ fontSize: 11 }} />
-                            <Tooltip />
-                            <Legend
-                                verticalAlign="bottom"
-                                content={() => (
-                                    <div className="flex flex-wrap items-center justify-start gap-x-3 gap-y-2 mt-6 px-2 text-[10px] md:text-[11px] overflow-y-auto max-h-[140px] scrollbar-hide">
-                                        {lineKeys.map((k, i) => {
-                                            const active = !hiddenKeys.has(k);
-                                            const color = PALETTE[i % PALETTE.length];
-                                            return (
-                                                <button
-                                                    key={k}
-                                                    onClick={() => {
-                                                        setHiddenKeys(prev => {
-                                                            const next = new Set(prev);
-                                                            if (next.has(k)) next.delete(k);
-                                                            else next.add(k);
-                                                            return next;
-                                                        });
-                                                    }}
-                                                    className={`flex items-center gap-1.5 transition-all px-2.5 py-1 rounded-full border ${active ? 'border-transparent bg-slate-100/60 opacity-100 hover:bg-slate-200/60 text-slate-700' : 'border-dashed border-slate-200 bg-transparent opacity-40 grayscale hover:opacity-60 text-slate-500'}`}
-                                                >
-                                                    <span
-                                                        className="w-2.5 h-2.5 rounded-full"
-                                                        style={{ backgroundColor: color }}
-                                                    />
-                                                    <span className="font-bold">{k}</span>
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-                            />
-                            {lineKeys
-                                .filter(k => !hiddenKeys.has(k))
-                                .map(k => {
-                                    const i = lineKeys.indexOf(k);
-                                    return (
-                                        <Line
-                                            key={k}
-                                            type="monotone"
-                                            dataKey={k}
-                                            stroke={PALETTE[i % PALETTE.length]}
-                                            strokeWidth={2.2}
-                                            dot={false}
-                                            isAnimationActive={false}
-                                        />
-                                    );
-                                })}
-                        </LineChart>
-                    </ResponsiveContainer>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 text-[10px] md:text-[11px]">
+                    {lineKeys.map((k, i) => {
+                        const active = !hiddenKeys.has(k);
+                        const color = PALETTE[i % PALETTE.length];
+                        return (
+                            <button
+                                key={k}
+                                onClick={() => {
+                                    setHiddenKeys(prev => {
+                                        const next = new Set(prev);
+                                        if (next.has(k)) next.delete(k);
+                                        else next.add(k);
+                                        return next;
+                                    });
+                                }}
+                                className={`w-full flex items-center justify-center gap-1.5 transition-all px-2.5 py-1.5 rounded-lg border text-center ${active ? 'border-transparent bg-slate-50 opacity-100 hover:bg-slate-100 text-slate-700 shadow-sm' : 'border-dashed border-slate-200 bg-transparent opacity-40 grayscale hover:opacity-60 text-slate-500'}`}
+                            >
+                                <span
+                                    className="font-bold truncate inline-block pb-0.5"
+                                    style={{ borderBottom: `2px solid ${color}` }}
+                                >
+                                    {k}
+                                </span>
+                            </button>
+                        );
+                    })}
                 </div>
             </div>
         </div>
