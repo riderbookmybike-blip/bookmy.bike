@@ -318,23 +318,6 @@ const calculateDates = (period: string) => {
     };
 
     switch (period) {
-        case 'today': {
-            const s = fmt(d);
-            return { from: s, to: s };
-        }
-        case 'yesterday': {
-            const y = new Date(d);
-            y.setDate(y.getDate() - 1);
-            const s = fmt(y);
-            return { from: s, to: s };
-        }
-        case 'this_week': {
-            const sw = new Date(d);
-            sw.setDate(d.getDate() - d.getDay());
-            const ew = new Date(sw);
-            ew.setDate(sw.getDate() + 6);
-            return { from: fmt(sw), to: fmt(ew) };
-        }
         case 'this_month':
             return {
                 from: fmt(new Date(d.getFullYear(), d.getMonth(), 1)),
@@ -345,16 +328,6 @@ const calculateDates = (period: string) => {
                 from: fmt(new Date(d.getFullYear(), d.getMonth() - 1, 1)),
                 to: fmt(new Date(d.getFullYear(), d.getMonth(), 0)),
             };
-        case 'last_30_days': {
-            const l = new Date(d);
-            l.setDate(l.getDate() - 30);
-            return { from: fmt(l), to: d.toISOString().split('T')[0] };
-        }
-        case 'this_quarter': {
-            const sq = new Date(d.getFullYear(), Math.floor(d.getMonth() / 3) * 3, 1);
-            const eq = new Date(sq.getFullYear(), sq.getMonth() + 3, 0);
-            return { from: fmt(sq), to: fmt(eq) };
-        }
         case 'this_year':
             return {
                 from: fmt(new Date(d.getFullYear(), 0, 1)),
@@ -364,6 +337,11 @@ const calculateDates = (period: string) => {
             return {
                 from: fmt(new Date(d.getFullYear() - 1, 0, 1)),
                 to: fmt(new Date(d.getFullYear() - 1, 11, 31)),
+            };
+        case 'all_time':
+            return {
+                from: '2015-01-01',
+                to: fmt(d),
             };
         default:
             return {
@@ -635,23 +613,9 @@ function KpiStatsRow({
                                     <div className="absolute inset-0 bg-white/20 blur-md opacity-0 group-hover:opacity-100 transition-opacity" />
                                     <item.icon className="w-7 h-7 stroke-[2.2] relative z-10" />
                                 </div>
-                                {item.trend != null && (
-                                    <div
-                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-black tracking-tight ${
-                                            Number(item.trend) >= 0
-                                                ? 'bg-emerald-50 text-emerald-600 border border-emerald-100/50'
-                                                : 'bg-rose-50 text-rose-600 border border-rose-100/50'
-                                        } shadow-sm transition-all duration-500 group-hover:scale-105`}
-                                    >
-                                        <TrendingUp
-                                            className={`w-3.5 h-3.5 ${Number(item.trend) < 0 ? 'rotate-180' : ''}`}
-                                        />
-                                        {Math.abs(Number(item.trend))}%
-                                    </div>
-                                )}
                             </div>
                             <div className="flex flex-col gap-1.5">
-                                <span className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 group-hover:text-slate-500 transition-colors">
+                                <span className="text-[11px] font-black tracking-[0.2em] text-slate-400 group-hover:text-slate-500 transition-colors">
                                     {item.label}
                                 </span>
                                 <div className="flex flex-col gap-0.5">
@@ -737,6 +701,9 @@ function BrandChartCard({ filters, apiPath }: { filters: any; apiPath: string })
                     const pct = total > 0 ? ((totalUnits / total) * 100).toFixed(1) : '0.0';
                     const brandLabelRaw = r.brand_display || r.brand_name;
                     const brandLabel = formatBrandLabel(brandLabelRaw);
+                    const segText =
+                        evUnits > 0 && iceUnits > 0 ? ` [EV ${fmtIN(evUnits)} | ICE ${fmtIN(iceUnits)}]` : '';
+
                     return {
                         ...r,
                         total_units: totalUnits,
@@ -745,8 +712,8 @@ function BrandChartCard({ filters, apiPath }: { filters: any; apiPath: string })
                         share_pct: pct,
                         brand_label: brandLabel,
                         display_label: isMobile
-                            ? `${fmtIN(totalUnits)} (EV ${fmtIN(evUnits)} | ICE ${fmtIN(iceUnits)})`
-                            : `${trunc(brandLabel, 20)}  -  ${fmtIN(totalUnits)} (${pct}%)  [EV ${fmtIN(evUnits)} | ICE ${fmtIN(iceUnits)}]`,
+                            ? `${brandLabel} - ${fmtIN(totalUnits)} (${pct}%)`
+                            : `${trunc(brandLabel, 20)}  -  ${fmtIN(totalUnits)} (${pct}%) ${segText}`,
                         _idx: i,
                     };
                 });
@@ -840,15 +807,11 @@ function BrandChartCard({ filters, apiPath }: { filters: any; apiPath: string })
                                 onChange={e => setPeriod(e.target.value)}
                                 className="text-[11px] md:text-[12px] font-bold text-slate-700 bg-transparent border-none p-0 focus:ring-0 cursor-pointer appearance-none w-full text-center h-full flex items-center justify-center"
                             >
-                                <option value="today">Today</option>
-                                <option value="yesterday">Yesterday</option>
-                                <option value="this_week">This Week</option>
-                                <option value="last_30_days">Last 30 Days</option>
                                 <option value="this_month">This Month</option>
                                 <option value="last_month">Last Month</option>
-                                <option value="this_quarter">This Quarter</option>
                                 <option value="this_year">This Year</option>
                                 <option value="last_year">Last Year</option>
+                                <option value="all_time">All Year</option>
                             </select>
                             <ChevronDown className="w-3 h-3 text-slate-400 group-hover/pill:text-slate-600 shrink-0" />
                         </div>
@@ -1154,15 +1117,11 @@ function RtoChartCard({ filters, apiPath }: { filters: any; apiPath: string }) {
                                 onChange={e => setPeriod(e.target.value)}
                                 className="text-[11px] md:text-[12px] font-bold text-slate-700 bg-transparent border-none p-0 focus:ring-0 cursor-pointer appearance-none w-full text-center h-full flex items-center justify-center"
                             >
-                                <option value="today">Today</option>
-                                <option value="yesterday">Yesterday</option>
-                                <option value="this_week">This Week</option>
-                                <option value="last_30_days">Last 30 Days</option>
                                 <option value="this_month">This Month</option>
                                 <option value="last_month">Last Month</option>
-                                <option value="this_quarter">This Quarter</option>
                                 <option value="this_year">This Year</option>
                                 <option value="last_year">Last Year</option>
+                                <option value="all_time">All Year</option>
                             </select>
                             <ChevronDown className="w-3 h-3 text-slate-400 group-hover/pill:text-slate-600 shrink-0" />
                         </div>
@@ -1499,7 +1458,7 @@ function TimelineByBrandCard({ filters, apiPath }: { filters: any; apiPath: stri
     const [loading, setLoading] = useState(false);
     const [chartData, setChartData] = useState<any[]>([]);
     const [lineKeys, setLineKeys] = useState<string[]>([]);
-    const [localPeriod, setLocalPeriod] = useState('last_12_months');
+    const [localPeriod, setLocalPeriod] = useState('this_month');
     const [hiddenKeys, setHiddenKeys] = useState<Set<string>>(new Set());
     const [brandType, setBrandType] = useState<'ALL' | 'ICE' | 'EV'>('ALL');
 
@@ -1591,22 +1550,22 @@ function TimelineByBrandCard({ filters, apiPath }: { filters: any; apiPath: stri
                         activeFrom = '2015-01-01';
                         activeTo = fmtDate(new Date());
                         activeGrain = 'year';
-                    } else if (localPeriod === 'last_12_months') {
-                        const l = new Date(d);
-                        l.setMonth(d.getMonth() - 12);
-                        activeFrom = fmtDate(l);
-                        activeTo = fmtDate(d);
+                    } else if (localPeriod === 'this_month') {
+                        activeFrom = fmtDate(new Date(d.getFullYear(), d.getMonth(), 1));
+                        activeTo = fmtDate(new Date(d.getFullYear(), d.getMonth() + 1, 0));
+                        activeGrain = 'month';
+                    } else if (localPeriod === 'last_month') {
+                        activeFrom = fmtDate(new Date(d.getFullYear(), d.getMonth() - 1, 1));
+                        activeTo = fmtDate(new Date(d.getFullYear(), d.getMonth(), 0));
+                        activeGrain = 'month';
+                    } else if (localPeriod === 'this_year') {
+                        activeFrom = fmtDate(new Date(d.getFullYear(), 0, 1));
+                        activeTo = fmtDate(new Date(d.getFullYear(), 11, 31));
                         activeGrain = 'month';
                     } else if (localPeriod === 'last_year') {
                         activeFrom = fmtDate(new Date(d.getFullYear() - 1, 0, 1));
                         activeTo = fmtDate(new Date(d.getFullYear() - 1, 11, 31));
                         activeGrain = 'month';
-                    } else if (localPeriod === 'last_30_days') {
-                        const l = new Date(d);
-                        l.setDate(d.getDate() - 30);
-                        activeFrom = fmtDate(l);
-                        activeTo = fmtDate(d);
-                        activeGrain = 'day';
                     }
                 }
 
@@ -1704,10 +1663,11 @@ function TimelineByBrandCard({ filters, apiPath }: { filters: any; apiPath: stri
                                     className="text-[11px] md:text-[12px] font-bold text-slate-700 bg-transparent border-none p-0 focus:ring-0 cursor-pointer appearance-none w-full text-center h-full flex items-center justify-center"
                                 >
                                     <option value="inherit">Sync (Global)</option>
-                                    <option value="all_time">All Time</option>
-                                    <option value="last_12_months">Last 12 Months</option>
+                                    <option value="this_month">This Month</option>
+                                    <option value="last_month">Last Month</option>
                                     <option value="this_year">This Year</option>
                                     <option value="last_year">Last Year</option>
+                                    <option value="all_time">All Year</option>
                                 </select>
                                 <ChevronDown className="w-3 h-3 text-slate-400 group-hover/pill:text-slate-600 shrink-0" />
                             </div>
@@ -1825,7 +1785,7 @@ function TimelineByRtoCard({ filters, apiPath }: { filters: any; apiPath: string
     const [loading, setLoading] = useState(false);
     const [chartData, setChartData] = useState<any[]>([]);
     const [lineKeys, setLineKeys] = useState<string[]>([]);
-    const [localPeriod, setLocalPeriod] = useState('last_12_months');
+    const [localPeriod, setLocalPeriod] = useState('this_month');
     const [segment, setSegment] = useState<'ALL' | 'ICE' | 'EV'>('ALL');
     const [hiddenKeys, setHiddenKeys] = useState<Set<string>>(new Set());
 
@@ -1913,11 +1873,12 @@ function TimelineByRtoCard({ filters, apiPath }: { filters: any; apiPath: string
                     if (localPeriod === 'all_time') {
                         activeFrom = '2015-01-01';
                         activeTo = fmtDate(new Date());
-                    } else if (localPeriod === 'last_12_months') {
-                        const l = new Date(d);
-                        l.setMonth(d.getMonth() - 12);
-                        activeFrom = fmtDate(l);
-                        activeTo = fmtDate(d);
+                    } else if (localPeriod === 'this_month') {
+                        activeFrom = fmtDate(new Date(d.getFullYear(), d.getMonth(), 1));
+                        activeTo = fmtDate(new Date(d.getFullYear(), d.getMonth() + 1, 0));
+                    } else if (localPeriod === 'last_month') {
+                        activeFrom = fmtDate(new Date(d.getFullYear(), d.getMonth() - 1, 1));
+                        activeTo = fmtDate(new Date(d.getFullYear(), d.getMonth(), 0));
                     } else if (localPeriod === 'this_year') {
                         activeFrom = fmtDate(new Date(d.getFullYear(), 0, 1));
                         activeTo = fmtDate(new Date(d.getFullYear(), 11, 31));
@@ -1961,15 +1922,8 @@ function TimelineByRtoCard({ filters, apiPath }: { filters: any; apiPath: string
                     let pLabel = formatPeriodShort(period);
                     let activeGrain = 'month';
                     if (localPeriod === 'all_time') activeGrain = 'year';
-                    if (localPeriod === 'last_30_days') activeGrain = 'day';
-
                     if (activeGrain === 'year') {
                         pLabel = period.substring(0, 4);
-                    } else if (activeGrain === 'day') {
-                        const dObj = new Date(period);
-                        if (!Number.isNaN(dObj.getTime())) {
-                            pLabel = dObj.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
-                        }
                     }
 
                     const curr = periodMap.get(period) || { period, period_label: pLabel };
@@ -2052,10 +2006,11 @@ function TimelineByRtoCard({ filters, apiPath }: { filters: any; apiPath: string
                                     onChange={e => setLocalPeriod(e.target.value)}
                                     className="text-[11px] md:text-[12px] font-bold text-slate-700 bg-transparent border-none p-0 focus:ring-0 cursor-pointer appearance-none w-full text-center h-full flex items-center justify-center"
                                 >
-                                    <option value="last_12_months">Last 12 Months</option>
+                                    <option value="this_month">This Month</option>
+                                    <option value="last_month">Last Month</option>
+                                    <option value="this_year">This Year</option>
                                     <option value="last_year">Last Year</option>
-                                    <option value="last_30_days">Last 30 Days</option>
-                                    <option value="all_time">All Time</option>
+                                    <option value="all_time">All Year</option>
                                 </select>
                                 <ChevronDown className="w-3 h-3 text-slate-400 group-hover/pill:text-slate-600 shrink-0" />
                             </div>
@@ -2168,29 +2123,6 @@ export default function VahanTwoWheelerPage({ dataApiPath, title }: Props) {
     useEffect(() => {
         const d = new Date();
         switch (period) {
-            case 'today': {
-                const s = fmt(d);
-                setFromMonth(s);
-                setToMonth(s);
-                break;
-            }
-            case 'yesterday': {
-                const y = new Date(d);
-                y.setDate(y.getDate() - 1);
-                const s = fmt(y);
-                setFromMonth(s);
-                setToMonth(s);
-                break;
-            }
-            case 'this_week': {
-                const sw = new Date(d);
-                sw.setDate(d.getDate() - d.getDay());
-                const ew = new Date(sw);
-                ew.setDate(sw.getDate() + 6);
-                setFromMonth(fmt(sw));
-                setToMonth(fmt(ew));
-                break;
-            }
             case 'this_month':
                 setFromMonth(fmt(new Date(d.getFullYear(), d.getMonth(), 1)));
                 setToMonth(fmt(new Date(d.getFullYear(), d.getMonth() + 1, 0)));
@@ -2199,20 +2131,6 @@ export default function VahanTwoWheelerPage({ dataApiPath, title }: Props) {
                 setFromMonth(fmt(new Date(d.getFullYear(), d.getMonth() - 1, 1)));
                 setToMonth(fmt(new Date(d.getFullYear(), d.getMonth(), 0)));
                 break;
-            case 'last_30_days': {
-                const l = new Date(d);
-                l.setDate(l.getDate() - 30);
-                setFromMonth(fmt(l));
-                setToMonth(fmt(d));
-                break;
-            }
-            case 'this_quarter': {
-                const sq = new Date(d.getFullYear(), Math.floor(d.getMonth() / 3) * 3, 1);
-                const eq = new Date(sq.getFullYear(), sq.getMonth() + 3, 0);
-                setFromMonth(fmt(sq));
-                setToMonth(fmt(eq));
-                break;
-            }
             case 'this_year':
                 setFromMonth(fmt(new Date(d.getFullYear(), 0, 1)));
                 setToMonth(fmt(new Date(d.getFullYear(), 11, 31)));
@@ -2220,6 +2138,10 @@ export default function VahanTwoWheelerPage({ dataApiPath, title }: Props) {
             case 'last_year':
                 setFromMonth(fmt(new Date(d.getFullYear() - 1, 0, 1)));
                 setToMonth(fmt(new Date(d.getFullYear() - 1, 11, 31)));
+                break;
+            case 'all_time':
+                setFromMonth('2015-01-01');
+                setToMonth(fmt(d));
                 break;
         }
     }, [period]);
@@ -2745,106 +2667,62 @@ export default function VahanTwoWheelerPage({ dataApiPath, title }: Props) {
                 <div className="absolute inset-0 opacity-[0.015] bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay" />
             </div>
 
-            <div className="page-container flex flex-col gap-10 pb-20 pt-14">
-                {/* Header Area */}
-                <div className="flex flex-col gap-10">
-                    {/* Primary Row: Title & Main Filter Island */}
-                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-10">
-                        <div className="flex items-center gap-8">
-                            {/* Indian Flag Gradient Bar */}
-                            <div className="relative group/flag shrink-0">
-                                <div className="absolute -inset-1.5 bg-gradient-to-b from-[#FF9933]/20 via-white/0 to-[#138808]/20 rounded-full blur-md opacity-0 group-hover/flag:opacity-100 transition-opacity duration-500" />
-                                <div className="w-2.5 h-20 bg-gradient-to-b from-[#FF9933] via-white to-[#138808] rounded-full shadow-[0_4px_12px_rgba(0,0,0,0.08)] border border-slate-200/30 relative z-10" />
-                            </div>
-
-                            <div className="flex flex-col gap-5">
-                                <div className="flex flex-col gap-1">
-                                    <span className="text-[12px] font-black uppercase tracking-[0.25em] text-slate-400/80 mb-1 ml-1">
-                                        Analytics Engine v4.0
-                                    </span>
-                                    <h1 className="text-6xl md:text-7xl font-black tracking-[-0.04em] text-slate-900 bg-clip-text text-transparent bg-gradient-to-br from-slate-950 via-slate-800 to-slate-600 leading-[0.9] lg:leading-none transition-all duration-500">
-                                        {title || 'Vahan Dashboard'}
-                                    </h1>
-                                </div>
-
-                                <div className="flex flex-wrap items-center gap-3">
-                                    {/* Sync Status Pill */}
-                                    <div className="flex items-center gap-4 bg-white/40 hover:bg-white/70 backdrop-blur-3xl px-6 py-3 rounded-2xl border border-white/60 shadow-[0_10px_40px_-15px_rgba(15,23,42,0.1)] transition-all duration-500 w-fit">
-                                        <div className="relative w-3.5 h-3.5 shrink-0">
-                                            <span
-                                                className={`absolute inset-0 rounded-full animate-ping ${statusTone.dotPing}`}
-                                            />
-                                            <span className={`absolute inset-0 rounded-full ${statusTone.dot}`} />
-                                        </div>
-                                        <span className="text-[11px] font-black text-slate-700 tracking-wide uppercase">
-                                            {syncStatus}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* FILTER CONSOLE */}
-                        <div className="relative group/console transition-all duration-700">
-                            <div className="absolute -inset-6 bg-gradient-to-r from-slate-200/20 via-white/40 to-slate-200/20 rounded-[4.5rem] blur-2xl opacity-0 group-hover/console:opacity-100 transition-opacity duration-1000" />
-
-                            <div className="relative flex flex-col md:flex-row items-center gap-4 bg-white/30 backdrop-blur-3xl border border-white/60 p-3 md:p-4 rounded-[4rem] shadow-[0_30px_70px_-20px_rgba(15,23,42,0.1)] hover:shadow-[0_40px_90px_-25px_rgba(15,23,42,0.15)] transition-all duration-700">
-                                {/* Region Island */}
-                                <div className="relative flex items-center bg-white rounded-[3.2rem] px-8 py-5 shadow-[0_12px_28px_-10px_rgba(0,0,0,0.06)] border border-slate-100/50 group/state transition-all duration-500 hover:scale-[1.02] min-w-[340px]">
-                                    <div className="w-16 h-16 rounded-full bg-slate-950 flex items-center justify-center shadow-[0_15px_30px_-10px_rgba(0,0,0,0.5)] transition-all duration-500 group-hover/state:scale-110 border-[4px] border-white shrink-0">
-                                        <MapPin className="w-7 h-7 text-[#FFD700] stroke-[2.5]" />
-                                    </div>
-                                    <div className="flex flex-col ml-6 pr-12 relative grow">
-                                        <span className="text-[11px] font-black uppercase tracking-[0.25em] text-[#87CEEB] opacity-90 whitespace-nowrap">
-                                            Region Select
-                                        </span>
-                                        <select
-                                            value={stateCode}
-                                            onChange={e => {
-                                                setStateCode(e.target.value);
-                                                setLocalStateCode(e.target.value);
-                                            }}
-                                            className="bg-transparent text-3xl font-black text-slate-900 border-none p-0 focus:ring-0 cursor-pointer appearance-none transition-all duration-500 w-full"
-                                        >
-                                            <option value="MH">Maharashtra</option>
-                                            <option value="GUJ">Gujarat</option>
-                                            <option value="KA">Karnataka</option>
-                                        </select>
-                                        <ChevronDown className="w-6 h-6 text-slate-400 absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none group-hover/state:translate-y-[-35%] transition-transform duration-500" />
-                                    </div>
-                                </div>
-
-                                {/* Timeline Island */}
-                                <div className="relative flex items-center rounded-[2.8rem] px-8 py-5 bg-white/60 hover:bg-white border border-white group/period transition-all duration-500 hover:shadow-[0_12px_28px_-12px_rgba(0,0,0,0.08)] min-w-[240px]">
-                                    <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 transition-all duration-500 shrink-0">
-                                        <Calendar className="w-6 h-6 stroke-[2]" />
-                                    </div>
-                                    <div className="flex flex-col ml-5 pr-10 relative grow">
-                                        <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-0.5">
-                                            Timeline
-                                        </span>
-                                        <select
-                                            value={period}
-                                            onChange={e => setPeriod(e.target.value)}
-                                            className="bg-transparent text-base font-black text-slate-800 uppercase tracking-[0.08em] border-none p-0 focus:ring-0 cursor-pointer appearance-none"
-                                        >
-                                            <option value="today">Today</option>
-                                            <option value="yesterday">Yesterday</option>
-                                            <option value="this_week">This Week</option>
-                                            <option value="this_month">This Month</option>
-                                            <option value="last_month">Last Month</option>
-                                            <option value="last_30_days">Last 30 Days</option>
-                                            <option value="this_quarter">This Quarter</option>
-                                            <option value="this_year">This Year</option>
-                                            <option value="last_year">Last Year</option>
-                                        </select>
-                                        <ChevronDown className="w-5 h-5 text-slate-400 absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none group-hover/period:translate-y-[-35%] transition-transform duration-500" />
-                                    </div>
-                                </div>
-                            </div>
+            <div className="page-container flex flex-col gap-6 pb-20 pt-16">
+                <header className="flex flex-col md:flex-row items-center justify-between gap-6 mb-2">
+                    <div className="flex items-center gap-6">
+                        <div className="flex items-center gap-4">
+                            {/* Tricolour Signature */}
+                            <div className="w-1.5 h-12 rounded-full bg-gradient-to-b from-[#FF9933] via-[#FFFFFF] to-[#138808] shadow-[0_4px_12px_rgba(0,0,0,0.1)] shrink-0" />
+                            <h1 className="text-4xl md:text-5xl font-black text-slate-900 tracking-[-0.04em]">
+                                Vahan Dashboard
+                            </h1>
                         </div>
                     </div>
-                </div>
+
+                    <div className="flex items-center gap-10">
+                        {/* Region Island - Floating */}
+                        <div className="flex items-center px-4 py-2 group/state relative cursor-pointer hover:bg-white/40 rounded-3xl transition-all duration-500">
+                            <div className="w-10 h-10 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-600 shadow-sm border border-amber-100/50 transition-all duration-500 group-hover/state:scale-105 group-hover/state:rotate-3">
+                                <MapPin className="w-5 h-5 stroke-[2.2]" />
+                            </div>
+                            <div className="flex flex-col ml-4">
+                                <select
+                                    value={stateCode}
+                                    onChange={e => {
+                                        setStateCode(e.target.value);
+                                    }}
+                                    className="bg-transparent text-lg font-black text-slate-900 border-none p-0 focus:ring-0 cursor-pointer appearance-none leading-none"
+                                >
+                                    <option value="MH">Maharashtra</option>
+                                    <option value="GUJ">Gujarat</option>
+                                    <option value="KA">Karnataka</option>
+                                </select>
+                            </div>
+                            <ChevronDown className="w-5 h-5 text-slate-400 ml-3 group-hover/state:translate-y-0.5 transition-transform" />
+                        </div>
+
+                        {/* Timeline Island - Floating */}
+                        <div className="flex items-center px-4 py-2 group/timeline cursor-pointer hover:bg-white/40 rounded-3xl transition-all duration-500">
+                            <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 shadow-sm border border-blue-100/50 transition-all duration-500 group-hover/timeline:scale-105 group-hover/timeline:-rotate-3">
+                                <Calendar className="w-5 h-5 stroke-[2.2]" />
+                            </div>
+                            <div className="flex flex-col ml-4">
+                                <select
+                                    value={period}
+                                    onChange={e => setPeriod(e.target.value)}
+                                    className="bg-transparent text-lg font-black text-slate-800 tracking-tight border-none p-0 focus:ring-0 cursor-pointer appearance-none leading-none"
+                                >
+                                    <option value="this_month">This Month</option>
+                                    <option value="last_month">Last Month</option>
+                                    <option value="this_year">This Year</option>
+                                    <option value="last_year">Last Year</option>
+                                    <option value="all_time">All Year</option>
+                                </select>
+                            </div>
+                            <ChevronDown className="w-5 h-5 text-slate-400 ml-3 group-hover/timeline:translate-y-0.5 transition-transform" />
+                        </div>
+                    </div>
+                </header>
 
                 {/* KPI Row */}
                 <KpiStatsRow filters={filters} apiPath={apiPath} onLastDataUpdate={setLastDbUpdateAt} />

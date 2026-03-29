@@ -2,7 +2,7 @@ name: VAHAN Daily Scraper
 
 on:
   schedule:
-    # Runs at 04:30 UTC every day (10:00 IST)
+    # Runs daily at 04:30 UTC (10:00 IST)
     - cron: '30 4 * * *'
   workflow_dispatch: # Allows manual trigger from the GitHub UI
 
@@ -38,20 +38,47 @@ jobs:
           for session in $(seq 1 "$max_sessions"); do
             echo "=== VAHAN session $session/$max_sessions (1 RTO) ==="
             scrape_log="$(mktemp)"
+            rm -f tmp/vahan_last_scrape_scope.json
 
+            export SCRAPE_YEAR="$(TZ=Asia/Kolkata date +%Y)"
+            export FORCE_RESCRAPE=true
             npx tsx scripts/vahan/scrape-vahan.ts 2>&1 | tee "$scrape_log"
-
-            # Ingest after every single-RTO scrape session
-            npx tsx scripts/vahan/ingest-vahan.ts
 
             if grep -q "No pending RTOs" "$scrape_log"; then
               echo "No pending RTOs left. Serial run complete."
               break
             fi
 
+            # Ingest strictly the just-scraped RTO/year scope
+            INGEST_SCOPE_FILE=tmp/vahan_last_scrape_scope.json \
+            INGEST_STRICT_SCOPE=true \
+            INGEST_CURRENT_MONTH_ONLY=true \
+            INGEST_WRITE_DAILY_SNAPSHOTS=false \
+            npx tsx scripts/vahan/ingest-vahan.ts
+
+            # EV scrape for the same RTO/year scope from this session
+            scope_rto="$(node -e "const fs=require('fs');const p='tmp/vahan_last_scrape_scope.json';const s=JSON.parse(fs.readFileSync(p,'utf8'));process.stdout.write(String(Number(s.rto_numeric_code||'')))")"
+            scope_year="$(node -e "const fs=require('fs');const p='tmp/vahan_last_scrape_scope.json';const s=JSON.parse(fs.readFileSync(p,'utf8'));const y=Array.isArray(s.years)&&s.years.length?String(s.years[0]):String(new Date().getFullYear());process.stdout.write(y)")"
+
+            HEADLESS=true \
+            RTO_BATCH_SIZE=1 \
+            FORCE_RESCRAPE=true \
+            RTO_CODES="$scope_rto" \
+            SCRAPE_YEAR="$scope_year" \
+            OUTPUT_SUFFIX="ev" \
+            FUEL_FILTERS="ELECTRIC(BOV),PURE EV" \
+            npx tsx scripts/vahan/scrape-vahan.ts
+
+            INGEST_SCOPE_FILE=tmp/vahan_last_scrape_scope.json \
+            INGEST_STRICT_SCOPE=true \
+            INGEST_CURRENT_MONTH_ONLY=true \
+            INGEST_WRITE_DAILY_SNAPSHOTS=false \
+            FUEL_BUCKETS=EV \
+            npx tsx scripts/vahan/ingest-vahan-fuel.ts
+
             if [ "$session" -eq "$max_sessions" ]; then
-              echo "Reached max sessions ($max_sessions) before pending set drained."
-              exit 1
+                echo "Reached max sessions ($max_sessions) before pending set drained."
+                exit 1
             fi
           done
         env:

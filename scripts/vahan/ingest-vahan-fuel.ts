@@ -99,6 +99,10 @@ function resolveSnapshotDate(): string {
 
 async function main() {
     const snapshotDate = resolveSnapshotDate();
+    const snapshotYear = Number(snapshotDate.slice(0, 4));
+    const snapshotMonth = Number(snapshotDate.slice(5, 7));
+    const ingestCurrentMonthOnly = String(process.env.INGEST_CURRENT_MONTH_ONLY || 'true').toLowerCase() !== 'false';
+    const writeDailySnapshots = String(process.env.INGEST_WRITE_DAILY_SNAPSHOTS || 'false').toLowerCase() === 'true';
     const filteredYears = new Set(
         String(process.env.INGEST_YEAR || process.env.INGEST_YEARS || '')
             .split(',')
@@ -119,6 +123,33 @@ async function main() {
             .map(v => v.trim().toUpperCase())
             .filter(Boolean)
     );
+    const ingestScopePath = String(process.env.INGEST_SCOPE_FILE || '').trim();
+    const strictScope = String(process.env.INGEST_STRICT_SCOPE || '').toLowerCase() === 'true';
+    if (ingestScopePath) {
+        try {
+            const raw = fs.readFileSync(path.resolve(process.cwd(), ingestScopePath), 'utf-8');
+            const scope = JSON.parse(raw) as { rto_numeric_code?: string; years?: string[] };
+            const scopeRto = String(scope?.rto_numeric_code || '').trim();
+            const scopeYears = Array.isArray(scope?.years)
+                ? scope.years.map(v => String(v).trim()).filter(Boolean)
+                : [];
+            if (scopeRto) {
+                filteredRtoCodes.clear();
+                filteredRtoCodes.add(String(Number(scopeRto)));
+            }
+            if (scopeYears.length > 0) {
+                filteredYears.clear();
+                scopeYears.forEach(y => filteredYears.add(y));
+            }
+            console.log(
+                `🧭 Fuel scope active from ${ingestScopePath}: RTO=${scopeRto || 'ALL'}, YEARS=${scopeYears.join(',') || 'ALL'}`
+            );
+        } catch (e: any) {
+            const msg = `Failed to read INGEST_SCOPE_FILE (${ingestScopePath}): ${e?.message || e}`;
+            if (strictScope) throw new Error(msg);
+            console.warn(`⚠️ ${msg}`);
+        }
+    }
 
     const { data: brandMapData, error: mapErr } = await supabase
         .from('vahan_oem_brand_map')
@@ -171,6 +202,11 @@ async function main() {
             for (let i = 2; i < monthEndIndex; i++) {
                 const monthLabel = monthsKeys[i - 2];
                 if (!monthLabel) break;
+                const monthNo = i - 1;
+                const yearNo = parseInt(parsedYear, 10);
+                if (ingestCurrentMonthOnly && (yearNo !== snapshotYear || monthNo !== snapshotMonth)) {
+                    continue;
+                }
                 const units = parseInt(record[i] || '0', 10);
                 if (!Number.isFinite(units) || units <= 0) continue;
                 const base = {
@@ -178,8 +214,8 @@ async function main() {
                     state_name: 'Maharashtra',
                     rto_code: rtoCodeStr,
                     rto_name: MH_RTO_NAMES[rtoCodeStr] || rtoCodeStr,
-                    year: parseInt(parsedYear, 10),
-                    month_no: i - 1,
+                    year: yearNo,
+                    month_no: monthNo,
                     month_label: monthLabel,
                     maker: rawMaker,
                     brand_name: canonicalName,
@@ -189,7 +225,9 @@ async function main() {
                     uploaded_at: new Date().toISOString(),
                 };
                 monthlyPayload.push(base);
-                dailyPayload.push({ ...base, snapshot_date: snapshotDate });
+                if (writeDailySnapshots) {
+                    dailyPayload.push({ ...base, snapshot_date: snapshotDate });
+                }
             }
         }
 
@@ -205,13 +243,15 @@ async function main() {
             }
         }
 
-        for (let i = 0; i < dailyPayload.length; i += 500) {
-            const chunk = dailyPayload.slice(i, i + 500);
-            const { error } = await supabase
-                .from('vahan_two_wheeler_fuel_daily_snapshots')
-                .upsert(chunk, { onConflict: 'snapshot_date,state_code,rto_code,year,month_no,maker,fuel_bucket' });
-            if (error) {
-                console.error(`Daily fuel snapshot upsert failed for ${file}:`, error.message);
+        if (writeDailySnapshots) {
+            for (let i = 0; i < dailyPayload.length; i += 500) {
+                const chunk = dailyPayload.slice(i, i + 500);
+                const { error } = await supabase
+                    .from('vahan_two_wheeler_fuel_daily_snapshots')
+                    .upsert(chunk, { onConflict: 'snapshot_date,state_code,rto_code,year,month_no,maker,fuel_bucket' });
+                if (error) {
+                    console.error(`Daily fuel snapshot upsert failed for ${file}:`, error.message);
+                }
             }
         }
     }

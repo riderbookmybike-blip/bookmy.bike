@@ -101,10 +101,14 @@ async function main() {
             `📦 Pending RTOs: ${pendingRtos.length} | This run: ${rtosToProcess.length}${batchSize > 0 ? ` (batch size ${batchSize})` : ''}`
         );
 
+        const scopeFilePath = path.join(process.cwd(), 'tmp', 'vahan_last_scrape_scope.json');
         // --- 🤖 USER'S STRICT SEQUENCE LOOP ---
         for (let i = 0; i < rtosToProcess.length; i++) {
             const current = rtosToProcess[i];
             const rtoCode = current.val;
+            const sessionStartMs = Date.now();
+            const processedYears: string[] = [];
+            const processedFiles: string[] = [];
             console.log(`\n======================================================`);
             console.log(
                 `--- [${i + 1}/${rtosToProcess.length}] Starting Exact Sequence for: ${current.text} (${rtoCode}) ---`
@@ -254,6 +258,8 @@ async function main() {
 
                     fs.writeFileSync(jsonPath, JSON.stringify(extractedData, null, 2));
                     console.log(`  ✅ Successfully Extracted ${extractedData.length} records to ${jsonPath}`);
+                    processedYears.push(targetYear);
+                    processedFiles.push(path.basename(jsonPath));
 
                     // Print first 8 rows for immediate confirmation
                     console.log(`\n  --- ⚡ HIGHLIGHT DATA FOR MH48 (${targetYear}) ---`);
@@ -267,6 +273,22 @@ async function main() {
                     console.log(`  ❌ Data Extraction failed for ${targetYear}:`, e.message);
                 }
             } // end year loop
+
+            const durationSec = Math.max(1, Math.round((Date.now() - sessionStartMs) / 1000));
+            const scopePayload = {
+                state_code: 'MH',
+                rto_code: `MH${String(Number(rtoCode)).padStart(2, '0')}`,
+                rto_numeric_code: String(Number(rtoCode)),
+                years: Array.from(new Set(processedYears)),
+                files: processedFiles,
+                started_at: new Date(sessionStartMs).toISOString(),
+                finished_at: new Date().toISOString(),
+                duration_sec: durationSec,
+            };
+            fs.mkdirSync(path.dirname(scopeFilePath), { recursive: true });
+            fs.writeFileSync(scopeFilePath, JSON.stringify(scopePayload, null, 2));
+            console.log(`  ⏱️ RTO session finished in ${durationSec}s`);
+            console.log(`  🧭 Scope written: ${scopeFilePath}`);
         }
         console.log('\n✅ Historical Scraping Completed Successfully!');
     } catch (e: any) {

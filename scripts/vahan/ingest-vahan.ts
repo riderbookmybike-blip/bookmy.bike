@@ -110,6 +110,13 @@ async function ingest() {
     console.log('🚀 Starting Maharashtra VAHAN JSON Data Ingestion...');
     const snapshotDate = resolveSnapshotDate();
     console.log(`🗓️ Snapshot Date: ${snapshotDate}`);
+    const snapshotYear = Number(snapshotDate.slice(0, 4));
+    const snapshotMonth = Number(snapshotDate.slice(5, 7));
+    const ingestCurrentMonthOnly = String(process.env.INGEST_CURRENT_MONTH_ONLY || 'true').toLowerCase() !== 'false';
+    const writeDailySnapshots = String(process.env.INGEST_WRITE_DAILY_SNAPSHOTS || 'false').toLowerCase() === 'true';
+    console.log(
+        `⚙️ Mode: ${ingestCurrentMonthOnly ? 'current-month-only' : 'all-months'} | daily-snapshots=${writeDailySnapshots ? 'on' : 'off'}`
+    );
     const filteredYears = new Set(
         String(process.env.INGEST_YEAR || process.env.INGEST_YEARS || '')
             .split(',')
@@ -122,6 +129,35 @@ async function ingest() {
             .map(v => String(Number(v.trim())))
             .filter(v => v && v !== 'NaN')
     );
+    const ingestScopePath = String(process.env.INGEST_SCOPE_FILE || '').trim();
+    const strictScope = String(process.env.INGEST_STRICT_SCOPE || '').toLowerCase() === 'true';
+    if (ingestScopePath) {
+        try {
+            const raw = fs.readFileSync(path.resolve(process.cwd(), ingestScopePath), 'utf-8');
+            const scope = JSON.parse(raw) as { rto_numeric_code?: string; years?: string[] };
+            const scopeRto = String(scope?.rto_numeric_code || '').trim();
+            const scopeYears = Array.isArray(scope?.years)
+                ? scope.years.map(v => String(v).trim()).filter(Boolean)
+                : [];
+            if (scopeRto) {
+                filteredRtoCodes.clear();
+                filteredRtoCodes.add(String(Number(scopeRto)));
+            }
+            if (scopeYears.length > 0) {
+                filteredYears.clear();
+                scopeYears.forEach(y => filteredYears.add(y));
+            }
+            console.log(
+                `🧭 Scope filter active from ${ingestScopePath}: RTO=${scopeRto || 'ALL'}, YEARS=${scopeYears.join(',') || 'ALL'}`
+            );
+        } catch (e: any) {
+            const msg = `Failed to read INGEST_SCOPE_FILE (${ingestScopePath}): ${e?.message || e}`;
+            if (strictScope) {
+                throw new Error(msg);
+            }
+            console.warn(`⚠️ ${msg}`);
+        }
+    }
     if (filteredYears.size > 0) {
         console.log(`🎯 Year filter active: ${Array.from(filteredYears).join(', ')}`);
     }
@@ -215,6 +251,12 @@ async function ingest() {
                     const monthLabel = monthsKeys[i - 2];
                     if (!monthLabel) break; // Safe guard for months > 12
 
+                    const monthNo = i - 1; // Index 2 is month 1 (Jan)
+                    const yearNo = parseInt(parsedYear, 10);
+                    if (ingestCurrentMonthOnly && (yearNo !== snapshotYear || monthNo !== snapshotMonth)) {
+                        continue;
+                    }
+
                     const units = parseInt(record[i] || '0', 10);
                     if (!isNaN(units) && units > 0) {
                         const baseRecord = {
@@ -222,8 +264,8 @@ async function ingest() {
                             state_name: 'Maharashtra',
                             rto_code: rtoCodeStr,
                             rto_name: MH_RTO_NAMES[rtoCodeStr] || rtoCodeStr,
-                            year: parseInt(parsedYear, 10),
-                            month_no: i - 1, // Index 2 is month 1 (Jan)
+                            year: yearNo,
+                            month_no: monthNo,
                             month_label: monthLabel,
                             maker: rawMaker,
                             brand_name: canonicalName,
@@ -232,10 +274,12 @@ async function ingest() {
                             uploaded_at: new Date().toISOString(),
                         };
                         validPayloads.push(baseRecord);
-                        dailyPayloads.push({
-                            ...baseRecord,
-                            snapshot_date: snapshotDate,
-                        });
+                        if (writeDailySnapshots) {
+                            dailyPayloads.push({
+                                ...baseRecord,
+                                snapshot_date: snapshotDate,
+                            });
+                        }
                     }
                 }
             } else {
@@ -263,7 +307,7 @@ async function ingest() {
             }
         }
 
-        if (dailyPayloads.length > 0) {
+        if (writeDailySnapshots && dailyPayloads.length > 0) {
             console.log(`📸 Upserting ${dailyPayloads.length} daily snapshot rows...`);
             for (let i = 0; i < dailyPayloads.length; i += 500) {
                 const chunk = dailyPayloads.slice(i, i + 500);
@@ -317,17 +361,19 @@ async function ingest() {
     console.log(`🟢 ${totalValidRecords} OEM pure-telemetry points merged into database.`);
     console.log(`🔒 ${totalLogs} unverified tracking entries quarantined.`);
 
-    const cleanupBefore = new Date(`${snapshotDate}T00:00:00+05:30`);
-    cleanupBefore.setDate(cleanupBefore.getDate() - 35);
-    const cutoffDate = cleanupBefore.toISOString().slice(0, 10);
-    const { error: cleanupErr } = await supabase
-        .from('vahan_two_wheeler_daily_snapshots')
-        .delete()
-        .lt('snapshot_date', cutoffDate);
-    if (cleanupErr) {
-        console.error(`⚠️ Daily snapshot cleanup failed for cutoff ${cutoffDate}:`, cleanupErr.message);
-    } else {
-        console.log(`🧹 Daily snapshot cleanup complete. Retained last 35 days (cutoff ${cutoffDate}).`);
+    if (writeDailySnapshots) {
+        const cleanupBefore = new Date(`${snapshotDate}T00:00:00+05:30`);
+        cleanupBefore.setDate(cleanupBefore.getDate() - 35);
+        const cutoffDate = cleanupBefore.toISOString().slice(0, 10);
+        const { error: cleanupErr } = await supabase
+            .from('vahan_two_wheeler_daily_snapshots')
+            .delete()
+            .lt('snapshot_date', cutoffDate);
+        if (cleanupErr) {
+            console.error(`⚠️ Daily snapshot cleanup failed for cutoff ${cutoffDate}:`, cleanupErr.message);
+        } else {
+            console.log(`🧹 Daily snapshot cleanup complete. Retained last 35 days (cutoff ${cutoffDate}).`);
+        }
     }
 }
 

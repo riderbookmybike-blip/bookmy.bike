@@ -2,7 +2,7 @@ name: VAHAN Fancy Series Nightly
 
 on:
   schedule:
-    # 05:30 UTC = 11:00 AM IST
+    # Runs daily at 05:30 UTC (11:00 AM IST)
     - cron: '30 5 * * *'
   workflow_dispatch:
 
