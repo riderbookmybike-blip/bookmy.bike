@@ -10,8 +10,15 @@ interface DiscoveryBarProps {
     searchQuery: string;
     onSearchChange: (query: string) => void;
     onSearchSubmit?: (query: string) => void;
-    searchSuggestions?: { key: string; make: string; model: string; count: number; bodyType?: string }[];
-    onSuggestionSelect?: (make: string, model: string) => void;
+    searchSuggestions?: {
+        key: string;
+        make: string;
+        model: string;
+        count: number;
+        bodyType?: string;
+        kind?: 'model' | 'brand';
+    }[];
+    onSuggestionSelect?: (make: string, model: string, kind?: 'model' | 'brand') => void;
     pricingMode: 'cash' | 'finance';
     onPricingModeChange: (mode: 'cash' | 'finance') => void;
     offerMode?: 'BEST_OFFER' | 'FAST_DELIVERY';
@@ -153,8 +160,8 @@ export function DiscoveryBar({
                                             key={s.key}
                                             onMouseDown={e => {
                                                 e.preventDefault();
-                                                onSuggestionSelect?.(s.make, s.model);
-                                                onSearchChange(s.model);
+                                                onSuggestionSelect?.(s.make, s.model, s.kind);
+                                                onSearchChange(s.kind === 'brand' ? s.make : s.model);
                                                 setDropdownOpen(false);
                                             }}
                                             className={`w-full flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-slate-50 transition-colors text-left ${
@@ -165,15 +172,18 @@ export function DiscoveryBar({
                                                 <Search size={11} className="text-slate-300 shrink-0" />
                                                 <div className="min-w-0">
                                                     <span className="text-[11px] font-black uppercase tracking-wider text-slate-800 truncate block">
-                                                        {s.model}
+                                                        {s.kind === 'brand' ? s.make : s.model}
                                                     </span>
                                                     <span className="text-[9px] text-slate-400 font-semibold uppercase tracking-widest">
-                                                        {s.make}
+                                                        {s.kind === 'brand' ? 'Brand' : s.make}
                                                     </span>
                                                 </div>
                                             </div>
                                             <span className="text-[9px] font-black text-[#F4B000] shrink-0">
-                                                {s.count} variant{s.count !== 1 ? 's' : ''}
+                                                {s.count}{' '}
+                                                {s.kind === 'brand'
+                                                    ? `model${s.count !== 1 ? 's' : ''}`
+                                                    : `variant${s.count !== 1 ? 's' : ''}`}
                                             </span>
                                         </button>
                                     ))}

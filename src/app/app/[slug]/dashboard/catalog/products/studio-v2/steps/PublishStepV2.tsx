@@ -8,9 +8,10 @@ import { activateModel } from '@/actions/catalog/catalogV2Actions';
 interface PublishStepProps {
     modelId: string | null;
     onFinish: () => void;
+    onGoToPricing?: () => void;
 }
 
-export default function PublishStepV2({ modelId, onFinish }: PublishStepProps) {
+export default function PublishStepV2({ modelId, onFinish, onGoToPricing }: PublishStepProps) {
     const [isPublishing, setIsPublishing] = useState(false);
     const [isPublished, setIsPublished] = useState(false);
 
@@ -25,6 +26,12 @@ export default function PublishStepV2({ modelId, onFinish }: PublishStepProps) {
             if (result) {
                 setIsPublished(true);
                 toast.success('Model published successfully!');
+                // Auto-redirect after 1.5 seconds if onGoToPricing is provided
+                if (onGoToPricing) {
+                    setTimeout(() => {
+                        onGoToPricing();
+                    }, 1500);
+                }
             } else {
                 toast.error('Failed to publish');
             }
@@ -52,15 +59,23 @@ export default function PublishStepV2({ modelId, onFinish }: PublishStepProps) {
                         Published!
                     </h2>
                     <p className="text-sm text-slate-500 font-semibold max-w-md">
-                        Your product is now active. Variants and SKUs are ready for pricing and marketplace display.
+                        Your product is now active. Redirecting to Pricing Engine...
                     </p>
                 </div>
-                <button
-                    onClick={onFinish}
-                    className="mt-4 px-8 py-3 bg-slate-900 text-white rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] shadow-2xl hover:scale-105 active:scale-95 transition-transform"
-                >
-                    Go to Catalog
-                </button>
+                <div className="flex gap-4 mt-4">
+                    <button
+                        onClick={onFinish}
+                        className="px-6 py-3 border border-slate-200 dark:border-white/10 rounded-2xl text-slate-500 font-bold uppercase text-[10px] tracking-widest hover:text-slate-700 transition-colors"
+                    >
+                        Go to Catalog
+                    </button>
+                    <button
+                        onClick={onGoToPricing || onFinish}
+                        className="px-8 py-3 bg-slate-900 text-white rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] shadow-2xl hover:scale-105 active:scale-95 transition-transform"
+                    >
+                        Set Pricing Now
+                    </button>
+                </div>
             </div>
         );
     }

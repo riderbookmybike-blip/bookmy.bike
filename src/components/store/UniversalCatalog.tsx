@@ -928,7 +928,36 @@ export const UniversalCatalog = ({
         const query = normalize(searchQuery);
         if (!query || query.length < 1) return [];
         const seen = new Set<string>();
-        const suggestions: { key: string; make: string; model: string; count: number; bodyType?: string }[] = [];
+        const suggestions: {
+            key: string;
+            make: string;
+            model: string;
+            count: number;
+            bodyType?: string;
+            kind?: 'model' | 'brand';
+        }[] = [];
+
+        const brandModelMap = new Map<string, Set<string>>();
+        for (const v of results) {
+            const makeKey = normalize(v.make);
+            if (!makeKey) continue;
+            if (!brandModelMap.has(makeKey)) brandModelMap.set(makeKey, new Set<string>());
+            brandModelMap.get(makeKey)!.add(normalize(v.model));
+        }
+
+        for (const [makeKey, models] of brandModelMap.entries()) {
+            if (!fuzzyMatch(makeKey, query)) continue;
+            const displayMake = results.find(v => normalize(v.make) === makeKey)?.make || makeKey.toUpperCase();
+            suggestions.push({
+                key: `brand-${makeKey}`,
+                make: displayMake,
+                model: '',
+                count: models.size,
+                kind: 'brand',
+            });
+            if (suggestions.length >= 6) break;
+        }
+
         for (const v of results) {
             const key = `${normalize(v.make)}-${normalize(v.model)}`;
             if (seen.has(key)) continue;
@@ -937,7 +966,14 @@ export const UniversalCatalog = ({
             if (fuzzyMatch(makeText, query) || fuzzyMatch(modelText, query)) {
                 seen.add(key);
                 const count = results.filter(r => normalize(r.model) === normalize(v.model)).length;
-                suggestions.push({ key, make: v.make, model: v.model, count, bodyType: (v as any).bodyType });
+                suggestions.push({
+                    key,
+                    make: v.make,
+                    model: v.model,
+                    count,
+                    bodyType: (v as any).bodyType,
+                    kind: 'model',
+                });
             }
             if (suggestions.length >= 6) break;
         }
@@ -1133,7 +1169,13 @@ export const UniversalCatalog = ({
                     searchQuery={searchQuery}
                     onSearchChange={setSearchQuery}
                     searchSuggestions={searchSuggestions}
-                    onSuggestionSelect={(make, model) => router.push(buildVariantExplorerUrl(make, model))}
+                    onSuggestionSelect={(make, model, kind) => {
+                        if (kind === 'brand') {
+                            setSelectedMakes([make.toUpperCase()]);
+                            return;
+                        }
+                        router.push(buildVariantExplorerUrl(make, model));
+                    }}
                     pricingMode={pricingMode}
                     onPricingModeChange={mode => {
                         setPricingMode(mode as any);

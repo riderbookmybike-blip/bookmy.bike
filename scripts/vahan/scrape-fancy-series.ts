@@ -39,6 +39,7 @@ const STRICT_BATCH_VERIFY = process.env.FANCY_STRICT_BATCH_VERIFY !== 'false';
 const MIN_COVERAGE = Math.max(1, Number(process.env.FANCY_MIN_COVERAGE || '50'));
 const MAX_SAME_FILLED = Math.max(2, Number(process.env.FANCY_MAX_SAME_FILLED || '8'));
 const FAIL_ON_QUALITY = process.env.FANCY_FAIL_ON_QUALITY !== 'false';
+const PUBLISH_RESULTS = process.env.FANCY_PUBLISH === 'true';
 
 function cleanText(value: unknown): string {
     return String(value || '')
@@ -252,11 +253,11 @@ async function parseAvailableNumbers(
     page: Page
 ): Promise<{ firstOpenNumber: number | null; runningOpenCount: number; availableCount: number }> {
     const maxScanPages = Number(process.env.FANCY_SCAN_PAGES || '15');
-
-    const parseCurrentPage = async () =>
+    const minRunLen = Math.max(3, Number(process.env.FANCY_MIN_RUN_LEN || '5'));
+    const maxRunGap = Math.max(1, Number(process.env.FANCY_MAX_RUN_GAP || '2'));
+    const collectCurrentPage = async () =>
         page.evaluate(() => {
             const allNumbers: number[] = [];
-            const runningNumbers: number[] = [];
             const nodes = Array.from(document.querySelectorAll('.ui-datagrid *'));
             for (const node of nodes) {
                 const el = node as HTMLElement;
@@ -267,59 +268,92 @@ async function parseAvailableNumbers(
                 const num = Number(m[1]);
                 if (!Number.isFinite(num)) continue;
 
-                const st = window.getComputedStyle(el);
-                const color = st.color || '';
-                const cm = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
-                const isLightText = !!cm && Number(cm[1]) > 220 && Number(cm[2]) > 220 && Number(cm[3]) > 220;
-
-                let bg = st.backgroundColor || '';
-                let cursor: HTMLElement | null = el;
-                for (let i = 0; i < 4; i++) {
-                    if (!cursor) break;
-                    const cst = window.getComputedStyle(cursor);
-                    if (cst.backgroundColor && !/rgba?\(0,\s*0,\s*0,\s*0\)/i.test(cst.backgroundColor)) {
-                        bg = cst.backgroundColor;
-                        break;
-                    }
-                    cursor = cursor.parentElement;
-                }
-                const mm = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
-                const isOrange = !!mm && Number(mm[1]) > 180 && Number(mm[2]) > 90 && Number(mm[3]) < 120;
-
                 allNumbers.push(num);
-                // Rule: orange chips ignored + white-text labels ignored. Keep only running/green pool.
-                const likelyRunning = !isOrange && !isLightText;
-                if (likelyRunning) runningNumbers.push(num);
             }
-
-            const all = Array.from(new Set(allNumbers)).sort((a, b) => a - b);
-            const running = Array.from(new Set(runningNumbers)).sort((a, b) => a - b);
-            return {
-                firstOpenNumber: running.length > 0 ? running[0] : null,
-                runningOpenCount: running.length,
-                availableCount: all.length,
-            };
+            return { allNumbers };
         });
 
-    let best = await parseCurrentPage();
-    if (best.firstOpenNumber != null) return best;
-
-    for (let i = 1; i < maxScanPages; i++) {
-        const nextBtn = page.locator('.ui-paginator-next').first();
-        if (!(await nextBtn.isVisible())) break;
-        const cls = (await nextBtn.getAttribute('class')) || '';
-        if (cls.includes('ui-state-disabled')) break;
-
-        await nextBtn.click({ force: true });
-        await page.waitForTimeout(1100);
-        const current = await parseCurrentPage();
-        if (current.firstOpenNumber != null) {
-            return current;
+    const findBestRun = (values: number[]) => {
+        let bestStart: number | null = null;
+        let bestLen = 0;
+        if (!values.length) return { bestStart, bestLen };
+        let curStart = values[0];
+        let curLen = 1;
+        for (let i = 1; i < values.length; i++) {
+            const gap = values[i] - values[i - 1];
+            if (gap >= 1 && gap <= maxRunGap) {
+                curLen += 1;
+            } else {
+                if (curLen >= minRunLen) {
+                    const better = curLen > bestLen || (curLen === bestLen && curStart > (bestStart || 0));
+                    if (better) {
+                        bestLen = curLen;
+                        bestStart = curStart;
+                    }
+                }
+                curStart = values[i];
+                curLen = 1;
+            }
         }
-        best = current;
+        if (curLen >= minRunLen) {
+            const better = curLen > bestLen || (curLen === bestLen && curStart > (bestStart || 0));
+            if (better) {
+                bestLen = curLen;
+                bestStart = curStart;
+            }
+        }
+        return { bestStart, bestLen };
+    };
+
+    const resolveChoice = (allValues: number[]) => {
+        const all = Array.from(new Set(allValues)).sort((a, b) => a - b);
+        const bestRun = findBestRun(all);
+        let chosenStart: number | null = bestRun.bestStart;
+        let chosenLen = bestRun.bestLen;
+
+        if (chosenStart == null && all.length > 0) {
+            const tail = all[all.length - 1];
+            chosenStart = tail;
+            chosenLen = 1;
+        }
+
+        return {
+            all,
+            bestRunStart: bestRun.bestStart,
+            chosenStart,
+            chosenLen,
+        };
+    };
+
+    const allSet = new Set<number>();
+
+    const first = await collectCurrentPage();
+    first.allNumbers.forEach(n => allSet.add(n));
+
+    let resolved = resolveChoice(Array.from(allSet));
+
+    // Optimization requested: if 5-number sequence is already found on first page, stop.
+    // Otherwise keep scanning pages until a running sequence appears.
+    if (!(resolved.bestRunStart != null)) {
+        for (let i = 1; i < maxScanPages; i++) {
+            const nextBtn = page.locator('.ui-paginator-next').first();
+            if (!(await nextBtn.isVisible())) break;
+            const cls = (await nextBtn.getAttribute('class')) || '';
+            if (cls.includes('ui-state-disabled')) break;
+            await nextBtn.click({ force: true });
+            await page.waitForTimeout(1100);
+            const current = await collectCurrentPage();
+            current.allNumbers.forEach(n => allSet.add(n));
+            resolved = resolveChoice(Array.from(allSet));
+            if (resolved.bestRunStart != null) break;
+        }
     }
 
-    return best;
+    return {
+        firstOpenNumber: resolved.chosenStart,
+        runningOpenCount: resolved.chosenLen || 0,
+        availableCount: resolved.all.length,
+    };
 }
 
 async function selectSeriesAndWaitForGrid(page: Page, optionValue: string): Promise<boolean> {
@@ -417,6 +451,17 @@ async function createRunRecord(expectedRtoCount: number): Promise<string> {
 
 async function completeRunRecord(runId: string, quality: RunQuality, published: boolean) {
     const { adminClient } = await import('@/lib/supabase/admin');
+    const snapshotDate = new Date().toISOString().slice(0, 10);
+    if (published) {
+        const { error: clearErr } = await (adminClient as any)
+            .from('vahan_fancy_series_runs')
+            .update({ published: false })
+            .eq('state_code', STATE_CODE)
+            .eq('snapshot_date', snapshotDate)
+            .neq('id', runId);
+        if (clearErr)
+            throw new Error(`Failed to clear previous published runs: ${clearErr.message || 'unknown error'}`);
+    }
     const payload = {
         status: quality.pass ? 'success' : 'failed_quality',
         processed_rto_count: quality.totalRtos,
@@ -433,13 +478,7 @@ async function completeRunRecord(runId: string, quality: RunQuality, published: 
 async function publishRun(runId: string) {
     const { adminClient } = await import('@/lib/supabase/admin');
     const today = new Date().toISOString().slice(0, 10);
-    const { error: clearError } = await (adminClient as any)
-        .from('vahan_fancy_series_daily')
-        .update({ published: false })
-        .eq('state_code', STATE_CODE)
-        .eq('snapshot_date', today);
-    if (clearError) throw new Error(`Publish clear step failed: ${clearError.message || 'unknown error'}`);
-
+    // Step 1: Publish current run first (so UI never sees "no data" gap)
     const { error: publishError } = await (adminClient as any)
         .from('vahan_fancy_series_daily')
         .update({ published: true })
@@ -447,6 +486,15 @@ async function publishRun(runId: string) {
         .eq('snapshot_date', today)
         .eq('run_id', runId);
     if (publishError) throw new Error(`Publish step failed: ${publishError.message || 'unknown error'}`);
+
+    // Step 2: Disable previous published rows for same day, excluding current run
+    const { error: clearError } = await (adminClient as any)
+        .from('vahan_fancy_series_daily')
+        .update({ published: false })
+        .eq('state_code', STATE_CODE)
+        .eq('snapshot_date', today)
+        .neq('run_id', runId);
+    if (clearError) throw new Error(`Publish cleanup step failed: ${clearError.message || 'unknown error'}`);
 }
 
 function evaluateQuality(rows: SeriesProgressRow[]): RunQuality {
@@ -564,13 +612,14 @@ async function main() {
                 console.log(`[${rto.rtoCode}] 2W series rows: ${rows.length}`);
             }
 
-            await goToAvailablePage(page);
-
             const batchProgressRows: SeriesProgressRow[] = [];
             for (const rto of batch) {
                 const seriesRows = statusRowsByRto.get(rto.value) || [];
                 if (!seriesRows.length) continue;
 
+                // Critical: Fancy portal keeps stale grid state across RTO changes.
+                // Always reload available page and re-select state/RTO for each RTO.
+                await goToAvailablePage(page);
                 await setAvailableRto(page, rto.rtoCode);
 
                 for (const row of seriesRows) {
@@ -648,10 +697,12 @@ async function main() {
                 `Quality: active=${quality.activeRtos}, active_with_filled=${quality.activeWithFilled}, max_same_filled=${quality.maxSameFilledValue}:${quality.maxSameFilled}`
             );
             let published = false;
-            if (quality.pass) {
+            if (quality.pass && PUBLISH_RESULTS) {
                 await publishRun(currentRunId as string);
                 published = true;
                 console.log('Published current run snapshot');
+            } else if (quality.pass && !PUBLISH_RESULTS) {
+                console.log('Quality pass, but publish skipped (FANCY_PUBLISH=false)');
             } else {
                 console.error(`Quality gates failed: ${quality.notes.join(', ')}`);
                 if (FAIL_ON_QUALITY) {

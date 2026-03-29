@@ -278,6 +278,16 @@ export default function StudioV2Page() {
         if (currentStep > 0) setCurrentStep(currentStep - 1);
     };
 
+    const handleGoToPricing = () => {
+        const base = tenantSlug ? `/app/${tenantSlug}/dashboard/catalog/pricing` : '/dashboard/catalog/pricing';
+        const params = new URLSearchParams();
+        if (selectedCategory) params.set('category', selectedCategory);
+        if (brand?.name) params.set('brand', brand.name);
+        if (modelData?.name) params.set('model', modelData.name);
+
+        router.push(`${base}?${params.toString()}`);
+    };
+
     // ── Loading Screen ──
     if (isLoading) {
         return (
@@ -497,7 +507,11 @@ export default function StudioV2Page() {
                         </div>
                     )}
                     {selectedCategory === 'SERVICE' && currentStep === 3 && (
-                        <PublishStepV2 modelId={modelData?.id || null} onFinish={handleNext} />
+                        <PublishStepV2
+                            modelId={modelData?.id || null}
+                            onFinish={handleNext}
+                            onGoToPricing={handleGoToPricing}
+                        />
                     )}
 
                     {/* NON-SERVICE categories: full flow */}
@@ -536,7 +550,11 @@ export default function StudioV2Page() {
                         <ReviewStepV2 modelId={modelData.id} />
                     )}
                     {selectedCategory !== 'SERVICE' && currentStep === 6 && (
-                        <PublishStepV2 modelId={modelData?.id || null} onFinish={handleNext} />
+                        <PublishStepV2
+                            modelId={modelData?.id || null}
+                            onFinish={handleNext}
+                            onGoToPricing={handleGoToPricing}
+                        />
                     )}
                 </div>
             </main>

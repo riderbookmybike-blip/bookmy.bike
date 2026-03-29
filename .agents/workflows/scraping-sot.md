@@ -4,7 +4,7 @@ description: Source of Truth for catalog scraping, ingestion, and seeding. Conta
 
 # Catalog Scraping & Seeding — Source of Truth
 
-> **Last Updated:** 2026-02-23
+> **Last Updated:** 2026-03-29
 > **Key File:** `src/actions/catalog/catalogV2Actions.ts`
 > **Scraper File:** `src/actions/catalog/scraperAction.ts`
 
@@ -474,4 +474,69 @@ upsertPricing({ sku_id, state_code: 'MH', ex_showroom, rto_total_state?, ins_tot
 - **Default state_code:** `MH` (Maharashtra/Mumbai)
 - **Pricing table:** `cat_price_state_mh`
 - **On-road formula:** `ex_showroom + rto_total_state + ins_gross_premium`
-- **Unique key:** `(sku_id, state_code)` — use `upsertPricing()` for idempotent writes
+- **Unique key:** `(sku_id, state_code)` — use `upsertPricing()` for idempotent updates
+
+---
+
+## 8. Pulsar Series Seeding SOT
+
+> **Session Started:** 2026-03-29 | **Default State:** Maharashtra (MH)
+> **Scope:** 10 Bajaj Pulsar models (NS400z excluded by user)
+
+### Media Workflow (Per Model)
+
+1. **Create folder structure:**
+   ```
+   public/media/bajaj/{model-slug}/{variant-slug}/{colour-slug}/360/
+   ```
+
+2. **Download Bajaj CDN 360° frames (00–15):**
+   ```bash
+   BASE="https://cdn.bajajauto.com/-/media/assets/bajajauto/bikes/{model-cdn-path}/360-degree/"
+   for i in $(seq -w 0 15); do
+     curl -s -o "public/media/bajaj/{model-slug}/{variant-slug}/{colour-slug}/360/${i}.webp" \
+       "${BASE}/{colour-folder}/${i}.png"
+   done
+   ```
+
+3. **Update `cat_skus.primary_image`** after download:
+   ```
+   /media/bajaj/{model-slug}/{variant-slug}/{colour-slug}/360/00.webp
+   ```
+
+4. **Upload to Supabase Storage** via Catalog Studio SKU Matrix tab — upload primary image per SKU
+
+5. **RTO + Insurance** → fill via AUMS Catalog Studio (Maharashtra rates)
+
+6. **Activate** → REVIEW tab → click Activate in Studio
+
+---
+
+### Pulsar Model Tracker
+
+| # | Model | Slug | Variants | Colours | DB Seeded | Media DL | Studio Live |
+|---|---|---|---|---|---|---|---|
+| 1 | Pulsar N250 | `pulsar-n250` | Standard | Black, White, Red | ✅ | ✅ 48 files | ⏳ User |
+| 2 | Pulsar N160 | `pulsar-n160` | ST Single, ST Dual, Twin Disc | Multiple | ❌ | ❌ | ❌ |
+| 3 | Pulsar NS125 | `pulsar-ns125` | Standard | Multiple | ❌ | ❌ | ❌ |
+| 4 | Pulsar NS160 | `pulsar-ns160` | Standard | Multiple | ❌ | ❌ | ❌ |
+| 5 | Pulsar NS200 | `pulsar-ns200` | Standard | Multiple | ❌ | ❌ | ❌ |
+| 6 | Pulsar RS200 | `pulsar-rs200` | Standard | Multiple | ❌ | ❌ | ❌ |
+| 7 | Pulsar N125 | `pulsar-n125` | Standard | Multiple | ❌ | ❌ | ❌ |
+| 8 | Pulsar 125 | `pulsar-125` | Split Seat, Drum, Neon | Multiple | ❌ | ❌ | ❌ |
+| 9 | Pulsar 150 | `pulsar-150` | Twin Disc, Neon | Multiple | ❌ | ❌ | ❌ |
+| 10 | Pulsar 220F | `pulsar-220f` | Standard | Multiple | ❌ | ❌ | ❌ |
+
+### Pulsar N250 — CDN Paths (Bajaj)
+
+| Colour | CDN Base Path | Local Path |
+|---|---|---|
+| Brooklyn Black | `.../pulsar-n250-2024/360-degree/n250-360-webp/black/` | `pulsar-n250/standard/brooklyn-black/360/` |
+| Pearl Metallic White | `.../pulsar-n250-2024/360-degree/n250-360-webp/white/` | `pulsar-n250/standard/pearl-metallic-white/360/` |
+| Glossy Racing Red | `.../pulsar-n250-2024/360-degree/n250-360-webp/red/` | `pulsar-n250/standard/glossy-racing-red/360/` |
+
+### MH Pricing Formula Reference (249cc Motorcycle)
+- **Ex-Showroom:** ₹1,34,402
+- **MH Road Tax (~11%):** ~₹14,784
+- **Insurance (5yr TP + 1yr OD):** ~₹10,000–12,000
+- **Est. On-Road Price:** ~₹1,62,000

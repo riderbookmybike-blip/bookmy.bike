@@ -33,9 +33,12 @@ async function main() {
     try {
         console.log('Navigating to VAHAN...');
         await page.goto('https://vahan.parivahan.gov.in/vahan4dashboard/vahan/vahan/view/reportview.xhtml', {
-            waitUntil: 'networkidle',
-            timeout: 60000,
+            waitUntil: 'domcontentloaded',
+            timeout: 120000,
         });
+        // PrimeFaces renders dropdowns via server-side AJAX after initial HTML — wait generously
+        await page.waitForSelector('select#j_idt38_input', { state: 'attached', timeout: 90000 });
+        await page.waitForTimeout(3000); // Extra buffer for PrimeFaces to finish binding
 
         async function selectPrimeFaces(selectId: string, value: string) {
             await page.locator(`select#${selectId}`).selectOption(value, { force: true });
@@ -44,7 +47,7 @@ async function main() {
         }
 
         console.log('1. Setting Baseline State: MH to populate RTOs');
-        await selectPrimeFaces('j_idt37_input', 'MH');
+        await selectPrimeFaces('j_idt38_input', 'MH');
         await page.waitForTimeout(4000);
 
         const rtoOptions = await page.locator('select#selectedRto_input option').all();
@@ -63,7 +66,10 @@ async function main() {
         }
 
         console.log(`✅ Loaded ${rtos.length} Maharashtra RTOs: ${rtos.map(r => r.code).join(', ')}`);
-        const yearsToScrape = ['2026'];
+        const yearsToScrape = (process.env.SCRAPE_YEAR || '2026')
+            .split(',')
+            .map(y => y.trim())
+            .filter(Boolean);
         const outputDir = path.join(process.cwd(), 'scripts', 'vahan');
 
         const scopedRtos = targetCodes.size > 0 ? rtos.filter(rto => targetCodes.has(String(Number(rto.val)))) : rtos;
@@ -224,8 +230,17 @@ async function main() {
             } // end year loop
         }
         console.log('\n✅ Historical Scraping Completed Successfully!');
-    } catch (e) {
+    } catch (e: any) {
         console.error('❌ Error during scraping:', e);
+        try {
+            if (page) {
+                const debugPath = path.join(process.cwd(), 'scripts', 'vahan', 'debug_crash.png');
+                await page.screenshot({ path: debugPath, fullPage: true });
+                console.log(`📸 Saved debug screenshot to ${debugPath}`);
+            }
+        } catch (scErr) {
+            console.error('Failed to take debug screenshot', scErr);
+        }
     } finally {
         await browser.close();
     }

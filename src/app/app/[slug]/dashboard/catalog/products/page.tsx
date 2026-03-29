@@ -31,7 +31,10 @@ export default function UnifiedCatalogPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('VEHICLE');
     const [selectedBrand, setSelectedBrand] = useState('ALL');
-    const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
+    const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>({
+        key: 'createdAt',
+        direction: 'desc',
+    });
 
     useEffect(() => {
         fetchItems();
@@ -76,7 +79,7 @@ export default function UnifiedCatalogPage() {
         const { data: skus } = await (supabase as any)
             .from('cat_skus')
             .select(
-                'id, name, model_id, vehicle_variant_id, accessory_variant_id, service_variant_id, sku_type, status, position, slug, hex_primary, color_name, primary_image'
+                'id, name, model_id, vehicle_variant_id, accessory_variant_id, service_variant_id, sku_type, status, position, slug, hex_primary, color_name, primary_image, created_at'
             )
             .in('model_id', modelIds);
 
@@ -291,6 +294,7 @@ export default function UnifiedCatalogPage() {
                         pdfCount: 0,
                         isPdfShared: false,
                         fullSkuName: `${brandName} ${familyName} ${skuName}`.trim(),
+                        createdAt: sku.created_at || new Date().toISOString(),
                     };
                 });
             });
@@ -646,6 +650,14 @@ export default function UnifiedCatalogPage() {
                                                 SKU <ArrowUpDown size={10} />
                                             </div>
                                         </th>
+                                        <th
+                                            className="sticky top-0 z-20 bg-emerald-50 dark:bg-emerald-950/20 p-4 text-[10px] font-black text-emerald-800 dark:text-emerald-400 uppercase tracking-widest cursor-pointer hover:text-emerald-500 transition-colors w-32 border-r border-emerald-100 dark:border-white/10"
+                                            onClick={() => handleSort('createdAt')}
+                                        >
+                                            <div className="flex items-center gap-1">
+                                                Added On <ArrowUpDown size={10} />
+                                            </div>
+                                        </th>
                                         <th className="sticky top-0 z-20 bg-emerald-50 dark:bg-emerald-950/20 p-4 text-[10px] font-black text-emerald-800 dark:text-emerald-400 uppercase tracking-widest w-32 border-r border-emerald-100 dark:border-white/10">
                                             Assets
                                         </th>
@@ -717,6 +729,24 @@ export default function UnifiedCatalogPage() {
                                                 <td className="p-4 align-middle border border-slate-100 dark:border-white/5">
                                                     <div className="flex flex-col items-start w-full">
                                                         <CopyableId id={item.id} />
+                                                    </div>
+                                                </td>
+                                                <td className="p-4 align-middle border border-slate-100 dark:border-white/5">
+                                                    <div className="flex flex-col gap-0.5">
+                                                        <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                                                            {new Date(item.createdAt).toLocaleDateString('en-GB', {
+                                                                day: '2-digit',
+                                                                month: 'short',
+                                                                year: 'numeric',
+                                                            })}
+                                                        </span>
+                                                        <span className="text-[10px] font-bold text-slate-400">
+                                                            {new Date(item.createdAt).toLocaleTimeString('en-US', {
+                                                                hour: 'numeric',
+                                                                minute: '2-digit',
+                                                                hour12: true,
+                                                            })}
+                                                        </span>
                                                     </div>
                                                 </td>
                                                 <td className="p-4 align-middle border border-slate-100 dark:border-white/5">

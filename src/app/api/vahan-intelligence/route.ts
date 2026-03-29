@@ -228,7 +228,7 @@ export async function GET(req: NextRequest) {
             const query = client
                 .from('vahan_fancy_series_daily')
                 .select(
-                    'snapshot_date, state_code, rto_code, rto_name, series_name, series_status, is_active, first_open_number, filled_till, running_open_count, available_count, scraped_at'
+                    'snapshot_date, state_code, rto_code, rto_name, series_name, series_status, is_active, first_open_number, filled_till, running_open_count, available_count, active_on_date, open_on_text, scraped_at'
                 )
                 .eq('state_code', stateCode)
                 .eq('snapshot_date', latestSeriesSnapshotDate)

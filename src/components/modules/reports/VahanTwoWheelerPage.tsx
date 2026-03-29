@@ -153,9 +153,37 @@ const formatSeriesProgressLabel = (seriesName: string, filledTill: number) => {
     const normalized = String(seriesName || '')
         .trim()
         .toUpperCase();
+    const filledNumber = Math.max(0, Number(filledTill) || 0);
+    const isNewSeries = filledNumber <= 0;
+    const isExpiredSeries = filledNumber >= 9998;
+    const filledPart = isNewSeries ? 'NEW' : isExpiredSeries ? 'EXPIRED' : String(filledNumber).padStart(4, '0');
     const m = normalized.match(/^([A-Z]{1,3}\d{1,3})([A-Z]{1,5})$/);
-    if (m) return `${m[1]}-${m[2]}-${filledTill}`;
-    return `${normalized || 'NA'}-${filledTill}`;
+    if (m) return `${m[1]}-${m[2]}-${filledPart}`;
+    return `${normalized || 'NA'}-${filledPart}`;
+};
+
+const formatOpenAgeLabel = (activeOnDate: string | null | undefined) => {
+    if (!activeOnDate) return null;
+    const dt = new Date(activeOnDate);
+    if (Number.isNaN(dt.getTime())) return null;
+    const diffMs = Date.now() - dt.getTime();
+    const days = Math.max(0, Math.floor(diffMs / (24 * 60 * 60 * 1000)));
+    return `opened ${days} day${days === 1 ? '' : 's'} ago`;
+};
+
+const formatSeriesOpenDate = (activeOnDate: string | null | undefined, openOnText?: string | null) => {
+    if (activeOnDate) {
+        const dt = new Date(activeOnDate);
+        if (!Number.isNaN(dt.getTime())) {
+            return dt.toLocaleDateString('en-IN', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric',
+                timeZone: 'Asia/Kolkata',
+            });
+        }
+    }
+    return String(openOnText || 'NA');
 };
 
 const getRtoSortNumber = (rtoCode: string) => {
@@ -279,7 +307,7 @@ function KpiStatsRow({
             bg: 'bg-emerald-50',
         },
         {
-            label: 'MoM Growth',
+            label: 'Prev Period',
             value:
                 stats?.prev_period_pct != null
                     ? `${Number(stats.prev_period_pct) > 0 ? '+' : ''}${stats.prev_period_pct}%`
@@ -671,7 +699,7 @@ function RunningSeriesStatusCard({ filters, apiPath }: { filters: any; apiPath: 
     const { stateCode, fromMonth, toMonth } = filters;
     const [loading, setLoading] = useState(false);
     const [data, setData] = useState<any[]>([]);
-    const [latestSnapshotDate, setLatestSnapshotDate] = useState<string | null>(null);
+    const [lastSyncAt, setLastSyncAt] = useState<string | null>(null);
 
     const [isMobile, setIsMobile] = useState(false);
     useEffect(() => {
@@ -696,7 +724,12 @@ function RunningSeriesStatusCard({ filters, apiPath }: { filters: any; apiPath: 
                 if (!alive) return;
 
                 const raw: any[] = payload.series?.running || [];
-                setLatestSnapshotDate(payload.series?.latest_snapshot_date || null);
+                const syncTs = raw
+                    .map((r: any) => String(r?.scraped_at || ''))
+                    .filter(Boolean)
+                    .sort()
+                    .at(-1);
+                setLastSyncAt(syncTs || null);
 
                 const dedupedByRto = new Map<string, any>();
                 for (const row of raw) {
@@ -724,6 +757,7 @@ function RunningSeriesStatusCard({ filters, apiPath }: { filters: any; apiPath: 
                     const remaining = Math.max(9999 - filledTill, 0);
                     const metricUnits = Math.max(filledTill, 0);
                     const seriesName = String(r.series_name || '').trim() || 'NA';
+                    const openAgeLabel = formatOpenAgeLabel(r.active_on_date || null);
                     return {
                         ...r,
                         metric_units: metricUnits,
@@ -732,13 +766,15 @@ function RunningSeriesStatusCard({ filters, apiPath }: { filters: any; apiPath: 
                         running_open_count: runningOpenCount,
                         available_count: availableCount,
                         display_label: formatSeriesProgressLabel(seriesName, filledTill),
+                        open_age_label: openAgeLabel,
+                        series_open_date_label: formatSeriesOpenDate(r.active_on_date || null, r.open_on_text || null),
                         _idx: i,
                     };
                 });
 
                 setData(
                     mapped.sort((a, b) => {
-                        const diff = Number(b.metric_units || 0) - Number(a.metric_units || 0);
+                        const diff = Number(a.metric_units || 0) - Number(b.metric_units || 0);
                         return diff !== 0 ? diff : compareRtoCodeNumeric(a.rto_code, b.rto_code);
                     })
                 );
@@ -755,6 +791,18 @@ function RunningSeriesStatusCard({ filters, apiPath }: { filters: any; apiPath: 
     }, [stateCode, fromMonth, toMonth, apiPath, isMobile]);
 
     const h = Math.max(500, data.length * 40);
+    const syncText = (() => {
+        if (!lastSyncAt) return 'Last Sync: ---';
+        const ts = new Date(lastSyncAt);
+        if (Number.isNaN(ts.getTime())) return 'Last Sync: ---';
+        const diffMs = Date.now() - ts.getTime();
+        const mins = Math.max(0, Math.floor(diffMs / 60000));
+        if (mins < 60) return `Last Sync: ${mins} min ago`;
+        const hrs = Math.floor(mins / 60);
+        if (hrs < 24) return `Last Sync: ${hrs} hour${hrs > 1 ? 's' : ''} ago`;
+        const days = Math.floor(hrs / 24);
+        return `Last Sync: ${days} day${days > 1 ? 's' : ''} ago`;
+    })();
 
     return (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col overflow-hidden group/card shadow-slate-200/50">
@@ -765,13 +813,13 @@ function RunningSeriesStatusCard({ filters, apiPath }: { filters: any; apiPath: 
                     </div>
                     <div>
                         <h2 className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-500 mb-0.5">
-                            Fancy Number
+                            Vahan Series
                         </h2>
                         <h3 className="text-sm font-black text-slate-900 tracking-tight">Running Series Status</h3>
                     </div>
                 </div>
-                <div className="text-[11px] font-black uppercase tracking-[0.12em] text-slate-500 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2">
-                    Snapshot: {latestSnapshotDate || '---'}
+                <div className="text-[11px] font-black tracking-[0.04em] text-slate-500 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl px-4 py-2 shadow-sm">
+                    {syncText}
                 </div>
             </div>
             <div className="relative min-h-[400px]">
@@ -802,10 +850,17 @@ function RunningSeriesStatusCard({ filters, apiPath }: { filters: any; apiPath: 
                                     border: 'none',
                                     boxShadow: '0 20px 25px -5px rgb(0 0 0/.1)',
                                 }}
-                                formatter={(v: any, _: any, p: any) => [
-                                    `Reached: ${p.payload.filled_till} | Left: ${p.payload.remaining} | Open Pool: ${p.payload.running_open_count}`,
-                                    `${p.payload.rto_code} ${p.payload.series_name}`,
-                                ]}
+                                content={({ active, payload }) => {
+                                    if (!active || !payload || !payload.length) return null;
+                                    const p: any = payload[0].payload || {};
+                                    return (
+                                        <div className="bg-white border border-slate-200 rounded-xl shadow-xl px-3 py-2 text-[12px] text-slate-700">
+                                            <div>{`${p.rto_name || 'NA'} - ${p.rto_code || 'NA'}`}</div>
+                                            <div>{`Series Open Date - ${p.series_open_date_label || 'NA'}`}</div>
+                                            <div>{`Days Ago - ${p.open_age_label ? p.open_age_label.replace('opened ', '').replace(' ago', '') : 'NA'}`}</div>
+                                        </div>
+                                    );
+                                }}
                             />
                             <Bar dataKey="metric_units" radius={[0, 6, 6, 0]} barSize={26}>
                                 {data.map((row: any, i: number) => (
@@ -832,24 +887,60 @@ function TimelineByBrandCard({ filters, apiPath }: { filters: any; apiPath: stri
     const [rtos, setRtos] = useState<any[]>([]);
     const [chartData, setChartData] = useState<any[]>([]);
     const [lineKeys, setLineKeys] = useState<string[]>([]);
+    const [localPeriod, setLocalPeriod] = useState('last_12_months');
+    const [hiddenKeys, setHiddenKeys] = useState<Set<string>>(new Set());
 
     useEffect(() => {
         let alive = true;
         const t = setTimeout(async () => {
             setLoading(true);
             try {
+                let activeFrom = fromMonth;
+                let activeTo = toMonth;
+                let activeGrain = 'month';
+                if (localPeriod !== 'inherit') {
+                    const d = new Date();
+                    const fmtDate = (dt: Date) =>
+                        `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+                    if (localPeriod === 'all_time') {
+                        activeFrom = '2015-01-01';
+                        activeTo = fmtDate(new Date());
+                        activeGrain = 'year';
+                    } else if (localPeriod === 'last_12_months') {
+                        const l = new Date(d);
+                        l.setMonth(d.getMonth() - 12);
+                        activeFrom = fmtDate(l);
+                        activeTo = fmtDate(d);
+                        activeGrain = 'month';
+                    } else if (localPeriod === 'last_year') {
+                        activeFrom = fmtDate(new Date(d.getFullYear() - 1, 0, 1));
+                        activeTo = fmtDate(new Date(d.getFullYear() - 1, 11, 31));
+                        activeGrain = 'month';
+                    } else if (localPeriod === 'last_30_days') {
+                        const l = new Date(d);
+                        l.setDate(d.getDate() - 30);
+                        activeFrom = fmtDate(l);
+                        activeTo = fmtDate(d);
+                        activeGrain = 'day';
+                    }
+                }
+
                 const p = new URLSearchParams({
                     state_code: stateCode || 'MH',
-                    from_month: fromMonth,
-                    to_month: toMonth,
-                    grain: 'month',
+                    from_month: activeFrom,
+                    to_month: activeTo,
+                    grain: activeGrain,
                 });
                 if (rtoCode !== 'ALL') p.set('rto_code', rtoCode);
                 const payload = await fetch(`${apiPath}?${p}&_t=${Date.now()}`).then(r => r.json());
                 if (!alive) return;
 
+                const rtoMap = new Map<string, any>();
+                for (const r of payload.rto?.share || []) {
+                    if (r.rto_code) rtoMap.set(r.rto_code, r);
+                }
                 setRtos(
-                    (payload.rto?.share || []).sort((a: any, b: any) => compareRtoCodeNumeric(a.rto_code, b.rto_code))
+                    Array.from(rtoMap.values()).sort((a: any, b: any) => compareRtoCodeNumeric(a.rto_code, b.rto_code))
                 );
 
                 const rows: any[] = payload.brand?.trend || [];
@@ -858,25 +949,37 @@ function TimelineByBrandCard({ filters, apiPath }: { filters: any; apiPath: stri
                     const k = String(r.brand_display || r.brand_name || '').trim();
                     totals.set(k, (totals.get(k) || 0) + Number(r.units || 0));
                 }
-                const topKeys = Array.from(totals.entries())
-                    .sort((a, b) => b[1] - a[1])
-                    .slice(0, 6)
-                    .map(([k]) => k);
-                const keySet = new Set(topKeys);
+                const sortedBrands = Array.from(totals.entries()).sort((a, b) => b[1] - a[1]);
+                const allKeysByVol = sortedBrands.map(([k]) => k);
+                const top3Keys = new Set(allKeysByVol.slice(0, 3));
+
+                const allKeysSorted = [...allKeysByVol].sort((a, b) => a.localeCompare(b, 'en'));
 
                 const periodMap = new Map<string, any>();
                 for (const r of rows) {
                     const label = String(r.brand_display || r.brand_name || '').trim();
-                    if (!keySet.has(label)) continue;
                     const period = String(r.period_start || '');
-                    const curr = periodMap.get(period) || { period, period_label: formatPeriodShort(period) };
-                    curr[label] = Number(r.units || 0);
+
+                    let pLabel = formatPeriodShort(period);
+                    if (activeGrain === 'year') {
+                        pLabel = period.substring(0, 4);
+                    } else if (activeGrain === 'day') {
+                        const dObj = new Date(period);
+                        if (!Number.isNaN(dObj.getTime())) {
+                            pLabel = dObj.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+                        }
+                    }
+
+                    const curr = periodMap.get(period) || { period, period_label: pLabel };
+                    curr[label] = (curr[label] || 0) + Number(r.units || 0);
                     periodMap.set(period, curr);
                 }
                 const merged = Array.from(periodMap.values()).sort((a, b) =>
                     String(a.period).localeCompare(String(b.period), 'en')
                 );
-                setLineKeys(topKeys);
+
+                setHiddenKeys(new Set());
+                setLineKeys(allKeysSorted);
                 setChartData(merged);
             } catch (e) {
                 console.error(e);
@@ -889,7 +992,7 @@ function TimelineByBrandCard({ filters, apiPath }: { filters: any; apiPath: stri
             alive = false;
             clearTimeout(t);
         };
-    }, [stateCode, fromMonth, toMonth, rtoCode, apiPath]);
+    }, [stateCode, fromMonth, toMonth, rtoCode, localPeriod, apiPath]);
 
     return (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col overflow-hidden group/card shadow-slate-200/50">
@@ -905,47 +1008,99 @@ function TimelineByBrandCard({ filters, apiPath }: { filters: any; apiPath: stri
                         <h3 className="text-sm font-black text-slate-900 tracking-tight">Timeline by Brand</h3>
                     </div>
                 </div>
-                <div className="relative flex items-center gap-3 bg-white/80 backdrop-blur-xl px-4 py-2 rounded-xl border border-slate-200/60 shadow-sm">
-                    <select
-                        value={rtoCode}
-                        onChange={e => setRtoCode(e.target.value)}
-                        className="text-[12px] font-black text-slate-800 bg-transparent border-none p-0 focus:ring-0 cursor-pointer appearance-none min-w-[170px]"
-                    >
-                        <option value="ALL">ALL RTOs</option>
-                        {rtos.map((r: any) => (
-                            <option key={r.rto_code} value={r.rto_code}>
-                                {r.rto_code} - {MMRD_RTO_NAMES[r.rto_code] || r.rto_name}
-                            </option>
-                        ))}
-                    </select>
+                <div className="flex items-center gap-2">
+                    <div className="relative flex items-center gap-3 bg-white/80 backdrop-blur-xl px-4 py-2 rounded-xl border border-slate-200/60 shadow-sm">
+                        <select
+                            value={localPeriod}
+                            onChange={e => setLocalPeriod(e.target.value)}
+                            className="text-[12px] font-black text-slate-800 bg-transparent border-none p-0 focus:ring-0 cursor-pointer appearance-none min-w-[100px]"
+                        >
+                            <option value="inherit">Sync (Global)</option>
+                            <option value="all_time">All Time</option>
+                            <option value="last_12_months">Last 12 Months</option>
+                            <option value="this_year">This Year</option>
+                            <option value="last_year">Last Year</option>
+                        </select>
+                    </div>
+                    <div className="relative flex items-center gap-3 bg-white/80 backdrop-blur-xl px-4 py-2 rounded-xl border border-slate-200/60 shadow-sm">
+                        <select
+                            value={rtoCode}
+                            onChange={e => setRtoCode(e.target.value)}
+                            className="text-[12px] font-black text-slate-800 bg-transparent border-none p-0 focus:ring-0 cursor-pointer appearance-none min-w-[170px]"
+                        >
+                            <option value="ALL">ALL RTOs</option>
+                            {rtos.map((r: any) => (
+                                <option key={r.rto_code} value={r.rto_code}>
+                                    {r.rto_code} - {MMRD_RTO_NAMES[r.rto_code] || r.rto_name}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
                 </div>
             </div>
-            <div className="relative h-[420px] p-4">
+            <div className="flex flex-col h-[520px] p-4">
                 {loading && (
                     <div className="absolute inset-0 z-10 bg-white/70 backdrop-blur-sm flex items-center justify-center">
                         <Loader2 className="w-8 h-8 animate-spin text-[#FFD700]" />
                     </div>
                 )}
-                <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chartData} margin={{ top: 8, right: 24, left: 8, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#eef2ff" />
-                        <XAxis dataKey="period_label" tick={{ fontSize: 11 }} />
-                        <YAxis tick={{ fontSize: 11 }} />
-                        <Tooltip />
-                        <Legend />
-                        {lineKeys.map((k, i) => (
-                            <Line
-                                key={k}
-                                type="monotone"
-                                dataKey={k}
-                                stroke={PALETTE[i % PALETTE.length]}
-                                strokeWidth={2.2}
-                                dot={false}
-                                isAnimationActive={false}
+                <div className="flex-1 min-h-0 relative">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={chartData} margin={{ top: 8, right: 24, left: 8, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#eef2ff" />
+                            <XAxis dataKey="period_label" tick={{ fontSize: 11 }} />
+                            <YAxis tick={{ fontSize: 11 }} />
+                            <Tooltip />
+                            <Legend
+                                verticalAlign="bottom"
+                                content={() => (
+                                    <div className="flex flex-wrap items-center justify-start gap-x-3 gap-y-2 mt-6 px-2 text-[10px] md:text-[11px] overflow-y-auto max-h-[140px] scrollbar-hide">
+                                        {lineKeys.map((k, i) => {
+                                            const active = !hiddenKeys.has(k);
+                                            const color = PALETTE[i % PALETTE.length];
+                                            return (
+                                                <button
+                                                    key={k}
+                                                    onClick={() => {
+                                                        setHiddenKeys(prev => {
+                                                            const next = new Set(prev);
+                                                            if (next.has(k)) next.delete(k);
+                                                            else next.add(k);
+                                                            return next;
+                                                        });
+                                                    }}
+                                                    className={`flex items-center gap-1.5 transition-all px-2.5 py-1 rounded-full border ${active ? 'border-transparent bg-slate-100/60 opacity-100 hover:bg-slate-200/60 text-slate-700' : 'border-dashed border-slate-200 bg-transparent opacity-40 grayscale hover:opacity-60 text-slate-500'}`}
+                                                >
+                                                    <span
+                                                        className="w-2.5 h-2.5 rounded-full"
+                                                        style={{ backgroundColor: color }}
+                                                    />
+                                                    <span className="font-bold">{k}</span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                )}
                             />
-                        ))}
-                    </LineChart>
-                </ResponsiveContainer>
+                            {lineKeys
+                                .filter(k => !hiddenKeys.has(k))
+                                .map(k => {
+                                    const i = lineKeys.indexOf(k);
+                                    return (
+                                        <Line
+                                            key={k}
+                                            type="monotone"
+                                            dataKey={k}
+                                            stroke={PALETTE[i % PALETTE.length]}
+                                            strokeWidth={2.2}
+                                            dot={false}
+                                            isAnimationActive={false}
+                                        />
+                                    );
+                                })}
+                        </LineChart>
+                    </ResponsiveContainer>
+                </div>
             </div>
         </div>
     );
@@ -958,23 +1113,52 @@ function TimelineByRtoCard({ filters, apiPath }: { filters: any; apiPath: string
     const [brands, setBrands] = useState<any[]>([]);
     const [chartData, setChartData] = useState<any[]>([]);
     const [lineKeys, setLineKeys] = useState<string[]>([]);
+    const [localPeriod, setLocalPeriod] = useState('last_12_months');
+    const [hiddenKeys, setHiddenKeys] = useState<Set<string>>(new Set());
 
     useEffect(() => {
         let alive = true;
         const t = setTimeout(async () => {
             setLoading(true);
             try {
+                let activeFrom = fromMonth;
+                let activeTo = toMonth;
+                if (localPeriod !== 'inherit') {
+                    const d = new Date();
+                    const fmtDate = (dt: Date) =>
+                        `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+                    if (localPeriod === 'all_time') {
+                        activeFrom = '2015-01-01';
+                        activeTo = fmtDate(new Date());
+                    } else if (localPeriod === 'last_12_months') {
+                        const l = new Date(d);
+                        l.setMonth(d.getMonth() - 12);
+                        activeFrom = fmtDate(l);
+                        activeTo = fmtDate(d);
+                    } else if (localPeriod === 'this_year') {
+                        activeFrom = fmtDate(new Date(d.getFullYear(), 0, 1));
+                        activeTo = fmtDate(new Date(d.getFullYear(), 11, 31));
+                    } else if (localPeriod === 'last_year') {
+                        activeFrom = fmtDate(new Date(d.getFullYear() - 1, 0, 1));
+                        activeTo = fmtDate(new Date(d.getFullYear() - 1, 11, 31));
+                    }
+                }
+
                 const p = new URLSearchParams({
                     state_code: stateCode || 'MH',
-                    from_month: fromMonth,
-                    to_month: toMonth,
+                    from_month: activeFrom,
+                    to_month: activeTo,
                     grain: 'month',
                 });
                 if (brandName !== 'ALL') p.set('brand_name', brandName);
                 const payload = await fetch(`${apiPath}?${p}&_t=${Date.now()}`).then(r => r.json());
                 if (!alive) return;
 
-                setBrands(payload.brand?.share || []);
+                const brandMap = new Map<string, any>();
+                for (const b of payload.brand?.share || []) {
+                    if (b.brand_name) brandMap.set(b.brand_name, b);
+                }
+                setBrands(Array.from(brandMap.values()));
 
                 const rows: any[] = payload.timeline_rto || [];
                 const totals = new Map<string, number>();
@@ -984,27 +1168,50 @@ function TimelineByRtoCard({ filters, apiPath }: { filters: any; apiPath: string
                     totals.set(code, (totals.get(code) || 0) + Number(r.units || 0));
                     nameByCode.set(code, String(r.rto_name || code));
                 }
-                const topCodes = Array.from(totals.entries())
-                    .sort((a, b) => b[1] - a[1])
-                    .slice(0, 6)
-                    .map(([k]) => k);
-                const topSet = new Set(topCodes);
+                const sortedRtos = Array.from(totals.entries()).sort((a, b) => b[1] - a[1]);
+                const allCodesByVol = sortedRtos.map(([k]) => k);
+                const top3Codes = new Set(allCodesByVol.slice(0, 3));
+
+                const allCodesSorted = [...allCodesByVol].sort((a, b) => compareRtoCodeNumeric(a, b));
+                const allLabelsSorted = allCodesSorted.map(
+                    code => `${code} (${trunc(nameByCode.get(code) || code, 12)})`
+                );
 
                 const periodMap = new Map<string, any>();
                 for (const r of rows) {
                     const code = String(r.rto_code || '').toUpperCase();
-                    if (!topSet.has(code)) continue;
                     const period = String(r.period_start || '');
+
+                    let pLabel = formatPeriodShort(period);
+                    let activeGrain = 'month';
+                    if (localPeriod === 'all_time') activeGrain = 'year';
+                    if (localPeriod === 'last_30_days') activeGrain = 'day';
+
+                    if (activeGrain === 'year') {
+                        pLabel = period.substring(0, 4);
+                    } else if (activeGrain === 'day') {
+                        const dObj = new Date(period);
+                        if (!Number.isNaN(dObj.getTime())) {
+                            pLabel = dObj.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+                        }
+                    }
+
+                    const curr = periodMap.get(period) || { period, period_label: pLabel };
+
                     const lineLabel = `${code} (${trunc(nameByCode.get(code) || code, 12)})`;
-                    const curr = periodMap.get(period) || { period, period_label: formatPeriodShort(period) };
-                    curr[lineLabel] = Number(r.units || 0);
+                    curr[lineLabel] = (curr[lineLabel] || 0) + Number(r.units || 0);
                     periodMap.set(period, curr);
                 }
                 const merged = Array.from(periodMap.values()).sort((a, b) =>
                     String(a.period).localeCompare(String(b.period), 'en')
                 );
-                const labels = topCodes.map(code => `${code} (${trunc(nameByCode.get(code) || code, 12)})`);
-                setLineKeys(labels);
+
+                const top3Labels = new Set(
+                    allCodesByVol.slice(0, 3).map(code => `${code} (${trunc(nameByCode.get(code) || code, 12)})`)
+                );
+                const initialHidden = new Set(allLabelsSorted.filter(l => !top3Labels.has(l)));
+                setHiddenKeys(initialHidden);
+                setLineKeys(allLabelsSorted);
                 setChartData(merged);
             } catch (e) {
                 console.error(e);
@@ -1017,7 +1224,7 @@ function TimelineByRtoCard({ filters, apiPath }: { filters: any; apiPath: string
             alive = false;
             clearTimeout(t);
         };
-    }, [stateCode, fromMonth, toMonth, brandName, apiPath]);
+    }, [stateCode, fromMonth, toMonth, brandName, localPeriod, apiPath]);
 
     return (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col overflow-hidden group/card shadow-slate-200/50">
@@ -1033,47 +1240,98 @@ function TimelineByRtoCard({ filters, apiPath }: { filters: any; apiPath: string
                         <h3 className="text-sm font-black text-slate-900 tracking-tight">Timeline by RTO</h3>
                     </div>
                 </div>
-                <div className="relative flex items-center gap-3 bg-white/80 backdrop-blur-xl px-4 py-2 rounded-xl border border-slate-200/60 shadow-sm">
-                    <select
-                        value={brandName}
-                        onChange={e => setBrandName(e.target.value)}
-                        className="text-[12px] font-black text-slate-800 bg-transparent border-none p-0 focus:ring-0 cursor-pointer appearance-none min-w-[170px]"
-                    >
-                        <option value="ALL">ALL Brands</option>
-                        {brands.map((b: any) => (
-                            <option key={b.brand_name} value={b.brand_name}>
-                                {formatBrandLabel(b.brand_display || b.brand_name)}
-                            </option>
-                        ))}
-                    </select>
+                <div className="flex items-center gap-2">
+                    <div className="relative flex items-center gap-3 bg-white/80 backdrop-blur-xl px-4 py-2 rounded-xl border border-slate-200/60 shadow-sm">
+                        <select
+                            value={localPeriod}
+                            onChange={e => setLocalPeriod(e.target.value)}
+                            className="text-[12px] font-black text-slate-800 bg-transparent border-none p-0 focus:ring-0 cursor-pointer appearance-none min-w-[100px]"
+                        >
+                            <option value="last_12_months">Last 12 Months</option>
+                            <option value="last_year">Last Year</option>
+                            <option value="last_30_days">Last 30 Days</option>
+                            <option value="all_time">All Time</option>
+                        </select>
+                    </div>
+                    <div className="relative flex items-center gap-3 bg-white/80 backdrop-blur-xl px-4 py-2 rounded-xl border border-slate-200/60 shadow-sm">
+                        <select
+                            value={brandName}
+                            onChange={e => setBrandName(e.target.value)}
+                            className="text-[12px] font-black text-slate-800 bg-transparent border-none p-0 focus:ring-0 cursor-pointer appearance-none min-w-[170px]"
+                        >
+                            <option value="ALL">ALL Brands</option>
+                            {brands.map((b: any) => (
+                                <option key={b.brand_name} value={b.brand_name}>
+                                    {formatBrandLabel(b.brand_display || b.brand_name)}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
                 </div>
             </div>
-            <div className="relative h-[420px] p-4">
+            <div className="flex flex-col h-[520px] p-4">
                 {loading && (
                     <div className="absolute inset-0 z-10 bg-white/70 backdrop-blur-sm flex items-center justify-center">
                         <Loader2 className="w-8 h-8 animate-spin text-[#FFD700]" />
                     </div>
                 )}
-                <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chartData} margin={{ top: 8, right: 24, left: 8, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#ecfeff" />
-                        <XAxis dataKey="period_label" tick={{ fontSize: 11 }} />
-                        <YAxis tick={{ fontSize: 11 }} />
-                        <Tooltip />
-                        <Legend />
-                        {lineKeys.map((k, i) => (
-                            <Line
-                                key={k}
-                                type="monotone"
-                                dataKey={k}
-                                stroke={PALETTE[i % PALETTE.length]}
-                                strokeWidth={2.2}
-                                dot={false}
-                                isAnimationActive={false}
+                <div className="flex-1 min-h-0 relative">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={chartData} margin={{ top: 8, right: 24, left: 8, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#ecfeff" />
+                            <XAxis dataKey="period_label" tick={{ fontSize: 11 }} />
+                            <YAxis tick={{ fontSize: 11 }} />
+                            <Tooltip />
+                            <Legend
+                                verticalAlign="bottom"
+                                content={() => (
+                                    <div className="flex flex-wrap items-center justify-start gap-x-3 gap-y-2 mt-6 px-2 text-[10px] md:text-[11px] overflow-y-auto max-h-[140px] scrollbar-hide">
+                                        {lineKeys.map((k, i) => {
+                                            const active = !hiddenKeys.has(k);
+                                            const color = PALETTE[i % PALETTE.length];
+                                            return (
+                                                <button
+                                                    key={k}
+                                                    onClick={() => {
+                                                        setHiddenKeys(prev => {
+                                                            const next = new Set(prev);
+                                                            if (next.has(k)) next.delete(k);
+                                                            else next.add(k);
+                                                            return next;
+                                                        });
+                                                    }}
+                                                    className={`flex items-center gap-1.5 transition-all px-2.5 py-1 rounded-full border ${active ? 'border-transparent bg-slate-100/60 opacity-100 hover:bg-slate-200/60 text-slate-700' : 'border-dashed border-slate-200 bg-transparent opacity-40 grayscale hover:opacity-60 text-slate-500'}`}
+                                                >
+                                                    <span
+                                                        className="w-2.5 h-2.5 rounded-full"
+                                                        style={{ backgroundColor: color }}
+                                                    />
+                                                    <span className="font-bold">{k}</span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                )}
                             />
-                        ))}
-                    </LineChart>
-                </ResponsiveContainer>
+                            {lineKeys
+                                .filter(k => !hiddenKeys.has(k))
+                                .map(k => {
+                                    const i = lineKeys.indexOf(k);
+                                    return (
+                                        <Line
+                                            key={k}
+                                            type="monotone"
+                                            dataKey={k}
+                                            stroke={PALETTE[i % PALETTE.length]}
+                                            strokeWidth={2.2}
+                                            dot={false}
+                                            isAnimationActive={false}
+                                        />
+                                    );
+                                })}
+                        </LineChart>
+                    </ResponsiveContainer>
+                </div>
             </div>
         </div>
     );
