@@ -3,6 +3,95 @@ import { adminClient } from '@/lib/supabase/admin';
 
 export const dynamic = 'force-dynamic';
 
+const VAHAN_BRAND_CLASSIFICATION: Record<string, 'ICE' | 'EV'> = {
+    AARI: 'ICE',
+    AMPERE: 'EV',
+    'ANCHI MOTORCYCLE': 'ICE',
+    ATHER: 'EV',
+    BAJAJ: 'ICE',
+    'BATTRE ELECTRIC MOBLITY': 'EV',
+    BENLING: 'EV',
+    BGAUSS: 'EV',
+    BMW: 'ICE',
+    BNC: 'EV',
+    'BOUNCE INFINITY': 'EV',
+    CHANGLING: 'ICE',
+    'CHINA HAOCHEN': 'ICE',
+    'DAO EV': 'EV',
+    DUCATI: 'ICE',
+    'E-SPRINTO': 'EV',
+    'ECOBIT INTERNATIONAL': 'ICE',
+    'ECOPLANET MOTORS': 'EV',
+    'ELECTRIC ALLIANCE': 'EV',
+    'ELEGO MOTORS': 'EV',
+    'ELTHOR ENERGY': 'EV',
+    'EVTRIC MOTORS': 'EV',
+    'GODAWARI ELECTRIC MOTORS': 'EV',
+    'GREAVES ELECTRIC': 'EV',
+    'HARLEY-DAVIDSON': 'ICE',
+    'HAYASA EV': 'EV',
+    HERO: 'ICE',
+    'HERO ELECTRIC': 'EV',
+    HONDA: 'ICE',
+    'HONGKONG RUIQUE': 'EV',
+    'HONGKONG WANGYUAN': 'EV',
+    'HONGKONG YIXING': 'EV',
+    'HOP ELECTRIC': 'EV',
+    'INETIC GREEN': 'EV',
+    IVOOMI: 'EV',
+    'IZANAU ELECTRIC': 'EV',
+    'JAWA / YEZDI': 'ICE',
+    'JIANGSU SUNHOU': 'ICE',
+    'JITENDRA EV': 'EV',
+    JIYAYI: 'ICE',
+    'JUNENG MOTORCYCLE': 'ICE',
+    KABIRA: 'EV',
+    KAINING: 'ICE',
+    KAWASAKI: 'ICE',
+    KEEWAY: 'ICE',
+    KINETIC: 'ICE',
+    KOMAKI: 'EV',
+    'KSR SOLUTION': 'ICE',
+    KTM: 'ICE',
+    'KYTE ENERGY': 'EV',
+    'LECTRIX EV': 'EV',
+    'MAC INTERNATIONAL': 'ICE',
+    MATTER: 'EV',
+    'MECPOWER MOBILITY': 'EV',
+    'MERCURY EV TECH': 'EV',
+    MOTOVOLT: 'EV',
+    'NINGBO LONGJIA': 'ICE',
+    NK: 'ICE',
+    OBEN: 'EV',
+    ODYSSE: 'EV',
+    'OKAYA EV': 'EV',
+    OKINAWA: 'EV',
+    'OLA ELECTRIC': 'EV',
+    PIAGGIO: 'ICE',
+    'PUR ENERGY': 'EV',
+    'QUANTUM ENERGY': 'EV',
+    REVOLT: 'EV',
+    'RGM BUSINESS PLUS': 'ICE',
+    RILOX: 'EV',
+    RIVER: 'EV',
+    'ROYAL ENFIELD': 'ICE',
+    'SEEKA E MOTORS': 'EV',
+    'SIMPLE ENERGY': 'EV',
+    'SOKUDO ELECTRIC INDIA': 'EV',
+    SUZUKI: 'ICE',
+    TAYO: 'EV',
+    TRIUMPH: 'ICE',
+    TVS: 'ICE',
+    ULTRAVIOLETTE: 'EV',
+    VLF: 'EV',
+    VMOTO: 'EV',
+    WARDWIZARD: 'EV',
+    'WUXI TENGHUI': 'EV',
+    XINRI: 'EV',
+    YAMAHA: 'ICE',
+    ZAP: 'EV',
+};
+
 function normalizeRtoCode(value: unknown): string {
     const raw = String(value || '')
         .trim()
@@ -21,6 +110,15 @@ function normalizeMakerKey(value: unknown): string {
         .replace(/\s+/g, ' ')
         .trim()
         .toUpperCase();
+}
+
+function getBrandSegment(value: string): 'ICE' | 'EV' | 'UNCERTAIN' {
+    const normalized = String(value || '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toUpperCase();
+    if (!normalized) return 'UNCERTAIN';
+    return VAHAN_BRAND_CLASSIFICATION[normalized] || 'UNCERTAIN';
 }
 
 function parseYyyyMm(value: string): { year: number; month: number } | null {
@@ -67,6 +165,10 @@ export async function GET(req: NextRequest) {
 
         let rtoCode = searchParams.get('rto_code');
         let brandName = searchParams.get('brand_name');
+        const segmentParam = String(searchParams.get('segment') || 'ALL')
+            .trim()
+            .toUpperCase();
+        const segment: 'ALL' | 'ICE' | 'EV' = segmentParam === 'ICE' || segmentParam === 'EV' ? segmentParam : 'ALL';
 
         // Clean up inputs
         if (rtoCode && rtoCode.toUpperCase() === 'ALL') rtoCode = null;
@@ -192,6 +294,12 @@ export async function GET(req: NextRequest) {
 
                 const rowBrand = normalizeMakerKey(row.brand_name || row.maker);
                 if (targetBrand && rowBrand !== targetBrand) continue;
+                if (segment !== 'ALL') {
+                    const brandDisplay = mapBrandMeta(row.brand_name || row.maker).brandDisplay;
+                    const rowSegment = getBrandSegment(brandDisplay);
+                    if (segment === 'EV' && rowSegment !== 'EV') continue;
+                    if (segment === 'ICE' && rowSegment === 'EV') continue;
+                }
 
                 const periodStart = periodStartByGrain(year, monthNo, grain);
                 const key = `${periodStart}|${rowRto}`;
@@ -320,7 +428,7 @@ export async function GET(req: NextRequest) {
         };
 
         return NextResponse.json({
-            filters: { stateCode, fromMonth, toMonth, grain, rtoCode, brandName },
+            filters: { stateCode, fromMonth, toMonth, grain, rtoCode, brandName, segment },
             kpis: enrichedKpis,
             meta: {
                 last_data_update_at: lastUpdateRes.data?.updated_at || lastUpdateRes.data?.uploaded_at || null,

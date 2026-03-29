@@ -1537,6 +1537,7 @@ function TimelineByRtoCard({ filters, apiPath }: { filters: any; apiPath: string
     const [chartData, setChartData] = useState<any[]>([]);
     const [lineKeys, setLineKeys] = useState<string[]>([]);
     const [localPeriod, setLocalPeriod] = useState('last_12_months');
+    const [segment, setSegment] = useState<'ALL' | 'ICE' | 'EV'>('ALL');
     const [hiddenKeys, setHiddenKeys] = useState<Set<string>>(new Set());
 
     const renderRtoPointDot = (lineKey: string, color: string) => {
@@ -1640,6 +1641,7 @@ function TimelineByRtoCard({ filters, apiPath }: { filters: any; apiPath: string
                     to_month: activeTo,
                     grain: 'month',
                 });
+                p.set('segment', segment);
                 const payload = await fetch(`${apiPath}?${p}&_t=${Date.now()}`).then(r => r.json());
                 if (!alive) return;
 
@@ -1709,7 +1711,7 @@ function TimelineByRtoCard({ filters, apiPath }: { filters: any; apiPath: string
             alive = false;
             clearTimeout(t);
         };
-    }, [stateCode, fromMonth, toMonth, localPeriod, apiPath]);
+    }, [stateCode, fromMonth, toMonth, localPeriod, segment, apiPath]);
 
     return (
         <div className="flex flex-col gap-4">
@@ -1727,6 +1729,27 @@ function TimelineByRtoCard({ filters, apiPath }: { filters: any; apiPath: string
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
+                        <div className="relative flex items-center gap-2.5 bg-white/60 hover:bg-white/90 px-4 py-2 md:px-5 md:py-2.5 rounded-full border border-white/80 shadow-[0_2px_10px_-3px_rgba(0,0,0,0.07)] hover:shadow-[0_8px_20px_-6px_rgba(0,0,0,0.12)] hover:border-[#FFD700]/50 transition-all cursor-pointer group/pill">
+                            <div
+                                className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-colors ${segment === 'EV' ? 'bg-emerald-50 group-hover/pill:bg-emerald-100' : segment === 'ICE' ? 'bg-orange-50 group-hover/pill:bg-orange-100' : 'bg-slate-50 group-hover/pill:bg-slate-100'}`}
+                            >
+                                <Zap
+                                    className={`w-3.5 h-3.5 transition-colors ${segment === 'EV' ? 'text-emerald-600' : segment === 'ICE' ? 'text-orange-600' : 'text-slate-500'}`}
+                                />
+                            </div>
+                            <div className="flex-1 flex items-center justify-center gap-1.5 min-w-[70px] md:min-w-[88px]">
+                                <select
+                                    value={segment}
+                                    onChange={e => setSegment(e.target.value as 'ALL' | 'ICE' | 'EV')}
+                                    className="text-[11px] md:text-[12px] font-bold text-slate-700 bg-transparent border-none p-0 focus:ring-0 cursor-pointer appearance-none w-full text-center h-full flex items-center justify-center"
+                                >
+                                    <option value="ALL">All</option>
+                                    <option value="ICE">ICE</option>
+                                    <option value="EV">EV</option>
+                                </select>
+                                <ChevronDown className="w-3 h-3 text-slate-400 group-hover/pill:text-slate-600 shrink-0" />
+                            </div>
+                        </div>
                         <div className="relative flex items-center gap-2.5 bg-white/60 hover:bg-white/90 px-4 py-2 md:px-5 md:py-2.5 rounded-full border border-white/80 shadow-[0_2px_10px_-3px_rgba(0,0,0,0.07)] hover:shadow-[0_8px_20px_-6px_rgba(0,0,0,0.12)] hover:border-[#FFD700]/50 transition-all cursor-pointer group/pill">
                             <div className="w-7 h-7 rounded-full bg-slate-50 flex items-center justify-center shrink-0 group-hover/pill:bg-[#FFD700]/10 transition-colors">
                                 <Calendar className="w-3.5 h-3.5 text-slate-400 group-hover/pill:text-[#FFD700] transition-colors" />
