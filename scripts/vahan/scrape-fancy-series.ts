@@ -34,7 +34,7 @@ const HEADLESS = process.env.HEADLESS !== 'false';
 const WRITE_DB = process.env.WRITE_DB === 'true';
 const MAX_RTOS = Number(process.env.FANCY_MAX_RTOS || '9999');
 const ONLY_ACTIVE = process.env.FANCY_ONLY_ACTIVE !== 'false';
-const BATCH_SIZE = Math.max(1, Number(process.env.FANCY_BATCH_SIZE || '5'));
+const BATCH_SIZE = Math.max(1, Number(process.env.FANCY_BATCH_SIZE || '1'));
 const STRICT_BATCH_VERIFY = process.env.FANCY_STRICT_BATCH_VERIFY !== 'false';
 const MIN_COVERAGE = Math.max(1, Number(process.env.FANCY_MIN_COVERAGE || '50'));
 const MAX_SAME_FILLED = Math.max(2, Number(process.env.FANCY_MAX_SAME_FILLED || '8'));
@@ -112,8 +112,28 @@ async function primeSelect(page: Page, selectId: string, value: string) {
     await sel.dispatchEvent('change');
 }
 
+async function gotoWithRetry(page: Page, url: string, label: string, maxAttempts = 3) {
+    let lastError: unknown = null;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+            await page.goto(url, { waitUntil: 'commit', timeout: 180000 });
+            await page.waitForLoadState('domcontentloaded', { timeout: 45000 });
+            return;
+        } catch (error) {
+            lastError = error;
+            const msg = error instanceof Error ? error.message : String(error);
+            console.warn(`[${label}] goto attempt ${attempt}/${maxAttempts} failed: ${msg}`);
+            if (attempt < maxAttempts) {
+                await page.waitForTimeout(5000 * attempt);
+                continue;
+            }
+        }
+    }
+    throw lastError instanceof Error ? lastError : new Error(`[${label}] page navigation failed`);
+}
+
 async function openSeriesPageAndSetState(page: Page) {
-    await page.goto(SERIES_URL, { waitUntil: 'domcontentloaded', timeout: 120000 });
+    await gotoWithRetry(page, SERIES_URL, 'series-page');
     await page.waitForTimeout(1500);
     await primeSelect(page, 'ib_statestaus_input', STATE_CODE);
     await page.waitForTimeout(4500);
@@ -189,7 +209,7 @@ async function parseSeriesRowsForRto(
 }
 
 async function goToAvailablePage(page: Page) {
-    await page.goto(AVAILABLE_URL, { waitUntil: 'domcontentloaded', timeout: 120000 });
+    await gotoWithRetry(page, AVAILABLE_URL, 'available-page');
     await page.waitForTimeout(1500);
     await primeSelect(page, 'ib_state123_input', STATE_CODE);
     await page.waitForTimeout(4500);

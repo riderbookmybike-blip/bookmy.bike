@@ -2,14 +2,18 @@ name: VAHAN Fancy Series Nightly
 
 on:
   schedule:
-    # 20:30 UTC = 02:00 AM IST (next day)
-    - cron: '30 20 * * *'
+    # 05:30 UTC = 11:00 AM IST
+    - cron: '30 5 * * *'
   workflow_dispatch:
+
+concurrency:
+  group: govt-scraper-serial
+  cancel-in-progress: false
 
 jobs:
   scrape-fancy-series:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 120
 
     steps:
       - name: Checkout repository
@@ -31,7 +35,7 @@ jobs:
         run: |
           set -euo pipefail
           attempt=1
-          max_attempts=2
+          max_attempts=3
           until [ "$attempt" -gt "$max_attempts" ]; do
             echo "Fancy scrape attempt $attempt/$max_attempts"
             if npx tsx scripts/vahan/scrape-fancy-series.ts; then
@@ -39,8 +43,8 @@ jobs:
               exit 0
             fi
             if [ "$attempt" -lt "$max_attempts" ]; then
-              echo "Attempt $attempt failed; retrying after 90s..."
-              sleep 90
+              echo "Attempt $attempt failed; retrying after 180s..."
+              sleep 180
             fi
             attempt=$((attempt + 1))
           done
@@ -51,11 +55,12 @@ jobs:
           HEADLESS: 'true'
           FANCY_STATE_CODE: 'MH'
           FANCY_STATE_NAME: 'Maharashtra'
-          FANCY_BATCH_SIZE: '5'
+          FANCY_BATCH_SIZE: '1'
           FANCY_STRICT_BATCH_VERIFY: 'true'
           FANCY_MIN_COVERAGE: '50'
           FANCY_MAX_SAME_FILLED: '8'
           FANCY_FAIL_ON_QUALITY: 'true'
           FANCY_SCAN_PAGES: '30'
+          FANCY_PUBLISH: 'true'
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

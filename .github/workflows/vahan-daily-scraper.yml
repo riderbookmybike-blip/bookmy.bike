@@ -2,9 +2,13 @@ name: VAHAN Daily Scraper
 
 on:
   schedule:
-    # Runs at 17:30 UTC every day (23:00 IST)
-    - cron: '30 17 * * *'
+    # Runs at 04:30 UTC every day (10:00 IST)
+    - cron: '30 4 * * *'
   workflow_dispatch: # Allows manual trigger from the GitHub UI
+
+concurrency:
+  group: govt-scraper-serial
+  cancel-in-progress: false
 
 jobs:
   scrape-and-import:
@@ -27,14 +31,31 @@ jobs:
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps chromium
 
-      - name: Run VAHAN Scraper
-        run: npx tsx scripts/vahan/scrape-vahan.ts
+      - name: Run VAHAN in Serial RTO Sessions (1 RTO at a time)
+        run: |
+          set -euo pipefail
+          max_sessions=80
+          for session in $(seq 1 "$max_sessions"); do
+            echo "=== VAHAN session $session/$max_sessions (1 RTO) ==="
+            scrape_log="$(mktemp)"
+
+            npx tsx scripts/vahan/scrape-vahan.ts 2>&1 | tee "$scrape_log"
+
+            # Ingest after every single-RTO scrape session
+            npx tsx scripts/vahan/ingest-vahan.ts
+
+            if grep -q "No pending RTOs" "$scrape_log"; then
+              echo "No pending RTOs left. Serial run complete."
+              break
+            fi
+
+            if [ "$session" -eq "$max_sessions" ]; then
+              echo "Reached max sessions ($max_sessions) before pending set drained."
+              exit 1
+            fi
+          done
         env:
           HEADLESS: "true"
-          RTO_BATCH_SIZE: "0"
-
-      - name: Import Data to Supabase
-        run: npx tsx scripts/vahan/ingest-vahan.ts
-        env:
+          RTO_BATCH_SIZE: "1"
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
