@@ -12,6 +12,14 @@ async function main() {
     const isHeadless = process.env.HEADLESS === 'true';
     const batchSize = Number(process.env.RTO_BATCH_SIZE || 0);
     const forceRescrape = process.env.FORCE_RESCRAPE === 'true';
+    const outputSuffix = String(process.env.OUTPUT_SUFFIX || '')
+        .trim()
+        .replace(/[^A-Za-z0-9_-]/g, '')
+        .toLowerCase();
+    const fuelFilters = String(process.env.FUEL_FILTERS || '')
+        .split(',')
+        .map(v => v.trim())
+        .filter(Boolean);
     const excludedCodes = new Set(
         String(process.env.EXCLUDED_RTO_CODES || '99')
             .split(',')
@@ -77,7 +85,8 @@ async function main() {
         const pendingRtos = scopedRtos.filter(rto => {
             return yearsToScrape.some(targetYear => {
                 const cleanCode = rto.val.replace(/[^A-Z0-9]/gi, '');
-                const jsonPath = path.join(outputDir, `vahan_Maker_Month_${cleanCode}_${targetYear}.json`);
+                const suffix = outputSuffix ? `_${outputSuffix}` : '';
+                const jsonPath = path.join(outputDir, `vahan_Maker_Month_${cleanCode}_${targetYear}${suffix}.json`);
                 return forceRescrape || !fs.existsSync(jsonPath);
             });
         });
@@ -108,7 +117,8 @@ async function main() {
 
             for (const targetYear of yearsToScrape) {
                 const cleanCode = rtoCode.replace(/[^A-Z0-9]/gi, '');
-                const jsonPath = path.join(outputDir, `vahan_Maker_Month_${cleanCode}_${targetYear}.json`);
+                const suffix = outputSuffix ? `_${outputSuffix}` : '';
+                const jsonPath = path.join(outputDir, `vahan_Maker_Month_${cleanCode}_${targetYear}${suffix}.json`);
                 if (!forceRescrape && fs.existsSync(jsonPath)) {
                     console.log(
                         `  ⏭️  Skipping ${current.code} ${targetYear} (already fetched): ${path.basename(jsonPath)}`
@@ -180,6 +190,35 @@ async function main() {
                 }
 
                 await page.waitForTimeout(3000);
+
+                if (fuelFilters.length > 0) {
+                    console.log(`  -> 7b. Applying Fuel Filters: ${fuelFilters.join(', ')}`);
+                    const allFuelLabels = await page.locator('label').allTextContents();
+                    for (const wantedFuel of fuelFilters) {
+                        let matched = false;
+                        for (const rawLabel of allFuelLabels) {
+                            const label = String(rawLabel || '').trim();
+                            if (!label) continue;
+                            if (label.toUpperCase() !== wantedFuel.toUpperCase()) continue;
+                            matched = true;
+                            const fuelLabel = page.locator('label', { hasText: label }).first();
+                            const fuelBox = fuelLabel
+                                .locator(
+                                    'xpath=preceding-sibling::div[contains(@class, "ui-chkbox")]//div[contains(@class, "ui-chkbox-box")]'
+                                )
+                                .first();
+                            const className = (await fuelBox.getAttribute('class')) || '';
+                            if (!className.includes('ui-state-active')) {
+                                await fuelBox.click({ force: true });
+                                await page.waitForTimeout(1200);
+                            }
+                        }
+                        if (!matched) {
+                            console.log(`     ⚠️ Fuel filter not found in panel: "${wantedFuel}"`);
+                        }
+                    }
+                    await page.waitForTimeout(1500);
+                }
 
                 // Sidebar Refresh (STRICT BOUNDARY - NO FALLBACK)
                 console.log('  -> 8. Committing Sidebar Filter State (Side Panel Bottom Refresh Only)');

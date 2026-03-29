@@ -1,0 +1,776 @@
+[
+  {
+    "brand_name": "AARI",
+    "normalized_name": "AARI",
+    "segment": "ICE",
+    "needs_review": false,
+    "reason": "Importer of Benelli, Keeway, Zontes (Pure ICE portfolio in India)",
+    "source_url": "https://aari.co.in/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "Ampere",
+    "normalized_name": "Ampere",
+    "segment": "EV",
+    "needs_review": false,
+    "reason": "Pure-play EV manufacturer (Greaves Electric Mobility)",
+    "source_url": "https://ampere.greaveselectricmobility.com/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "ANCHI MOTORCYCLE",
+    "normalized_name": "Anchi",
+    "segment": "ICE",
+    "needs_review": true,
+    "reason": "Uncertain: Likely Chinese EV kit supplier, but using ICE default per rule",
+    "source_url": "https://vahan.parivahan.gov.in/",
+    "confidence": "low"
+  },
+  {
+    "brand_name": "Ather",
+    "normalized_name": "Ather",
+    "segment": "EV",
+    "needs_review": false,
+    "reason": "Pure-play EV manufacturer (Ather Energy)",
+    "source_url": "https://www.atherenergy.com/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "Bajaj",
+    "normalized_name": "Bajaj",
+    "segment": "ICE",
+    "needs_review": false,
+    "reason": "Mixed Portfolio (Pulsar/Chetak EV). Force ICE per strategy.",
+    "source_url": "https://www.bajajauto.com/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "BATTRE ELECTRIC MOBLITY",
+    "normalized_name": "BattRE",
+    "segment": "EV",
+    "needs_review": false,
+    "reason": "Pure-play EV manufacturer",
+    "source_url": "https://battre.in/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "Benling",
+    "normalized_name": "Benling",
+    "segment": "EV",
+    "needs_review": false,
+    "reason": "Pure-play EV manufacturer",
+    "source_url": "https://benlingindia.com/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "BGauss",
+    "normalized_name": "BGauss",
+    "segment": "EV",
+    "needs_review": false,
+    "reason": "Pure-play EV manufacturer",
+    "source_url": "https://www.bgauss.com/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "BMW",
+    "normalized_name": "BMW",
+    "segment": "ICE",
+    "needs_review": false,
+    "reason": "Mixed Portfolio (G310/CE 04). Force ICE per strategy.",
+    "source_url": "https://www.bmw-motorrad.in/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "BNC",
+    "normalized_name": "BNC",
+    "segment": "EV",
+    "needs_review": false,
+    "reason": "Bharat New Energy - Pure-play EV manufacturer",
+    "source_url": "https://bncmotors.in/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "Bounce Infinity",
+    "normalized_name": "Bounce Infinity",
+    "segment": "EV",
+    "needs_review": false,
+    "reason": "Pure-play EV manufacturer",
+    "source_url": "https://bounceinfinity.com/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "CHANGLING",
+    "normalized_name": "Changling",
+    "segment": "ICE",
+    "needs_review": true,
+    "reason": "Uncertain: Chinese exporter/component supplier. Default to ICE.",
+    "source_url": "https://vahan.parivahan.gov.in/",
+    "confidence": "low"
+  },
+  {
+    "brand_name": "CHINA HAOCHEN",
+    "normalized_name": "Haochen",
+    "segment": "ICE",
+    "needs_review": true,
+    "reason": "Uncertain: Chinese exporter. Default to ICE.",
+    "source_url": "https://vahan.parivahan.gov.in/",
+    "confidence": "low"
+  },
+  {
+    "brand_name": "DAO EV",
+    "normalized_name": "Dao",
+    "segment": "EV",
+    "needs_review": false,
+    "reason": "Pure-play EV manufacturer",
+    "source_url": "https://daolev.com/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "Ducati",
+    "normalized_name": "Ducati",
+    "segment": "ICE",
+    "needs_review": false,
+    "reason": "Pure ICE portfolio in India",
+    "source_url": "https://www.ducati.com/in/en/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "E-SPRINTO",
+    "normalized_name": "E-Sprinto",
+    "segment": "EV",
+    "needs_review": false,
+    "reason": "Pure-play EV manufacturer",
+    "source_url": "https://e-sprinto.com/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "ECOBIT INTERNATIONAL",
+    "normalized_name": "Ecobit",
+    "segment": "ICE",
+    "needs_review": true,
+    "reason": "Uncertain: Importer/Assembler. Default to ICE.",
+    "source_url": "https://vahan.parivahan.gov.in/",
+    "confidence": "low"
+  },
+  {
+    "brand_name": "ECOPLANET MOTORS",
+    "normalized_name": "Ecoplanet",
+    "segment": "EV",
+    "needs_review": false,
+    "reason": "Pure-play EV manufacturer",
+    "source_url": "https://ecoplanetmotors.com/",
+    "confidence": "medium"
+  },
+  {
+    "brand_name": "ELECTRIC ALLIANCE",
+    "normalized_name": "Electric Alliance",
+    "segment": "EV",
+    "needs_review": false,
+    "reason": "Pure-play EV (e-Zee / Component assembler)",
+    "source_url": "https://vahan.parivahan.gov.in/",
+    "confidence": "medium"
+  },
+  {
+    "brand_name": "ELEGO MOTORS",
+    "normalized_name": "Elego",
+    "segment": "EV",
+    "needs_review": false,
+    "reason": "Pure-play EV manufacturer",
+    "source_url": "http://elegomotors.com/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "ELTHOR ENERGY",
+    "normalized_name": "Elthor",
+    "segment": "EV",
+    "needs_review": false,
+    "reason": "Pure-play EV manufacturer",
+    "source_url": "https://elthor.in/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "EVTRIC MOTORS",
+    "normalized_name": "Evtric",
+    "segment": "EV",
+    "needs_review": false,
+    "reason": "Pure-play EV manufacturer (Patanjali group venture)",
+    "source_url": "https://evtric.com/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "GODAWARI ELECTRIC MOTORS",
+    "normalized_name": "Godawari",
+    "segment": "EV",
+    "needs_review": false,
+    "reason": "Pure-play EV manufacturer (Eablue brand)",
+    "source_url": "https://godawarielectric.com/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "Greaves Electric",
+    "normalized_name": "Greaves",
+    "segment": "EV",
+    "needs_review": false,
+    "reason": "Pure-play EV manufacturer (Ampere / Greaves Electric Mobility)",
+    "source_url": "https://greaveselectricmobility.com/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "Harley-Davidson",
+    "normalized_name": "Harley-Davidson",
+    "segment": "ICE",
+    "needs_review": false,
+    "reason": "Mixed (X440/LiveWire globally). Force ICE per strategy.",
+    "source_url": "https://www.harley-davidson.com/in/en/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "HAYASA EV",
+    "normalized_name": "Hayasa",
+    "segment": "EV",
+    "needs_review": false,
+    "reason": "Pure-play EV manufacturer",
+    "source_url": "https://hayasadev.com/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "Hero",
+    "normalized_name": "Hero",
+    "segment": "ICE",
+    "needs_review": false,
+    "reason": "Mixed Portfolio (Splendor/Vida EV). Force ICE per strategy.",
+    "source_url": "https://www.heromotocorp.com/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "Hero Electric",
+    "normalized_name": "Hero Electric",
+    "segment": "EV",
+    "needs_review": false,
+    "reason": "Pure-play EV (distinct entity from Hero MotoCorp)",
+    "source_url": "https://heroelectric.in/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "Honda",
+    "normalized_name": "Honda",
+    "segment": "ICE",
+    "needs_review": false,
+    "reason": "Mixed globally, ICE dominant in India. Force ICE per strategy.",
+    "source_url": "https://www.honda2wheelersindia.com/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "HONGKONG RUIQUE",
+    "normalized_name": "Hongkong Ruique",
+    "segment": "EV",
+    "needs_review": false,
+    "reason": "Chinese EV kit exporter registered in VAHAN for electric components",
+    "source_url": "https://vahan.parivahan.gov.in/",
+    "confidence": "medium"
+  },
+  {
+    "brand_name": "HONGKONG WANGYUAN",
+    "normalized_name": "Hongkong Wangyuan",
+    "segment": "EV",
+    "needs_review": false,
+    "reason": "Chinese EV component/kit exporter",
+    "source_url": "https://vahan.parivahan.gov.in/",
+    "confidence": "medium"
+  },
+  {
+    "brand_name": "HONGKONG YIXING",
+    "normalized_name": "Hongkong Yixing",
+    "segment": "EV",
+    "needs_review": false,
+    "reason": "Chinese EV component/kit exporter",
+    "source_url": "https://vahan.parivahan.gov.in/",
+    "confidence": "medium"
+  },
+  {
+    "brand_name": "Hop Electric",
+    "normalized_name": "Hop Electric",
+    "segment": "EV",
+    "needs_review": false,
+    "reason": "Pure-play EV manufacturer",
+    "source_url": "https://hopelectric.in/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "INETIC GREEN",
+    "normalized_name": "Kinetic Green",
+    "segment": "EV",
+    "needs_review": false,
+    "reason": "Pure-play EV (Kinetic Green brand misspelled as INETIC)",
+    "source_url": "https://kineticgreenvehicles.com/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "iVoomi",
+    "normalized_name": "iVoomi",
+    "segment": "EV",
+    "needs_review": false,
+    "reason": "Pure-play EV manufacturer (iVoomi Energy)",
+    "source_url": "https://ivoomienergy.com/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "IZANAU ELECTRIC",
+    "normalized_name": "Izanau",
+    "segment": "EV",
+    "needs_review": false,
+    "reason": "Pure-play EV manufacturer",
+    "source_url": "https://izanau.co.in/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "Jawa / Yezdi",
+    "normalized_name": "Jawa / Yezdi",
+    "segment": "ICE",
+    "needs_review": false,
+    "reason": "Pure ICE portfolio in India",
+    "source_url": "https://www.jawamotorcycles.com/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "JIANGSU SUNHOU",
+    "normalized_name": "Jiangsu Sunhou",
+    "segment": "ICE",
+    "needs_review": true,
+    "reason": "Uncertain: Chinese exporter. Default to ICE.",
+    "source_url": "https://vahan.parivahan.gov.in/",
+    "confidence": "low"
+  },
+  {
+    "brand_name": "Jitendra EV",
+    "normalized_name": "Jitendra EV",
+    "segment": "EV",
+    "needs_review": false,
+    "reason": "Pure-play EV manufacturer (Jitendra New EV Tech)",
+    "source_url": "https://jitendraev.com/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "JIYAYI",
+    "normalized_name": "Jiyayi",
+    "segment": "ICE",
+    "needs_review": true,
+    "reason": "Uncertain: Chinese exporter. Default to ICE.",
+    "source_url": "https://vahan.parivahan.gov.in/",
+    "confidence": "low"
+  },
+  {
+    "brand_name": "JUNENG MOTORCYCLE",
+    "normalized_name": "Juneng",
+    "segment": "ICE",
+    "needs_review": true,
+    "reason": "Uncertain: Chinese exporter. Default to ICE.",
+    "source_url": "https://vahan.parivahan.gov.in/",
+    "confidence": "low"
+  },
+  {
+    "brand_name": "Kabira",
+    "normalized_name": "Kabira",
+    "segment": "EV",
+    "needs_review": false,
+    "reason": "Pure-play EV manufacturer (Kabira Mobility)",
+    "source_url": "https://kabiramobility.com/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "KAINING",
+    "normalized_name": "Kaining",
+    "segment": "ICE",
+    "needs_review": true,
+    "reason": "Uncertain: Chinese exporter (Zhejiang Kaining). Default to ICE.",
+    "source_url": "https://vahan.parivahan.gov.in/",
+    "confidence": "low"
+  },
+  {
+    "brand_name": "Kawasaki",
+    "normalized_name": "Kawasaki",
+    "segment": "ICE",
+    "needs_review": false,
+    "reason": "Mixed globally, ICE in India. Force ICE per strategy.",
+    "source_url": "https://kawasaki-india.com/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "KEEWAY",
+    "normalized_name": "Keeway",
+    "segment": "ICE",
+    "needs_review": false,
+    "reason": "Pure ICE portfolio in India (AARI)",
+    "source_url": "https://keeway-india.com/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "KINETIC",
+    "normalized_name": "Kinetic",
+    "segment": "ICE",
+    "needs_review": false,
+    "reason": "Legacy ICE portfolio. (Kinetic Green is a separate entity/brand).",
+    "source_url": "https://vahan.parivahan.gov.in/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "KOMAKI",
+    "normalized_name": "Komaki",
+    "segment": "EV",
+    "needs_review": false,
+    "reason": "Pure-play EV manufacturer",
+    "source_url": "https://komaki.in/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "KSR SOLUTION",
+    "normalized_name": "KSR",
+    "segment": "ICE",
+    "needs_review": true,
+    "reason": "Uncertain: Importer/Assembler. Default to ICE.",
+    "source_url": "https://vahan.parivahan.gov.in/",
+    "confidence": "low"
+  },
+  {
+    "brand_name": "KTM",
+    "normalized_name": "KTM",
+    "segment": "ICE",
+    "needs_review": false,
+    "reason": "Mixed globally, ICE in India. Force ICE per strategy.",
+    "source_url": "https://www.ktm.com/en-in.html",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "KYTE ENERGY",
+    "normalized_name": "Kyte",
+    "segment": "EV",
+    "needs_review": false,
+    "reason": "Pure-play EV manufacturer",
+    "source_url": "https://kyteenergy.com/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "Lectrix EV",
+    "normalized_name": "Lectrix",
+    "segment": "EV",
+    "needs_review": false,
+    "reason": "Pure-play EV manufacturer (SAR Group)",
+    "source_url": "https://www.lectrixev.com/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "MAC INTERNATIONAL",
+    "normalized_name": "Mac",
+    "segment": "ICE",
+    "needs_review": true,
+    "reason": "Uncertain: Chinese exporter/Assemblers. Default to ICE.",
+    "source_url": "https://vahan.parivahan.gov.in/",
+    "confidence": "low"
+  },
+  {
+    "brand_name": "Matter",
+    "normalized_name": "Matter",
+    "segment": "EV",
+    "needs_review": false,
+    "reason": "Pure-play EV manufacturer (Matter Aera)",
+    "source_url": "https://matter.in/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "MECPOWER MOBILITY",
+    "normalized_name": "Mecpower",
+    "segment": "EV",
+    "needs_review": false,
+    "reason": "Pure-play EV manufacturer",
+    "source_url": "https://mecpower.in/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "MERCURY EV TECH",
+    "normalized_name": "Mercury",
+    "segment": "EV",
+    "needs_review": false,
+    "reason": "Pure-play EV manufacturer",
+    "source_url": "https://mercuryevtech.com/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "Motovolt",
+    "normalized_name": "Motovolt",
+    "segment": "EV",
+    "needs_review": false,
+    "reason": "Pure-play EV manufacturer",
+    "source_url": "https://www.motovolt.co/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "NINGBO LONGJIA",
+    "normalized_name": "Ningbo Longjia",
+    "segment": "ICE",
+    "needs_review": true,
+    "reason": "Uncertain: Chinese exporter (Longjia). Default to ICE.",
+    "source_url": "https://vahan.parivahan.gov.in/",
+    "confidence": "low"
+  },
+  {
+    "brand_name": "NK",
+    "normalized_name": "NK",
+    "segment": "ICE",
+    "needs_review": true,
+    "reason": "Uncertain brand. Default to ICE.",
+    "source_url": "https://vahan.parivahan.gov.in/",
+    "confidence": "low"
+  },
+  {
+    "brand_name": "Oben",
+    "normalized_name": "Oben",
+    "segment": "EV",
+    "needs_review": false,
+    "reason": "Pure-play EV manufacturer (Oben Electric)",
+    "source_url": "https://obenelectric.com/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "Odysse",
+    "normalized_name": "Odysse",
+    "segment": "EV",
+    "needs_review": false,
+    "reason": "Pure-play EV manufacturer",
+    "source_url": "https://odysse.in/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "Okaya EV",
+    "normalized_name": "Okaya",
+    "segment": "EV",
+    "needs_review": false,
+    "reason": "Pure-play EV manufacturer",
+    "source_url": "https://okayaev.com/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "Okinawa",
+    "normalized_name": "Okinawa",
+    "segment": "EV",
+    "needs_review": false,
+    "reason": "Pure-play EV manufacturer (Okinawa Autotech)",
+    "source_url": "https://okinawascooters.com/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "Ola Electric",
+    "normalized_name": "Ola",
+    "segment": "EV",
+    "needs_review": false,
+    "reason": "Pure-play EV manufacturer",
+    "source_url": "https://olaelectric.com/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "Piaggio",
+    "normalized_name": "Piaggio",
+    "segment": "ICE",
+    "needs_review": false,
+    "reason": "Mixed Portfolio (Vespa/Aprilia vs global EV). Force ICE per strategy.",
+    "source_url": "https://www.piaggio.co.in/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "PUR ENERGY",
+    "normalized_name": "PURe EV",
+    "segment": "EV",
+    "needs_review": false,
+    "reason": "Pure-play EV manufacturer (PURe EV)",
+    "source_url": "https://pureev.in/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "Quantum Energy",
+    "normalized_name": "Quantum",
+    "segment": "EV",
+    "needs_review": false,
+    "reason": "Pure-play EV manufacturer",
+    "source_url": "https://quantumenergy.in/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "Revolt",
+    "normalized_name": "Revolt",
+    "segment": "EV",
+    "needs_review": false,
+    "reason": "Pure-play EV manufacturer (Revolt Motors)",
+    "source_url": "https://www.revoltmotors.com/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "RGM BUSINESS PLUS",
+    "normalized_name": "RGM",
+    "segment": "ICE",
+    "needs_review": true,
+    "reason": "Uncertain: Importer. Default to ICE.",
+    "source_url": "https://vahan.parivahan.gov.in/",
+    "confidence": "low"
+  },
+  {
+    "brand_name": "RILOX",
+    "normalized_name": "Rilox",
+    "segment": "EV",
+    "needs_review": false,
+    "reason": "Pure-play EV manufacturer (Rilox EV)",
+    "source_url": "https://riloxev.com/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "River",
+    "normalized_name": "River",
+    "segment": "EV",
+    "needs_review": false,
+    "reason": "Pure-play EV manufacturer (River Mobility)",
+    "source_url": "https://rideriver.com/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "Royal Enfield",
+    "normalized_name": "Royal Enfield",
+    "segment": "ICE",
+    "needs_review": false,
+    "reason": "Pure ICE portfolio in India currently",
+    "source_url": "https://www.royalenfield.com/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "SEEKA E MOTORS",
+    "normalized_name": "Seeka",
+    "segment": "EV",
+    "needs_review": false,
+    "reason": "Pure-play EV manufacturer",
+    "source_url": "http://seekaemotors.com/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "Simple Energy",
+    "normalized_name": "Simple Energy",
+    "segment": "EV",
+    "needs_review": false,
+    "reason": "Pure-play EV manufacturer",
+    "source_url": "https://www.simpleenergy.in/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "SOKUDO ELECTRIC INDIA",
+    "normalized_name": "Sokudo",
+    "segment": "EV",
+    "needs_review": false,
+    "reason": "Pure-play EV manufacturer",
+    "source_url": "https://sokudoindia.com/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "Suzuki",
+    "normalized_name": "Suzuki",
+    "segment": "ICE",
+    "needs_review": false,
+    "reason": "Mixed Portfolio (Access/Burgman vs e-Burgman). Force ICE per strategy.",
+    "source_url": "https://www.suzukimotorcycle.in/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "TAYO",
+    "normalized_name": "Tayo",
+    "segment": "EV",
+    "needs_review": false,
+    "reason": "New EV brand initiative (Zontes group associated)",
+    "source_url": "https://vahan.parivahan.gov.in/",
+    "confidence": "medium"
+  },
+  {
+    "brand_name": "Triumph",
+    "normalized_name": "Triumph",
+    "segment": "ICE",
+    "needs_review": false,
+    "reason": "Pure ICE portfolio in India currently",
+    "source_url": "https://www.triumphmotorcycles.in/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "TVS",
+    "normalized_name": "TVS",
+    "segment": "ICE",
+    "needs_review": false,
+    "reason": "Mixed Portfolio (Apache/iQube). Force ICE per strategy.",
+    "source_url": "https://www.tvsmotor.com/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "Ultraviolette",
+    "normalized_name": "Ultraviolette",
+    "segment": "EV",
+    "needs_review": false,
+    "reason": "Pure-play EV manufacturer (Ultraviolette Automotive)",
+    "source_url": "https://www.ultraviolette.com/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "VLF",
+    "normalized_name": "VLF",
+    "segment": "EV",
+    "needs_review": false,
+    "reason": "Velocifero - Pure-play EV manufacturer in Indian context",
+    "source_url": "https://vlf.it/en/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "VMOTO",
+    "normalized_name": "VMoto",
+    "segment": "EV",
+    "needs_review": false,
+    "reason": "Pure-play EV manufacturer",
+    "source_url": "https://vmotosoco.com/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "Wardwizard",
+    "normalized_name": "Joy e-bike",
+    "segment": "EV",
+    "needs_review": false,
+    "reason": "Pure-play EV (parent of Joy e-bike brand)",
+    "source_url": "https://www.wardwizard.in/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "WUXI TENGHUI",
+    "normalized_name": "Wuxi Tenghui",
+    "segment": "EV",
+    "needs_review": false,
+    "reason": "Chinese EV component exporter providing kits for Indian EV assembly",
+    "source_url": "https://vahan.parivahan.gov.in/",
+    "confidence": "medium"
+  },
+  {
+    "brand_name": "XINRI",
+    "normalized_name": "Xinri",
+    "segment": "EV",
+    "needs_review": false,
+    "reason": "Chinese EV kit exporter registered in VAHAN",
+    "source_url": "https://vahan.parivahan.gov.in/",
+    "confidence": "medium"
+  },
+  {
+    "brand_name": "Yamaha",
+    "normalized_name": "Yamaha",
+    "segment": "ICE",
+    "needs_review": false,
+    "reason": "Mixed Portfolio (R15/Neo's EV global). Force ICE per strategy.",
+    "source_url": "https://www.yamaha-motor-india.com/",
+    "confidence": "high"
+  },
+  {
+    "brand_name": "ZAP",
+    "normalized_name": "Zap",
+    "segment": "EV",
+    "needs_review": false,
+    "reason": "Pure-play EV manufacturer",
+    "source_url": "https://vahan.parivahan.gov.in/",
+    "confidence": "medium"
+  }
+]

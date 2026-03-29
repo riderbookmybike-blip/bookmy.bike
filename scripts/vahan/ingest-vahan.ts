@@ -110,6 +110,24 @@ async function ingest() {
     console.log('🚀 Starting Maharashtra VAHAN JSON Data Ingestion...');
     const snapshotDate = resolveSnapshotDate();
     console.log(`🗓️ Snapshot Date: ${snapshotDate}`);
+    const filteredYears = new Set(
+        String(process.env.INGEST_YEAR || process.env.INGEST_YEARS || '')
+            .split(',')
+            .map(v => v.trim())
+            .filter(Boolean)
+    );
+    const filteredRtoCodes = new Set(
+        String(process.env.INGEST_RTO_CODES || '')
+            .split(',')
+            .map(v => String(Number(v.trim())))
+            .filter(v => v && v !== 'NaN')
+    );
+    if (filteredYears.size > 0) {
+        console.log(`🎯 Year filter active: ${Array.from(filteredYears).join(', ')}`);
+    }
+    if (filteredRtoCodes.size > 0) {
+        console.log(`🎯 RTO filter active: ${Array.from(filteredRtoCodes).join(', ')}`);
+    }
 
     // 1. Fetch the OEM constraints mapping
     console.log('\n1. Fetching Single Source of Truth `vahan_oem_brand_map`...');
@@ -134,7 +152,10 @@ async function ingest() {
     // 2. Discover local JSON artifacts
     const pwd = path.join(process.cwd(), 'scripts', 'vahan');
     const fileRegex = /^vahan_Maker_Month_(\d+)_(\d{4})\.json$/; // captures RTO code & Year from: vahan_Maker_Month_48_2026.json
-    const files = fs.readdirSync(pwd).filter(f => fileRegex.test(f));
+    const files = fs
+        .readdirSync(pwd)
+        .filter(f => fileRegex.test(f))
+        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 
     if (files.length === 0) {
         console.warn('⚠️ No matching vahan_Maker_Month_*.json files found. Have you executed the scraping service?');
@@ -150,6 +171,12 @@ async function ingest() {
 
         const parsedRtoCode = match[1]; // e.g: 48
         const parsedYear = match[2]; // e.g: 2026
+        if (filteredYears.size > 0 && !filteredYears.has(parsedYear)) {
+            continue;
+        }
+        if (filteredRtoCodes.size > 0 && !filteredRtoCodes.has(String(Number(parsedRtoCode)))) {
+            continue;
+        }
         if (String(Number(parsedRtoCode)) === '99') {
             console.log(`\n⏭️ Skipping File: ${file} (RTO MH99 excluded by policy)`);
             continue;

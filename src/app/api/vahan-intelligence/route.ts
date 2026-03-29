@@ -155,14 +155,26 @@ export async function GET(req: NextRequest) {
             const ymFrom = fromParts.year * 100 + fromParts.month;
             const ymTo = toParts.year * 100 + toParts.month;
 
-            const { data: timelineBaseRows } = await client
-                .from('vahan_two_wheeler_monthly_uploads')
-                .select('year, month_no, rto_code, rto_name, maker, brand_name, units')
-                .eq('state_code', stateCode)
-                .gte('year', minYear)
-                .lte('year', maxYear);
+            const rows: any[] = [];
+            const pageSize = 1000;
+            let from = 0;
+            while (true) {
+                const to = from + pageSize - 1;
+                const { data: timelineBaseRows, error: timelineErr } = await client
+                    .from('vahan_two_wheeler_monthly_uploads')
+                    .select('year, month_no, rto_code, rto_name, maker, brand_name, units')
+                    .eq('state_code', stateCode)
+                    .gte('year', minYear)
+                    .lte('year', maxYear)
+                    .range(from, to);
 
-            const rows = Array.isArray(timelineBaseRows) ? timelineBaseRows : [];
+                if (timelineErr) throw timelineErr;
+                const batch = Array.isArray(timelineBaseRows) ? timelineBaseRows : [];
+                if (batch.length === 0) break;
+                rows.push(...batch);
+                if (batch.length < pageSize) break;
+                from += batch.length;
+            }
             const bucket = new Map<
                 string,
                 { rto_code: string; rto_name: string; period_start: string; units: number }

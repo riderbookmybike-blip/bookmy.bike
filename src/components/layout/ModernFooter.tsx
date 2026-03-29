@@ -145,7 +145,7 @@ export const ModernFooter = () => {
                 },
                 {
                     label: 'Vahan Dashboard',
-                    href: '/vahan-dashboard',
+                    href: '/vahan',
                     icon: <Navigation size={14} className="text-white/40 group-hover:text-brand-primary" />,
                 },
                 {

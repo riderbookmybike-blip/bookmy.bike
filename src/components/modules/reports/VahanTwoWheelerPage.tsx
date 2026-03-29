@@ -238,36 +238,171 @@ const formatBrandLabel = (value: string) => {
         .trim();
 };
 
-const EV_BRAND_EXACT = new Set([
-    'ATHER',
-    'BGAUSS',
-    'ODOYSSE',
-    'ODYSSE',
-    'REVOLT',
-    'OKINAWA',
-    'PURE ENERGY',
-    'RIVER',
-    'ULTRAVIOLETTE',
-    'AMPERE',
-    'JIYAYI',
-    'JITENDRA EV',
-    'KINETIC GREEN',
-    'OLA ELECTRIC',
-    'ELECTRIC ALLIANCE',
-    'SIMPLE ENERGY',
-    'HERO ELECTRIC',
-    'GREAVES ELECTRIC',
-    'KABIRA',
-    'MATTER',
-]);
+const calculateDates = (period: string) => {
+    const d = new Date();
+    const fmt = (dt: Date) => {
+        const y = dt.getFullYear();
+        const m = String(dt.getMonth() + 1).padStart(2, '0');
+        const day = String(dt.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+    };
 
-const isEvBrand = (value: string) => {
+    switch (period) {
+        case 'today': {
+            const s = fmt(d);
+            return { from: s, to: s };
+        }
+        case 'yesterday': {
+            const y = new Date(d);
+            y.setDate(y.getDate() - 1);
+            const s = fmt(y);
+            return { from: s, to: s };
+        }
+        case 'this_week': {
+            const sw = new Date(d);
+            sw.setDate(d.getDate() - d.getDay());
+            const ew = new Date(sw);
+            ew.setDate(sw.getDate() + 6);
+            return { from: fmt(sw), to: fmt(ew) };
+        }
+        case 'this_month':
+            return {
+                from: fmt(new Date(d.getFullYear(), d.getMonth(), 1)),
+                to: fmt(new Date(d.getFullYear(), d.getMonth() + 1, 0)),
+            };
+        case 'last_month':
+            return {
+                from: fmt(new Date(d.getFullYear(), d.getMonth() - 1, 1)),
+                to: fmt(new Date(d.getFullYear(), d.getMonth(), 0)),
+            };
+        case 'last_30_days': {
+            const l = new Date(d);
+            l.setDate(l.getDate() - 30);
+            return { from: fmt(l), to: d.toISOString().split('T')[0] };
+        }
+        case 'this_quarter': {
+            const sq = new Date(d.getFullYear(), Math.floor(d.getMonth() / 3) * 3, 1);
+            const eq = new Date(sq.getFullYear(), sq.getMonth() + 3, 0);
+            return { from: fmt(sq), to: fmt(eq) };
+        }
+        case 'this_year':
+            return {
+                from: fmt(new Date(d.getFullYear(), 0, 1)),
+                to: fmt(new Date(d.getFullYear(), 11, 31)),
+            };
+        case 'last_year':
+            return {
+                from: fmt(new Date(d.getFullYear() - 1, 0, 1)),
+                to: fmt(new Date(d.getFullYear() - 1, 11, 31)),
+            };
+        default:
+            return {
+                from: fmt(new Date(d.getFullYear(), d.getMonth(), 1)),
+                to: fmt(new Date(d.getFullYear(), d.getMonth() + 1, 0)),
+            };
+    }
+};
+
+const VAHAN_BRAND_CLASSIFICATION: Record<string, 'ICE' | 'EV'> = {
+    AARI: 'ICE',
+    AMPERE: 'EV',
+    'ANCHI MOTORCYCLE': 'ICE',
+    ATHER: 'EV',
+    BAJAJ: 'ICE',
+    'BATTRE ELECTRIC MOBLITY': 'EV',
+    BENLING: 'EV',
+    BGAUSS: 'EV',
+    BMW: 'ICE',
+    BNC: 'EV',
+    'BOUNCE INFINITY': 'EV',
+    CHANGLING: 'ICE',
+    'CHINA HAOCHEN': 'ICE',
+    'DAO EV': 'EV',
+    DUCATI: 'ICE',
+    'E-SPRINTO': 'EV',
+    'ECOBIT INTERNATIONAL': 'ICE',
+    'ECOPLANET MOTORS': 'EV',
+    'ELECTRIC ALLIANCE': 'EV',
+    'ELEGO MOTORS': 'EV',
+    'ELTHOR ENERGY': 'EV',
+    'EVTRIC MOTORS': 'EV',
+    'GODAWARI ELECTRIC MOTORS': 'EV',
+    'GREAVES ELECTRIC': 'EV',
+    'HARLEY-DAVIDSON': 'ICE',
+    'HAYASA EV': 'EV',
+    HERO: 'ICE',
+    'HERO ELECTRIC': 'EV',
+    HONDA: 'ICE',
+    'HONGKONG RUIQUE': 'EV',
+    'HONGKONG WANGYUAN': 'EV',
+    'HONGKONG YIXING': 'EV',
+    'HOP ELECTRIC': 'EV',
+    'INETIC GREEN': 'EV',
+    IVOOMI: 'EV',
+    'IZANAU ELECTRIC': 'EV',
+    'JAWA / YEZDI': 'ICE',
+    'JIANGSU SUNHOU': 'ICE',
+    'JITENDRA EV': 'EV',
+    JIYAYI: 'ICE',
+    'JUNENG MOTORCYCLE': 'ICE',
+    KABIRA: 'EV',
+    KAINING: 'ICE',
+    KAWASAKI: 'ICE',
+    KEEWAY: 'ICE',
+    KINETIC: 'ICE',
+    KOMAKI: 'EV',
+    'KSR SOLUTION': 'ICE',
+    KTM: 'ICE',
+    'KYTE ENERGY': 'EV',
+    'LECTRIX EV': 'EV',
+    'MAC INTERNATIONAL': 'ICE',
+    MATTER: 'EV',
+    'MECPOWER MOBILITY': 'EV',
+    'MERCURY EV TECH': 'EV',
+    MOTOVOLT: 'EV',
+    'NINGBO LONGJIA': 'ICE',
+    NK: 'ICE',
+    OBEN: 'EV',
+    ODYSSE: 'EV',
+    'OKAYA EV': 'EV',
+    OKINAWA: 'EV',
+    'OLA ELECTRIC': 'EV',
+    PIAGGIO: 'ICE',
+    'PUR ENERGY': 'EV',
+    'QUANTUM ENERGY': 'EV',
+    REVOLT: 'EV',
+    'RGM BUSINESS PLUS': 'ICE',
+    RILOX: 'EV',
+    RIVER: 'EV',
+    'ROYAL ENFIELD': 'ICE',
+    'SEEKA E MOTORS': 'EV',
+    'SIMPLE ENERGY': 'EV',
+    'SOKUDO ELECTRIC INDIA': 'EV',
+    SUZUKI: 'ICE',
+    TAYO: 'EV',
+    TRIUMPH: 'ICE',
+    TVS: 'ICE',
+    ULTRAVIOLETTE: 'EV',
+    VLF: 'EV',
+    VMOTO: 'EV',
+    WARDWIZARD: 'EV',
+    'WUXI TENGHUI': 'EV',
+    XINRI: 'EV',
+    YAMAHA: 'ICE',
+    ZAP: 'EV',
+};
+
+const getBrandSegment = (value: string): 'ICE' | 'EV' | 'UNCERTAIN' => {
     const normalized = String(value || '')
         .replace(/\s+/g, ' ')
         .trim()
         .toUpperCase();
-    if (!normalized) return false;
-    return EV_BRAND_EXACT.has(normalized);
+    if (!normalized) return 'UNCERTAIN';
+    return VAHAN_BRAND_CLASSIFICATION[normalized] || 'UNCERTAIN';
+};
+
+const isEvBrand = (value: string) => {
+    return getBrandSegment(value) === 'EV';
 };
 
 const formatPeriodShort = (value: string) => {
@@ -442,11 +577,21 @@ function KpiStatsRow({
 // BRAND PERFORMANCE CHART CARD
 // ─────────────────────────────────────────────────────────────
 function BrandChartCard({ filters, apiPath }: { filters: any; apiPath: string }) {
-    const { stateCode, fromMonth, toMonth } = filters;
+    const { stateCode } = filters;
     const [rtoCode, setRtoCode] = useState('ALL');
+    const [segment, setSegment] = useState<'ALL' | 'ICE' | 'EV'>('ALL');
+    const [period, setPeriod] = useState('this_month');
+    const [fromMonth, setFromMonth] = useState('');
+    const [toMonth, setToMonth] = useState('');
     const [loading, setLoading] = useState(false);
     const [data, setData] = useState<any[]>([]);
     const [rtos, setRtos] = useState<any[]>([]);
+
+    useEffect(() => {
+        const { from, to } = calculateDates(period);
+        setFromMonth(from);
+        setToMonth(to);
+    }, [period]);
 
     const [isMobile, setIsMobile] = useState(false);
     useEffect(() => {
@@ -457,6 +602,7 @@ function BrandChartCard({ filters, apiPath }: { filters: any; apiPath: string })
     }, []);
 
     useEffect(() => {
+        if (!fromMonth || !toMonth) return;
         let alive = true;
         const t = setTimeout(async () => {
             setLoading(true);
@@ -473,12 +619,22 @@ function BrandChartCard({ filters, apiPath }: { filters: any; apiPath: string })
 
                 setRtos((payload.rto?.share || []).sort((a: any, b: any) => a.rto_code.localeCompare(b.rto_code)));
 
-                const raw: any[] = (payload.brand?.share || []).filter((r: any) => Number(r.units) > 0);
+                const raw: any[] = (payload.brand?.share || [])
+                    .filter((r: any) => Number(r.units) > 0)
+                    .filter((r: any) => {
+                        if (segment === 'ALL') return true;
+                        const brandLabel = String(r.brand_display || r.brand_name || '').trim();
+                        const bSeg = getBrandSegment(brandLabel);
+                        if (segment === 'EV') return bSeg === 'EV';
+                        return bSeg === 'ICE' || bSeg === 'UNCERTAIN';
+                    });
+
                 const total = raw.reduce((s, r) => s + Number(r.units), 0);
                 const mapped = raw.map((r, i) => {
                     const units = Number(r.units);
                     const pct = total > 0 ? ((units / total) * 100).toFixed(1) : '0.0';
-                    const brandLabel = formatBrandLabel(r.brand_display || r.brand_name);
+                    const brandLabelRaw = r.brand_display || r.brand_name;
+                    const brandLabel = formatBrandLabel(brandLabelRaw);
                     return {
                         ...r,
                         units,
@@ -502,7 +658,7 @@ function BrandChartCard({ filters, apiPath }: { filters: any; apiPath: string })
             alive = false;
             clearTimeout(t);
         };
-    }, [stateCode, rtoCode, fromMonth, toMonth, apiPath]);
+    }, [stateCode, rtoCode, fromMonth, toMonth, segment, apiPath]);
 
     const h = Math.max(500, data.length * 36);
 
@@ -521,24 +677,79 @@ function BrandChartCard({ filters, apiPath }: { filters: any; apiPath: string })
                     </div>
                 </div>
 
-                <div className="relative flex items-center gap-3 bg-white/80 backdrop-blur-xl px-4 py-2 md:px-6 md:py-2.5 rounded-xl md:rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md hover:border-[#FFD700] transition-all cursor-pointer">
-                    <div className="flex items-center gap-2 min-w-[100px] md:min-w-[140px]">
-                        <select
-                            value={rtoCode}
-                            onChange={e => setRtoCode(e.target.value)}
-                            className="text-[11px] md:text-[12px] font-black text-slate-800 bg-transparent border-none p-0 focus:ring-0 cursor-pointer appearance-none w-full"
+                <div className="flex flex-wrap items-center gap-2 md:gap-3 overflow-x-auto no-scrollbar pt-1 pr-4">
+                    {/* Period Selector Pill */}
+                    <div className="relative flex items-center gap-2.5 bg-white/60 hover:bg-white/90 px-4 py-2 md:px-5 md:py-2.5 rounded-full border border-white/80 shadow-[0_2px_10px_-3px_rgba(0,0,0,0.07)] hover:shadow-[0_8px_20px_-6px_rgba(0,0,0,0.12)] hover:border-[#FFD700]/50 transition-all cursor-pointer group/pill">
+                        <div className="w-7 h-7 rounded-full bg-amber-50 flex items-center justify-center shrink-0 group-hover/pill:bg-[#FFD700]/10 transition-colors">
+                            <Calendar className="w-3.5 h-3.5 text-amber-600 group-hover/pill:text-amber-700 transition-colors" />
+                        </div>
+                        <div className="flex-1 flex items-center justify-center gap-1.5 min-w-[80px] md:min-w-[110px]">
+                            <select
+                                value={period}
+                                onChange={e => setPeriod(e.target.value)}
+                                className="text-[11px] md:text-[12px] font-bold text-slate-700 bg-transparent border-none p-0 focus:ring-0 cursor-pointer appearance-none w-full text-center h-full flex items-center justify-center"
+                            >
+                                <option value="today">Today</option>
+                                <option value="yesterday">Yesterday</option>
+                                <option value="this_week">This Week</option>
+                                <option value="last_30_days">Last 30 Days</option>
+                                <option value="this_month">This Month</option>
+                                <option value="last_month">Last Month</option>
+                                <option value="this_quarter">This Quarter</option>
+                                <option value="this_year">This Year</option>
+                                <option value="last_year">Last Year</option>
+                            </select>
+                            <ChevronDown className="w-3 h-3 text-slate-400 group-hover/pill:text-slate-600 shrink-0" />
+                        </div>
+                    </div>
+
+                    {/* Drivetrain Segment Pill */}
+                    <div className="relative flex items-center gap-2.5 bg-white/60 hover:bg-white/90 px-4 py-2 md:px-5 md:py-2.5 rounded-full border border-white/80 shadow-[0_2px_10px_-3px_rgba(0,0,0,0.07)] hover:shadow-[0_8px_20px_-6px_rgba(0,0,0,0.12)] hover:border-[#FFD700]/50 transition-all cursor-pointer group/pill">
+                        <div
+                            className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-colors ${segment === 'EV' ? 'bg-emerald-50 group-hover/pill:bg-emerald-100' : 'bg-orange-50 group-hover/pill:bg-orange-100'}`}
                         >
-                            <option value="ALL">ALL RTOs</option>
-                            {rtos.map(r => (
-                                <option key={r.rto_code} value={r.rto_code}>
-                                    {r.rto_code} – {MMRD_RTO_NAMES[r.rto_code] || r.rto_name}
-                                </option>
-                            ))}
-                        </select>
-                        <ChevronDown className="w-3.5 h-3.5 md:w-4 md:h-4 text-slate-800 shrink-0" />
+                            <Zap
+                                className={`w-3.5 h-3.5 transition-colors ${segment === 'EV' ? 'text-emerald-600' : 'text-orange-600'}`}
+                            />
+                        </div>
+                        <div className="flex-1 flex items-center justify-center gap-1.5 min-w-[36px] md:min-w-[44px]">
+                            <select
+                                value={segment}
+                                onChange={e => setSegment(e.target.value as 'ALL' | 'ICE' | 'EV')}
+                                className="text-[11px] md:text-[12px] font-bold text-slate-700 bg-transparent border-none p-0 focus:ring-0 cursor-pointer appearance-none w-full text-center h-full flex items-center justify-center"
+                            >
+                                <option value="ALL">All</option>
+                                <option value="ICE">ICE</option>
+                                <option value="EV">EV</option>
+                            </select>
+                            <ChevronDown className="w-3 h-3 text-slate-400 group-hover/pill:text-slate-600 shrink-0" />
+                        </div>
+                    </div>
+
+                    {/* RTO Selector Pill */}
+                    <div className="relative flex items-center gap-2.5 bg-white/60 hover:bg-white/90 px-4 py-2 md:px-5 md:py-2.5 rounded-full border border-white/80 shadow-[0_2px_10px_-3px_rgba(0,0,0,0.07)] hover:shadow-[0_8px_20px_-6px_rgba(0,0,0,0.12)] hover:border-[#FFD700]/50 transition-all cursor-pointer group/pill">
+                        <div className="w-7 h-7 rounded-full bg-blue-50 flex items-center justify-center shrink-0 group-hover/pill:bg-blue-100 transition-colors">
+                            <MapPin className="w-3.5 h-3.5 text-blue-600 group-hover/pill:text-blue-700 transition-colors" />
+                        </div>
+                        <div className="flex-1 flex items-center justify-center gap-1.5 min-w-[100px] md:min-w-[130px]">
+                            <select
+                                value={rtoCode}
+                                onChange={e => setRtoCode(e.target.value)}
+                                className="text-[11px] md:text-[12px] font-bold text-slate-700 bg-transparent border-none p-0 focus:ring-0 cursor-pointer appearance-none w-full text-center h-full flex items-center justify-center"
+                            >
+                                <option value="ALL">All RTOs</option>
+                                {rtos.map(r => (
+                                    <option key={r.rto_code} value={r.rto_code}>
+                                        {r.rto_code} · {r.rto_name}
+                                    </option>
+                                ))}
+                            </select>
+                            <ChevronDown className="w-3 h-3 text-slate-400 group-hover/pill:text-slate-600 shrink-0" />
+                        </div>
                     </div>
                 </div>
             </div>
+
             <div className="relative min-h-[400px]">
                 {loading && (
                     <div className="absolute inset-0 z-10 bg-white/70 backdrop-blur-sm flex items-center justify-center">
@@ -550,10 +761,10 @@ function BrandChartCard({ filters, apiPath }: { filters: any; apiPath: string })
                         <BarChart
                             data={data}
                             layout="vertical"
-                            margin={{ top: 0, right: isMobile ? 120 : 350, left: 0, bottom: 0 }}
+                            margin={{ top: 0, right: isMobile ? 120 : 250, left: 0, bottom: 0 }}
                         >
                             <CartesianGrid strokeDasharray="3 3" horizontal vertical={false} stroke="#f1f5f9" />
-                            <XAxis type="number" hide />
+                            <XAxis type="number" hide domain={[0, 'dataMax']} />
                             <YAxis type="category" dataKey="brand_label" hide />
                             <Tooltip
                                 cursor={{ fill: '#f8fafc' }}
@@ -589,11 +800,21 @@ function BrandChartCard({ filters, apiPath }: { filters: any; apiPath: string })
 // RTO PERFORMANCE CHART CARD  (mirrors BrandChartCard exactly)
 // ─────────────────────────────────────────────────────────────
 function RtoChartCard({ filters, apiPath }: { filters: any; apiPath: string }) {
-    const { stateCode, fromMonth, toMonth } = filters;
+    const { stateCode } = filters;
     const [brandName, setBrandName] = useState('ALL');
+    const [segment, setSegment] = useState<'ALL' | 'ICE' | 'EV'>('ALL');
+    const [period, setPeriod] = useState('this_month');
+    const [fromMonth, setFromMonth] = useState('');
+    const [toMonth, setToMonth] = useState('');
     const [loading, setLoading] = useState(false);
     const [data, setData] = useState<any[]>([]);
     const [brands, setBrands] = useState<any[]>([]);
+
+    useEffect(() => {
+        const { from, to } = calculateDates(period);
+        setFromMonth(from);
+        setToMonth(to);
+    }, [period]);
 
     const [isMobile, setIsMobile] = useState(false);
     useEffect(() => {
@@ -604,6 +825,7 @@ function RtoChartCard({ filters, apiPath }: { filters: any; apiPath: string }) {
     }, []);
 
     useEffect(() => {
+        if (!fromMonth || !toMonth) return;
         let alive = true;
         const t = setTimeout(async () => {
             setLoading(true);
@@ -618,7 +840,13 @@ function RtoChartCard({ filters, apiPath }: { filters: any; apiPath: string }) {
                 const payload = await fetch(`${apiPath}?${p}&_t=${Date.now()}`).then(r => r.json());
                 if (!alive) return;
 
-                setBrands(payload.brand?.share || []);
+                const filteredBrands = (payload.brand?.share || []).filter((b: any) => {
+                    if (segment === 'ALL') return true;
+                    const bSeg = getBrandSegment(b.brand_name);
+                    if (segment === 'EV') return bSeg === 'EV';
+                    return bSeg === 'ICE' || bSeg === 'UNCERTAIN';
+                });
+                setBrands(filteredBrands);
 
                 // Always use rto.share — same pattern as Brand chart uses brand.share
                 const raw: any[] = (payload.rto?.share || []).filter((r: any) => Number(r.units) > 0);
@@ -649,7 +877,7 @@ function RtoChartCard({ filters, apiPath }: { filters: any; apiPath: string }) {
             alive = false;
             clearTimeout(t);
         };
-    }, [stateCode, brandName, fromMonth, toMonth, apiPath]);
+    }, [stateCode, brandName, fromMonth, toMonth, segment, apiPath]);
 
     const h = Math.max(500, data.length * 40);
 
@@ -668,21 +896,75 @@ function RtoChartCard({ filters, apiPath }: { filters: any; apiPath: string }) {
                     </div>
                 </div>
 
-                <div className="relative flex items-center gap-3 bg-white/80 backdrop-blur-xl px-4 py-2 md:px-6 md:py-2.5 rounded-xl md:rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md hover:border-[#FFD700] transition-all cursor-pointer">
-                    <div className="flex items-center gap-2 min-w-[120px] md:min-w-[170px]">
-                        <select
-                            value={brandName}
-                            onChange={e => setBrandName(e.target.value)}
-                            className="text-[11px] md:text-[12px] font-black text-slate-800 bg-transparent border-none p-0 focus:ring-0 cursor-pointer appearance-none w-full uppercase"
+                <div className="flex flex-wrap items-center gap-2 md:gap-3 overflow-x-auto no-scrollbar pt-1 pr-4">
+                    {/* Period Selector Pill */}
+                    <div className="relative flex items-center gap-2.5 bg-white/60 hover:bg-white/90 px-4 py-2 md:px-5 md:py-2.5 rounded-full border border-white/80 shadow-[0_2px_10px_-3px_rgba(0,0,0,0.07)] hover:shadow-[0_8px_20px_-6px_rgba(0,0,0,0.12)] hover:border-[#FFD700]/50 transition-all cursor-pointer group/pill">
+                        <div className="w-7 h-7 rounded-full bg-amber-50 flex items-center justify-center shrink-0 group-hover/pill:bg-[#FFD700]/10 transition-colors">
+                            <Calendar className="w-3.5 h-3.5 text-amber-600 group-hover/pill:text-amber-700 transition-colors" />
+                        </div>
+                        <div className="flex-1 flex items-center justify-center gap-1.5 min-w-[80px] md:min-w-[110px]">
+                            <select
+                                value={period}
+                                onChange={e => setPeriod(e.target.value)}
+                                className="text-[11px] md:text-[12px] font-bold text-slate-700 bg-transparent border-none p-0 focus:ring-0 cursor-pointer appearance-none w-full text-center h-full flex items-center justify-center"
+                            >
+                                <option value="today">Today</option>
+                                <option value="yesterday">Yesterday</option>
+                                <option value="this_week">This Week</option>
+                                <option value="last_30_days">Last 30 Days</option>
+                                <option value="this_month">This Month</option>
+                                <option value="last_month">Last Month</option>
+                                <option value="this_quarter">This Quarter</option>
+                                <option value="this_year">This Year</option>
+                                <option value="last_year">Last Year</option>
+                            </select>
+                            <ChevronDown className="w-3 h-3 text-slate-400 group-hover/pill:text-slate-600 shrink-0" />
+                        </div>
+                    </div>
+
+                    {/* Drivetrain Segment Pill */}
+                    <div className="relative flex items-center gap-2.5 bg-white/60 hover:bg-white/90 px-4 py-2 md:px-5 md:py-2.5 rounded-full border border-white/80 shadow-[0_2px_10px_-3px_rgba(0,0,0,0.07)] hover:shadow-[0_8px_20px_-6px_rgba(0,0,0,0.12)] hover:border-[#FFD700]/50 transition-all cursor-pointer group/pill">
+                        <div
+                            className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-colors ${segment === 'EV' ? 'bg-emerald-50 group-hover/pill:bg-emerald-100' : 'bg-orange-50 group-hover/pill:bg-orange-100'}`}
                         >
-                            <option value="ALL">ALL BRANDS</option>
-                            {brands.map(b => (
-                                <option key={b.brand_name} value={b.brand_name}>
-                                    {formatBrandLabel(b.brand_display || b.brand_name)}
-                                </option>
-                            ))}
-                        </select>
-                        <ChevronDown className="w-3.5 h-3.5 md:w-4 md:h-4 text-slate-800 shrink-0" />
+                            <Zap
+                                className={`w-3.5 h-3.5 transition-colors ${segment === 'EV' ? 'text-emerald-600' : 'text-orange-600'}`}
+                            />
+                        </div>
+                        <div className="flex-1 flex items-center justify-center gap-1.5 min-w-[36px] md:min-w-[44px]">
+                            <select
+                                value={segment}
+                                onChange={e => setSegment(e.target.value as 'ALL' | 'ICE' | 'EV')}
+                                className="text-[11px] md:text-[12px] font-bold text-slate-700 bg-transparent border-none p-0 focus:ring-0 cursor-pointer appearance-none w-full text-center h-full flex items-center justify-center"
+                            >
+                                <option value="ALL">All</option>
+                                <option value="ICE">ICE</option>
+                                <option value="EV">EV</option>
+                            </select>
+                            <ChevronDown className="w-3 h-3 text-slate-400 group-hover/pill:text-slate-600 shrink-0" />
+                        </div>
+                    </div>
+
+                    {/* Brand Selector Pill */}
+                    <div className="relative flex items-center gap-2.5 bg-white/60 hover:bg-white/90 px-4 py-2 md:px-5 md:py-2.5 rounded-full border border-white/80 shadow-[0_2px_10px_-3px_rgba(0,0,0,0.07)] hover:shadow-[0_8px_20px_-6px_rgba(0,0,0,0.12)] hover:border-[#FFD700]/50 transition-all cursor-pointer group/pill">
+                        <div className="w-7 h-7 rounded-full bg-indigo-50 flex items-center justify-center shrink-0 group-hover/pill:bg-indigo-100 transition-colors">
+                            <Award className="w-3.5 h-3.5 text-indigo-600 group-hover/pill:text-indigo-700 transition-colors" />
+                        </div>
+                        <div className="flex-1 flex items-center justify-center gap-1.5 min-w-[120px] md:min-w-[150px]">
+                            <select
+                                value={brandName}
+                                onChange={e => setBrandName(e.target.value)}
+                                className="text-[11px] md:text-[12px] font-bold text-slate-700 bg-transparent border-none p-0 focus:ring-0 cursor-pointer appearance-none w-full text-center h-full flex items-center justify-center"
+                            >
+                                <option value="ALL">All Brands</option>
+                                {brands.map(b => (
+                                    <option key={b.brand_name} value={b.brand_name}>
+                                        {formatBrandLabel(b.brand_display || b.brand_name)}
+                                    </option>
+                                ))}
+                            </select>
+                            <ChevronDown className="w-3 h-3 text-slate-400 group-hover/pill:text-slate-600 shrink-0" />
+                        </div>
                     </div>
                 </div>
             </div>
@@ -702,10 +984,10 @@ function RtoChartCard({ filters, apiPath }: { filters: any; apiPath: string }) {
                         <BarChart
                             data={data}
                             layout="vertical"
-                            margin={{ top: 0, right: isMobile ? 140 : 470, left: 0, bottom: 0 }}
+                            margin={{ top: 0, right: isMobile ? 140 : 300, left: 0, bottom: 0 }}
                         >
                             <CartesianGrid strokeDasharray="3 3" horizontal vertical={false} stroke="#f1f5f9" />
-                            <XAxis type="number" hide />
+                            <XAxis type="number" hide domain={[0, 'dataMax']} />
                             <YAxis type="category" dataKey="rto_code" hide />
                             <Tooltip
                                 cursor={{ fill: '#f8fafc' }}
@@ -883,10 +1165,10 @@ function RunningSeriesStatusCard({ filters, apiPath }: { filters: any; apiPath: 
                         <BarChart
                             data={data}
                             layout="vertical"
-                            margin={{ top: 0, right: isMobile ? 120 : 350, left: 0, bottom: 0 }}
+                            margin={{ top: 0, right: isMobile ? 120 : 250, left: 0, bottom: 0 }}
                         >
                             <CartesianGrid strokeDasharray="3 3" horizontal vertical={false} stroke="#f1f5f9" />
-                            <XAxis type="number" hide />
+                            <XAxis type="number" hide domain={[0, 'dataMax']} />
                             <YAxis type="category" dataKey="rto_code" hide />
                             <Tooltip
                                 cursor={{ fill: '#f8fafc' }}
@@ -1050,8 +1332,11 @@ function TimelineByBrandCard({ filters, apiPath }: { filters: any; apiPath: stri
                 const sourceRows: any[] = payload.brand?.trend || [];
                 const rows = sourceRows.filter((r: any) => {
                     const label = String(r.brand_display || r.brand_name || '').trim();
-                    const ev = isEvBrand(label);
-                    return brandType === 'EV' ? ev : !ev;
+                    const segment = getBrandSegment(label);
+                    // Filter based on selected brandType: ICE or EV
+                    // If segment is UNCERTAIN, we default to ICE per user rule.
+                    if (brandType === 'EV') return segment === 'EV';
+                    return segment === 'ICE' || segment === 'UNCERTAIN';
                 });
                 const totals = new Map<string, number>();
                 for (const r of rows) {
@@ -1120,22 +1405,28 @@ function TimelineByBrandCard({ filters, apiPath }: { filters: any; apiPath: stri
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
-                        <div className="relative flex items-center gap-3 bg-white/80 backdrop-blur-xl px-4 py-2 rounded-xl border border-slate-200/60 shadow-sm">
-                            <select
-                                value={localPeriod}
-                                onChange={e => setLocalPeriod(e.target.value)}
-                                className="text-[12px] font-black text-slate-800 bg-transparent border-none p-0 focus:ring-0 cursor-pointer appearance-none min-w-[100px]"
-                            >
-                                <option value="inherit">Sync (Global)</option>
-                                <option value="all_time">All Time</option>
-                                <option value="last_12_months">Last 12 Months</option>
-                                <option value="this_year">This Year</option>
-                                <option value="last_year">Last Year</option>
-                            </select>
+                        <div className="relative flex items-center gap-2.5 bg-white/60 hover:bg-white/90 px-4 py-2 md:px-5 md:py-2.5 rounded-full border border-white/80 shadow-[0_2px_10px_-3px_rgba(0,0,0,0.07)] hover:shadow-[0_8px_20px_-6px_rgba(0,0,0,0.12)] hover:border-[#FFD700]/50 transition-all cursor-pointer group/pill">
+                            <div className="w-7 h-7 rounded-full bg-slate-50 flex items-center justify-center shrink-0 group-hover/pill:bg-[#FFD700]/10 transition-colors">
+                                <Calendar className="w-3.5 h-3.5 text-slate-400 group-hover/pill:text-[#FFD700] transition-colors" />
+                            </div>
+                            <div className="flex-1 flex items-center justify-center gap-1.5 min-w-[100px] md:min-w-[140px]">
+                                <select
+                                    value={localPeriod}
+                                    onChange={e => setLocalPeriod(e.target.value)}
+                                    className="text-[11px] md:text-[12px] font-bold text-slate-700 bg-transparent border-none p-0 focus:ring-0 cursor-pointer appearance-none w-full text-center h-full flex items-center justify-center"
+                                >
+                                    <option value="inherit">Sync (Global)</option>
+                                    <option value="all_time">All Time</option>
+                                    <option value="last_12_months">Last 12 Months</option>
+                                    <option value="this_year">This Year</option>
+                                    <option value="last_year">Last Year</option>
+                                </select>
+                                <ChevronDown className="w-3 h-3 text-slate-400 group-hover/pill:text-slate-600 shrink-0" />
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div className="relative flex flex-col h-[760px] p-4">
+                <div className="relative flex flex-col h-[800px] p-4">
                     {loading && (
                         <div className="absolute inset-0 z-10 bg-white/70 backdrop-blur-sm flex items-center justify-center">
                             <Loader2 className="w-8 h-8 animate-spin text-[#FFD700]" />
@@ -1186,18 +1477,26 @@ function TimelineByBrandCard({ filters, apiPath }: { filters: any; apiPath: stri
                             </p>
                         </div>
                     </div>
-                    <div className="relative flex items-center gap-3 bg-white/80 backdrop-blur-xl px-3 py-2 rounded-xl border border-slate-200/60 shadow-sm">
-                        <p className="text-[10px] md:text-[11px] font-black text-slate-500 whitespace-nowrap">
-                            Select Type
-                        </p>
-                        <select
-                            value={brandType}
-                            onChange={e => setBrandType(e.target.value as 'ICE' | 'EV')}
-                            className="text-[11px] md:text-[12px] font-black text-slate-800 bg-transparent border-none p-0 focus:ring-0 cursor-pointer appearance-none min-w-[56px]"
+                    <div className="relative flex items-center gap-2.5 bg-white/60 hover:bg-white/90 px-4 py-2 md:px-5 md:py-2.5 rounded-full border border-white/80 shadow-[0_2px_10px_-3px_rgba(0,0,0,0.07)] hover:shadow-[0_8px_20px_-6px_rgba(0,0,0,0.12)] hover:border-[#FFD700]/50 transition-all cursor-pointer group/pill">
+                        <div
+                            className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-colors ${brandType === 'EV' ? 'bg-emerald-50 group-hover/pill:bg-emerald-100' : 'bg-orange-50 group-hover/pill:bg-orange-100'}`}
                         >
-                            <option value="ICE">ICE</option>
-                            <option value="EV">EV</option>
-                        </select>
+                            <Zap
+                                className={`w-3.5 h-3.5 transition-colors ${brandType === 'EV' ? 'text-emerald-600' : 'text-orange-600'}`}
+                            />
+                        </div>
+                        <div className="flex-1 flex items-center justify-center gap-1.5 min-w-[36px] md:min-w-[50px]">
+                            <select
+                                value={brandType}
+                                onChange={e => setBrandType(e.target.value as 'ICE' | 'EV')}
+                                className="text-[11px] md:text-[12px] font-bold text-slate-700 bg-transparent border-none p-0 focus:ring-0 cursor-pointer appearance-none w-full text-center h-full flex items-center justify-center"
+                            >
+                                <option value="ALL">All</option>
+                                <option value="ICE">ICE</option>
+                                <option value="EV">EV</option>
+                            </select>
+                            <ChevronDown className="w-3 h-3 text-slate-400 group-hover/pill:text-slate-600 shrink-0" />
+                        </div>
                     </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2 text-[10px] md:text-[11px]">
@@ -1354,9 +1653,8 @@ function TimelineByRtoCard({ filters, apiPath }: { filters: any; apiPath: string
                 }
                 const sortedRtos = Array.from(totals.entries()).sort((a, b) => b[1] - a[1]);
                 const allCodesByVol = sortedRtos.map(([k]) => k);
-                const top3Codes = new Set(allCodesByVol.slice(0, 3));
 
-                const allCodesSorted = [...allCodesByVol];
+                const allCodesSorted = [...allCodesByVol].sort((a, b) => compareRtoCodeNumeric(a, b));
                 const allLabelsSorted = allCodesSorted.map(
                     code => `${code} (${trunc(nameByCode.get(code) || code, 12)})`
                 );
@@ -1390,8 +1688,11 @@ function TimelineByRtoCard({ filters, apiPath }: { filters: any; apiPath: string
                     String(a.period).localeCompare(String(b.period), 'en')
                 );
 
+                const defaultRtoCodes = new Set(['MH01', 'MH02', 'MH03']);
                 const top3Labels = new Set(
-                    allCodesByVol.slice(0, 3).map(code => `${code} (${trunc(nameByCode.get(code) || code, 12)})`)
+                    allCodesSorted
+                        .filter(code => defaultRtoCodes.has(code))
+                        .map(code => `${code} (${trunc(nameByCode.get(code) || code, 12)})`)
                 );
                 const initialHidden = new Set(allLabelsSorted.filter(l => !top3Labels.has(l)));
                 setHiddenKeys(initialHidden);
@@ -1426,21 +1727,27 @@ function TimelineByRtoCard({ filters, apiPath }: { filters: any; apiPath: string
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
-                        <div className="relative flex items-center gap-3 bg-white/80 backdrop-blur-xl px-4 py-2 rounded-xl border border-slate-200/60 shadow-sm">
-                            <select
-                                value={localPeriod}
-                                onChange={e => setLocalPeriod(e.target.value)}
-                                className="text-[12px] font-black text-slate-800 bg-transparent border-none p-0 focus:ring-0 cursor-pointer appearance-none min-w-[100px]"
-                            >
-                                <option value="last_12_months">Last 12 Months</option>
-                                <option value="last_year">Last Year</option>
-                                <option value="last_30_days">Last 30 Days</option>
-                                <option value="all_time">All Time</option>
-                            </select>
+                        <div className="relative flex items-center gap-2.5 bg-white/60 hover:bg-white/90 px-4 py-2 md:px-5 md:py-2.5 rounded-full border border-white/80 shadow-[0_2px_10px_-3px_rgba(0,0,0,0.07)] hover:shadow-[0_8px_20px_-6px_rgba(0,0,0,0.12)] hover:border-[#FFD700]/50 transition-all cursor-pointer group/pill">
+                            <div className="w-7 h-7 rounded-full bg-slate-50 flex items-center justify-center shrink-0 group-hover/pill:bg-[#FFD700]/10 transition-colors">
+                                <Calendar className="w-3.5 h-3.5 text-slate-400 group-hover/pill:text-[#FFD700] transition-colors" />
+                            </div>
+                            <div className="flex-1 flex items-center justify-center gap-1.5 min-w-[100px] md:min-w-[140px]">
+                                <select
+                                    value={localPeriod}
+                                    onChange={e => setLocalPeriod(e.target.value)}
+                                    className="text-[11px] md:text-[12px] font-bold text-slate-700 bg-transparent border-none p-0 focus:ring-0 cursor-pointer appearance-none w-full text-center h-full flex items-center justify-center"
+                                >
+                                    <option value="last_12_months">Last 12 Months</option>
+                                    <option value="last_year">Last Year</option>
+                                    <option value="last_30_days">Last 30 Days</option>
+                                    <option value="all_time">All Time</option>
+                                </select>
+                                <ChevronDown className="w-3 h-3 text-slate-400 group-hover/pill:text-slate-600 shrink-0" />
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div className="relative flex flex-col h-[760px] p-4">
+                <div className="relative flex flex-col h-[800px] p-4">
                     {loading && (
                         <div className="absolute inset-0 z-10 bg-white/70 backdrop-blur-sm flex items-center justify-center">
                             <Loader2 className="w-8 h-8 animate-spin text-[#FFD700]" />
@@ -1611,16 +1918,20 @@ export default function VahanTwoWheelerPage({ dataApiPath, title }: Props) {
         if (!lastDbUpdateAt) return '---';
         const dt = new Date(lastDbUpdateAt);
         if (Number.isNaN(dt.getTime())) return '---';
-        return dt
-            .toLocaleString('en-IN', {
-                day: '2-digit',
-                month: 'short',
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: true,
-                timeZone: 'Asia/Kolkata',
-            })
-            .toUpperCase();
+
+        const day = dt.toLocaleDateString('en-IN', { weekday: 'long', timeZone: 'Asia/Kolkata' });
+        const dateNum = dt.toLocaleDateString('en-IN', { day: '2-digit', timeZone: 'Asia/Kolkata' });
+        const month = dt.toLocaleDateString('en-IN', { month: 'long', timeZone: 'Asia/Kolkata' });
+        const year = dt.toLocaleDateString('en-IN', { year: 'numeric', timeZone: 'Asia/Kolkata' });
+
+        const time = dt.toLocaleTimeString('en-IN', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true,
+            timeZone: 'Asia/Kolkata',
+        });
+
+        return `${day}, ${dateNum}, ${month}, ${year}, ${time} IST`;
     })();
 
     return (
@@ -1644,136 +1955,140 @@ export default function VahanTwoWheelerPage({ dataApiPath, title }: Props) {
                                 <h1 className="text-5xl md:text-6xl font-black tracking-[-0.05em] text-slate-900 bg-clip-text text-transparent bg-gradient-to-br from-slate-900 via-slate-800 to-slate-500 leading-none">
                                     {title || 'Vahan Dashboard'}
                                 </h1>
-                            </div>
-                        </div>
-
-                        {/* Glass Filter Floating Island - Perfectly Aligned */}
-                        <div className="relative group">
-                            <div className="absolute -inset-2 bg-gradient-to-r from-[#FFD700]/40 via-[#FFD700]/20 to-yellow-500/40 rounded-[3rem] blur-3xl opacity-20 group-hover:opacity-40 transition duration-1000 group-hover:scale-110" />
-                            <div className="relative bg-white/50 backdrop-blur-[40px] border-[1.5px] border-white/90 rounded-[2rem] md:rounded-[2.8rem] p-2 md:p-4 px-3 md:px-10 shadow-[0_30px_70px_-20px_rgba(0,0,0,0.12)] flex flex-wrap items-center justify-center md:justify-start gap-2 md:gap-10">
-                                <div className="flex items-center gap-2 md:gap-6">
-                                    <div className="flex flex-col">
-                                        <div className="bg-white/90 px-4 md:px-6 py-2.5 md:py-4 rounded-xl md:rounded-2xl border border-white shadow-sm flex items-center gap-2 md:gap-4 hover:shadow-lg transition-all cursor-pointer">
-                                            <div className="w-1.5 h-1.5 rounded-full bg-[#FFD700]/100 animate-pulse hidden md:block" />
-                                            <select
-                                                value={stateCode}
-                                                onChange={e => setStateCode(e.target.value)}
-                                                className="bg-transparent text-[11px] md:text-[13px] font-black text-slate-800 border-none p-0 focus:ring-0 cursor-pointer appearance-none min-w-[100px] md:min-w-[160px]"
-                                            >
-                                                <option value="MH">MAHARASHTRA</option>
-                                                <option value="GUJ">GUJARAT</option>
-                                                <option value="KA">KARNATAKA</option>
-                                            </select>
-                                            <ChevronDown className="w-4 h-4 md:w-5 md:h-5 text-slate-800" />
-                                        </div>
+                                {/* Last Refreshed Pill - Now positioned elegantly under the title */}
+                                <div className="mt-5 flex items-center gap-3 bg-white/60 hover:bg-white/90 backdrop-blur-3xl px-5 py-2.5 rounded-full border border-white/80 shadow-[0_8px_30px_-10px_rgba(0,0,0,0.12)] group-refresh cursor-default transition-all w-fit">
+                                    <div className="relative w-7 h-7 rounded-full bg-amber-50/50 flex items-center justify-center shrink-0 border border-amber-100/50 overflow-hidden">
+                                        <Activity className="w-3.5 h-3.5 text-[#FFD700] animate-pulse relative z-10" />
+                                        <div className="absolute inset-0 bg-[#FFD700]/10 rounded-full blur-[4px] animate-ping" />
                                     </div>
-                                </div>
-
-                                <div className="w-[1px] h-8 md:w-[1.5px] md:h-12 bg-slate-200/40" />
-
-                                <div className="flex items-center gap-2 md:gap-6">
-                                    <div className="flex flex-col">
-                                        <div className="bg-white/90 px-4 md:px-6 py-2.5 md:py-4 rounded-xl md:rounded-2xl border border-white shadow-sm flex items-center gap-2 md:gap-4 hover:shadow-lg transition-all cursor-pointer">
-                                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse hidden md:block" />
-                                            <select
-                                                value={period}
-                                                onChange={e => setPeriod(e.target.value)}
-                                                className="bg-transparent text-[11px] md:text-[13px] font-black text-slate-800 border-none p-0 focus:ring-0 cursor-pointer appearance-none min-w-[80px] md:min-w-[140px]"
-                                            >
-                                                <option value="today">Today</option>
-                                                <option value="yesterday">Yesterday</option>
-                                                <option value="this_week">This Week</option>
-                                                <option value="last_30_days">Last 30 Days</option>
-                                                <option value="this_month">This Month</option>
-                                                <option value="last_month">Last Month</option>
-                                                <option value="this_quarter">This Quarter</option>
-                                                <option value="this_year">This Year</option>
-                                                <option value="last_year">Last Year</option>
-                                            </select>
-                                            <ChevronDown className="w-4 h-4 md:w-5 md:h-5 text-slate-800" />
-                                        </div>
+                                    <div className="flex items-center gap-2.5">
+                                        <span className="text-[11px] md:text-[12px] font-bold text-slate-500 tracking-tight">
+                                            Last Refreshed
+                                        </span>
+                                        <span className="w-1.5 h-1.5 rounded-full bg-slate-200" />
+                                        <span className="text-[11px] md:text-[12px] font-black text-slate-800 tracking-tight tabular-nums">
+                                            {lastRefreshed}
+                                        </span>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    {/* Secondary Status Row: Meta info aligned below their parents */}
-                    <div className="flex justify-center xl:justify-end -mt-4 xl:mt-0 transition-all duration-700">
-                        <div className="flex items-center gap-3 bg-white/40 backdrop-blur-3xl px-6 py-2 rounded-full border border-white/60 shadow-[0_5px_15px_-5px_rgba(0,0,0,0.05)] group/refresh hover:bg-white/60 cursor-default transition-all">
-                            <div className="relative flex items-center justify-center">
-                                <Activity className="w-3.5 h-3.5 text-[#FFD700] animate-pulse" />
-                                <div className="absolute inset-0 bg-[#FFD700]/100/20 rounded-full blur-[4px] animate-ping" />
+                        {/* Glass Filter Floating Island - Re-engineered for High-Density Presence */}
+                        <div className="relative group-island">
+                            {/* Dramatic Vibrant Background Glow */}
+                            <div className="absolute -inset-4 bg-gradient-to-r from-[#FFD700]/50 via-amber-400/30 to-yellow-500/50 rounded-[4rem] blur-3xl opacity-30 group-hover-island:opacity-50 transition duration-1000 group-hover-island:scale-110" />
+
+                            <div className="relative bg-white/60 backdrop-blur-[100px] border-[1.5px] border-white/95 rounded-[2.5rem] md:rounded-[3.2rem] p-3 md:p-6 px-4 md:px-14 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.15)] flex flex-wrap items-center justify-center md:justify-start gap-4 md:gap-14">
+                                <div className="flex items-center gap-3 md:gap-8">
+                                    <div className="flex flex-col">
+                                        <div className="relative flex items-center gap-4 bg-white/80 hover:bg-white px-7 py-5 md:px-12 md:py-6 rounded-full border-[1.5px] border-white shadow-[0_15px_60px_-15px_rgba(0,0,0,0.12)] hover:shadow-[0_30px_80px_-20px_rgba(0,0,0,0.22)] hover:border-[#FFD700]/50 transition-all duration-500 cursor-pointer group-state overflow-hidden">
+                                            {/* Dynamic Hover Background */}
+                                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#FFD700]/5 to-transparent -translate-x-full group-hover-state:translate-x-full transition-transform duration-1000" />
+
+                                            <div className="w-12 h-12 rounded-full bg-slate-900 flex items-center justify-center shrink-0 border border-slate-800 shadow-xl relative z-10">
+                                                <MapPin className="w-5.5 h-5.5 text-[#FFD700]" />
+                                            </div>
+
+                                            <div className="flex-1 flex items-center justify-center gap-4 min-w-[160px] md:min-w-[440px] relative z-10">
+                                                <select
+                                                    value={stateCode}
+                                                    onChange={e => setStateCode(e.target.value)}
+                                                    className="bg-transparent text-[16px] md:text-[20px] font-black text-slate-900 border-none p-0 focus:ring-0 cursor-pointer appearance-none w-full tracking-tighter text-center h-full flex items-center justify-center group-hover-state:scale-[1.02] transition-transform"
+                                                >
+                                                    <option value="MH">Maharashtra</option>
+                                                    <option value="GUJ">Gujarat</option>
+                                                    <option value="KA">Karnataka</option>
+                                                </select>
+                                                <ChevronDown className="w-6 h-6 text-slate-900 transition-all duration-300 transform group-hover-state:translate-y-1 shrink-0" />
+                                            </div>
+
+                                            <div className="absolute top-4 right-8 flex items-center gap-1.5 overflow-hidden">
+                                                <div className="w-2.5 h-2.5 rounded-full bg-[#FFD700] shadow-[0_0_15px_#FFD700] animate-pulse" />
+                                                <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_#10b981] animate-pulse delay-75" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.15em] flex items-center gap-2">
-                                Last Refreshed
-                                <span className="w-1 h-1 rounded-full bg-slate-300" />
-                                <span className="text-slate-800 font-black tracking-tight">{lastRefreshed}</span>
-                            </span>
                         </div>
                     </div>
                 </div>
-
                 {/* KPI Row */}
                 <KpiStatsRow filters={filters} apiPath={apiPath} onLastDataUpdate={setLastDbUpdateAt} />
 
-                {/* Chart Tabs */}
+                {/* Chart Tabs (Cinematic Navigation) */}
                 <div className="w-full">
-                    <div className="grid grid-cols-5 items-center gap-2 w-full bg-white/70 backdrop-blur-xl border border-slate-200 rounded-2xl p-2 shadow-sm">
+                    <div className="relative bg-white/40 backdrop-blur-3xl border border-white/60 p-1.5 rounded-[2rem] shadow-[0_20px_50px_-15px_rgba(0,0,0,0.05)] flex overflow-x-auto no-scrollbar gap-1 items-center">
                         <button
                             type="button"
                             onClick={() => setActiveChartTab('series')}
-                            className={`w-full px-4 py-2 rounded-xl text-xs md:text-sm font-black tracking-tight transition ${
+                            className={`flex-1 min-w-max flex items-center justify-center gap-3.5 px-10 py-4 rounded-full text-base font-black transition-all duration-500 whitespace-nowrap ${
                                 activeChartTab === 'series'
-                                    ? 'bg-[#FFD700] text-slate-900 shadow-md'
-                                    : 'text-slate-700 hover:bg-slate-100'
+                                    ? 'bg-[#FFD700] text-slate-900 shadow-[0_10px_25px_-5px_rgba(255,215,0,0.3)] scale-[1.02]'
+                                    : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'
                             }`}
                         >
-                            Running Series Status
+                            <TrendingUp
+                                className={`w-4 h-4 ${activeChartTab === 'series' ? 'text-slate-900' : 'text-slate-400'}`}
+                            />
+                            Running Series
                         </button>
                         <button
                             type="button"
                             onClick={() => setActiveChartTab('brand')}
-                            className={`w-full px-4 py-2 rounded-xl text-xs md:text-sm font-black tracking-tight transition ${
+                            className={`flex-1 min-w-max flex items-center justify-center gap-3.5 px-10 py-4 rounded-full text-base font-black transition-all duration-500 whitespace-nowrap ${
                                 activeChartTab === 'brand'
-                                    ? 'bg-[#FFD700] text-slate-900 shadow-md'
-                                    : 'text-slate-700 hover:bg-slate-100'
+                                    ? 'bg-[#FFD700] text-slate-900 shadow-[0_10px_25px_-5px_rgba(255,215,0,0.3)] scale-[1.02]'
+                                    : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'
                             }`}
                         >
-                            Performance by Brand
+                            <Award
+                                className={`w-4 h-4 ${activeChartTab === 'brand' ? 'text-slate-900' : 'text-slate-400'}`}
+                            />
+                            Brands
                         </button>
                         <button
                             type="button"
                             onClick={() => setActiveChartTab('rto')}
-                            className={`w-full px-4 py-2 rounded-xl text-xs md:text-sm font-black tracking-tight transition ${
+                            className={`flex-1 min-w-max flex items-center justify-center gap-3.5 px-10 py-4 rounded-full text-base font-black transition-all duration-500 whitespace-nowrap ${
                                 activeChartTab === 'rto'
-                                    ? 'bg-[#FFD700] text-slate-900 shadow-md'
-                                    : 'text-slate-700 hover:bg-slate-100'
+                                    ? 'bg-[#FFD700] text-slate-900 shadow-[0_10px_25px_-5px_rgba(255,215,0,0.3)] scale-[1.02]'
+                                    : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'
                             }`}
                         >
-                            Performance by RTO
+                            <MapPin
+                                className={`w-4 h-4 ${activeChartTab === 'rto' ? 'text-slate-900' : 'text-slate-400'}`}
+                            />
+                            RTOs
                         </button>
                         <button
                             type="button"
                             onClick={() => setActiveChartTab('timeline_rto')}
-                            className={`w-full px-4 py-2 rounded-xl text-xs md:text-sm font-black tracking-tight transition ${
+                            className={`flex-1 min-w-max flex items-center justify-center gap-3.5 px-10 py-4 rounded-full text-base font-black transition-all duration-500 whitespace-nowrap ${
                                 activeChartTab === 'timeline_rto'
-                                    ? 'bg-[#FFD700] text-slate-900 shadow-md'
-                                    : 'text-slate-700 hover:bg-slate-100'
+                                    ? 'bg-[#FFD700] text-slate-900 shadow-[0_10px_25px_-5px_rgba(255,215,0,0.3)] scale-[1.02]'
+                                    : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'
                             }`}
                         >
-                            Timeline by RTO
+                            <Activity
+                                className={`w-4 h-4 ${activeChartTab === 'timeline_rto' ? 'text-slate-900' : 'text-slate-400'}`}
+                            />
+                            RTO Trends
                         </button>
                         <button
                             type="button"
                             onClick={() => setActiveChartTab('timeline_brand')}
-                            className={`w-full px-4 py-2 rounded-xl text-xs md:text-sm font-black tracking-tight transition ${
+                            className={`flex-1 min-w-max flex items-center justify-center gap-3.5 px-10 py-4 rounded-full text-base font-black transition-all duration-500 whitespace-nowrap ${
                                 activeChartTab === 'timeline_brand'
-                                    ? 'bg-[#FFD700] text-slate-900 shadow-md'
-                                    : 'text-slate-700 hover:bg-slate-100'
+                                    ? 'bg-[#FFD700] text-slate-900 shadow-[0_10px_25px_-5px_rgba(255,215,0,0.3)] scale-[1.02]'
+                                    : 'text-slate-500 hover:text-slate-800 hover:bg-white/50'
                             }`}
                         >
-                            Timeline by Brand
+                            <Activity
+                                className={`w-4 h-4 ${activeChartTab === 'timeline_brand' ? 'text-slate-900' : 'text-slate-400'}`}
+                            />
+                            Brand Trends
                         </button>
                     </div>
                 </div>
