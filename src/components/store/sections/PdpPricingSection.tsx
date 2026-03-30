@@ -8,6 +8,7 @@ import { Logo } from '@/components/brand/Logo';
 import PricingCard from '../Personalize/Cards/PricingCard';
 import { buildPriceBreakup } from '../Personalize/pdpComputations';
 import { REQUIRED_CORE_KEYS } from './pdpParityContract';
+import { AnimatedCurrency } from '../AnimatedCurrency';
 
 // ─── Types ────────────────────────────────────────────────
 export interface PdpPricingSectionProps {
@@ -155,7 +156,9 @@ export function PdpPricingSection({
                         </p>
                         <p className="text-[10px] font-mono tabular-nums text-slate-600 leading-snug mt-0.5">
                             {isCommercialReady ? (
-                                `On Road ₹${localDisplayOnRoad.toLocaleString('en-IN')}`
+                                <>
+                                    On Road <AnimatedCurrency value={localDisplayOnRoad} prefix="₹" />
+                                </>
                             ) : (
                                 <span className="italic text-slate-400">Login to view price</span>
                             )}
@@ -163,7 +166,13 @@ export function PdpPricingSection({
                         <p className="text-[10px] text-slate-400 leading-tight mt-0.5 flex items-center gap-1">
                             <Logo variant="icon" size={8} customColor="#94a3b8" />
                             <span>
-                                {isCommercialReady ? `${bCoinEquivalent.toLocaleString('en-IN')} B-coins` : '— B-coins'}
+                                {isCommercialReady ? (
+                                    <>
+                                        <AnimatedCurrency value={bCoinEquivalent} prefix="" /> B-coins
+                                    </>
+                                ) : (
+                                    '— B-coins'
+                                )}
                             </span>
                         </p>
                     </div>
@@ -227,7 +236,7 @@ export function PdpPricingSection({
                                             )}
                                         </span>
                                         <span className="font-mono font-semibold">
-                                            ₹ {Math.abs(Number(item.value) || 0).toLocaleString('en-IN')}
+                                            <AnimatedCurrency value={Math.abs(Number(item.value) || 0)} prefix="₹ " />
                                         </span>
                                     </div>
                                 ))}
@@ -245,7 +254,7 @@ export function PdpPricingSection({
                                             )}
                                         </span>
                                         <span className="font-mono font-semibold">
-                                            −₹ {Math.abs(Number(item.value) || 0).toLocaleString('en-IN')}
+                                            <AnimatedCurrency value={Math.abs(Number(item.value) || 0)} prefix="−₹ " />
                                         </span>
                                     </div>
                                 ))}
@@ -257,7 +266,7 @@ export function PdpPricingSection({
                                             Net Offer Price
                                         </span>
                                         <span className="font-mono font-black text-lg text-brand-primary">
-                                            ₹ {netPrice.toLocaleString('en-IN')}
+                                            <AnimatedCurrency value={netPrice} prefix="₹ " />
                                         </span>
                                     </div>
                                 )}

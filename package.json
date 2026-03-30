@@ -20,6 +20,8 @@
     "vahan:batch": "bash scripts/vahan/run-batches.sh",
     "spec:review:build": "tsx scripts/spec_review_queue_build.ts",
     "spec:review:run": "tsx scripts/spec_review_queue_review.ts",
+    "winner:status": "tsx scripts/winner_worker_ops.ts status",
+    "winner:run": "tsx scripts/winner_worker_ops.ts run",
     "test:unit": "jest"
   },
   "dependencies": {

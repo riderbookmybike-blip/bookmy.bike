@@ -539,7 +539,7 @@ export function useSystemDealerContext({
                             )
                             .eq('sku_id', activeSku)
                             .eq('state_code', activeStateCode)
-                            .eq('publish_stage', 'PUBLISHED')
+                            .in('publish_stage', ['LIVE', 'PUBLISHED'])
                             .maybeSingle();
 
                         if (!priceRow && activeStateCode !== 'MH') {
@@ -603,7 +603,7 @@ export function useSystemDealerContext({
                                 )
                                 .eq('sku_id', activeSku)
                                 .eq('state_code', 'MH')
-                                .eq('publish_stage', 'PUBLISHED')
+                                .in('publish_stage', ['LIVE', 'PUBLISHED'])
                                 .maybeSingle();
                             priceRow = fallbackPriceRow;
                         }
@@ -643,9 +643,11 @@ export function useSystemDealerContext({
                                     od: Number(priceRow.ins_own_damage_premium_amount || 0),
                                     tp: Number(priceRow.ins_liability_only_premium_amount || 0),
                                     gst_rate: Number(priceRow.ins_gst_rate || 18),
+                                    // Parity fix: prefer ins_gross_premium; fall back to sum of mandatory+gst
                                     base_total:
+                                        Number(priceRow.ins_gross_premium || 0) ||
                                         Number(priceRow.ins_sum_mandatory_insurance || 0) +
-                                        Number(priceRow.ins_sum_mandatory_insurance_gst_amount || 0),
+                                            Number(priceRow.ins_sum_mandatory_insurance_gst_amount || 0),
                                     addons: [
                                         {
                                             id: 'zero_depreciation',

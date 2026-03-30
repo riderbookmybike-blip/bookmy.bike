@@ -6,7 +6,7 @@ import { useSystemPDPLogic } from '@/hooks/SystemPDPLogic';
 import { LeadCaptureModal } from '@/components/leads/LeadCaptureModal';
 import LoginSidebar from '@/components/auth/LoginSidebar';
 import { EmailUpdateModal } from '@/components/auth/EmailUpdateModal';
-import { LocationPicker } from '@/components/store/LocationPicker';
+import { LocationSelectionModal } from '@/components/store/LocationSelectionModal';
 import { createClient } from '@/lib/supabase/client';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -25,12 +25,10 @@ import {
     isTenureSupported,
     pickBestCandidateForTenure,
 } from '@/utils/financeCandidateSelection';
+import { resolveRegionFromDistrict } from '@/lib/location/regionResolver';
 
-// PdpConsentGate removed — PDP is now open to all users without auth gate.
-const PincodeGateModal = dynamic(
-    () => import('@/components/store/Personalize/PincodeGateModal').then(m => ({ default: m.PincodeGateModal })),
-    { ssr: false }
-);
+// Pincode Gate Modal removed in favor of global District Modal
+export const PREVENT_ESLINT_UNUSED = true;
 
 import { InsuranceRule } from '@/types/insurance';
 
@@ -168,15 +166,13 @@ export default function ProductClient({
 
     // ── Open PDP gate — location-only, no auth wall ───────────────────────────
     // RESOLVING         — checking pincode + serviceability (all users)
-    // PINCODE_REQUIRED  — no pincode cached (optional location capture modal)
     // NON_SERVICEABLE   — location not covered; PDP visible, offer notice shown
     // READY             — location resolved; best offer available
     // Note: Authentication is NOT a gate. All users (guests + members) see the
     //       full PDP. Login incentive lives in the bottom CTA for guests.
-    type PdpGateState = 'RESOLVING' | 'PINCODE_REQUIRED' | 'NON_SERVICEABLE' | 'READY';
+    type PdpGateState = 'RESOLVING' | 'NON_SERVICEABLE' | 'READY';
     const [pdpGateState, setPdpGateState] = useState<PdpGateState>('RESOLVING');
-    // Bumped by handlePincodeResolved to force the resolver to re-run after a new
-    // location is submitted.
+    // Bumped to force resolver re-runs after location updates.
     const [pincodeVersion, setPincodeVersion] = useState(0);
 
     // Resolve sequence: pincode present → serviceability → READY.
@@ -228,25 +224,6 @@ export default function ProductClient({
     }, [isAuthenticated, isLoggedIn, pincodeVersion]);
     // ── End gate state ────────────────────────────────────────────────────────
 
-    /**
-     * handlePincodeResolved — called by PincodeGateModal onResolved.
-     * Re-runs serviceability check; transitions to READY or NON_SERVICEABLE.
-     */
-    const handlePincodeResolved = async (_confidence: string, pincode: string) => {
-        // Persist the pincode to localStorage so the resolver effect reads it
-        try {
-            const existing = JSON.parse(localStorage.getItem('bmb_user_pincode') || '{}');
-            localStorage.setItem('bmb_user_pincode', JSON.stringify({ ...existing, pincode }));
-        } catch {
-            /* ignore */
-        }
-        // Bump version to trigger the resolver effect — it will do the serviceability check
-        setPincodeVersion(v => v + 1);
-    };
-
-    /** handleRetryPincode — lets user re-enter pincode from NON_SERVICEABLE banner. */
-    const handleRetryPincode = () => setPdpGateState('PINCODE_REQUIRED');
-
     // Broadcast commercial-ready state to other components (e.g. ShopperBottomNav)
     // without prop drilling across the server/client boundary.
     useEffect(() => {
@@ -255,7 +232,7 @@ export default function ProductClient({
                 detail: {
                     ready: pdpGateState === 'READY',
                     // isLoading = auth confirmed but still resolving serviceability — show spinner, not login CTA
-                    isLoading: pdpGateState === 'RESOLVING' || pdpGateState === 'PINCODE_REQUIRED',
+                    isLoading: pdpGateState === 'RESOLVING',
                     // isAuthenticated = user is logged in (may still be loading)
                     isAuthenticated: isAuthenticated || isLoggedIn,
                 },
@@ -645,7 +622,17 @@ export default function ProductClient({
     }, [makeParam, modelParam, variantParam, leadMeta?.displayId]);
     const [showEmailModal, setShowEmailModal] = useState(false);
     const [showReferralModal, setShowReferralModal] = useState(false);
-    const [showLocationPicker, setShowLocationPicker] = useState(false);
+    const [showDistrictModal, setShowDistrictModal] = useState(false);
+    const [runtimeDealerId, setRuntimeDealerId] = useState<string | null>(initialDealerId);
+    const [selectedDistrict, setSelectedDistrict] = useState<string>(
+        initialLocation?.district || initialLocation?.taluka || 'Mumbai City'
+    );
+    const [selectedRegion, setSelectedRegion] = useState<string>(
+        resolveRegionFromDistrict(
+            initialLocation?.district || initialLocation?.taluka || '',
+            initialLocation?.stateCode || 'MH'
+        ) || 'MMRDA'
+    );
     const [dealerRetryCount, setDealerRetryCount] = useState(0);
     const [waInFlight, setWaInFlight] = useState(false);
     const shouldForcePhoneCapture = isCrmMode; // Only force phone capture in CRM/lead context
@@ -717,7 +704,7 @@ export default function ProductClient({
         initialAccessories,
         initialLocation,
         selectedColor, // This relies on the color state from useSystemPDPLogic
-        overrideDealerId: initialDealerId, // Prioritize this dealer
+        overrideDealerId: runtimeDealerId, // Prioritize winner-selected dealer when district changes
         disabled: isDealerFetchDisabled,
         prefetchedPricing: initialServerPricing,
         prefetchedLocation: initialLocation,
@@ -737,6 +724,92 @@ export default function ProductClient({
             }),
         onDealerFetchError: payload => trackEvent('INTENT_SIGNAL', 'dealer_fetch_error', payload),
     });
+
+    useEffect(() => {
+        const nextDistrict =
+            resolvedLocation?.district || resolvedLocation?.taluka || initialLocation?.district || null;
+        if (nextDistrict && nextDistrict !== selectedDistrict) {
+            setSelectedDistrict(nextDistrict);
+        }
+        const nextRegion = resolveRegionFromDistrict(
+            nextDistrict || '',
+            resolvedLocation?.stateCode || initialLocation?.stateCode || 'MH'
+        );
+        if (nextRegion && nextRegion !== selectedRegion) {
+            setSelectedRegion(nextRegion);
+        }
+    }, [
+        resolvedLocation?.district,
+        resolvedLocation?.taluka,
+        initialLocation?.district,
+        selectedDistrict,
+        selectedRegion,
+    ]);
+
+    const handleDistrictChange = async (selection: { stateCode: string; region: string; district: string }) => {
+        const cleanDistrict = String(selection?.district || '').trim();
+        if (!cleanDistrict) return;
+        const nextRegion = String(selection?.region || '').trim();
+        const nextStateCode = String(
+            selection?.stateCode || resolvedLocation?.stateCode || initialLocation?.stateCode || 'MH'
+        )
+            .trim()
+            .toUpperCase()
+            .slice(0, 2);
+        setSelectedDistrict(cleanDistrict);
+        if (nextRegion) setSelectedRegion(nextRegion);
+        setCachedLocationHint(prev => ({ ...(prev || {}), district: cleanDistrict }));
+
+        // Full caching rule: if user stays in same region, no winner refetch/recompute.
+        if (nextRegion && nextRegion === selectedRegion) {
+            return;
+        }
+
+        if (!colorSkuId) {
+            toast.error('Unable to switch district for this color.');
+            return;
+        }
+
+        const currentTenantId =
+            (ssppServerPricing as any)?.dealer?.id ||
+            bestOffer?.dealerId ||
+            (bestOffer as any)?.id ||
+            runtimeDealerId ||
+            '';
+
+        try {
+            const qs = new URLSearchParams({
+                skuId: colorSkuId,
+                district: cleanDistrict,
+                stateCode: nextStateCode || 'MH',
+            });
+            if (!nextRegion) {
+                toast.error('Selected district is outside configured serviceable region.');
+                return;
+            }
+            qs.set('region', nextRegion);
+            if (currentTenantId) qs.set('currentTenantId', currentTenantId);
+
+            const res = await fetch(`/api/pdp/winner?${qs.toString()}`, { cache: 'no-store' });
+            if (!res.ok) throw new Error('District winner lookup failed');
+            const payload = await res.json();
+
+            if (!payload?.found) return;
+
+            if (payload.same_as_current) {
+                return;
+            }
+
+            if (payload.tenant_id) {
+                setRuntimeDealerId(payload.tenant_id);
+                setDealerRetryCount(c => c + 1);
+            }
+        } catch (err) {
+            if (!isAbortError(err)) {
+                toast.error('Failed to switch district. Try again.');
+            }
+        }
+    };
 
     // Update client state when hook returns new data
     useEffect(() => {
@@ -1758,6 +1831,17 @@ export default function ProductClient({
         handlers,
         leadContext: leadContext || undefined,
         initialLocation: resolvedLocation || initialLocation,
+        selectedDistrict,
+        selectedRegion,
+        onSelectDistrict: async (district: string) => {
+            const stateCode = String(resolvedLocation?.stateCode || initialLocation?.stateCode || 'MH')
+                .trim()
+                .toUpperCase()
+                .slice(0, 2);
+            const region = resolveRegionFromDistrict(district, stateCode);
+            if (!region) return;
+            await handleDistrictChange({ stateCode, region, district });
+        },
         bestOffer, // Passing bestOffer to children
         otherOffers,
         serverPricing, // SSPP v1: Server-calculated pricing breakdown
@@ -1770,7 +1854,7 @@ export default function ProductClient({
         dealerFetchState,
         dealerFetchNotice: dealerFetchNotice || undefined,
         onRetryDealerFetch: () => setDealerRetryCount(c => c + 1),
-        onRetryLocation: () => setShowLocationPicker(true),
+        onRetryLocation: () => setShowDistrictModal(true),
         onWaSend: handleWaSend,
         cachedPincode: cachedLocationHint?.pincode || undefined,
         serviceability: derivedServiceability,
@@ -1852,7 +1936,6 @@ export default function ProductClient({
             {/* ── END DEBUG BANNER (removed) ── */}
             {/* Gate-state driven render:
                  RESOLVING        → skeleton while checking location/serviceability
-                 PINCODE_REQUIRED → PincodeGateModal (optional, non-blocking for guests)
                  NON_SERVICEABLE  → PDP renders with notice to change location
                  READY            → full PDP with best offer resolved
                  Note: No CONSENT gate — all users see the full PDP. */}
@@ -1874,7 +1957,7 @@ export default function ProductClient({
                             </div>
                             <button
                                 type="button"
-                                onClick={handleRetryPincode}
+                                onClick={() => setShowDistrictModal(true)}
                                 className="shrink-0 rounded-xl border border-amber-300 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-amber-800 hover:bg-amber-50 transition-all whitespace-nowrap"
                             >
                                 Change location
@@ -1882,33 +1965,21 @@ export default function ProductClient({
                         </div>
                     )}
 
-                    {/* PINCODE_REQUIRED — modal overlay for location capture */}
-                    <PincodeGateModal isOpen={pdpGateState === 'PINCODE_REQUIRED'} onResolved={handlePincodeResolved} />
-
                     {forceMobileLayout ? <MobilePDP {...commonProps} /> : <DesktopPDP {...commonProps} />}
                 </>
             )}
 
-            <LocationPicker
-                isOpen={showLocationPicker}
-                onClose={() => setShowLocationPicker(false)}
-                initialPincode={
-                    cachedLocationHint?.pincode || resolvedLocation?.pincode || initialLocation?.pincode || ''
-                }
-                onLocationSet={(pincode, taluka, lat, lng) => {
-                    const nextLocation = {
-                        ...(resolvedLocation || initialLocation || {}),
-                        pincode,
-                        taluka,
-                        district: taluka,
-                        lat: lat ?? null,
-                        lng: lng ?? null,
-                    };
-                    localStorage.setItem('bmb_user_pincode', JSON.stringify(nextLocation));
-                    window.dispatchEvent(new Event('locationChanged'));
-                    setDealerRetryCount(c => c + 1);
-                }}
-            />
+            {showDistrictModal && (
+                <LocationSelectionModal
+                    onClose={() => setShowDistrictModal(false)}
+                    stateCode={resolvedLocation?.stateCode || initialLocation?.stateCode || 'MH'}
+                    currentRegion={selectedRegion}
+                    currentDistrict={selectedDistrict || resolvedLocation?.district || initialLocation?.district || ''}
+                    onSelect={async selection => {
+                        await handleDistrictChange(selection);
+                    }}
+                />
+            )}
 
             <LeadCaptureModal
                 isOpen={showQuoteSuccess}

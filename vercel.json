@@ -1,4 +1,10 @@
 {
+  "crons": [
+    {
+      "path": "/api/internal/winner-worker",
+      "schedule": "*/2 * * * *"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",

@@ -1,4 +1,5 @@
 import React from 'react';
+import { AnimatedCurrency } from '../../AnimatedCurrency';
 
 interface PriceItem {
     label: string;
@@ -27,7 +28,9 @@ export default function PriceBreakupTab({ items }: PriceBreakupTabProps) {
                             className={`flex items-start justify-between gap-4 ${item.isTotal ? 'pt-6 border-t border-slate-200 mt-6' : ''}`}
                         >
                             <div className="flex flex-col">
-                                <span className={`text-sm tracking-wide ${item.isTotal ? 'font-black uppercase text-slate-900 text-lg' : 'font-bold text-slate-500'}`}>
+                                <span
+                                    className={`text-sm tracking-wide ${item.isTotal ? 'font-black uppercase text-slate-900 text-lg' : 'font-bold text-slate-500'}`}
+                                >
                                     {item.label}
                                 </span>
                                 {item.description && (
@@ -37,13 +40,16 @@ export default function PriceBreakupTab({ items }: PriceBreakupTabProps) {
                                 )}
                             </div>
 
-                            <span className={`font-mono tracking-tight ${item.isTotal
-                                ? 'text-xl font-black text-brand-primary'
-                                : item.isDeduction
-                                    ? 'text-emerald-600 font-bold'
-                                    : 'text-slate-900 font-bold'
-                                }`}>
-                                {item.isDeduction ? '-' : ''}₹{item.value.toLocaleString('en-IN')}
+                            <span
+                                className={`font-mono tracking-tight ${
+                                    item.isTotal
+                                        ? 'text-xl font-black text-brand-primary'
+                                        : item.isDeduction
+                                          ? 'text-emerald-600 font-bold'
+                                          : 'text-slate-900 font-bold'
+                                }`}
+                            >
+                                <AnimatedCurrency value={item.value} prefix={item.isDeduction ? '-₹' : '₹'} />
                             </span>
                         </div>
                     ))}
@@ -53,7 +59,8 @@ export default function PriceBreakupTab({ items }: PriceBreakupTabProps) {
             {/* Footer Disclaimer */}
             <div className="bg-slate-100 p-6 border-t border-slate-200">
                 <p className="text-[10px] text-slate-400 leading-relaxed text-center font-bold uppercase tracking-widest">
-                    *Prices are indicative and subject to change. Registration and Insurance charges may vary based on location and provider.
+                    *Prices are indicative and subject to change. Registration and Insurance charges may vary based on
+                    location and provider.
                 </p>
             </div>
         </div>

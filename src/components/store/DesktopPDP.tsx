@@ -124,6 +124,8 @@ interface DesktopPDPProps {
         handleReachUsQuote?: () => void;
     };
     initialLocation?: any;
+    selectedDistrict?: string;
+    selectedRegion?: string;
     bestOffer?: any;
     otherOffers?: any[];
     walletCoins?: number | null;
@@ -137,6 +139,7 @@ interface DesktopPDPProps {
     dealerFetchNotice?: string;
     onRetryDealerFetch?: () => void;
     onRetryLocation?: () => void;
+    onSelectDistrict?: (district: string) => void | Promise<void>;
     cachedPincode?: string;
     /** WhatsApp mini-button handler — provided by ProductClient, undefined for non-team-member views */
     onWaSend?: (phone: string) => Promise<void>;
@@ -145,6 +148,7 @@ interface DesktopPDPProps {
         status: string;
         pincode?: string;
         taluka?: string;
+        stateCode?: string;
     };
     /** IDLE = not saved; SAVED = quote saved, CTA becomes Download Dossier; DOWNLOADED = dossier opened, CTA becomes Share */
     quoteState?: 'IDLE' | 'SAVED' | 'DOWNLOADED';
@@ -186,6 +190,8 @@ export function DesktopPDP({
     leadContext,
     basePath = '/store',
     initialLocation,
+    selectedDistrict,
+    selectedRegion,
     bestOffer,
     otherOffers = [],
     walletCoins = null,
@@ -198,6 +204,7 @@ export function DesktopPDP({
     dealerFetchNotice,
     onRetryDealerFetch,
     onRetryLocation,
+    onSelectDistrict,
     cachedPincode,
     onWaSend,
     serviceability,
@@ -1341,6 +1348,10 @@ export function DesktopPDP({
                     taluka: serviceability?.taluka || initialLocation?.taluka,
                     district: initialLocation?.district,
                 }}
+                selectedDistrict={selectedDistrict}
+                selectedRegion={selectedRegion}
+                stateCode={serviceability?.stateCode || initialLocation?.stateCode || 'MH'}
+                onSelectDistrict={onSelectDistrict}
                 onEditLocation={onRetryLocation}
                 accessoriesCount={selectedAccessories?.length ?? 0}
                 accessoriesTotal={accessoriesPrice ?? 0}

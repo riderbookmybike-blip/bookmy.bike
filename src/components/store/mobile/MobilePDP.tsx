@@ -5,7 +5,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
-import { ChevronLeft, Share2, Heart, MapPin, Calendar, ChevronDown } from 'lucide-react';
+import { ChevronLeft, Share2, Heart, MapPin, Calendar, ChevronDown, Edit2 } from 'lucide-react';
 import { useI18n } from '@/components/providers/I18nProvider';
 import { toDevanagariScript } from '@/lib/i18n/transliterate';
 import { computeOClubPricing } from '@/lib/oclub/coin';
@@ -52,6 +52,7 @@ export interface MobilePDPProps {
         setUserDownPayment: (amount: number) => void;
     };
     initialLocation?: any;
+    selectedDistrict?: string;
     bestOffer?: any;
     otherOffers?: any[];
     walletCoins?: number | null;
@@ -91,6 +92,7 @@ export const MobilePDP = ({
     handlers,
     leadContext,
     initialLocation,
+    selectedDistrict,
     bestOffer,
     otherOffers = [],
     walletCoins = null,
@@ -279,13 +281,20 @@ export const MobilePDP = ({
                 </motion.div>
 
                 {/* Location Overlay Pill */}
-                {initialLocation && (
-                    <div className="absolute bottom-4 left-5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/90 backdrop-blur-md border border-slate-200 mt-auto">
+                {(selectedDistrict || initialLocation) && (
+                    <button
+                        type="button"
+                        onClick={onRetryLocation}
+                        className="absolute bottom-4 left-5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/90 backdrop-blur-md border border-slate-200 mt-auto"
+                        aria-label="Change district"
+                    >
                         <MapPin size={10} className="text-[#F4B000]" />
                         <span className="text-[9px] font-black tracking-widest uppercase text-slate-900">
-                            {initialLocation.district || initialLocation.pincode}
+                            {selectedDistrict || initialLocation?.district || initialLocation?.taluka || 'Location'}
                         </span>
-                    </div>
+                        <span className="text-[9px] font-bold text-amber-500">{initialLocation?.pincode || ''}</span>
+                        <Edit2 size={10} className="text-slate-500" />
+                    </button>
                 )}
             </div>
 

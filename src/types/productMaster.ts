@@ -271,38 +271,24 @@ export const MOCK_VEHICLES: ProductVariant[] = [
 ];
 
 export const MOCK_ACCESSORIES = [
-    {
-        id: 'acc-1',
-        name: 'Full Face Helmet',
-        brand: 'Axor',
-        price: 4500,
-        image: '/images/accessories/helmet.png',
-        category: 'Safety',
-    },
-    {
-        id: 'acc-2',
-        name: 'Riding Gloves',
-        brand: 'Rynox',
-        price: 2800,
-        image: '/images/accessories/gloves.png',
-        category: 'Riding Gear',
-    },
+    { id: 'acc-helmet', name: 'Helmet', brand: 'OEM', price: 0, image: '', category: 'Safety' },
+    { id: 'acc-parking-cover', name: 'Parking Cover', brand: 'OEM', price: 0, image: '', category: 'Protection' },
+    { id: 'acc-seat-cover', name: 'Seat Cover', brand: 'OEM', price: 0, image: '', category: 'Comfort' },
+    { id: 'acc-crash-guard', name: 'Crash Guard', brand: 'OEM', price: 0, image: '', category: 'Protection' },
+    { id: 'acc-floor-matte', name: 'Floor Matte', brand: 'OEM', price: 0, image: '', category: 'Comfort' },
+    { id: 'acc-hsrp-frame', name: 'HSRP Frame Pair', brand: 'OEM', price: 0, image: '', category: 'Utility' },
+    { id: 'acc-footrest', name: 'Footrest Assembly', brand: 'OEM', price: 0, image: '', category: 'Comfort' },
+    { id: 'acc-side-stand', name: 'Side Stand', brand: 'OEM', price: 0, image: '', category: 'Utility' },
+    { id: 'acc-leg-guard', name: 'Leg Guard', brand: 'OEM', price: 0, image: '', category: 'Protection' },
 ];
 
 export const MOCK_SERVICES = [
     {
-        id: 'serv-1',
-        name: 'General Service',
-        description: 'Comprehensive checkup and oil change',
-        price: 1499,
-        duration: '4 Hours',
-    },
-    {
-        id: 'serv-2',
-        name: 'Teflon Coating',
-        description: 'Paint protection for long lasting shine',
-        price: 899,
-        duration: '2 Hours',
+        id: 'serv-wap',
+        name: 'Wap Charges',
+        description: 'WAP Charges',
+        price: 0,
+        duration: 'N/A',
     },
 ];
 

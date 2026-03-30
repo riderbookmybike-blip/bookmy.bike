@@ -27,6 +27,7 @@ import { Logo } from '@/components/brand/Logo';
 import { OCircleLogo } from '@/components/common/OCircleLogo';
 import { coinsNeededForPrice } from '@/lib/oclub/coin';
 import { buildCommandBarState } from '../Personalize/pdpComputations';
+import { AnimatedCurrency } from '../AnimatedCurrency';
 
 import { LOGIN_NEXT_KEY as LOGIN_NEXT_STORAGE_KEY } from '@/lib/constants/storage';
 import { INDIAN_MOBILE_PATTERN } from '@/lib/utils/phoneUtils';
@@ -67,6 +68,10 @@ export interface PdpCommandBarProps {
         taluka?: string;
         district?: string;
     };
+    selectedDistrict?: string;
+    stateCode?: string;
+    selectedRegion?: string;
+    onSelectDistrict?: (district: string) => void | Promise<void>;
     onEditLocation?: () => void;
     deliveryByLabel?: string | null;
     studioIdLabel?: string | null;
@@ -262,7 +267,7 @@ interface DesktopActionClusterProps {
 }
 
 function compactInr(value: number, sign: '+' | '-' | '' = '') {
-    return `${sign}₹ ${Math.round(value).toLocaleString('en-IN')}`;
+    return <AnimatedCurrency value={value} prefix={`${sign}₹ `} />;
 }
 
 function DesktopIdentityCluster({
@@ -439,7 +444,7 @@ function DesktopFinalOutcome({
                 ) : (
                     <div className="flex flex-col items-start gap-0.5 mt-0.5">
                         <span className="whitespace-nowrap tabular-nums font-black italic text-[#0f172a] text-[24px] md:text-[28px] leading-none">
-                            ₹{displayOnRoad.toLocaleString('en-IN')}
+                            <AnimatedCurrency value={displayOnRoad} prefix="₹" />
                         </span>
                     </div>
                 )}
@@ -463,7 +468,7 @@ function DesktopFinalOutcome({
                             <Logo variant="icon" size={14} customColor="#0f172a" />
                         </div>
                         <span className="whitespace-nowrap tabular-nums font-black italic text-[#0f172a] text-[24px] md:text-[28px] leading-none">
-                            {bCoinEquivalent.toLocaleString('en-IN')}
+                            <AnimatedCurrency value={bCoinEquivalent} prefix="" />
                         </span>
                     </div>
                 </div>
@@ -585,6 +590,10 @@ export function PdpCommandBar({
     insuranceAddonsCost = 0,
     onWaSend,
     locationInfo,
+    selectedDistrict,
+    stateCode = 'MH',
+    selectedRegion,
+    onSelectDistrict,
     onEditLocation,
     deliveryByLabel,
     studioIdLabel,
@@ -654,6 +663,12 @@ export function PdpCommandBar({
     const [showWaModal, setShowWaModal] = useState(false);
     const [showAuthGateModal, setShowAuthGateModal] = useState(false);
 
+    const displayDistrict = selectedDistrict || locationInfo?.district || locationHeadline || 'Location';
+
+    const handleLocationClick = async () => {
+        onEditLocation?.(); // Calls global location editor/district selector
+    };
+
     const redirectToLogin = () => {
         if (typeof window === 'undefined') return;
         const next = `${window.location.pathname}${window.location.search || ''}`;
@@ -715,18 +730,20 @@ export function PdpCommandBar({
                                 </div>
 
                                 {/* Card 3: Location and TAT */}
-                                <div className="flex-[0.8] lg:flex-1 w-full min-w-[150px] max-w-[300px] shrink-0 h-[72px] lg:h-[80px] rounded-[18px] border border-slate-200 bg-white shadow-sm px-4 lg:px-6 py-2 lg:py-3 flex flex-col justify-center gap-2">
+                                <div className="relative flex-[0.8] lg:flex-1 w-full min-w-[150px] max-w-[300px] shrink-0 h-[72px] lg:h-[80px] rounded-[18px] border border-slate-200 bg-white shadow-sm px-4 lg:px-6 py-2 lg:py-3 flex flex-col justify-center gap-2">
                                     <button
-                                        onClick={onEditLocation}
+                                        onClick={handleLocationClick}
                                         className="min-w-0 flex items-center justify-between group cursor-pointer text-left"
                                         data-testid="cmd-bar-location"
                                     >
                                         <div className="flex flex-col flex-1 min-w-0 pr-4">
-                                            <p className="text-[11px] font-black text-slate-800 leading-none truncate mb-1 group-hover:text-slate-900 transition-colors">
-                                                {locationHeadline || 'Location'}
+                                            <p className="text-[12px] font-black text-slate-800 leading-none truncate mb-1 group-hover:text-slate-900 transition-colors">
+                                                {displayDistrict || 'Location'}
                                             </p>
                                             <p className="text-[9px] uppercase tracking-[0.1em] text-amber-500 font-bold truncate">
-                                                {locationInfo?.pincode || 'Set City'}
+                                                {selectedRegion
+                                                    ? `${selectedRegion}, ${stateCode}`
+                                                    : locationInfo?.pincode || 'Set City'}
                                             </p>
                                         </div>
                                         <Edit2 className="w-3.5 h-3.5 text-slate-300 group-hover:text-amber-500 transition-colors shrink-0" />

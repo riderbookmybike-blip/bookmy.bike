@@ -1,13 +1,15 @@
 import React from 'react';
 import { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import { resolveLocation } from '@/utils/locationResolver';
+// resolveLocation removed — PDP now uses static Mumbai City default (no pincode/GPS lookup)
 import { adminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 import { slugify } from '@/utils/slugs';
 import ProductClient from './ProductClient';
 import { isMobileDevice } from '@/lib/utils/device';
-import { cookies } from 'next/headers';
+
+import { resolveDefaultRegionWinner } from '@/lib/server/winnerResolver';
+import { REGION_MMRDA } from '@/lib/location/regionResolver';
 import { getFinanceCandidateSchemes, resolveFinanceScheme, ViewerContext } from '@/utils/financeResolver';
 import { BankScheme } from '@/types/bankPartner';
 import { getSitemapData } from '@/lib/server/sitemapFetcher';
@@ -303,7 +305,6 @@ export default async function Page({ params, searchParams }: Props) {
     // isAuthenticated is passed to ProductClient so it can maintain guest vs member state.
 
     const supabase = adminClient;
-    const cookieStore = await cookies(); // Access cookies
     const isMobile = await isMobileDevice(); // resolve device on server
 
     const leadRef = resolvedSearchParams.lead || resolvedSearchParams.leadId || null;
@@ -319,38 +320,16 @@ export default async function Page({ params, searchParams }: Props) {
     });
 
     const stateCode = pricingContext.stateCode || 'MH';
-    let location: any = {
-        state: resolvedSearchParams.state || 'MAHARASHTRA',
-        stateCode,
+
+    // Default location: Mumbai City — no pincode lookup, no GPS, no cookie dependency.
+    // District can be changed client-side via the DistrictSelector using /api/pdp/winner.
+    const location: any = {
+        state: 'MAHARASHTRA',
+        stateCode: 'MH',
+        district: 'Mumbai City',
     };
-    const pincodeFromQuery = resolvedSearchParams.pincode;
-    const locationCookie = cookieStore.get('bmb_user_pincode')?.value;
-    let pincodeForLookup = String(pincodeFromQuery || '').trim();
-    if (!pincodeForLookup && locationCookie) {
-        try {
-            const parsed = JSON.parse(locationCookie);
-            pincodeForLookup = String(parsed?.pincode || '').trim();
-            if (!location?.state && parsed?.state) {
-                location.state = String(parsed.state);
-            }
-            if (!location?.stateCode && parsed?.stateCode) {
-                location.stateCode = String(parsed.stateCode);
-            }
-        } catch {
-            // ignore malformed cookie
-        }
-    }
-    if (/^\d{6}$/.test(pincodeForLookup)) {
-        const resolvedByPincode = await resolveLocation(pincodeForLookup);
-        if (resolvedByPincode) {
-            location = resolvedByPincode;
-        } else {
-            location = {
-                ...location,
-                pincode: pincodeForLookup,
-            };
-        }
-    }
+    // Note: resolvedSearchParams.pincode and bmb_user_pincode cookie are intentionally
+    // ignored on SSR — winner is pre-computed for Mumbai City; client switches district.
 
     // 2. Fetch Variant + SKUs from V2 catalog tables (via shared SOT layer)
     let modelRow = await resolveModel(resolvedParams.make, resolvedParams.model);
@@ -886,9 +865,23 @@ export default async function Page({ params, searchParams }: Props) {
               breakdown: null,
           };
 
-    // Server receives explicit dealer context from resolveStoreContext
-    // (lead-selected dealer / ?dealer / ?studio). Best-offer discovery remains client-side.
+    // Winner resolution — two-tier:
+    // 1. Explicit context: lead-selected dealer / ?dealer / ?studio (CRM/quote path)
+    // 2. Pre-computed default: MMRDA region winner from sku_region_winners (organic PDP)
+    // No location lookup, no GPS, no pincode — lightning fast.
     let winningDealerId: string | null = pricingContext.dealerId || null;
+
+    if (!winningDealerId && skuIds.length > 0) {
+        try {
+            const defaultWinner = await resolveDefaultRegionWinner(skuIds, REGION_MMRDA, 'MH');
+            if (defaultWinner) {
+                winningDealerId = defaultWinner.tenantId;
+            }
+        } catch {
+            // Non-fatal: PDP still renders without a pre-computed winner
+        }
+    }
+
     const leadId = resolvedLeadId;
     let accessoryRules: Map<string, { offer: number; inclusion: string; isActive: boolean }> = new Map();
     let serviceRules: Map<string, { offer: number; isActive: boolean }> = new Map();
